@@ -1,8 +1,18 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --ring: #f43f5e;
+  --muted: rgba(0,0,0,0.20);
+  --border: rgba(0,0,0,0.12);
+  --accent: #f43f5e;
+  --accent-700: #be123c;
+  --accent-foreground: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #fafafa;
+  --grid-dot-color: rgba(0,0,0,0.08);
 }
 
 @theme inline {
@@ -16,6 +26,14 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --muted: rgba(255,255,255,0.20);
+    --border: rgba(255,255,255,0.10);
+    --accent: #f43f5e;
+    --accent-700: #be123c;
+    --accent-foreground: #ffffff;
+    --surface: rgba(255,255,255,0.04);
+    --surface-2: rgba(255,255,255,0.06);
+    --grid-dot-color: rgba(255,255,255,0.08);
   }
 }
 
@@ -23,4 +41,147 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+.bg-grid { background-image: radial-gradient(var(--grid-dot-color) 1px, transparent 1px); background-size: 22px 22px; }
+
+.card {
+  background: linear-gradient(to bottom right, var(--surface-2), var(--surface));
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.frosted {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+}
+
+.gradient-text {
+  background: linear-gradient(90deg, #f43f5e, #f97316 40%, #f59e0b);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.aurora {
+  position: absolute;
+  inset: -20% -10% -20% -10%;
+  background: radial-gradient(60% 60% at 20% 20%, rgba(244,63,94,0.20), transparent 60%),
+              radial-gradient(50% 50% at 80% 10%, rgba(249,115,22,0.18), transparent 60%),
+              radial-gradient(40% 40% at 50% 80%, rgba(245,158,11,0.18), transparent 60%);
+  filter: blur(60px);
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.elevate {
+  box-shadow: 0 10px 30px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.06);
+}
+
+/* Animations */
+@keyframes floatY {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+  100% { transform: translateY(0); }
+}
+
+@keyframes pulseSoft {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(244,63,94,0.35); }
+  50% { box-shadow: 0 0 0 8px rgba(244,63,94,0); }
+}
+
+@keyframes popIn {
+  0% { transform: scale(0.9); opacity: 0.6; }
+  60% { transform: scale(1.06); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+.anim-float:hover { animation: floatY 2.4s ease-in-out infinite; }
+.anim-pulse { animation: pulseSoft 2.4s ease-in-out infinite; }
+.anim-pop { animation: popIn 220ms cubic-bezier(0.16, 1, 0.3, 1); }
+
+.shine-wrap { position: relative; overflow: hidden; border-radius: inherit; }
+.shine-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 0; pointer-events: none;
+  background: linear-gradient(120deg, transparent 46%, rgba(255,255,255,0.06) 50%, transparent 54%);
+  transform: translateX(-100%);
+  transition: transform 900ms ease;
+  border-radius: inherit;
+}
+.shine-wrap:hover::after { transform: translateX(100%); }
+.shine-wrap:disabled::after { display: none; }
+
+/* Gradient background similar to gradient-text but for surfaces */
+.gradient-bg {
+  background: linear-gradient(90deg, #f43f5e, #f97316 40%, #f59e0b);
+  color: var(--accent-foreground);
+}
+
+/* Premium gradient button */
+.btn-premium {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+  color: #fff;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12), inset 0 1px 0 rgba(255,255,255,0.22), 0 10px 22px rgba(244,63,94,0.22), 0 4px 10px rgba(249,115,22,0.15);
+  transition: transform 160ms ease, filter 160ms ease, box-shadow 160ms ease;
+}
+.btn-premium::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  /* Keep square so the reveal edge can be straight; parent clips corners */
+  border-radius: 0;
+  background: linear-gradient(135deg, #e11d48, #f43f5e 30%, #f97316 65%, #f59e0b);
+  /* Start fully hidden; reveal via clip-path animation */
+  clip-path: polygon(0 0, 0 0, 0 100%, 0 100%);
+  will-change: clip-path;
+  z-index: 0;
+}
+.btn-premium > * { position: relative; z-index: 2; }
+.btn-premium:not(:disabled)::before { animation: gradientRevealClip 520ms cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.btn-premium:hover {
+  filter: brightness(1.04);
+  transform: translateY(-1px);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.16), inset 0 1px 0 rgba(255,255,255,0.28), 0 14px 28px rgba(244,63,94,0.26), 0 6px 14px rgba(249,115,22,0.18);
+}
+.btn-premium:active {
+  transform: translateY(0);
+  filter: brightness(0.98);
+}
+.btn-premium:disabled {
+  background: transparent;
+  color: var(--muted);
+  box-shadow: 0 0 0 1px var(--muted);
+  filter: grayscale(35%) brightness(0.9);
+  transform: scale(0.98);
+}
+.btn-premium:not(:disabled) {
+  animation: popIn 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes gradientRevealClip {
+  0% { clip-path: polygon(0 0, 0 0, 0 100%, 0 100%); }
+  100% { clip-path: polygon(0 0, calc(100% + 16px) 0, 100% 100%, 0 100%); }
+}
+
+/* Typography plugin theme to match CSS variables in both light and dark */
+.prose {
+  --tw-prose-body: var(--foreground);
+  --tw-prose-headings: var(--foreground);
+  --tw-prose-lead: var(--foreground);
+  --tw-prose-links: var(--accent);
+  --tw-prose-bold: var(--foreground);
+  --tw-prose-quotes: var(--foreground);
+  --tw-prose-code: var(--foreground);
+  --tw-prose-hr: var(--border);
+  --tw-prose-captions: color-mix(in oklab, var(--foreground) 70%, transparent);
 }
