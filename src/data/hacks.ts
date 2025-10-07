@@ -23,6 +23,41 @@ export type Hack = {
 
 export const hacks: Hack[] = [
   {
+    slug: "fire-of-sky",
+    title: "Pokémon Fire of Sky",
+    author: "Teon",
+    covers: [
+      "https://cdn.discordapp.com/attachments/1422900356865720360/1422900357096280197/IMG_6083.PNG?ex=68e59af9&is=68e44979&hm=42268cc13f2ee393ceba28aaf282ba6b974e005687974c6439b9703fca085d43",
+    ],
+    summary: "A semi-casual short story romhack based on Pokemon Emerald",
+    description: `Set in a time long before trainers or pokeballs, a young boy from humble beginnings sets off on an adventure with his unlikely partner. The two work together to uncover the mystery behind the sudden surge in rampaging Pokemon. The townspeople pray that Ho-Oh, their deity, will bring peace once more to their mountain village.
+
+## IMPORTANT NOTES
+- Some move animations are causing the game to crash. Turn off move animations (\`BATTLE SCENE\`) in the options menu until this is fixed.
+
+## Tips
+- You can find some helpful moves in the Move Relearner menu accessible from the Summary Screen
+- You shouldn’t need to grind as long as you participate in most wild encounters (there are no trainer battles)
+- Explore to find items scattered around to help prepare for big battles. There are also hidden items
+- Passive healing: Your Pokemon will slowly regain health as you walk around
+- TMs (Scrolls) are reusable and can be purchased from a man in town. You can also sell items to earn money
+- Oran and Sitrus berries were buffed
+
+**Known Bugs:**
+- There can occasionally be some graphical glitches during battles. It only froze once on me, but make sure to save often just in case.
+`,
+    tags: ["Short Story", "Casual"],
+    downloads: 11,
+    baseRom: "Pokemon Emerald",
+    version: "v1.0.2",
+    createdAt: "2025-10-01",
+    updatedAt: "2025-10-05",
+    socialLinks: {
+      discord: "https://discord.gg/hX3a63RYzZ",
+      pokecommunity: "https://www.pokecommunity.com/showthread.php?t=520000",
+    },
+  },
+  {
     slug: "emerald-redux",
     title: "Emerald Redux",
     author: "Oakwood",
