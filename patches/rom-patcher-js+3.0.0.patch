@@ -1,0 +1,66 @@
+diff --git a/node_modules/rom-patcher-js/rom-patcher-js/modules/BinFile.js b/node_modules/rom-patcher-js/rom-patcher-js/modules/BinFile.js
+index 5a8a855..2bc9838 100644
+--- a/node_modules/rom-patcher-js/rom-patcher-js/modules/BinFile.js
++++ b/node_modules/rom-patcher-js/rom-patcher-js/modules/BinFile.js
+@@ -29,6 +29,18 @@
+ * SOFTWARE.
+ */
+ 
++/* ensure BinFile is available in this module (browser or node bundlers) */
++if (typeof HashCalculator === 'undefined') {
++	try {
++			// eslint-disable-next-line
++			var HashCalculator = require('./HashCalculator');
++	} catch (_e) {
++			if (typeof window !== 'undefined' && window.HashCalculator) {
++					// eslint-disable-next-line
++					var HashCalculator = window.HashCalculator;
++			}
++	}
++}
+ 
+ 
+ function BinFile(source, onLoad) {
+@@ -475,9 +487,14 @@ BinFile.prototype.hashCRC16 = function (start, len) {
+ 
+ 
+ 
+-if (BinFile.RUNTIME_ENVIROMENT === 'node' && typeof module !== 'undefined' && module.exports) {
+-	module.exports = BinFile;
+-	HashCalculator = require('./HashCalculator');
+-	nodePath = require('path');
+-	nodeFs = require('fs');
++if (typeof module !== 'undefined' && module.exports) {
++    module.exports = BinFile;
++    try {
++        var __req = eval('require');
++        HashCalculator = __req('./HashCalculator');
++        nodePath = __req('path');
++        nodeFs = __req('fs');
++    } catch (_e) {
++        // ignore when bundling for browser
++    }
+ }
+diff --git a/node_modules/rom-patcher-js/rom-patcher-js/modules/RomPatcher.format.bps.js b/node_modules/rom-patcher-js/rom-patcher-js/modules/RomPatcher.format.bps.js
+index b2e8266..28eee25 100644
+--- a/node_modules/rom-patcher-js/rom-patcher-js/modules/RomPatcher.format.bps.js
++++ b/node_modules/rom-patcher-js/rom-patcher-js/modules/RomPatcher.format.bps.js
+@@ -6,6 +6,18 @@ const BPS_ACTION_SOURCE_READ=0;
+ const BPS_ACTION_TARGET_READ=1;
+ const BPS_ACTION_SOURCE_COPY=2;
+ const BPS_ACTION_TARGET_COPY=3;
++/* ensure BinFile is available in this module (browser or node bundlers) */
++if (typeof BinFile === 'undefined') {
++    try {
++        // eslint-disable-next-line
++        var BinFile = require('./BinFile');
++    } catch (_e) {
++        if (typeof window !== 'undefined' && window.BinFile) {
++            // eslint-disable-next-line
++            var BinFile = window.BinFile;
++        }
++    }
++}
+ if(typeof module !== "undefined" && module.exports){
+ 	module.exports = BPS;
+ }

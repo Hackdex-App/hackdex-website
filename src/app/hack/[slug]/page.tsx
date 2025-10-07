@@ -1,4 +1,5 @@
 import { hacks } from "@/data/hacks";
+import { baseRoms } from "@/data/baseRoms";
 import { notFound } from "next/navigation";
 import Gallery from "@/components/Hack/Gallery";
 import HackActions from "@/components/Hack/HackActions";
@@ -16,10 +17,18 @@ interface HackDetailProps {
 export default async function HackDetail({ params }: HackDetailProps) {
   const { slug } = await params;
   const hack = hacks.find((h) => h.slug === slug) ?? notFound();
+  const baseRom = baseRoms.find((r) => r.name === hack.baseRom);
 
   return (
     <div className="mx-auto max-w-screen-lg px-6 pb-28">
-      <HackActions title={hack.title} version={hack.version} author={hack.author} baseRom={hack.baseRom} />
+      <HackActions
+        title={hack.title}
+        version={hack.version}
+        author={hack.author}
+        baseRom={hack.baseRom}
+        platform={baseRom?.platform}
+        patchUrl={hack.patchUrl}
+      />
 
       <div className="pt-8 md:pt-10">
         <div className="flex flex-wrap items-end justify-between gap-4">

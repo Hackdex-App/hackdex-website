@@ -3,11 +3,31 @@
 import React from "react";
 import StickyActionBar from "@/components/Hack/StickyActionBar";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
+import { baseRoms } from "@/data/baseRoms";
+import BinFile from "rom-patcher-js/rom-patcher-js/modules/BinFile.js";
+import BPS from "rom-patcher-js/rom-patcher-js/modules/RomPatcher.format.bps.js";
 
-export default function HackActions({ title, version, author, baseRom }: { title: string; version?: string; author: string; baseRom: string }) {
+interface HackActionsProps {
+  title: string;
+  version: string;
+  author: string;
+  baseRom: string;
+  platform?: "GBA" | "GBC" | "GB" | "NDS";
+  patchUrl: string;
+}
+
+const HackActions: React.FC<HackActionsProps> = ({
+  title,
+  version,
+  author,
+  baseRom,
+  platform,
+  patchUrl,
+}) => {
   const { isLinked, hasPermission, hasCached, importUploadedBlob, ensurePermission, linkRom, getFileBlob, supported } = useBaseRoms();
   const [file, setFile] = React.useState<File | null>(null);
   const [status, setStatus] = React.useState<"idle" | "ready" | "patching" | "done">("idle");
+  const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (isLinked(baseRom) && (hasPermission(baseRom) || hasCached(baseRom))) {
@@ -23,17 +43,54 @@ export default function HackActions({ title, version, author, baseRom }: { title
   }
 
   async function onPatch() {
-    if (!file) {
-      if (!isLinked(baseRom) && !hasCached(baseRom)) return;
-      if (!hasCached(baseRom)) {
-        const perm = await ensurePermission(baseRom, true);
-        if (perm !== "granted") return;
+    try {
+      setError(null);
+      let baseFile = file;
+      if (!baseFile) {
+        if (!isLinked(baseRom) && !hasCached(baseRom)) return;
+        if (!hasCached(baseRom)) {
+          const perm = await ensurePermission(baseRom, true);
+          if (perm !== "granted") return;
+        }
+        const linkedFile = await getFileBlob(baseRom);
+        if (!linkedFile) return;
+        baseFile = linkedFile;
       }
-      const linkedFile = await getFileBlob(baseRom);
-      if (!linkedFile) return;
+
+      if (!patchUrl) return;
+
+      setStatus("patching");
+
+      // Read inputs
+      const [romBuf, patchBuf] = await Promise.all([
+        baseFile.arrayBuffer(),
+        fetch(patchUrl).then((r) => {
+          if (!r.ok) throw new Error("Failed to fetch patch");
+          return r.arrayBuffer();
+        }),
+      ]);
+
+      // Build BinFiles
+      const romBin = new BinFile(romBuf);
+      romBin.fileName = baseFile.name + (platform ? `.${platform.toLowerCase()}` : "");
+      const patchBin = new BinFile(patchBuf);
+
+      // Parse and apply BPS
+      const patch = BPS.fromFile(patchBin);
+      const patchedRom = patch.apply(romBin);
+
+      // Name output and download
+      const outExt = platform ? platform.toLowerCase() : 'bin';
+      const outputName = `${title} (${version}).${outExt}`;
+      patchedRom.fileName = outputName;
+      patchedRom.save();
+
+      setStatus("done");
+    } catch (e: any) {
+      setError(e?.message || "Failed to patch ROM");
+      setStatus("idle");
+      console.error(e);
     }
-    setStatus("patching");
-    setTimeout(() => setStatus("done"), 1200);
   }
 
   return (
@@ -50,6 +107,8 @@ export default function HackActions({ title, version, author, baseRom }: { title
       onUploadChange={onSelectFile}
     />
   );
-}
+};
+
+export default HackActions;
 
 

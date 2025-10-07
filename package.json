@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
-    "start": "next start"
+    "start": "next start",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@dnd-kit/core": "6.3.1",
@@ -17,7 +18,8 @@
     "react-dom": "19.1.0",
     "react-icons": "^5.5.0",
     "react-markdown": "9.0.3",
-    "remark-gfm": "4.0.0"
+    "remark-gfm": "4.0.0",
+    "rom-patcher-js": "github:marcrobledo/RomPatcher.js#91e522e247f709e894761157ccba3189004d0859"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -26,6 +28,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "patch-package": "^8.0.0"
   }
 }
