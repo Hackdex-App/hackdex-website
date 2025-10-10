@@ -177,6 +177,7 @@ export default function SubmitForm() {
         ? { discord: discord || undefined, twitter: twitter || undefined, pokecommunity: pokecommunity || undefined }
         : undefined,
     createdAt: new Date().toISOString(),
+    patchUrl: "",
   };
 
   return (

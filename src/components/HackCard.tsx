@@ -39,11 +39,7 @@ export default function HackCard({ hack, clickable = true, className = "" }: { h
           {showTitlePlaceholder ? (
             <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
               <span
-                className="text-[8rem] font-extrabold leading-tight text-white/20 select-none text-center uppercase tracking-tight"
-                style={{
-                  textShadow: "0 2px 24px rgba(0,0,0,0.25)",
-                  lineHeight: 0.9,
-                }}
+                className="text-[8rem] font-extrabold leading-[0.9] text-black/10 dark:text-white/20 select-none text-center uppercase tracking-tight"
               >
                 {hack.title}
               </span>

@@ -11,8 +11,9 @@ function NavLink({ href, label, className = "" }: { href: string; label: React.R
   return (
     <Link
       href={href}
-      className={`rounded-md px-3 py-2 text-sm transition-colors ${
-        isActive ? "bg-[var(--surface-2)] text-[var(--foreground)] ring-1 ring-[var(--border)]" : "text-foreground/80 hover:bg-[var(--surface-2)]"
+      data-active={isActive || undefined}
+      className={`group rounded-md px-3 py-2 text-sm transition-colors text-foreground/80 hover:bg-[var(--surface-2)] underline-offset-5 decoration-2 decoration-[var(--accent)] ${
+        isActive ? "underline font-semibold" : ""
       } ${className}`}
     >
       {label}
@@ -36,13 +37,12 @@ export default function Header() {
             href="/roms"
             label={
               <span className="inline-flex items-center gap-2">
-                <span>My Base ROMs</span>
-                <span className="inline-flex items-center rounded-full bg-emerald-600/60 px-2 py-0.5 text-xs text-white ring-1 ring-emerald-700/80 dark:bg-emerald-500/20 dark:text-emerald-300 dark:ring-emerald-400/30">
+                <span className="decoration-2 decoration-[var(--accent)] group-data-active:underline">My Base ROMs</span>
+                <span className="inline-flex items-center rounded-full bg-emerald-600/60 px-2 py-0.5 text-xs text-white font-semibold ring-1 ring-emerald-700/80 dark:bg-emerald-500/20 dark:text-emerald-300 dark:ring-emerald-400/30">
                   {countReady}
                 </span>
               </span>
             }
-            className="border border-[var(--border)] bg-[var(--surface-2)] text-foreground"
           />
           <Link
             href="/submit"
@@ -50,7 +50,7 @@ export default function Header() {
               pathname === "/submit" ? "ring-2 ring-[var(--ring)] ring-offset-2 ring-offset-[var(--background)] brightness-110" : ""
             }`}
           >
-            Upload
+            Submit
           </Link>
         </nav>
       </div>

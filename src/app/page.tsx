@@ -11,7 +11,7 @@ export default function Home() {
               <span className="gradient-text">Discover</span> and share Pokémon ROM hack patches
             </h1>
             <p className="mt-4 text-[15px] text-foreground/80">
-              Find community-made hacks, view download counts, and patch in-browser with your own legally-obtained base ROMs.
+              Find community-made hacks and patch in-browser with your own legally-obtained base ROMs for Game Boy, GBC, GBA, and Nintendo DS.
             </p>
             <div className="mt-8 flex items-center gap-3">
               <Link
@@ -38,12 +38,12 @@ export default function Home() {
             <p className="mt-1 text-sm text-foreground/70">Browse popular and trending patches across generations.</p>
           </div>
           <div className="card p-5">
-            <div className="text-[15px] font-semibold tracking-tight">Download insights</div>
-            <p className="mt-1 text-sm text-foreground/70">See what&apos;s popular at a glance with download counts.</p>
-          </div>
-          <div className="card p-5">
             <div className="text-[15px] font-semibold tracking-tight">Built-in patcher</div>
             <p className="mt-1 text-sm text-foreground/70">Provide your base ROMs and patch in the browser.</p>
+          </div>
+          <div className="card p-5">
+            <div className="text-[15px] font-semibold tracking-tight">Submit your own</div>
+            <p className="mt-1 text-sm text-foreground/70">Join as a creator and submit your own rom hacks.</p>
           </div>
         </div>
       </section>
