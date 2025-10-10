@@ -11,7 +11,7 @@ export default function Home() {
               <span className="gradient-text">Discover</span> and share Pokémon ROM hack patches
             </h1>
             <p className="mt-4 text-[15px] text-foreground/80">
-              Find community-made hacks and patch in-browser with your own legally-obtained base ROMs for Game Boy, GBC, GBA, and Nintendo DS.
+              Find community-made hacks and patch in-browser with your own legally-obtained base ROMs for Game Boy, Game Boy Color, Game Boy Advance, and Nintendo DS.
             </p>
             <div className="mt-8 flex items-center gap-3">
               <Link
