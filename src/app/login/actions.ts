@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { AuthError } from '@supabase/supabase-js'
+import { AuthError, User } from '@supabase/supabase-js'
 
 import { createClient } from '@/utils/supabase/server'
 
@@ -21,7 +21,10 @@ function getErrorMessage(error: AuthError): string {
   return error.message || 'Unable to log in. Please try again later.';
 }
 
-export type AuthActionState = { error?: string | null }
+export type AuthActionState = |
+  { error: string, user: null, redirectTo: null } |
+  { error: null, user: User | null, redirectTo: string } |
+  null
 
 export async function login(state: AuthActionState, payload: FormData) {
   const supabase = await createClient()
@@ -31,12 +34,20 @@ export async function login(state: AuthActionState, payload: FormData) {
     password: payload.get('password') as string,
   }
 
-  const { error } = await supabase.auth.signInWithPassword(data)
+  const { data: authData, error } = await supabase.auth.signInWithPassword(data)
 
   if (error) {
-    return { error: getErrorMessage(error) }
+    return { error: getErrorMessage(error), user: null, redirectTo: null }
   }
 
   revalidatePath('/', 'layout')
-  redirect('/account')
+  const redirectTo = (payload.get('redirectTo') as string | null)
+  const isValidInternalPath = redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//')
+
+  return {
+    error: null,
+    user: authData.user,
+    redirectTo: isValidInternalPath ? redirectTo : '/account'
+  }
+
 }

@@ -1,6 +1,11 @@
 import SubmitForm from "@/components/Submit/SubmitForm";
+import { createClient } from "@/utils/supabase/server";
+import SubmitAuthOverlay from "@/components/Submit/SubmitAuthOverlay";
 
-export default function SubmitPage() {
+export default async function SubmitPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
   return (
     <div className="mx-auto max-w-screen-lg px-6 py-10">
       <h1 className="text-3xl font-bold tracking-tight">Submit your ROM hack</h1>
@@ -8,6 +13,7 @@ export default function SubmitPage() {
       <div className="mt-8">
         <SubmitForm />
       </div>
+      {!user && <SubmitAuthOverlay />}
     </div>
   );
 }

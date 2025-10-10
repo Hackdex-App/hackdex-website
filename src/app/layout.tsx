@@ -4,6 +4,7 @@ import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { BaseRomProvider } from "@/contexts/BaseRomContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,14 +31,16 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
-        <BaseRomProvider>
-          <div className="fixed inset-0 -z-10">
-            <div className="aurora" />
-          </div>
-          <Header />
-          <main className="flex-1 flex flex-col">{children}</main>
-          <Footer />
-        </BaseRomProvider>
+        <AuthProvider>
+          <BaseRomProvider>
+            <div className="fixed inset-0 -z-10">
+              <div className="aurora" />
+            </div>
+            <Header />
+            <main className="flex-1 flex flex-col">{children}</main>
+            <Footer />
+          </BaseRomProvider>
+        </AuthProvider>
       </body>
     </html>
   );

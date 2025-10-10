@@ -1,6 +1,8 @@
+import Link from "next/link";
 import SignupForm from "@/components/Auth/SignupForm";
 
-export default function SignupPage() {
+export default function SignupPage({ searchParams }: { searchParams?: { redirectTo?: string } }) {
+  const redirectTo = searchParams?.redirectTo;
   return (
     <div className="mx-auto my-auto max-w-md w-full px-6 py-10">
       <div className="card p-6">
@@ -10,7 +12,8 @@ export default function SignupPage() {
           <SignupForm />
         </div>
         <p className="mt-6 text-sm text-foreground/70">
-          Already have an account? <a className="text-[var(--accent)] hover:underline" href="/login">Log in</a>
+          Already have an account?
+          <Link className="ml-1 text-[var(--accent)] hover:underline" href="/login">Log in</Link>
         </p>
       </div>
     </div>

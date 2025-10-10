@@ -4,6 +4,9 @@ import Link from "next/link";
 import React from "react";
 import { usePathname } from "next/navigation";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
+import { useAuthContext } from "@/contexts/AuthContext";
+import { createClient } from "@/utils/supabase/client";
+import Avatar from "@/components/Account/Avatar";
 
 function NavLink({ href, label, className = "" }: { href: string; label: React.ReactNode; className?: string }) {
   const pathname = usePathname();
@@ -23,7 +26,38 @@ function NavLink({ href, label, className = "" }: { href: string; label: React.R
 
 export default function Header() {
   const { countReady } = useBaseRoms();
+  const { user } = useAuthContext();
   const pathname = usePathname();
+  const supabase = createClient();
+  const [isAuthenticated, setIsAuthenticated] = React.useState<boolean>(false);
+  const [userId, setUserId] = React.useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!isMounted) return;
+      const authed = Boolean(data.user);
+      setIsAuthenticated(authed);
+      setUserId(data.user?.id ?? null);
+      // Best-effort fetch profile avatar_url for header avatar
+      if (authed && data.user?.id) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('avatar_url')
+          .eq('id', data.user.id)
+          .single();
+        setAvatarUrl(profile?.avatar_url ?? null);
+      } else {
+        setAvatarUrl(null);
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, [supabase, user]);
+
   return (
     <header className="sticky top-0 z-40 w-full border-b border-[var(--border)] backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="mx-auto flex h-16 max-w-screen-2xl items-center justify-between px-6">
@@ -52,6 +86,16 @@ export default function Header() {
           >
             Submit
           </Link>
+          {isAuthenticated && (
+            <Link
+              href="/account"
+              className="ml-1 inline-flex items-center justify-center rounded-full ring-1 ring-[var(--border)] p-[2px] hover:bg-[var(--surface-2)]"
+              aria-label="Open account"
+              title="Account"
+            >
+              <Avatar uid={userId} url={avatarUrl} size={28} />
+            </Link>
+          )}
         </nav>
       </div>
     </header>

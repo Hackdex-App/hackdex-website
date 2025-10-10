@@ -12,6 +12,9 @@ export default function Footer() {
           <Link href="/submit" className="hover:underline">
             Submit
           </Link>
+          <Link href="/login" className="hover:underline font-medium text-foreground">
+            Already a creator? Log in
+          </Link>
         </div>
       </div>
     </footer>

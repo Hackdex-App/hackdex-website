@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useActionState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { AuthActionState, signup } from "@/app/signup/actions";
 import { validateEmail, validatePassword } from "@/utils/auth";
 
 export default function SignupForm() {
+  const searchParams = useSearchParams();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [confirm, setConfirm] = React.useState("");
@@ -27,8 +29,13 @@ export default function SignupForm() {
     setPasswordError(error);
   }, [password]);
 
+  const redirectTo = searchParams.get("redirectTo");
+
   return (
     <form className="grid gap-5 group">
+      {redirectTo && (
+        <input type="hidden" name="redirectTo" value={redirectTo} />
+      )}
       {(state?.error) && (
         <div className="rounded-md bg-red-500/10 ring-1 ring-red-600/40 px-3 py-2 text-sm text-red-300">
           {state?.error}

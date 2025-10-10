@@ -1,6 +1,8 @@
 import LoginForm from "@/components/Auth/LoginForm";
+import Link from "next/link";
 
-export default function LoginPage() {
+export default function LoginPage({ searchParams }: { searchParams?: { redirectTo?: string } }) {
+  const redirectTo = searchParams?.redirectTo;
   return (
     <div className="mx-auto my-auto max-w-md w-full px-6 py-10">
       <div className="card p-6">
@@ -10,7 +12,8 @@ export default function LoginPage() {
           <LoginForm />
         </div>
         <p className="mt-6 text-sm text-foreground/70">
-          New here? <a className="text-[var(--accent)] hover:underline" href="/signup">Create an account</a>
+          New here?
+          <Link className="ml-1 text-[var(--accent)] hover:underline" href={redirectTo ? `/signup?redirectTo=${encodeURIComponent(redirectTo)}` : "/signup"}>Create an account</Link>
         </p>
       </div>
     </div>

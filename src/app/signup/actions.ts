@@ -55,5 +55,7 @@ export async function signup(state: AuthActionState, payload: FormData) {
   }
 
   revalidatePath('/', 'layout');
-  redirect('/account');
+  const redirectTo = (payload.get('redirectTo') as string | null) || null
+  const isValidInternalPath = redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//')
+  redirect(isValidInternalPath ? redirectTo! : '/account');
 }

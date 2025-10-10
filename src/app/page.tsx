@@ -26,6 +26,12 @@ export default function Home() {
               >
                 Submit a patch
               </Link>
+              <Link
+                href="/login"
+                className="inline-flex h-12 items-center justify-center rounded-md px-5 text-base font-medium text-foreground/90 hover:underline"
+              >
+                Already a creator? Log in
+              </Link>
             </div>
           </div>
         </div>
