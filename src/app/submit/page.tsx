@@ -11,7 +11,7 @@ export default async function SubmitPage() {
       <h1 className="text-3xl font-bold tracking-tight">Submit your ROM hack</h1>
       <p className="mt-2 text-[15px] text-foreground/80">Share your hack so others can discover and play it.</p>
       <div className="mt-8">
-        <SubmitForm />
+        <SubmitForm dummy={!user} />
       </div>
       {!user && <SubmitAuthOverlay />}
     </div>
