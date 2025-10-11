@@ -84,7 +84,6 @@ export type Database = {
           author: string
           base_rom: string
           box_art: string | null
-          covers: string[]
           created_at: string
           created_by: string
           current_patch: number | null
@@ -97,7 +96,6 @@ export type Database = {
           slug: string
           social_links: Json | null
           summary: string
-          tags: string[]
           title: string
           updated_at: string | null
           version: string
@@ -109,7 +107,6 @@ export type Database = {
           author: string
           base_rom: string
           box_art?: string | null
-          covers?: string[]
           created_at?: string
           created_by: string
           current_patch?: number | null
@@ -122,7 +119,6 @@ export type Database = {
           slug: string
           social_links?: Json | null
           summary: string
-          tags?: string[]
           title: string
           updated_at?: string | null
           version: string
@@ -134,7 +130,6 @@ export type Database = {
           author?: string
           base_rom?: string
           box_art?: string | null
-          covers?: string[]
           created_at?: string
           created_by?: string
           current_patch?: number | null
@@ -147,7 +142,6 @@ export type Database = {
           slug?: string
           social_links?: Json | null
           summary?: string
-          tags?: string[]
           title?: string
           updated_at?: string | null
           version?: string
