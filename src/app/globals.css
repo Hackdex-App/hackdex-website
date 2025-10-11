@@ -185,3 +185,11 @@ body {
   --tw-prose-hr: var(--border);
   --tw-prose-captions: color-mix(in oklab, var(--foreground) 70%, transparent);
 }
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+.scrollbar-color-muted {
+  scrollbar-color: var(--muted) transparent;
+}

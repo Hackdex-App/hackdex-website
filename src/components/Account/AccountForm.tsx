@@ -1,69 +1,36 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { type User } from '@supabase/supabase-js'
 import Avatar from './Avatar'
 
-export default function AccountForm({ user }: { user: User | null }) {
+type Profile = {
+  full_name: string | null
+  username: string | null
+  website: string | null
+  avatar_url: string | null
+}
+
+export default function AccountForm({ user, profile }: { user: User | null, profile: Profile | null }) {
   const supabase = createClient()
-  const [loading, setLoading] = useState(true)
-  const [fullname, setFullname] = useState<string | null>(null)
-  const [username, setUsername] = useState<string | null>(null)
-  const [website, setWebsite] = useState<string | null>(null)
-  const [avatar_url, setAvatarUrl] = useState<string | null>(null)
-  const [initialProfile, setInitialProfile] = useState<{
-    fullname: string | null
-    username: string | null
-    website: string | null
-    avatar_url: string | null
-  }>({ fullname: null, username: null, website: null, avatar_url: null })
-
-  const getProfile = useCallback(async () => {
-    try {
-      setLoading(true)
-
-      const { data, error, status } = await supabase
-        .from('profiles')
-        .select(`full_name, username, website, avatar_url`)
-        .eq('id', user?.id)
-        .single()
-
-      if (error && status !== 406) {
-        console.log(error)
-        throw error
-      }
-
-      if (data) {
-        setFullname(data.full_name)
-        setUsername(data.username)
-        setWebsite(data.website)
-        setAvatarUrl(data.avatar_url)
-        setInitialProfile({
-          fullname: data.full_name,
-          username: data.username,
-          website: data.website,
-          avatar_url: data.avatar_url,
-        })
-      }
-    } catch (error) {
-      alert('Error loading user data!')
-    } finally {
-      setLoading(false)
-    }
-  }, [user, supabase])
-
-  useEffect(() => {
-    getProfile()
-  }, [user, getProfile])
+  const [loading, setLoading] = useState(false)
+  const [fullname, setFullname] = useState<string | null>(profile?.full_name ?? null)
+  const [username] = useState<string | null>(profile?.username ?? null)
+  const [website, setWebsite] = useState<string | null>(profile?.website ?? null)
+  const [avatar_url, setAvatarUrl] = useState<string | null>(profile?.avatar_url ?? null)
+  const [initialProfile, setInitialProfile] = useState<Profile>({
+    full_name: profile?.full_name ?? null,
+    username: profile?.username ?? null,
+    website: profile?.website ?? null,
+    avatar_url: profile?.avatar_url ?? null,
+  })
 
   async function updateProfile({
-    username,
     website,
     avatar_url,
     fullname,
   }: {
-    username: string | null
     fullname: string | null
     website: string | null
     avatar_url: string | null
@@ -74,13 +41,12 @@ export default function AccountForm({ user }: { user: User | null }) {
       const { error } = await supabase.from('profiles').upsert({
         id: user?.id as string,
         full_name: fullname,
-        username,
         website,
         avatar_url,
         updated_at: new Date().toISOString(),
       })
       if (error) throw error
-      setInitialProfile({ fullname, username, website, avatar_url })
+      setInitialProfile({ full_name: fullname, username, website, avatar_url })
       alert('Profile updated!')
     } catch (error) {
       alert('Error updating the data!')
@@ -91,8 +57,7 @@ export default function AccountForm({ user }: { user: User | null }) {
 
   const normalize = (v: string | null | undefined) => v ?? ''
   const hasChanges =
-    normalize(fullname) !== normalize(initialProfile.fullname) ||
-    normalize(username) !== normalize(initialProfile.username) ||
+    normalize(fullname) !== normalize(initialProfile.full_name) ||
     normalize(website) !== normalize(initialProfile.website) ||
     normalize(avatar_url) !== normalize(initialProfile.avatar_url)
 
@@ -105,7 +70,7 @@ export default function AccountForm({ user }: { user: User | null }) {
           size={120}
           onUpload={(url) => {
             setAvatarUrl(url)
-            updateProfile({ fullname, username, website, avatar_url: url })
+            updateProfile({ fullname, website, avatar_url: url })
           }}
         />
         <div className="text-sm text-foreground/70">
@@ -138,8 +103,8 @@ export default function AccountForm({ user }: { user: User | null }) {
             id="username"
             type="text"
             value={username || ''}
-            onChange={(e) => setUsername(e.target.value)}
-            className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+            disabled
+            className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm text-foreground/70 ring-1 ring-inset ring-[var(--border)]"
           />
         </div>
 
@@ -157,7 +122,7 @@ export default function AccountForm({ user }: { user: User | null }) {
         <div className="sm:col-span-2 flex flex-col justify-center items-center gap-4 mt-4 sm:flex-row sm:justify-end">
           <button
             className="shine-wrap btn-premium h-14 min-w-48 sm:h-11 sm:min-w-[7.5rem] text-sm font-semibold dark:disabled:opacity-70 disabled:cursor-not-allowed disabled:[box-shadow:0_0_0_1px_var(--border)]"
-            onClick={() => updateProfile({ fullname, username, website, avatar_url })}
+            onClick={() => updateProfile({ fullname, website, avatar_url })}
             disabled={loading || !hasChanges}
           >
             <span>{loading ? 'Saving...' : 'Update profile'}</span>
