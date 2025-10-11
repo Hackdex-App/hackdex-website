@@ -279,6 +279,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_claim: {
+        Args: { claim: string; uid: string }
+        Returns: string
+      }
+      get_claim: {
+        Args: { claim: string; uid: string }
+        Returns: Json
+      }
+      get_claims: {
+        Args: { uid: string }
+        Returns: Json
+      }
+      get_my_claim: {
+        Args: { claim: string }
+        Returns: Json
+      }
+      get_my_claims: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       gtrgm_compress: {
         Args: { "": unknown }
         Returns: unknown
@@ -302,6 +322,14 @@ export type Database = {
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      is_claims_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      set_claim: {
+        Args: { claim: string; uid: string; value: Json }
+        Returns: string
       }
       set_limit: {
         Args: { "": number }
