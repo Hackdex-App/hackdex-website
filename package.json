@@ -6,6 +6,7 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
+    "db:pull": "supabase db pull && supabase gen types --project-id \"scfxbqapigdjfebqwmoj\" > src/types/db.ts",
     "postinstall": "patch-package"
   },
   "dependencies": {
