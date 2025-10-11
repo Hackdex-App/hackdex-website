@@ -89,11 +89,13 @@ export default function Header() {
           {isAuthenticated && (
             <Link
               href="/account"
-              className="ml-1 inline-flex items-center justify-center rounded-full ring-1 ring-[var(--border)] p-[2px] hover:bg-[var(--surface-2)]"
+              data-active={pathname === "/account" || undefined}
+              className="ml-1 relative group inline-flex items-center justify-center rounded-full ring-1 ring-[var(--border)] p-[2px] data-active:ring-2 data-active:ring-[var(--ring)]"
               aria-label="Open account"
               title="Account"
             >
-              <Avatar uid={userId} url={avatarUrl} size={28} />
+              <Avatar uid={userId} url={avatarUrl} size={36} />
+              <div className="absolute inset-0 rounded-full bg-transparent group-hover:bg-black/30 transition-colors m-[2px]" />
             </Link>
           )}
         </nav>
