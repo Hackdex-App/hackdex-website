@@ -81,7 +81,6 @@ export type Database = {
           approved: boolean
           approved_at: string | null
           approved_by: string | null
-          author: string
           base_rom: string
           box_art: string | null
           created_at: string
@@ -104,7 +103,6 @@ export type Database = {
           approved?: boolean
           approved_at?: string | null
           approved_by?: string | null
-          author: string
           base_rom: string
           box_art?: string | null
           created_at?: string
@@ -127,7 +125,6 @@ export type Database = {
           approved?: boolean
           approved_at?: string | null
           approved_by?: string | null
-          author?: string
           base_rom?: string
           box_art?: string | null
           created_at?: string
