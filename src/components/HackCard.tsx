@@ -33,45 +33,44 @@ export default function HackCard({ hack, clickable = true, className = "" }: { h
   const cardClass = `rounded-[12px] overflow-hidden ${
     clickable ? "transition-transform duration-300 hover:-translate-y-0.5 hover:shadow-xl anim-float" : ""
   } ring-1 ${ready ? "ring-emerald-400/50 bg-emerald-500/10" : "card ring-[var(--border)]"}`;
+  const gradientBgClass = `bg-gradient-to-b ${ready ? 'from-emerald-300/5 to-emerald-400/30 dark:from-emerald-950/10 dark:to-emerald-600/40' : 'from-black/30 to-black/10 dark:from-black/80 dark:to-black/40'}`;
+  const shadowClass = `shadow-xl ${ready ? "shadow-emerald-700/40 dark:shadow-emerald-200/40" : "shadow-slate-500/40 dark:shadow-slate-300/40"}`;
   const content = (
       <div className={cardClass}>
-        <div className="relative aspect-[3/2] w-full">
+        <div className="relative aspect-[3/2] w-full rounded-[12px] overflow-hidden">
+          <div className={`absolute inset-0 ${gradientBgClass}`} />
           {showTitlePlaceholder ? (
-            <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
-              <span
-                className="text-[8rem] font-extrabold leading-[0.9] text-black/10 dark:text-white/20 select-none text-center uppercase tracking-tight"
-              >
-                {hack.title}
-              </span>
+            <div className="h-full w-full flex items-center justify-center">
+              <FaRegImages className={`text-[10rem] ${ready ? "text-emerald-600/40 dark:text-emerald-300/40" : "text-black/20 dark:text-white/30"} select-none text-center`} />
             </div>
           ) : isCarousel ? (
             <div className="overflow-hidden h-full" ref={emblaRef}>
               <div className="flex h-full">
                 {images.map((src, idx) => (
                   <div className="relative h-full flex-[0_0_100%]" key={`${src}-${idx}`}>
-                    <Image
+                    <PixelImage
                       src={src}
                       alt={hack.title}
-                      fill
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      className={`w-full h-full object-cover ${clickable ? "transition-transform duration-300 group-hover:scale-[1.03]" : ""}`}
-                      unoptimized
+                      mode="contain"
+                      className={`absolute inset-0 ${clickable ? "transition-transform duration-300 group-hover:scale-[1.05]" : ""}`}
+                      imgClassName={shadowClass}
                     />
                   </div>
                 ))}
               </div>
             </div>
           ) : images[0] ? (
-            <Image
-              src={images[0]}
-              alt={hack.title}
-              fill
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-              className={`object-cover ${clickable ? "transition-transform duration-300 group-hover:scale-[1.03]" : ""}`}
-              unoptimized
-            />
+            <div className="relative h-full">
+              <PixelImage
+                src={images[0]}
+                alt={hack.title}
+                mode="contain"
+                className={`${clickable ? "transition-transform duration-300 group-hover:scale-[1.05]" : ""}`}
+                imgClassName={shadowClass}
+              />
+            </div>
           ) : null}
-          {!showTitlePlaceholder && <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent dark:from-black/50" />}
+
           <div className="absolute left-3 top-3 z-10 flex gap-2">
             {hack.tags.slice(0, 2).map((t) => (
               <span

@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import PixelImage from "../PixelImage";
 import React from "react";
 import useEmblaCarousel from "embla-carousel-react";
 
@@ -24,7 +24,7 @@ export default function Gallery({ images, title }: { images: string[]; title: st
           {images.map((src, idx) => (
             <div key={`${src}-${idx}`} className="relative h-full flex-[0_0_100%]">
               <button onClick={() => setLightboxOpen(true)} className="absolute inset-0">
-                <Image src={src} alt={title} fill className="object-contain" unoptimized />
+                <PixelImage src={src} alt={title} mode="contain" className="absolute inset-0" />
               </button>
             </div>
           ))}
@@ -58,7 +58,7 @@ export default function Gallery({ images, title }: { images: string[]; title: st
             }`}
             aria-label={`Show image ${i + 1}`}
           >
-            <Image src={src} alt={`${title} screenshot ${i + 1}`} fill className="object-cover" unoptimized />
+            <PixelImage src={src} alt={`${title} screenshot ${i + 1}`} mode="cover" className="absolute inset-0" />
           </button>
         ))}
       </div>
@@ -98,7 +98,7 @@ function Lightbox({ images, startIndex, title, onClose }: { images: string[]; st
               if (e.target === e.currentTarget) onClose();
             }}
           >
-            <Image src={images[index]} alt={`${title} screenshot ${index + 1}`} fill className="object-contain" unoptimized />
+            <PixelImage src={images[index]} alt={`${title} screenshot ${index + 1}`} mode="contain" className="absolute inset-0" />
           </div>
           <div className="mt-3 flex items-center justify-center">
             <div className="rounded-full bg-[var(--surface-2)] px-3 py-1 text-xs text-foreground ring-1 ring-[var(--border)]" aria-live="polite">
