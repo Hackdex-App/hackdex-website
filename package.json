@@ -16,6 +16,7 @@
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.74.0",
     "embla-carousel-react": "8.6.0",
+    "minio": "^8.0.6",
     "next": "15.5.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",

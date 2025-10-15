@@ -186,6 +186,61 @@ body {
   --tw-prose-captions: color-mix(in oklab, var(--foreground) 70%, transparent);
 }
 
+.prose * {
+  @apply m-0;
+}
+
+.prose h1 {
+  @apply text-2xl font-bold;
+}
+.prose h1:not(:first-child) {
+  @apply mt-4;
+}
+
+.prose h2 {
+  @apply text-xl font-semibold;
+}
+.prose h2:not(:first-child) {
+  @apply mt-4;
+}
+
+.prose h3 {
+  @apply text-lg font-semibold;
+}
+.prose h3:not(:first-child) {
+  @apply mt-4;
+}
+
+.prose h4, .prose h5, .prose h6 {
+  @apply text-base font-semibold;
+}
+.prose h4:not(:first-child), .prose h5:not(:first-child), .prose h6:not(:first-child) {
+  @apply mt-4;
+}
+
+.prose p {
+  @apply text-base text-foreground/80;
+}
+
+.prose p:not(h1 + p) {
+  @apply mt-1;
+}
+.prose p:not(h2 + p) {
+  @apply mt-1;
+}
+.prose p:not(h3 + p) {
+  @apply mt-1;
+}
+.prose p:not(h4 + p) {
+  @apply mt-1;
+}
+.prose p:not(h5 + p) {
+  @apply mt-1;
+}
+.prose p:not(h6 + p) {
+  @apply mt-1;
+}
+
 .scrollbar-thin {
   scrollbar-width: thin;
 }

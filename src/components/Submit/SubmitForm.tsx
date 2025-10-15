@@ -4,15 +4,18 @@ import React from "react";
 import Image from "next/image";
 import { baseRoms } from "@/data/baseRoms";
 import HackCard from "@/components/HackCard";
-import type { Hack } from "@/data/hacks";
-import { hacks as allHacks } from "@/data/hacks";
+import { createClient } from "@/utils/supabase/client";
+import { prepareSubmission, presignPatchAndSaveCovers, confirmPatchUpload } from "@/app/submit/actions";
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { RxDragHandleDots2, RxPlus } from "react-icons/rx";
+import { useAuthContext } from "@/contexts/AuthContext";
+import { Database } from "@/types/db";
 
-function SortableCoverItem({ id, index, url, onRemove }: { id: string; index: number; url: string; onRemove: () => void }) {
+function SortableCoverItem({ id, index, url, filename, onRemove }: { id: string; index: number; url: string; filename: string; onRemove: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -22,12 +25,14 @@ function SortableCoverItem({ id, index, url, onRemove }: { id: string; index: nu
     <div ref={setNodeRef} style={style} className="rounded-md">
       <div className={`h-16 flex items-center justify-between gap-3 p-2 bg-[var(--surface-2)] ring-1 ring-inset ring-[var(--border)] ${isDragging ? "opacity-60" : ""}`}>
         <div className="flex items-center gap-3">
-          <div className="cursor-grab select-none pr-1 text-foreground/60" title="Drag to reorder" {...attributes} {...listeners}>⋮⋮</div>
+          <div className="cursor-grab select-none pr-1 text-foreground/60" title="Drag to reorder" {...attributes} {...listeners}>
+            <RxDragHandleDots2 size={24} />
+          </div>
           <div className="relative h-12 w-20 overflow-hidden rounded">
             <Image src={url} alt={`Cover ${index + 1}`} fill className="object-cover" unoptimized />
           </div>
           <div className="min-w-0">
-            <div className="truncate text-xs text-foreground/80">{url}</div>
+            <div className="truncate max-w-[260px] text-xs text-foreground/80">{filename}</div>
             {index === 0 && <div className="text-[10px] text-emerald-400/90">Primary</div>}
           </div>
         </div>
@@ -49,16 +54,24 @@ interface SubmitFormProps {
   dummy?: boolean;
 }
 
+type TagSortable = Database["public"]["Tables"]["tags"]["Row"] & {
+  popularity: number;
+};
+
 export default function SubmitForm({ dummy = false }: SubmitFormProps) {
   const MAX_COVERS = 10;
+  const { profile } = useAuthContext();
   const [title, setTitle] = React.useState("");
-  const [author, setAuthor] = React.useState("");
+  // Author derived from profile later
   const [summary, setSummary] = React.useState("");
   const [description, setDescription] = React.useState("");
-  const [coverUrls, setCoverUrls] = React.useState<string[]>([]);
-  const [newCoversInput, setNewCoversInput] = React.useState("");
-  const [baseRom, setBaseRom] = React.useState("Pokemon Emerald");
-  const [version, setVersion] = React.useState("v0.1.0");
+  // Deprecated: coverUrls removed; using files array for screenshots
+  const [newCoverFiles, setNewCoverFiles] = React.useState<File[]>([]);
+  const [coverErrors, setCoverErrors] = React.useState<string[]>([]);
+  const [baseRom, setBaseRom] = React.useState("");
+  const [platform, setPlatform] = React.useState<"GB" | "GBC" | "GBA" | "NDS" | "">("");
+  const [version, setVersion] = React.useState("");
+  const [language, setLanguage] = React.useState("");
   const [boxArt, setBoxArt] = React.useState("");
   const [discord, setDiscord] = React.useState("");
   const [twitter, setTwitter] = React.useState("");
@@ -66,25 +79,70 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
   const [tags, setTags] = React.useState<string[]>([]);
   const [tagsInput, setTagsInput] = React.useState("");
   const [showMdPreview, setShowMdPreview] = React.useState(false);
+  const [patchFile, setPatchFile] = React.useState<File | null>(null);
+  const [submitting, setSubmitting] = React.useState(false);
+  const [step, setStep] = React.useState(1);
+  const supabase = createClient();
+  const isDummy = !!dummy;
 
-  const parseUrls = (text: string) =>
-    text
-      .split(/[\n,]+/)
-      .map((s) => s.trim())
-      .filter(Boolean);
+  const titleInputRef = React.useRef<HTMLInputElement | null>(null);
+  const versionInputRef = React.useRef<HTMLInputElement | null>(null);
+  const screenshotsInputRef = React.useRef<HTMLInputElement | null>(null);
+  const patchInputRef = React.useRef<HTMLInputElement | null>(null);
 
-  const addFromInput = () => {
-    const urls = parseUrls(newCoversInput);
-    if (urls.length === 0) return;
-    setCoverUrls((prev) => [...prev, ...urls]);
-    setNewCoversInput("");
+  // Build object URLs for local screenshot previews and clean them up when files change
+  const coverPreviews = React.useMemo(() => {
+    return newCoverFiles.map((f) => URL.createObjectURL(f));
+  }, [newCoverFiles]);
+
+  React.useEffect(() => {
+    return () => {
+      coverPreviews.forEach((u) => URL.revokeObjectURL(u));
+    };
+  }, [coverPreviews]);
+
+  const uploadCovers = async (slug: string) => {
+    if (!newCoverFiles || newCoverFiles.length === 0) return [] as string[];
+    const urls: string[] = [];
+    for (let i = 0; i < newCoverFiles.length; i++) {
+      const file = newCoverFiles[i];
+      const fileExt = file.name.split('.').pop();
+      const path = `${slug}/${Date.now()}-${i}.${fileExt}`;
+      const { error } = await supabase.storage.from('hack-covers').upload(path, file);
+      if (error) throw error;
+      urls.push(path);
+    }
+    return urls;
   };
-  const overLimit = coverUrls.length > MAX_COVERS;
-  const overBy = Math.max(0, coverUrls.length - MAX_COVERS);
+
+  function getAllowedSizesForPlatform(platform: "GB" | "GBC" | "GBA" | "NDS") {
+    if (platform === "GB" || platform === "GBC") return [{ w: 160, h: 144 }];
+    if (platform === "GBA") return [{ w: 240, h: 160 }];
+    // NDS
+    return [{ w: 256, h: 192 }, { w: 256, h: 384 }];
+  }
+
+  async function validateImageDimensions(file: File, allowed: { w: number; h: number }[]) {
+    return new Promise<boolean>((resolve) => {
+      const img = document.createElement("img");
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const ok = allowed.some((s) => img.naturalWidth === s.w && img.naturalHeight === s.h);
+        URL.revokeObjectURL(url);
+        resolve(ok);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve(false);
+      };
+      img.src = url;
+    });
+  }
+  const overLimit = newCoverFiles.length > MAX_COVERS;
 
 
   const removeAt = (index: number) => {
-    setCoverUrls((prev) => prev.filter((_, i) => i !== index));
+    setNewCoverFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const sensors = useSensors(
@@ -94,28 +152,88 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
   const onDragEnd = (event: any) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const ids = coverUrls.map((url, i) => `${url}-${i}`);
+    const ids = newCoverFiles.map((f, i) => `${f.name}-${i}`);
     const oldIndex = ids.indexOf(active.id as string);
     const newIndex = ids.indexOf(over.id as string);
     if (oldIndex === -1 || newIndex === -1) return;
-    setCoverUrls((prev) => arrayMove(prev, oldIndex, newIndex));
+    setNewCoverFiles((prev) => arrayMove(prev, oldIndex, newIndex));
   };
 
-  const existingTags = React.useMemo(() => {
-    const set = new Set<string>();
-    allHacks.forEach((h) => h.tags.forEach((t) => set.add(t)));
-    return Array.from(set).sort();
+  // Existing tags (from DB)
+  const [allTags, setAllTags] = React.useState<TagSortable[]>([]);
+  const [isTagDropdownOpen, setIsTagDropdownOpen] = React.useState(false);
+  const tagAreaRef = React.useRef<HTMLDivElement | null>(null);
+  const tagsInputRef = React.useRef<HTMLInputElement | null>(null);
+  const [activeTagIndex, setActiveTagIndex] = React.useState(0);
+
+  React.useEffect(() => {
+    // Fetch all tags once on mount
+    const fetchTags = async () => {
+      try {
+        const { data, error } = await supabase.from('tags').select('id, name, usage: hack_tags (count)');
+        if (error) return;
+        const fetchedTags: TagSortable[] = (data || []).map((t: any) => ({ id: t.id, name: t.name, popularity: t.usage[0].count || 0 }));
+        setAllTags(
+          fetchedTags.sort((a, b) => {
+            if (b.popularity !== a.popularity) {
+              return b.popularity - a.popularity;
+            }
+            // If popularity is equal, sort by id
+            if (a.id < b.id) return -1;
+            if (a.id > b.id) return 1;
+            return 0;
+          })
+        );
+      } catch {}
+    };
+    fetchTags();
+  }, [supabase]);
+
+  React.useEffect(() => {
+    const onDocClick = (e: MouseEvent) => {
+      if (!tagAreaRef.current) return;
+      if (!tagAreaRef.current.contains(e.target as Node)) {
+        setIsTagDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
   }, []);
 
-  const suggestedTags = React.useMemo(() => {
+  const filteredTags = React.useMemo(() => {
     const q = tagsInput.trim().toLowerCase();
-    if (!q) return [] as string[];
-    return existingTags.filter((t) => t.toLowerCase().startsWith(q) && !tags.includes(t)).slice(0, 6);
-  }, [existingTags, tags, tagsInput]);
+    const pool = allTags.filter((t) => !tags.includes(t.name));
+    if (!q) return pool.slice(0, 15);
+    return pool.filter((t) => t.name.toLowerCase().includes(q)).slice(0, 8);
+  }, [allTags, tags, tagsInput]);
+
+  // Focus the first input on each step when step changes
+  React.useEffect(() => {
+    if (isDummy) return;
+    if (step === 1) {
+      titleInputRef.current?.focus();
+    } else if (step === 2) {
+      versionInputRef.current?.focus();
+    } else if (step === 3) {
+      screenshotsInputRef.current?.focus();
+    } else if (step === 4) {
+      patchInputRef.current?.focus();
+    }
+  }, [step, isDummy]);
+
+  React.useEffect(() => {
+    if (!isTagDropdownOpen) return;
+    if (filteredTags.length === 0) {
+      setActiveTagIndex(0);
+    } else {
+      setActiveTagIndex((i) => Math.min(Math.max(0, i), filteredTags.length - 1));
+    }
+  }, [filteredTags, isTagDropdownOpen]);
 
   const addTag = (value: string) => {
     const tag = value.trim();
     if (!tag) return;
+    if (!allTags.some((t) => t.name === tag)) return; // only allow existing tags
     if (tags.includes(tag)) return;
     setTags((prev) => [...prev, tag]);
     setTagsInput("");
@@ -126,11 +244,27 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
   };
 
   const onTagsKeyDown: React.KeyboardEventHandler<HTMLInputElement> = (e) => {
-    if (e.key === "Enter" || e.key === ",") {
+    if (e.key === 'ArrowDown') {
       e.preventDefault();
-      addTag(tagsInput);
-    } else if (e.key === "Backspace" && !tagsInput && tags.length > 0) {
-      // Quick backspace to remove last
+      if (!isTagDropdownOpen) setIsTagDropdownOpen(true);
+      if (filteredTags.length > 0) setActiveTagIndex((i) => (i + 1) % filteredTags.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!isTagDropdownOpen) setIsTagDropdownOpen(true);
+      if (filteredTags.length > 0) setActiveTagIndex((i) => (i - 1 + filteredTags.length) % filteredTags.length);
+    } else if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const choice = filteredTags[activeTagIndex] || filteredTags[0];
+      if (choice) {
+        addTag(choice.name);
+        setIsTagDropdownOpen(true);
+      }
+    } else if (e.key === 'Tab') {
+      // Close dropdown and allow tabbing to next focusable element
+      setIsTagDropdownOpen(false);
+    } else if (e.key === 'Escape') {
+      setIsTagDropdownOpen(false);
+    } else if (e.key === 'Backspace' && !tagsInput && tags.length > 0) {
       e.preventDefault();
       setTags((prev) => prev.slice(0, prev.length - 1));
     }
@@ -148,32 +282,71 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
   const summaryLimit = 120;
   const summaryTooLong = summary.length > summaryLimit;
 
+  const allowedSizes = platform ? getAllowedSizesForPlatform(platform) : [];
+
   const urlLike = (s: string) => !s || /^https?:\/\//i.test(s);
 
-  const isValid =
-    !!title.trim() &&
-    !!author.trim() &&
-    !!baseRom.trim() &&
-    !!version.trim() &&
-    coverUrls.length > 0 &&
-    !!summary.trim() &&
-    !summaryTooLong &&
-    urlLike(boxArt) &&
-    urlLike(discord) &&
-    urlLike(twitter) &&
-    urlLike(pokecommunity) &&
-    !overLimit;
+  const hasOneSocial = [discord, twitter, pokecommunity].some((s) => !!s.trim());
+  const allSocialValid = [discord, twitter, pokecommunity].every((s) => !s || urlLike(s));
 
-  const preview: Hack = {
+
+  const step1Valid = !!title.trim() && !!platform && !!baseRom.trim() && !!language.trim();
+  const step2Valid = !!version.trim() && !!summary.trim() && !summaryTooLong && !!description.trim() && tags.length > 0;
+  const step3Valid = (newCoverFiles.length > 0) && !overLimit && coverErrors.length === 0 && (!boxArt.trim() || urlLike(boxArt)) && allSocialValid;
+  const isValid = step1Valid && step2Valid && step3Valid && !!patchFile;
+
+  const onSubmit = async () => {
+    if (!isValid || submitting) return;
+    setSubmitting(true);
+    try {
+      // Step 1: create hack & tags
+      const fd = new FormData();
+      fd.set('title', title);
+      fd.set('summary', summary);
+      fd.set('description', description);
+      fd.set('base_rom', baseRom);
+      fd.set('language', language);
+      fd.set('version', version);
+      if (boxArt) fd.set('box_art', boxArt);
+      if (discord) fd.set('discord', discord);
+      if (twitter) fd.set('twitter', twitter);
+      if (pokecommunity) fd.set('pokecommunity', pokecommunity);
+      if (tags.length) fd.set('tags', tags.join(','));
+
+      const prepared = await prepareSubmission(fd);
+      if (!prepared.ok) throw new Error(prepared.error || 'Failed to prepare');
+
+      // Step 2: upload covers to storage and save rows
+      const uploadedCoverUrls = await uploadCovers(prepared.slug);
+      const presigned = await presignPatchAndSaveCovers({ slug: prepared.slug, version, coverUrls: uploadedCoverUrls });
+      if (!presigned.ok) throw new Error(presigned.error || 'Failed to presign');
+
+      // Step 3: upload patch via signed URL
+      if (patchFile) {
+        await fetch(presigned.presignedUrl, { method: 'PUT', body: patchFile, headers: { 'Content-Type': 'application/octet-stream' } });
+        const finalized = await confirmPatchUpload({ slug: prepared.slug, objectKey: presigned.objectKey!, version });
+        if (!finalized.ok) throw new Error(finalized.error || 'Failed to finalize');
+        window.location.href = finalized.redirectTo!;
+      } else {
+        window.location.href = `/hack/${prepared.slug}`;
+      }
+    } catch (e: any) {
+      alert(e.message || 'Submission failed');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const preview = {
     slug: slug || "preview",
     title: title || "Your hack title",
-    author: author || "Your name",
+    author: profile?.username ? `@${profile.username}` : "You",
     summary: (summary || "Short description, max 100 characters.") as string,
     description: (description || "Write a longer markdown description here.") as string,
-    covers: coverUrls,
-    baseRom: baseRom || "Pokemon Emerald",
+    covers: coverPreviews,
+    baseRomId: baseRom,
     downloads: 0,
-    version: version || "v0.1.0",
+    version: version || "v0.0.0",
     tags,
     ...(boxArt ? { boxArt } : {}),
     socialLinks:
@@ -184,343 +357,436 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
     patchUrl: "",
   };
 
-  const isDummy = !!dummy;
+  const hasBaseRom = !!baseRom.trim();
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_.9fr]">
-      <div>
+    <div className="flex flex-col gap-8 lg:flex-row w-full">
+      <div className="flex-1">
         <form className="grid gap-5">
-            {/* Title */}
-            <div className="grid gap-2">
-              <label className="text-sm text-foreground/80">Title</label>
-              {!isDummy ? (
-                <input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-                />
-              ) : (
-                <div
-                  role="textbox"
-                  aria-disabled
-                  className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none"
-                >
-                  Your hack title
-                </div>
-              )}
-              <div className="mt-1 text-xs text-foreground/60">URL preview: <span className="text-foreground/80">/hack/{slug || "your-title"}</span></div>
-            </div>
+          {/* Required note */}
+          <div className="text-xs italic text-foreground/60">* Required</div>
 
-            {/* Author */}
-            <div className="grid gap-2">
-              <label className="text-sm text-foreground/80">Author</label>
-              {!isDummy ? (
-                <input
-                  value={author}
-                  onChange={(e) => setAuthor(e.target.value)}
-                  className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-                />
-              ) : (
-                <div role="textbox" aria-disabled className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none">Your name</div>
-              )}
-            </div>
-
-            {/* Summary */}
-            <div className="grid gap-1">
-              <div className="flex items-center justify-between">
-                <label className="text-sm text-foreground/80">Short summary</label>
-                <span className={`text-[11px] ${summaryTooLong ? "text-red-300" : "text-foreground/60"}`}>{summary.length}/{summaryLimit}</span>
-              </div>
-              {!isDummy ? (
-                <input
-                  value={summary}
-                  onChange={(e) => setSummary(e.target.value)}
-                  placeholder="<= 100 characters"
-                  className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${summaryTooLong ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
-                />
-              ) : (
-                <div
-                  role="textbox"
-                  aria-disabled
-                  className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center text-foreground/60 select-none ${summaryTooLong ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
-                >
-                  Short description, max 100 characters.
-                </div>
-              )}
-            </div>
-
-            {/* Long description */}
-            <div className="grid gap-2">
-              <div className="flex items-center justify-between">
-                <label className="text-sm text-foreground/80">Long description</label>
-                {!isDummy && (
-                  <div className="flex items-center gap-1 text-xs">
-                    <button type="button" onClick={() => setShowMdPreview(false)} className={`px-2 py-1 rounded ${!showMdPreview ? "bg-[var(--surface-2)] ring-1 ring-[var(--border)]" : "text-foreground/70"}`}>Write</button>
-                    <button type="button" onClick={() => setShowMdPreview(true)} className={`px-2 py-1 rounded ${showMdPreview ? "bg-[var(--surface-2)] ring-1 ring-[var(--border)]" : "text-foreground/70"}`}>Preview</button>
-                  </div>
-                )}
-              </div>
-              {isDummy ? (
-                <div className="prose max-w-none h-36 rounded-md bg-[var(--surface-2)] px-3 py-2 ring-1 ring-inset ring-[var(--border)] text-foreground/60 select-none">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{description || "Write a longer markdown description here."}</ReactMarkdown>
-                </div>
-              ) : !showMdPreview ? (
-                <textarea
-                  rows={6}
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Supports Markdown"
-                  className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-                />
-              ) : (
-                <div className="prose max-w-none rounded-md bg-[var(--surface-2)] px-3 py-2 ring-1 ring-inset ring-[var(--border)]">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{description || "Nothing to preview yet."}</ReactMarkdown>
-                </div>
-              )}
-            </div>
-
-            {/* Version */}
-            <div className="grid gap-2">
-              <label className="text-sm text-foreground/80">Version</label>
-              {!isDummy ? (
-                <input
-                  value={version}
-                  onChange={(e) => setVersion(e.target.value)}
-                  placeholder="e.g. v1.2.0"
-                  className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-                />
-              ) : (
-                <div role="textbox" aria-disabled className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none">v0.1.0</div>
-              )}
-            </div>
-
-            {/* Tags */}
-            <div className="grid gap-2">
-              <label className="text-sm text-foreground/80">Tags</label>
-              <div className="rounded-md ring-1 ring-inset ring-[var(--border)] bg-[var(--surface-2)] px-2 py-2">
-                <div className="flex flex-wrap gap-2">
-                  {tags.map((t, i) => (
-                    <span key={`${t}-${i}`} className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-2)] px-2 py-1 text-xs ring-1 ring-[var(--border)]">
-                      {t}
-                      {!isDummy && (
-                        <button type="button" onClick={() => removeTagAt(i)} className="ml-1 text-foreground/70 hover:text-foreground">×</button>
-                      )}
-                    </span>
-                  ))}
-                  {!isDummy ? (
-                    <input
-                      value={tagsInput}
-                      onChange={(e) => setTagsInput(e.target.value)}
-                      onKeyDown={onTagsKeyDown}
-                      placeholder={tags.length ? "Add tag" : "Add tags (e.g. QoL, Challenge)"}
-                      className="flex-1 min-w-[8rem] bg-transparent px-2 text-sm placeholder:text-foreground/50 focus:outline-none"
-                    />
-                  ) : (
-                    <div className="flex-1 min-w-[8rem] px-2 text-sm text-foreground/50 select-none">{tags.length ? "Add tag" : "Add tags (e.g. QoL, Challenge)"}</div>
-                  )}
-                </div>
-                {!isDummy && suggestedTags.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {suggestedTags.map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => addTag(s)}
-                        className="rounded-full bg-[var(--surface-2)] px-2 py-1 text-[11px] text-foreground/85 ring-1 ring-[var(--border)] hover:bg-black/5 dark:hover:bg-white/5"
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Cover images */}
-            <div className="grid gap-2">
-              <label className="text-sm text-foreground/80">Cover images</label>
-              <div className="space-y-3">
+          {step === 1 && (
+            <>
+              {/* Title */}
+              <div className="grid gap-2">
+                <label className="text-sm text-foreground/80">Title <span className="text-red-500">*</span></label>
                 {!isDummy ? (
-                  <textarea
-                    rows={2}
-                    value={newCoversInput}
-                    onChange={(e) => setNewCoversInput(e.target.value)}
-                    placeholder="Paste one or multiple URLs (comma or newline separated)"
-                    className="w-full rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+                  <input
+                    ref={titleInputRef}
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
                   />
                 ) : (
-                  <div className="w-full h-14 rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm ring-1 ring-inset ring-[var(--border)] text-foreground/60 select-none">
-                    Paste one or multiple URLs (comma or newline separated)
+                  <div
+                    role="textbox"
+                    aria-disabled
+                    className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none"
+                  >
+                    Your hack title
                   </div>
                 )}
-                <div className="flex items-center gap-2">
-                  {!isDummy ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={addFromInput}
-                        disabled={coverUrls.length >= MAX_COVERS}
-                        className="inline-flex h-9 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 text-xs font-medium text-foreground transition-colors hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        Add
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setNewCoversInput("")}
-                        className="inline-flex h-9 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 text-xs font-medium text-foreground/80 transition-colors hover:bg-black/5 dark:hover:bg-white/10"
-                      >
-                        Clear
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button type="button" disabled className="inline-flex h-9 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 text-xs font-medium text-foreground/70 disabled:opacity-40">
-                        Add
-                      </button>
-                      <button type="button" disabled className="inline-flex h-9 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 text-xs font-medium text-foreground/60 disabled:opacity-40">
-                        Clear
-                      </button>
-                    </>
-                  )}
-                </div>
-                <div className="text-xs text-foreground/60 flex justify-between">
-                  <p>Images: <span className={overLimit ? "text-red-300 font-bold" : "text-foreground/60"}>{coverUrls.length}</span>/{MAX_COVERS}</p>
-                  {overLimit && <p className="text-red-300/80 italic">Remove some to submit.</p>}
-                </div>
-                <div className="grid gap-2">
-                  {coverUrls.length === 0 ? (
-                    <p className="text-xs text-foreground/60">No images added yet. Add at least one to preview.</p>
-                  ) : (
-                    !isDummy ? (
-                      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-                        <SortableContext
-                          items={coverUrls.map((url, i) => `${url}-${i}`)}
-                          strategy={verticalListSortingStrategy}
-                        >
-                          {coverUrls.map((url, i) => (
-                            <SortableCoverItem
-                              key={`${url}-${i}`}
-                              id={`${url}-${i}`}
-                              index={i}
-                              url={url}
-                              onRemove={() => removeAt(i)}
-                            />
-                          ))}
-                        </SortableContext>
-                      </DndContext>
-                    ) : (
-                      <>
-                        {coverUrls.map((url, i) => (
-                          <StaticCoverItem key={`${url}-${i}`} index={i} url={url} />
-                        ))}
-                      </>
-                    )
-                  )}
-                </div>
+                <div className="mt-1 text-xs text-foreground/60">URL preview: <span className="text-foreground/80">/hack/{slug || "your-title"}</span></div>
               </div>
-            </div>
 
-            {/* Base ROM */}
-            <div className="grid gap-2">
-              <label className="text-sm text-foreground/80">Base ROM</label>
-              {!isDummy ? (
-                <select
-                  value={baseRom}
-                  onChange={(e) => setBaseRom(e.target.value)}
-                  className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-                >
-                  {baseRoms.map(({ name, region }) => (
-                    <option key={name} value={name}>
-                      {name} ({region})
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <div className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none">{baseRom}</div>
-              )}
-            </div>
-
-            {/* Box art URL */}
-            <div className="grid gap-2">
-              <label className="text-sm text-foreground/80">Box art URL <span className="text-foreground/60">(optional)</span></label>
-              {!isDummy ? (
-                <input
-                  value={boxArt}
-                  onChange={(e) => setBoxArt(e.target.value)}
-                  placeholder="https://..."
-                  className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${boxArt && !urlLike(boxArt) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
-                />
-              ) : (
-                <div className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center text-foreground/60 select-none ${boxArt && !urlLike(boxArt) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}>https://...</div>
-              )}
-            </div>
-
-            {/* Social links */}
-            <div className="grid gap-2">
-              <label className="text-sm text-foreground/80">Social links <span className="text-foreground/60">(optional)</span></label>
-              <div className="grid gap-2 sm:grid-cols-3">
+              {/* Platform */}
+              <div className="grid gap-2">
+                <label className="text-sm text-foreground/80">Platform <span className="text-red-500">*</span></label>
                 {!isDummy ? (
-                  <>
-                    <input
-                      value={discord}
-                      onChange={(e) => setDiscord(e.target.value)}
-                      placeholder="Discord invite URL"
-                      className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${discord && !urlLike(discord) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
-                    />
-                    <input
-                      value={twitter}
-                      onChange={(e) => setTwitter(e.target.value)}
-                      placeholder="Twitter/X profile URL"
-                      className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${twitter && !urlLike(twitter) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
-                    />
-                    <input
-                      value={pokecommunity}
-                      onChange={(e) => setPokecommunity(e.target.value)}
-                      placeholder="PokeCommunity thread URL"
-                      className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${pokecommunity && !urlLike(pokecommunity) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
-                    />
-                  </>
+                  <select
+                    value={platform}
+                    onChange={(e) => { if ((newCoverFiles.length) > 0) return; setPlatform(e.target.value as any); setBaseRom(""); }}
+                    disabled={newCoverFiles.length > 0}
+                    className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] disabled:opacity-50"
+                  >
+                    <option value="" disabled>Select platform</option>
+                    {(["GB","GBC","GBA","NDS"] as const).map(p => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
                 ) : (
-                  <>
-                    <div className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center text-foreground/60 select-none ${discord && !urlLike(discord) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}>Discord invite URL</div>
-                    <div className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center text-foreground/60 select-none ${twitter && !urlLike(twitter) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}>Twitter/X profile URL</div>
-                    <div className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center text-foreground/60 select-none ${pokecommunity && !urlLike(pokecommunity) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}>PokeCommunity thread URL</div>
-                  </>
+                  <div className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none">{platform || ""}</div>
+                )}
+                {newCoverFiles.length > 0 && (
+                  <div className="text-xs text-red-500">Please remove all screenshots before changing the platform.</div>
                 )}
               </div>
-              <p className="text-xs text-foreground/60">Use full URLs starting with http:// or https://</p>
-            </div>
 
-            {/* Upload patch file */}
+              {/* Base ROM */}
+              <div className="grid gap-2">
+                <label className="text-sm text-foreground/80">Base ROM <span className="text-red-500">*</span></label>
+                {!isDummy ? (
+                  <select
+                    value={baseRom}
+                    onChange={(e) => setBaseRom(e.target.value)}
+                    disabled={!platform}
+                    className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] disabled:opacity-50"
+                  >
+                    <option value="" disabled>{platform ? "Select base rom" : "Select platform first"}</option>
+                    {baseRoms.filter(r => !platform || r.platform === platform).map(({ id, name, region }) => (
+                      <option key={id} value={id}>
+                        {name.replace('Pokemon ', '')} ({region})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none">{baseRoms.find(r=>r.id===baseRom)?.name || baseRom}</div>
+                )}
+              </div>
+
+              {/* Language */}
+              <div className="grid gap-2">
+                <label className="text-sm text-foreground/80">Language <span className="text-red-500">*</span></label>
+                {!isDummy ? (
+                  <select
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value)}
+                    className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+                  >
+                    <option value="" disabled>Select language</option>
+                    {['English','Spanish','French','German','Italian','Portuguese','Japanese','Chinese','Korean','Other'].map(l => (
+                      <option key={l} value={l}>{l}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div role="textbox" aria-disabled className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none">{language}</div>
+                )}
+              </div>
+            </>
+          )}
+
+          {step === 2 && (
+            <>
+              {/* Version */}
+              <div className="grid gap-2">
+                <label className="text-sm text-foreground/80">Version <span className="text-red-500">*</span></label>
+                {!isDummy ? (
+                  <input
+                    ref={versionInputRef}
+                    value={version}
+                    onChange={(e) => setVersion(e.target.value)}
+                    placeholder="e.g. v1.2.0"
+                    className={`h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]`}
+                  />
+                ) : (
+                  <div role="textbox" aria-disabled className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none">v0.1.0</div>
+                )}
+              </div>
+
+              {/* Tags */}
+              <div className="grid gap-2">
+                <label className="text-sm text-foreground/80">Tags <span className="text-red-500">*</span></label>
+                <div ref={tagAreaRef} className="rounded-md ring-1 ring-inset ring-[var(--border)] bg-[var(--surface-2)] px-2 py-2 relative">
+                  <div className="flex flex-wrap gap-2">
+                    {tags.map((t, i) => (
+                      <span key={`${t}-${i}`} className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-2)] px-2 py-1 text-xs ring-1 ring-[var(--border)]">
+                        {t}
+                        {!isDummy && (
+                          <button type="button" onClick={() => removeTagAt(i)} className="ml-1 text-foreground/70 hover:text-foreground">×</button>
+                        )}
+                      </span>
+                    ))}
+                    {!isDummy ? (
+                      <input
+                        ref={tagsInputRef}
+                        value={tagsInput}
+                        onChange={(e) => { setTagsInput(e.target.value); setIsTagDropdownOpen(true); }}
+                        onKeyDown={onTagsKeyDown}
+                        onFocus={() => setIsTagDropdownOpen(true)}
+                        placeholder={tags.length ? "Add tag" : "Add tags (e.g. QoL, Challenge)"}
+                        className={`flex-1 min-w-[8rem] bg-transparent px-2 text-sm placeholder:text-foreground/50 focus:outline-none`}
+                      />
+                    ) : (
+                      <div className="flex-1 min-w-[8rem] px-2 text-sm text-foreground/50 select-none">{tags.length ? "Add tag" : "Add tags (e.g. QoL, Challenge)"}</div>
+                    )}
+                  </div>
+                  {!isDummy && isTagDropdownOpen && filteredTags.length > 0 && (
+                    <div className="absolute left-0 right-0 z-20 mt-2 max-h-64 overflow-auto rounded-md border border-[var(--border)] bg-[var(--surface-1)] backdrop-blur-xl p-1 shadow-xl">
+                      <div className="grid">
+                        {filteredTags.map((t, idx) => {
+                          const isActive = idx === activeTagIndex;
+                          return (
+                            <button
+                              key={t.name}
+                              type="button"
+                              tabIndex={-1}
+                              onMouseEnter={() => setActiveTagIndex(idx)}
+                              onClick={() => {addTag(t.name); tagsInputRef.current?.focus();}}
+                              className={`flex items-center justify-between gap-2 rounded px-2 py-2 text-left text-sm transition-colors ${isActive ? 'bg-black/5 dark:bg-white/10' : 'hover:bg-black/5 dark:hover:bg-white/10'}`}
+                            >
+                              <span className="truncate">{t.name}</span>
+                              <RxPlus className="shrink-0 opacity-80" />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Summary */}
+              <div className="grid gap-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm text-foreground/80">Summary <span className="text-red-500">*</span></label>
+                  <span className={`text-[11px] ${summaryTooLong ? "text-red-300" : "text-foreground/60"}`}>{summary.length}/{summaryLimit}</span>
+                </div>
+                {!isDummy ? (
+                  <input
+                    value={summary}
+                    onChange={(e) => setSummary(e.target.value)}
+                    placeholder="<= 100 characters"
+                    className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${summaryTooLong ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
+                  />
+                ) : (
+                  <div
+                    role="textbox"
+                    aria-disabled
+                    className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center text-foreground/60 select-none ${summaryTooLong ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
+                  >
+                    Short description, max 100 characters.
+                  </div>
+                )}
+              </div>
+
+              {/* Description */}
+              <div className="grid gap-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm text-foreground/80">Description <span className="text-red-500">*</span></label>
+                  {!isDummy && (
+                    <div className="flex items-center gap-1 text-xs">
+                      <button type="button" onClick={() => setShowMdPreview(false)} className={`px-2 py-1 rounded ${!showMdPreview ? "bg-[var(--surface-2)] ring-1 ring-[var(--border)]" : "text-foreground/70"}`}>Write</button>
+                      <button type="button" onClick={() => setShowMdPreview(true)} className={`px-2 py-1 rounded ${showMdPreview ? "bg-[var(--surface-2)] ring-1 ring-[var(--border)]" : "text-foreground/70"}`}>Preview</button>
+                    </div>
+                  )}
+                </div>
+                {isDummy ? (
+                  <div className="prose max-w-none h-36 rounded-md bg-[var(--surface-2)] px-3 py-2 ring-1 ring-inset ring-[var(--border)] text-foreground/60 select-none">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{description || "Write a longer markdown description here."}</ReactMarkdown>
+                  </div>
+                ) : !showMdPreview ? (
+                  <textarea
+                    rows={14}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Supports Markdown"
+                    className={`rounded-md bg-[var(--surface-2)] px-3 py-2 min-h-[14rem] text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]`}
+                  />
+                ) : (
+                  <div className={`prose max-w-none rounded-md bg-[var(--surface-2)] px-3 py-2 ring-1 ring-inset ring-[var(--border)] ${description ? "" : "text-foreground/60 text-sm"}`}>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{description || "Nothing to preview yet."}</ReactMarkdown>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {step === 3 && (
+            <>
+              {/* Screenshots */}
+              <div className="grid gap-2">
+                <label className="text-sm text-foreground/80">Screenshots <span className="text-red-500">*</span></label>
+                {allowedSizes.length > 0 && (
+                  <p className="text-xs text-foreground/60">Upload screenshots of your game. Allowed sizes: {allowedSizes.map((s) => `${s.w}x${s.h}`).join(", ")}.</p>
+                )}
+                <div className="space-y-3">
+                  {!isDummy ? (
+                    <input
+                      ref={screenshotsInputRef}
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const list = Array.from(e.target.files || []);
+                        const allowed = baseRoms.find(r => r.id === baseRom)?.platform;
+                        const sizes = allowed ? getAllowedSizesForPlatform(allowed) : [];
+                        const accepted: File[] = [];
+                        const errors: string[] = [];
+                        for (const f of list) {
+                          if (sizes.length === 0) { accepted.push(f); continue; }
+                          const ok = await validateImageDimensions(f, sizes);
+                          if (ok) accepted.push(f); else errors.push(f.name);
+                        }
+                        setCoverErrors(errors);
+                        setNewCoverFiles((prev) => [...prev, ...accepted]);
+                      }}
+                      className={`w-full rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none ${!hasBaseRom ? 'pointer-events-none opacity-50 blur-[1px]' : ''}`}
+                    />
+                  ) : (
+                    <div className="w-full h-14 rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm ring-1 ring-inset ring-[var(--border)] text-foreground/60 select-none">
+                      Choose images to upload
+                    </div>
+                  )}
+                   <div className="flex items-center gap-2">
+                    {!isDummy ? (
+                      <>
+                        <button
+                          type="button"
+                           onClick={() => { setNewCoverFiles([]); }}
+                          className="inline-flex h-9 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 text-xs font-medium text-foreground/80 transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                        >
+                          Clear
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button type="button" disabled className="inline-flex h-9 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 text-xs font-medium text-foreground/70 disabled:opacity-40">
+                          Add
+                        </button>
+                        <button type="button" disabled className="inline-flex h-9 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 text-xs font-medium text-foreground/60 disabled:opacity-40">
+                          Clear
+                        </button>
+                      </>
+                    )}
+                  </div>
+                   <div className="text-xs text-foreground/60 flex justify-between">
+                     <p>Images: <span className={overLimit ? "text-red-300 font-bold" : "text-foreground/60"}>{newCoverFiles.length}</span>/{MAX_COVERS}</p>
+                    {overLimit && <p className="text-red-300/80 italic">Remove some to submit.</p>}
+                  </div>
+                  {coverErrors.length > 0 && (
+                    <div className="text-xs text-red-400">
+                      Rejected (wrong size): {coverErrors.join(", ")}
+                    </div>
+                  )}
+                     <div className="grid gap-2">
+                       {newCoverFiles.length === 0 ? (
+                      <p className="text-xs text-foreground/60">No images added yet. Add at least one to preview.</p>
+                    ) : (
+                       !isDummy ? (
+                         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+                           <SortableContext
+                             items={newCoverFiles.map((f, i) => `${f.name}-${i}`)}
+                             strategy={verticalListSortingStrategy}
+                           >
+                             {newCoverFiles.map((f, i) => (
+                               <SortableCoverItem
+                                 key={`${f.name}-${i}`}
+                                 id={`${f.name}-${i}`}
+                                 index={i}
+                                 filename={f.name}
+                                 url={URL.createObjectURL(f)}
+                                 onRemove={() => removeAt(i)}
+                               />
+                             ))}
+                           </SortableContext>
+                         </DndContext>
+                       ) : null
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Box art URL */}
+              <div className="grid gap-2">
+              <label className="text-sm text-foreground/80">Box art URL</label>
+                {!isDummy ? (
+                  <input
+                    value={boxArt}
+                    onChange={(e) => setBoxArt(e.target.value)}
+                    placeholder="https://..."
+                    className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${boxArt && !urlLike(boxArt) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
+                  />
+                ) : (
+                  <div className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center text-foreground/60 select-none ${boxArt && !urlLike(boxArt) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}>https://...</div>
+                )}
+              </div>
+
+              {/* Social links */}
+              <div className="grid gap-2">
+              <label className="text-sm text-foreground/80">Social links</label>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {!isDummy ? (
+                    <>
+                      <input
+                        value={discord}
+                        onChange={(e) => setDiscord(e.target.value)}
+                        placeholder="Discord invite URL"
+                        className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${discord && !urlLike(discord) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
+                      />
+                      <input
+                        value={twitter}
+                        onChange={(e) => setTwitter(e.target.value)}
+                        placeholder="Twitter/X profile URL"
+                        className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${twitter && !urlLike(twitter) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
+                      />
+                      <input
+                        value={pokecommunity}
+                        onChange={(e) => setPokecommunity(e.target.value)}
+                        placeholder="PokeCommunity thread URL"
+                        className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${pokecommunity && !urlLike(pokecommunity) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <div className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center text-foreground/60 select-none ${discord && !urlLike(discord) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}>Discord invite URL</div>
+                      <div className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center text-foreground/60 select-none ${twitter && !urlLike(twitter) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}>Twitter/X profile URL</div>
+                      <div className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center text-foreground/60 select-none ${pokecommunity && !urlLike(pokecommunity) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}>PokeCommunity thread URL</div>
+                    </>
+                  )}
+                </div>
+                <p className="text-xs text-foreground/60">Use full URLs starting with http:// or https://</p>
+              </div>
+            </>
+          )}
+
+          {/* Upload patch file */}
+          {step === 4 && (
             <div className="grid gap-2">
-              <label className="text-sm text-foreground/80">Upload patch file</label>
+              <label className="text-sm text-foreground/80">Upload patch file <span className="text-red-500">*</span></label>
               {!isDummy ? (
-                <input type="file" className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] file:bg-black/10 dark:file:bg-[var(--surface-2)] file:text-foreground/80 file:text-sm file:font-medium file:not-italic file:rounded-md file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer" />
+                <input ref={patchInputRef} onChange={(e) => setPatchFile(e.target.files?.[0] || null)} type="file" accept=".bps" className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] file:bg-black/10 dark:file:bg-[var(--surface-2)] file:text-foreground/80 file:text-sm file:font-medium file:not-italic file:rounded-md file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer" />
               ) : (
                 <div className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] select-none">Choose file</div>
               )}
               <p className="text-xs text-foreground/60">BPS only for verification purposes.</p>
             </div>
+          )}
 
-            {/* Submit button */}
-            {!isDummy && (
+          {/* Navigation */}
+          {!isDummy && (
+            <div className="flex items-center justify-between gap-3 border-t border-[var(--border)] pt-4 mt-4">
+              <button
+                type="button"
+                onClick={() => setStep((s) => Math.max(1, s - 1))}
+                disabled={step === 1 || submitting}
+                className="inline-flex h-11 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-4 text-sm font-semibold text-foreground transition-colors hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Back
+              </button>
               <div className="flex items-center gap-3">
+                <span className="text-sm text-foreground/60">Step {step} of 4</span>
+              </div>
+              {step < 4 ? (
                 <button
                   type="button"
-                  disabled={!isValid}
+                  onClick={() => setStep((s) => Math.min(4, s + 1))}
+                  disabled={
+                    submitting ||
+                    (step === 1 && !step1Valid) ||
+                    (step === 2 && !step2Valid) ||
+                    (step === 3 && !step3Valid)
+                  }
+                  className="inline-flex h-11 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-4 text-sm font-semibold text-foreground transition-colors hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onSubmit}
+                  disabled={!isValid || submitting}
                   className="shine-wrap btn-premium h-11 min-w-[7.5rem] text-sm font-semibold dark:disabled:opacity-70 disabled:cursor-not-allowed disabled:[box-shadow:0_0_0_1px_var(--border)]"
                 >
-                  <span>Submit</span>
+                  <span>{submitting ? 'Submitting…' : 'Submit'}</span>
                 </button>
-                {!isValid && (
-                  <span className="text-xs text-red-600/90">Fill required fields, fix errors, and add at least one cover.</span>
-                )}
-              </div>
-            )}
+              )}
+            </div>
+          )}
         </form>
       </div>
 
-      <aside className="flex flex-col gap-5 lg:sticky lg:top-20 self-start">
+      <aside className="flex flex-col gap-5 lg:sticky lg:top-20 self-start basis-[360px]">
         <PreviewCard hack={preview} />
         <div className="card h-max p-5">
           <div className="text-[15px] font-semibold tracking-tight">Submission tips</div>
@@ -535,36 +801,7 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
   );
 }
 
-function PreviewCard({ hack }: { hack: Hack }) {
+function PreviewCard({ hack }: { hack: any }) {
   return <HackCard hack={hack} clickable={false} />;
 }
-
-function StaticCoverItem({ index, url }: { index: number; url: string }) {
-  return (
-    <div className="rounded-md">
-      <div className="h-16 flex items-center justify-between gap-3 p-2 bg-[var(--surface-2)] ring-1 ring-inset ring-[var(--border)]">
-        <div className="flex items-center gap-3">
-          <div className="pr-1 text-foreground/40 select-none" title="Drag disabled">⋮⋮</div>
-          <div className="relative h-12 w-20 overflow-hidden rounded">
-            <Image src={url} alt={`Cover ${index + 1}`} fill className="object-cover" unoptimized />
-          </div>
-          <div className="min-w-0">
-            <div className="truncate text-xs text-foreground/80">{url}</div>
-            {index === 0 && <div className="text-[10px] text-emerald-400/90">Primary</div>}
-          </div>
-        </div>
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            disabled
-            className="inline-flex h-8 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2 text-xs text-foreground/50"
-          >
-            Remove
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 

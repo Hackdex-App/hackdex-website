@@ -3,6 +3,8 @@
   "configurations": [
     {
       "name": "Next.js: debug server-side",
+      "preLaunchTask": "startMinio",
+      "postDebugTask": "stopMinio",
       "type": "node-terminal",
       "request": "launch",
       "command": "npm run dev"
@@ -18,6 +20,8 @@
       "type": "node-terminal",
       "request": "launch",
       "command": "npm run dev",
+      "preLaunchTask": "startMinio",
+      "postDebugTask": "stopMinio",
       "serverReadyAction": {
         "pattern": "- Local:.+(https?://.+)",
         "uriFormat": "%s",

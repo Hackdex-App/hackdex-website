@@ -1,18 +1,33 @@
 import Image from "next/image";
+import PixelImage from "./PixelImage";
 import Link from "next/link";
 import { formatCompactNumber } from "@/utils/format";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
-import type { Hack } from "@/data/hacks";
+import { baseRoms } from "@/data/baseRoms";
 import { useEffect, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import { usePathname } from "next/navigation";
+import { FaRegImages } from "react-icons/fa6";
 
-// Using shared Hack type from data
+type CardHack = {
+  slug: string;
+  title: string;
+  author: string;
+  covers: string[];
+  tags: string[];
+  downloads: number;
+  baseRomId?: string;
+  version: string;
+  summary?: string;
+  description?: string;
+};
 
-export default function HackCard({ hack, clickable = true, className = "" }: { hack: Hack; clickable?: boolean; className?: string }) {
+export default function HackCard({ hack, clickable = true, className = "" }: { hack: CardHack; clickable?: boolean; className?: string }) {
   const { isLinked, hasPermission, hasCached } = useBaseRoms();
-  const linked = isLinked(hack.baseRom);
-  const ready = hasPermission(hack.baseRom) || hasCached(hack.baseRom);
+  const match = baseRoms.find((r) => r.id === hack.baseRomId);
+  const baseName = match?.name ?? undefined;
+  const linked = baseName ? isLinked(baseName) : false;
+  const ready = baseName ? hasPermission(baseName) || hasCached(baseName) : false;
   const images = (hack.covers && hack.covers.length > 0 ? hack.covers : []).filter(Boolean);
   const isCarousel = images.length > 1;
   const pathname = usePathname();
@@ -30,7 +45,7 @@ export default function HackCard({ hack, clickable = true, className = "" }: { h
       emblaApi.off("select", onSelect);
     };
   }, [emblaApi]);
-  const cardClass = `rounded-[12px] overflow-hidden ${
+  const cardClass = `rounded-[12px] overflow-hidden min-w-[360px] ${
     clickable ? "transition-transform duration-300 hover:-translate-y-0.5 hover:shadow-xl anim-float" : ""
   } ring-1 ${ready ? "ring-emerald-400/50 bg-emerald-500/10" : "card ring-[var(--border)]"}`;
   const gradientBgClass = `bg-gradient-to-b ${ready ? 'from-emerald-300/5 to-emerald-400/30 dark:from-emerald-950/10 dark:to-emerald-600/40' : 'from-black/30 to-black/10 dark:from-black/80 dark:to-black/40'}`;
@@ -75,7 +90,7 @@ export default function HackCard({ hack, clickable = true, className = "" }: { h
             {hack.tags.slice(0, 2).map((t) => (
               <span
                 key={t}
-                className="rounded-full px-2 py-0.5 text-xs ring-1 ring-[var(--border)] bg-[var(--surface-2)] text-foreground/90 backdrop-blur-md"
+                className="rounded-full px-2 py-0.5 text-xs ring-1 ring-foreground/20 dark:ring-foreground/30 bg-background/70 text-foreground/90 backdrop-blur-md"
               >
                 {t}
               </span>
@@ -141,7 +156,7 @@ export default function HackCard({ hack, clickable = true, className = "" }: { h
               return text.length > 120 ? text.slice(0, 120).trimEnd() + "…" : text;
             })()}
           </p>
-          <div className="mt-3 text-xs text-foreground/60">Base: {hack.baseRom}</div>
+          <div className="mt-3 text-xs text-foreground/60">Base: {baseName ?? "Unknown"}</div>
         </div>
       </div>
   );
