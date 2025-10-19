@@ -1,8 +1,13 @@
 import LoginForm from "@/components/Auth/LoginForm";
 import Link from "next/link";
 
-export default function LoginPage({ searchParams }: { searchParams?: { redirectTo?: string } }) {
-  const redirectTo = searchParams?.redirectTo;
+interface LoginPageProps {
+  searchParams: Promise<{ redirectTo?: string }>;
+}
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const { redirectTo } = await searchParams;
+
   return (
     <div className="mx-auto my-auto max-w-md w-full px-6 py-10">
       <div className="card p-6">

@@ -1,8 +1,13 @@
 import Link from "next/link";
 import SignupForm from "@/components/Auth/SignupForm";
 
-export default function SignupPage({ searchParams }: { searchParams?: { redirectTo?: string } }) {
-  const redirectTo = searchParams?.redirectTo;
+interface SignupPageProps {
+  searchParams: Promise<{ redirectTo?: string }>;
+}
+
+export default async function SignupPage({ searchParams }: SignupPageProps) {
+  const { redirectTo } = await searchParams;
+
   return (
     <div className="mx-auto my-auto max-w-md w-full px-6 py-10">
       <div className="card p-6">
