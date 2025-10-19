@@ -5,6 +5,9 @@ import { FaTriangleExclamation } from "react-icons/fa6";
 import { baseRoms } from "@/data/baseRoms";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
 import BaseRomCard from "@/components/BaseRomCard";
+import { platformAcceptAll } from "@/utils/idb";
+
+const ALLOWED_TYPES = platformAcceptAll().split(",");
 
 export default function RomsInteractive() {
   const { supported, linked, statuses, cached, totalCachedBytes, importUploadedBlob, importToCache, removeFromCache, unlinkRom, ensurePermission, countReady } = useBaseRoms();
@@ -59,6 +62,10 @@ export default function RomsInteractive() {
             setDragActive(false);
             const file = e.dataTransfer?.files?.[0];
             if (!file) return;
+            if (!ALLOWED_TYPES.includes(`.${file.name.split(".").pop()?.toLowerCase() ?? ""}`)) {
+              setUploadMsg(`Unrecognized file. Not cached. Accepted types: ${ALLOWED_TYPES.join(", ")}`);
+              return;
+            }
             const name = await importUploadedBlob(file);
             if (name) setUploadMsg(`Recognized and cached: ${name}`);
             else setUploadMsg("Unrecognized ROM. Not cached.");
@@ -76,7 +83,7 @@ export default function RomsInteractive() {
               </div>
             </div>
             <label className="inline-flex cursor-pointer items-center justify-center rounded-md bg-[var(--accent)] px-3 py-2 text-sm font-medium text-[var(--accent-foreground)] transition-colors hover:bg-[var(--accent-700)]">
-              <input type="file" onChange={onUpload} className="hidden" />
+              <input type="file" onChange={onUpload} className="hidden" accept={platformAcceptAll()} />
               Choose file…
             </label>
           </div>

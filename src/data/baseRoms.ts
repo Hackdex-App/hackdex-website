@@ -1,7 +1,15 @@
+export const PLATFORMS = [
+  "GB",
+  "GBC",
+  "GBA",
+  "NDS",
+] as const;
+export type Platform = typeof PLATFORMS[number];
+
 export type BaseRom = {
   id: string;
   name: string;
-  platform: "GB" | "GBC" | "GBA" | "NDS";
+  platform: Platform;
   region: string;
   sha1?: string;
 };

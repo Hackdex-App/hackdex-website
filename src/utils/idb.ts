@@ -1,4 +1,6 @@
 // Minimal IndexedDB helpers for storing FileSystemFileHandle references
+import type { Platform } from "@/data/baseRoms";
+import { PLATFORMS } from "@/data/baseRoms";
 
 const DB_NAME = "romhaven";
 const DB_VERSION = 2;
@@ -113,4 +115,31 @@ export async function getAllBlobEntries(): Promise<Array<{ name: string; blob: B
   });
 }
 
+export function platformAccept(p: Platform | Platform[]): string {
+  if (Array.isArray(p)) {
+    // Gather all individual extensions and dedupe
+    const extSet = new Set<string>();
+    for (const plat of p) {
+      const exts = platformAccept(plat).split(",");
+      for (const ext of exts) {
+        extSet.add(ext.trim());
+      }
+    }
+    return Array.from(extSet).join(",");
+  }
 
+  // Exhaustive check using a mapping object for platform strings
+  const mapping: Record<Platform, string> = {
+    GB: ".gb",
+    GBC: ".gbc,.gb",
+    GBA: ".gba",
+    NDS: ".nds",
+  };
+
+  // If `p` is not a valid Platform, TypeScript will error here.
+  return mapping[p];
+}
+
+export function platformAcceptAll(): string {
+  return platformAccept([...PLATFORMS]);
+}
