@@ -51,6 +51,7 @@ declare module 'rom-patcher-js/rom-patcher-js/modules/RomPatcher.format.bps.js' 
     prototype: BPSInstance;
     MAGIC: string;
     fromFile(file: BinFile): BPSInstance;
+    buildFromRoms(original: BinFile, modified: BinFile, deltaMode?: boolean): BPSInstance;
   };
   export default BPS;
 }

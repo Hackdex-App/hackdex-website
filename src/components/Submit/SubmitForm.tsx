@@ -14,6 +14,11 @@ import remarkGfm from "remark-gfm";
 import { RxDragHandleDots2, RxPlus } from "react-icons/rx";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { Database } from "@/types/db";
+import { useBaseRoms } from "@/contexts/BaseRomContext";
+import BinFile from "rom-patcher-js/rom-patcher-js/modules/BinFile.js";
+import BPS from "rom-patcher-js/rom-patcher-js/modules/RomPatcher.format.bps.js";
+import { sha1Hex } from "@/utils/hash";
+import { platformAccept } from "@/utils/idb";
 
 function SortableCoverItem({ id, index, url, filename, onRemove }: { id: string; index: number; url: string; filename: string; onRemove: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
@@ -80,6 +85,9 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
   const [tagsInput, setTagsInput] = React.useState("");
   const [showMdPreview, setShowMdPreview] = React.useState(false);
   const [patchFile, setPatchFile] = React.useState<File | null>(null);
+  const [patchMode, setPatchMode] = React.useState<"bps" | "rom">("bps");
+  const [genStatus, setGenStatus] = React.useState<"idle" | "generating" | "ready" | "error">("idle");
+  const [genError, setGenError] = React.useState<string>("");
   const [submitting, setSubmitting] = React.useState(false);
   const [step, setStep] = React.useState(1);
   const supabase = createClient();
@@ -89,6 +97,16 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
   const versionInputRef = React.useRef<HTMLInputElement | null>(null);
   const screenshotsInputRef = React.useRef<HTMLInputElement | null>(null);
   const patchInputRef = React.useRef<HTMLInputElement | null>(null);
+  const modifiedRomInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  const baseRomEntry = React.useMemo(() => baseRoms.find((r) => r.id === baseRom) || null, [baseRom]);
+  const baseRomName = baseRomEntry?.name || "";
+  const baseRomPlatform = baseRomEntry?.platform;
+  const { isLinked, hasPermission, hasCached, importUploadedBlob, ensurePermission, getFileBlob, supported } = useBaseRoms();
+
+  const baseRomReady = baseRomName && (hasPermission(baseRomName) || hasCached(baseRomName));
+  const baseRomNeedsPermission = baseRomName && isLinked(baseRomName) && !baseRomReady;
+  const baseRomMissing = baseRomName && !isLinked(baseRomName) && !hasCached(baseRomName);
 
   // Build object URLs for local screenshot previews and clean them up when files change
   const coverPreviews = React.useMemo(() => {
@@ -100,6 +118,14 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
       coverPreviews.forEach((u) => URL.revokeObjectURL(u));
     };
   }, [coverPreviews]);
+
+  React.useEffect(() => {
+    setPatchFile(null);
+    setGenStatus("idle");
+    setGenError("");
+    patchInputRef.current && (patchInputRef.current.value = "");
+    modifiedRomInputRef.current && (modifiedRomInputRef.current.value = "");
+  }, [patchMode]);
 
   const uploadCovers = async (slug: string) => {
     if (!newCoverFiles || newCoverFiles.length === 0) return [] as string[];
@@ -336,6 +362,69 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
       setSubmitting(false);
     }
   };
+
+  async function onGrantPermission() {
+    if (!baseRomName) return;
+    await ensurePermission(baseRomName, true);
+  }
+
+  async function onUploadBaseRom(e: React.ChangeEvent<HTMLInputElement>) {
+    try {
+      setGenError("");
+      const f = e.target.files?.[0];
+      if (!f) return;
+      const matchedName = await importUploadedBlob(f);
+      if (!matchedName) {
+        setGenError("That ROM doesn't match any supported base ROM.");
+        return;
+      }
+      if (matchedName !== baseRomName) {
+        setGenError(`This ROM matches "${matchedName}", but the form requires "${baseRomName}".`);
+        return;
+      }
+    } catch {
+      setGenError("Failed to import base ROM.");
+    }
+  }
+
+  async function onUploadModifiedRom(e: React.ChangeEvent<HTMLInputElement>) {
+    try {
+      setGenStatus("generating");
+      setGenError("");
+      const mod = e.target.files?.[0] || null;
+      if (!mod || !baseRomName) {
+        setGenStatus("idle");
+        return;
+      }
+      let baseFile = await getFileBlob(baseRomName);
+      if (!baseFile) {
+        setGenStatus("idle");
+        setGenError("Base ROM not available.");
+        return;
+      }
+      if (baseRomEntry?.sha1) {
+        const hash = await sha1Hex(baseFile);
+        if (hash.toLowerCase() !== baseRomEntry.sha1.toLowerCase()) {
+          setGenStatus("error");
+          setGenError("Selected base ROM hash does not match the chosen base ROM.");
+          return;
+        }
+      }
+      const [origBuf, modBuf] = await Promise.all([baseFile.arrayBuffer(), mod.arrayBuffer()]);
+      const origBin = new BinFile(origBuf);
+      const modBin = new BinFile(modBuf);
+      const deltaMode = origBin.fileSize <= 4194304; // Not having this check causes the site to freeze for larger ROMs
+      const patch = BPS.buildFromRoms(origBin, modBin, deltaMode);
+      const fileName = slug || title || "patch";
+      const patchBin = patch.export(fileName);
+      const out = new File([patchBin._u8array], `${fileName}.bps`, { type: 'application/octet-stream' });
+      setPatchFile(out);
+      setGenStatus("ready");
+    } catch (err: any) {
+      setGenStatus("error");
+      setGenError(err?.message || "Failed to generate patch.");
+    }
+  }
 
   const preview = {
     slug: slug || "preview",
@@ -732,14 +821,83 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
 
           {/* Upload patch file */}
           {step === 4 && (
-            <div className="grid gap-2">
-              <label className="text-sm text-foreground/80">Upload patch file <span className="text-red-500">*</span></label>
+            <div className="grid gap-3">
+              <label className="text-sm text-foreground/80">Provide patch <span className="text-red-500">*</span></label>
               {!isDummy ? (
-                <input ref={patchInputRef} onChange={(e) => setPatchFile(e.target.files?.[0] || null)} type="file" accept=".bps" className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] file:bg-black/10 dark:file:bg-[var(--surface-2)] file:text-foreground/80 file:text-sm file:font-medium file:not-italic file:rounded-md file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer" />
+                <div className="flex flex-col gap-3">
+                  <div className="inline-flex items-center">
+                    <button
+                      type="button"
+                      onClick={() => setPatchMode("bps")}
+                      className={`rounded-md rounded-r-none px-3 py-1.5 text-xs border-l-1 border-y-1 ${patchMode === "bps" ? "bg-[var(--surface-2)] border-[var(--border)]" : "text-foreground/70 border-[var(--border)]"}`}
+                    >
+                      Upload .bps
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPatchMode("rom")}
+                      className={`rounded-md rounded-l-none px-3 py-1.5 text-xs border-1 ${patchMode === "rom" ? "bg-[var(--surface-2)] border-[var(--border)]" : "text-foreground/70 border-[var(--border)]"}`}
+                    >
+                      Upload modified ROM (auto-generate .bps)
+                    </button>
+                  </div>
+
+                  {patchMode === "bps" && (
+                    <div className="grid gap-2">
+                      <input
+                        ref={patchInputRef}
+                        onChange={(e) => setPatchFile(e.target.files?.[0] || null)}
+                        type="file"
+                        accept=".bps"
+                        className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] file:bg-black/10 dark:file:bg-[var(--surface-2)] file:text-foreground/80 file:text-sm file:font-medium file:not-italic file:rounded-md file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer"
+                      />
+                      <p className="text-xs text-foreground/60">Upload a BPS patch file.</p>
+                    </div>
+                  )}
+
+                  {patchMode === "rom" && (
+                    <div className="grid gap-3">
+                      <div className="rounded-md border border-[var(--border)] p-3 bg-[var(--surface-2)]/50">
+                        <div className="text-xs text-foreground/75">Required base ROM</div>
+                        <div className="mt-1 text-sm font-medium">{baseRomEntry ? `${baseRomEntry.name} (${baseRomEntry.platform})` : "Select a base ROM in Step 1"}</div>
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                          <span className={`rounded-full px-2 py-0.5 ring-1 ${baseRomReady ? "bg-emerald-600/60 text-white ring-emerald-700/80 dark:bg-emerald-500/25 dark:text-emerald-100 dark:ring-emerald-400/90" : baseRomNeedsPermission ? "bg-amber-600/60 text-white ring-amber-700/80 dark:bg-amber-500/50 dark:text-amber-100 dark:ring-amber-400/90" : "bg-red-600/60 text-white ring-red-700/80 dark:bg-red-500/50 dark:text-red-100 dark:ring-red-400/90"}`}>
+                            {baseRomReady ? "Ready" : baseRomNeedsPermission ? "Permission needed" : "Base ROM needed"}
+                          </span>
+                          {baseRomNeedsPermission && (
+                            <button type="button" onClick={onGrantPermission} disabled={!supported} className="rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2 py-1 disabled:opacity-60 disabled:cursor-not-allowed">Grant permission</button>
+                          )}
+                          {baseRomMissing && (
+                            <label className="inline-flex items-center gap-2 text-xs text-foreground/80">
+                              <input type="file" onChange={onUploadBaseRom} className="rounded-md bg-[var(--surface-2)] px-2 py-1 text-xs ring-1 ring-inset ring-[var(--border)]" />
+                              <span>Upload base ROM</span>
+                            </label>
+                          )}
+                        </div>
+                        {!!genError && <div className="mt-2 text-xs text-red-400">{genError}</div>}
+                      </div>
+
+                      <div className="grid gap-2">
+                        <label className="text-sm text-foreground/80">Modified ROM</label>
+                        <input
+                          ref={modifiedRomInputRef}
+                          type="file"
+                          accept={baseRomPlatform ? platformAccept(baseRomPlatform) : "*/*"}
+                          disabled={!baseRomEntry || !baseRomReady || !baseRomPlatform}
+                          onChange={onUploadModifiedRom}
+                          className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm ring-1 ring-inset ring-[var(--border)] disabled:opacity-50 disabled:cursor-not-allowed"
+                        />
+                        <p className="text-xs text-foreground/60">We'll generate a .bps patch on-device. No ROMs are uploaded.</p>
+                        {genStatus === "generating" && <div className="text-xs text-foreground/70">Generating patch…</div>}
+                        {genStatus === "ready" && patchFile && <div className="text-xs text-emerald-400/90">Patch ready: {patchFile.name}</div>}
+                        {genStatus === "error" && !!genError && <div className="text-xs text-red-400">{genError}</div>}
+                      </div>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] select-none">Choose file</div>
               )}
-              <p className="text-xs text-foreground/60">BPS only for verification purposes.</p>
             </div>
           )}
 
