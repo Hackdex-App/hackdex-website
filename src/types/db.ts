@@ -261,14 +261,17 @@ export type Database = {
       }
       tags: {
         Row: {
+          category: Database["public"]["Enums"]["Tag Categories"] | null
           id: number
           name: string
         }
         Insert: {
+          category?: Database["public"]["Enums"]["Tag Categories"] | null
           id?: number
           name: string
         }
         Update: {
+          category?: Database["public"]["Enums"]["Tag Categories"] | null
           id?: number
           name?: string
         }
@@ -345,7 +348,16 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      "Tag Categories":
+        | "Pokédex"
+        | "Sprites"
+        | "New"
+        | "Altered"
+        | "Quality of Life"
+        | "Gameplay"
+        | "Difficulty"
+        | "Scale"
+        | "Tone"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -472,6 +484,18 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      "Tag Categories": [
+        "Pokédex",
+        "Sprites",
+        "New",
+        "Altered",
+        "Quality of Life",
+        "Gameplay",
+        "Difficulty",
+        "Scale",
+        "Tone",
+      ],
+    },
   },
 } as const
