@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { AuthError } from '@supabase/supabase-js'
 
-import { createClient } from '@/utils/supabase/server'
+import { createClient, createServiceClient } from '@/utils/supabase/server'
 import { validateEmail, validatePassword } from '@/utils/auth'
 
 function getErrorMessage(error: AuthError): string {
@@ -32,11 +32,13 @@ export interface AuthActionState {
 
 export async function signup(state: AuthActionState, payload: FormData) {
   const supabase = await createClient()
+  const service = await createServiceClient()
 
   const data = {
     email: payload.get('email') as string,
     password: payload.get('password') as string,
   }
+  const inviteCode = (payload.get('inviteCode') as string | null)?.trim() || ''
 
   const { error: emailError } = validateEmail(data.email);
   if (emailError) {
@@ -48,10 +50,46 @@ export async function signup(state: AuthActionState, payload: FormData) {
     return { error: passwordError };
   }
 
-  const { error } = await supabase.auth.signUp(data)
+  if (!inviteCode) {
+    return { error: 'An invite code is required to sign up.' }
+  }
+
+  // Pre-check: ensure invite exists and is unused before attempting signup
+  const { data: availableInvite, error: inviteCheckError } = await service
+    .from('invite_codes')
+    .select('code')
+    .eq('code', inviteCode)
+    .is('used_by', null)
+    .maybeSingle()
+
+  if (inviteCheckError || !availableInvite) {
+    return { error: 'Invalid or already used invite code.' }
+  }
+
+  const { data: signUpResult, error } = await supabase.auth.signUp(data)
 
   if (error) {
     return { error: getErrorMessage(error) };
+  }
+
+  const userId = signUpResult.user?.id || null
+  // Finalize: set used_by to the new user id iff still unused (atomic)
+  const { data: finalized, error: finalizeError } = await service
+    .from('invite_codes')
+    .update({ used_by: userId ?? null })
+    .eq('code', inviteCode)
+    .is('used_by', null)
+    .select('code')
+    .maybeSingle()
+
+  if (finalizeError || !finalized) {
+    // The code claim could not be finalized (race). Roll back user creation.
+    if (userId) {
+      try {
+        await service.auth.admin.deleteUser(userId)
+      } catch {}
+    }
+    return { error: 'Invite code is no longer available. Please try again.' }
   }
 
   revalidatePath('/', 'layout');
