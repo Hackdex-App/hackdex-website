@@ -5,6 +5,7 @@ import HackCard from "@/components/HackCard";
 import { createClient } from "@/utils/supabase/client";
 
 export default function DiscoverBrowser() {
+  const supabase = createClient();
   const [query, setQuery] = React.useState("");
   const [tag, setTag] = React.useState<string | null>(null);
   const [sort, setSort] = React.useState("popular");
@@ -13,7 +14,6 @@ export default function DiscoverBrowser() {
 
   React.useEffect(() => {
     const run = async () => {
-      const supabase = createClient();
       const { data: rows } = await supabase
         .from("hacks")
         .select("slug,title,summary,description,base_rom,version,downloads,created_by,patch_url")
