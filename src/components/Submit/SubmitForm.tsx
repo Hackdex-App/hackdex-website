@@ -15,6 +15,7 @@ import { RxDragHandleDots2, RxPlus } from "react-icons/rx";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { Database } from "@/types/db";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
+import TagSelector from "@/components/Submit/TagSelector";
 import BinFile from "rom-patcher-js/rom-patcher-js/modules/BinFile.js";
 import BPS from "rom-patcher-js/rom-patcher-js/modules/RomPatcher.format.bps.js";
 import { sha1Hex } from "@/utils/hash";
@@ -59,9 +60,7 @@ interface SubmitFormProps {
   dummy?: boolean;
 }
 
-type TagSortable = Database["public"]["Tables"]["tags"]["Row"] & {
-  popularity: number;
-};
+// Tag selection handled by TagSelector component
 
 export default function SubmitForm({ dummy = false }: SubmitFormProps) {
   const MAX_COVERS = 10;
@@ -82,7 +81,6 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
   const [twitter, setTwitter] = React.useState("");
   const [pokecommunity, setPokecommunity] = React.useState("");
   const [tags, setTags] = React.useState<string[]>([]);
-  const [tagsInput, setTagsInput] = React.useState("");
   const [showMdPreview, setShowMdPreview] = React.useState(false);
   const [patchFile, setPatchFile] = React.useState<File | null>(null);
   const [patchMode, setPatchMode] = React.useState<"bps" | "rom">("bps");
@@ -185,53 +183,9 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
     setNewCoverFiles((prev) => arrayMove(prev, oldIndex, newIndex));
   };
 
-  // Existing tags (from DB)
-  const [allTags, setAllTags] = React.useState<TagSortable[]>([]);
-  const [isTagDropdownOpen, setIsTagDropdownOpen] = React.useState(false);
-  const tagAreaRef = React.useRef<HTMLDivElement | null>(null);
-  const tagsInputRef = React.useRef<HTMLInputElement | null>(null);
-  const [activeTagIndex, setActiveTagIndex] = React.useState(0);
+  // Tags handled in TagSelector
 
-  React.useEffect(() => {
-    // Fetch all tags once on mount
-    const fetchTags = async () => {
-      try {
-        const { data, error } = await supabase.from('tags').select('id, name, usage: hack_tags (count)');
-        if (error) return;
-        const fetchedTags: TagSortable[] = (data || []).map((t: any) => ({ id: t.id, name: t.name, popularity: t.usage[0].count || 0, category: t.category }));
-        setAllTags(
-          fetchedTags.sort((a, b) => {
-            if (b.popularity !== a.popularity) {
-              return b.popularity - a.popularity;
-            }
-            // If popularity is equal, sort by id
-            if (a.id < b.id) return -1;
-            if (a.id > b.id) return 1;
-            return 0;
-          })
-        );
-      } catch {}
-    };
-    fetchTags();
-  }, [supabase]);
-
-  React.useEffect(() => {
-    const onDocClick = (e: MouseEvent) => {
-      if (!tagAreaRef.current) return;
-      if (!tagAreaRef.current.contains(e.target as Node)) {
-        setIsTagDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', onDocClick);
-    return () => document.removeEventListener('mousedown', onDocClick);
-  }, []);
-
-  const filteredTags = React.useMemo(() => {
-    const q = tagsInput.trim().toLowerCase();
-    const pool = allTags.filter((t) => !tags.includes(t.name));
-    if (!q) return pool.slice(0, 15);
-    return pool.filter((t) => t.name.toLowerCase().includes(q)).slice(0, 8);
-  }, [allTags, tags, tagsInput]);
+  // Tag fetching and filtering moved to TagSelector
 
   // Focus the first input on each step when step changes
   React.useEffect(() => {
@@ -247,54 +201,7 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
     }
   }, [step, isDummy]);
 
-  React.useEffect(() => {
-    if (!isTagDropdownOpen) return;
-    if (filteredTags.length === 0) {
-      setActiveTagIndex(0);
-    } else {
-      setActiveTagIndex((i) => Math.min(Math.max(0, i), filteredTags.length - 1));
-    }
-  }, [filteredTags, isTagDropdownOpen]);
-
-  const addTag = (value: string) => {
-    const tag = value.trim();
-    if (!tag) return;
-    if (!allTags.some((t) => t.name === tag)) return; // only allow existing tags
-    if (tags.includes(tag)) return;
-    setTags((prev) => [...prev, tag]);
-    setTagsInput("");
-  };
-
-  const removeTagAt = (index: number) => {
-    setTags((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const onTagsKeyDown: React.KeyboardEventHandler<HTMLInputElement> = (e) => {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      if (!isTagDropdownOpen) setIsTagDropdownOpen(true);
-      if (filteredTags.length > 0) setActiveTagIndex((i) => (i + 1) % filteredTags.length);
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      if (!isTagDropdownOpen) setIsTagDropdownOpen(true);
-      if (filteredTags.length > 0) setActiveTagIndex((i) => (i - 1 + filteredTags.length) % filteredTags.length);
-    } else if (e.key === 'Enter' || e.key === ',') {
-      e.preventDefault();
-      const choice = filteredTags[activeTagIndex] || filteredTags[0];
-      if (choice) {
-        addTag(choice.name);
-        setIsTagDropdownOpen(true);
-      }
-    } else if (e.key === 'Tab') {
-      // Close dropdown and allow tabbing to next focusable element
-      setIsTagDropdownOpen(false);
-    } else if (e.key === 'Escape') {
-      setIsTagDropdownOpen(false);
-    } else if (e.key === 'Backspace' && !tagsInput && tags.length > 0) {
-      e.preventDefault();
-      setTags((prev) => prev.slice(0, prev.length - 1));
-    }
-  };
+  // Removed legacy key handling; TagSelector manages interactions
 
   const slugify = (text: string) =>
     text
@@ -566,53 +473,7 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
               {/* Tags */}
               <div className="grid gap-2">
                 <label className="text-sm text-foreground/80">Tags <span className="text-red-500">*</span></label>
-                <div ref={tagAreaRef} className="rounded-md ring-1 ring-inset ring-[var(--border)] bg-[var(--surface-2)] px-2 py-2 relative">
-                  <div className="flex flex-wrap gap-2">
-                    {tags.map((t, i) => (
-                      <span key={`${t}-${i}`} className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-2)] px-2 py-1 text-xs ring-1 ring-[var(--border)]">
-                        {t}
-                        {!isDummy && (
-                          <button type="button" onClick={() => removeTagAt(i)} className="ml-1 text-foreground/70 hover:text-foreground">×</button>
-                        )}
-                      </span>
-                    ))}
-                    {!isDummy ? (
-                      <input
-                        ref={tagsInputRef}
-                        value={tagsInput}
-                        onChange={(e) => { setTagsInput(e.target.value); setIsTagDropdownOpen(true); }}
-                        onKeyDown={onTagsKeyDown}
-                        onFocus={() => setIsTagDropdownOpen(true)}
-                        placeholder={tags.length ? "Add tag" : "Add tags (e.g. QoL, Challenge)"}
-                        className={`flex-1 min-w-[8rem] bg-transparent px-2 text-sm placeholder:text-foreground/50 focus:outline-none`}
-                      />
-                    ) : (
-                      <div className="flex-1 min-w-[8rem] px-2 text-sm text-foreground/50 select-none">{tags.length ? "Add tag" : "Add tags (e.g. QoL, Challenge)"}</div>
-                    )}
-                  </div>
-                  {!isDummy && isTagDropdownOpen && filteredTags.length > 0 && (
-                    <div className="absolute left-0 right-0 z-20 mt-2 max-h-64 overflow-auto rounded-md border border-[var(--border)] bg-[var(--surface-1)] backdrop-blur-xl p-1 shadow-xl">
-                      <div className="grid">
-                        {filteredTags.map((t, idx) => {
-                          const isActive = idx === activeTagIndex;
-                          return (
-                            <button
-                              key={t.name}
-                              type="button"
-                              tabIndex={-1}
-                              onMouseEnter={() => setActiveTagIndex(idx)}
-                              onClick={() => {addTag(t.name); tagsInputRef.current?.focus();}}
-                              className={`flex items-center justify-between gap-2 rounded px-2 py-2 text-left text-sm transition-colors ${isActive ? 'bg-black/5 dark:bg-white/10' : 'hover:bg-black/5 dark:hover:bg-white/10'}`}
-                            >
-                              <span className="truncate">{t.name}</span>
-                              <RxPlus className="shrink-0 opacity-80" />
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <TagSelector value={tags} onChange={setTags} />
               </div>
 
               {/* Summary */}

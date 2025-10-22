@@ -7,29 +7,10 @@ import { baseRoms } from "@/data/baseRoms";
 import { Listbox, ListboxButton, ListboxOption, ListboxOptions, Transition } from "@headlessui/react";
 import { useFloating, offset, flip, shift, size, autoUpdate } from "@floating-ui/react";
 import { IconType } from "react-icons";
-import {
-  MdCatchingPokemon,
-  MdNewReleases,
-  MdAutoFixHigh,
-  MdSettingsSuggest,
-} from "react-icons/md";
 import { MdTune } from "react-icons/md";
-import { BiSolidGame } from "react-icons/bi";
-import { FaClock, FaGaugeHigh, FaMasksTheater } from "react-icons/fa6";
 import { BsSdCardFill } from "react-icons/bs";
-import { IoLogoGameControllerA } from "react-icons/io";
+import { CATEGORY_ICONS } from "@/components/Icons/tagCategories";
 
-const CATEGORY_ICON: Record<string, IconType> = {
-  "Pokédex": MdCatchingPokemon,
-  "Sprites": BiSolidGame,
-  "New": MdNewReleases,
-  "Altered": MdAutoFixHigh,
-  "Quality of Life": MdSettingsSuggest,
-  "Gameplay": IoLogoGameControllerA,
-  "Difficulty": FaGaugeHigh,
-  "Scale": FaClock,
-  "Tone": FaMasksTheater,
-};
 
 export default function DiscoverBrowser() {
   const supabase = createClient();
@@ -220,7 +201,7 @@ export default function DiscoverBrowser() {
           .map((cat) => (
             <MultiSelectDropdown
               key={cat}
-              icon={CATEGORY_ICON[cat]}
+              icon={CATEGORY_ICONS[cat]}
               label={cat}
               options={tagGroups[cat].map((t) => ({ id: t, name: t }))}
               values={selectedTags.filter((t) => tagGroups[cat].includes(t))}
