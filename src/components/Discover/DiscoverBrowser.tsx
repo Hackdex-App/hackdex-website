@@ -42,10 +42,19 @@ export default function DiscoverBrowser() {
 
   React.useEffect(() => {
     const run = async () => {
+      let orderBy: string | undefined = undefined;
+      if (sort === "popular") {
+        orderBy = "downloads";
+      } else if (sort === "updated") {
+        orderBy = "updated_at";
+      } else {
+        orderBy = "created_at";
+      }
+
       const { data: rows } = await supabase
         .from("hacks")
-        .select("slug,title,summary,description,base_rom,version,downloads,created_by,patch_url")
-        .order(sort === "popular" ? "downloads" : "created_at", { ascending: false });
+        .select("slug,title,summary,description,base_rom,version,downloads,created_by,patch_url,updated_at")
+        .order(orderBy, { ascending: false });
       const slugs = (rows || []).map((r) => r.slug);
       const { data: coverRows } = await supabase
         .from("hack_covers")
@@ -192,6 +201,7 @@ export default function DiscoverBrowser() {
         >
           <option value="popular">Most popular</option>
           <option value="new">Newest</option>
+          <option value="updated">Recently updated</option>
         </select>
       </div>
 
