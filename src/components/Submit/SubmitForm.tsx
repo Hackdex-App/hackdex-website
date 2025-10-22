@@ -198,7 +198,7 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
       try {
         const { data, error } = await supabase.from('tags').select('id, name, usage: hack_tags (count)');
         if (error) return;
-        const fetchedTags: TagSortable[] = (data || []).map((t: any) => ({ id: t.id, name: t.name, popularity: t.usage[0].count || 0 }));
+        const fetchedTags: TagSortable[] = (data || []).map((t: any) => ({ id: t.id, name: t.name, popularity: t.usage[0].count || 0, category: t.category }));
         setAllTags(
           fetchedTags.sort((a, b) => {
             if (b.popularity !== a.popularity) {
