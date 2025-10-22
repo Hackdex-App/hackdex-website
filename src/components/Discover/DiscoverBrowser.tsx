@@ -13,6 +13,7 @@ import {
   MdAutoFixHigh,
   MdSettingsSuggest,
 } from "react-icons/md";
+import { MdTune } from "react-icons/md";
 import { BiSolidGame } from "react-icons/bi";
 import { FaClock, FaGaugeHigh, FaMasksTheater } from "react-icons/fa6";
 import { BsSdCardFill } from "react-icons/bs";
@@ -232,20 +233,21 @@ export default function DiscoverBrowser() {
               }}
             />
           ))}
-        {/* Ungrouped tags as individual pills at the end */}
-        {ungroupedTags.map((t) => (
-          <button
-            key={t}
-            onClick={() => toggleTag(t)}
-            className={`rounded-full px-3 py-1 text-sm ring-1 ring-inset transition-colors ${
-              selectedTags.includes(t)
-                ? "bg-[var(--accent)]/15 text-[var(--foreground)] ring-[var(--accent)]/35"
-                : "bg-[var(--surface-2)] text-foreground/80 ring-[var(--border)] hover:bg-black/5 dark:hover:bg-white/10"
-            }`}
-          >
-            {t}
-          </button>
-        ))}
+        {/* Advanced dropdown for ungrouped tags at the end */}
+        {ungroupedTags.length > 0 && (
+          <MultiSelectDropdown
+            icon={MdTune}
+            label="Advanced"
+            options={ungroupedTags.map((t) => ({ id: t, name: t }))}
+            values={selectedTags.filter((t) => ungroupedTags.includes(t))}
+            onChange={(vals) => {
+              setSelectedTags((prev) => {
+                const others = prev.filter((t) => !ungroupedTags.includes(t));
+                return [...others, ...vals];
+              });
+            }}
+          />
+        )}
         {(selectedTags.length > 0 || selectedBaseRoms.length > 0) && (
           <button
             onClick={() => {
