@@ -60,20 +60,18 @@ export default function PixelImage({ src, alt, mode = "cover", className = "", i
     const ih = naturalSize.height;
     const cw = containerSize.width;
     const ch = containerSize.height;
-    const dpr = devicePixelRatioState || 1;
     if (iw <= 0 || ih <= 0 || cw <= 0 || ch <= 0) return 1;
     const scaleX = cw / iw;
     const scaleY = ch / ih;
-    const step = 1 / dpr; // CSS-px step that maps to 1 device pixel increment
     if (mode === "cover") {
       const required = Math.max(scaleX, scaleY);
       // Snap UP to the nearest step to ensure we cover the container
-      return Math.max(step, Math.ceil(required * dpr) / dpr);
+      return Math.max(1, Math.ceil(required));
     }
     // contain
     const allowed = Math.min(scaleX, scaleY);
     // Snap DOWN to nearest step to avoid overflow
-    return Math.max(step, Math.floor(allowed * dpr) / dpr);
+    return Math.max(1, Math.floor(allowed));
   }, [naturalSize, containerSize, mode, devicePixelRatioState]);
 
   const widthPx = naturalSize.width > 0 ? naturalSize.width * scale : undefined;
