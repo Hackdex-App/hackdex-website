@@ -45,7 +45,7 @@ export default function HackCard({ hack, clickable = true, className = "" }: { h
       emblaApi.off("select", onSelect);
     };
   }, [emblaApi]);
-  const cardClass = `rounded-[12px] overflow-hidden min-w-[360px] ${
+  const cardClass = `rounded-[12px] overflow-hidden ${
     clickable ? "transition-transform duration-300 hover:-translate-y-0.5 hover:shadow-xl anim-float" : ""
   } ring-1 ${ready ? "ring-emerald-400/50 bg-emerald-500/10" : "card ring-[var(--border)]"}`;
   const gradientBgClass = `bg-gradient-to-b ${ready ? 'from-emerald-300/5 to-emerald-400/30 dark:from-emerald-950/10 dark:to-emerald-600/40' : 'from-black/30 to-black/10 dark:from-black/80 dark:to-black/40'}`;
