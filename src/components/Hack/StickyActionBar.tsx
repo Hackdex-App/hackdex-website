@@ -55,19 +55,19 @@ export default function StickyActionBar({ title, version, author, baseRomPlatfor
   }, [status]);
 
   return (
-    <div className="sticky top-18 z-30 flex flex-col gap-2">
-      <div className="mx-auto flex w-full lg:max-w-screen-lg items-center justify-between gap-4 rounded-md border border-[var(--border)] bg-[var(--surface-2)]/80 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-[color-mix(in_oklab,var(--background)_70%,transparent)]">
+    <div className="fixed inset-x-0 bottom-0 z-40 md:sticky md:top-18 md:z-30 flex flex-col gap-2 pb-safe">
+      <div className="mx-auto w-full lg:max-w-screen-lg flex flex-col md:flex-row md:items-center md:justify-between md:gap-4 rounded-t-xl md:rounded-md border border-[var(--border)] bg-[var(--surface-2)]/80 px-4 py-3 pb-[env(safe-area-inset-bottom)] md:pb-3 shadow-[0_-6px_24px_rgba(0,0,0,0.2)] md:shadow-none backdrop-blur supports-[backdrop-filter]:bg-[color-mix(in_oklab,var(--background)_90%,transparent)] md:supports-[backdrop-filter]:bg-[color-mix(in_oklab,var(--background)_70%,transparent)]">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <div className="truncate text-sm font-medium">{title}</div>
+            <div className="truncate text-xl font-bold md:text-sm md:font-medium">{title}</div>
             {version && (
-              <span className="shrink-0 rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[11px] font-medium text-foreground/85 ring-1 ring-[var(--border)]">{version}</span>
+              <span className="shrink-0 rounded-full bg-[var(--surface-2)] ml-auto md:ml-0 px-2 py-0.5 text-[11px] font-medium text-foreground/85 ring-1 ring-[var(--border)]">{version}</span>
             )}
           </div>
-          <div className="truncate text-xs text-foreground/60">By {author}</div>
+          <div className="truncate text-sm md:text-xs text-foreground/60">By @{author}</div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className={`rounded-full px-2 py-0.5 text-xs ring-1 ${
+        <div className="flex w-full md:w-auto flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-2 mb-4 md:mb-0">
+          <span className={`rounded-full mx-auto md:mx-0 px-2 py-0.5 text-xs ring-1 ${
             status === "downloading"
               ? "bg-[var(--surface-2)] text-foreground/85 ring-[var(--border)]"
               : romReady
@@ -84,7 +84,7 @@ export default function StickyActionBar({ title, version, author, baseRomPlatfor
               <button
                 type="button"
                 onClick={() => uploadInputRef.current?.click()}
-                className="rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-foreground text-xs cursor-pointer hover:bg-[var(--surface-3)] hover:text-foreground/80 disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-5/6 mx-auto md:w-auto md:mx-0 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-foreground text-sm md:text-xs cursor-pointer hover:bg-[var(--surface-3)] hover:text-foreground/80 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Select Base ROM
               </button>
@@ -95,15 +95,16 @@ export default function StickyActionBar({ title, version, author, baseRomPlatfor
               type="button"
               onClick={onClickLink}
               disabled={!supported}
-              className="rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-xs cursor-pointer hover:bg-[var(--surface-3)] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-5/6 md:w-auto rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm md:text-xs cursor-pointer hover:bg-[var(--surface-3)] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
             >
               Grant permission
             </button>
           )}
           <button
             onClick={onPatch}
+            data-ready={romReady}
             disabled={!mounted || (status !== "ready" && status !== "done") || !patchAgainReady}
-            className="shine-wrap btn-premium h-9 min-w-[7.5rem] text-sm font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70"
+            className="shine-wrap btn-premium max-md:data-[ready=false]:hidden! h-11 md:h-9 w-full md:w-auto md:min-w-[7.5rem] text-base md:text-sm font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70"
           >
             <span>{status === "patching" ? "Patching…" : (
               status === "done" ? (
@@ -115,7 +116,7 @@ export default function StickyActionBar({ title, version, author, baseRomPlatfor
       </div>
       {errorMessage !== null && (
         <div
-          className={`absolute -bottom-2 left-1/2 -translate-x-1/2 mx-auto flex lg:max-w-screen-lg rounded-md border border-[var(--border)] bg-[var(--surface-2)]/80 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-[color-mix(in_oklab,var(--background)_70%,transparent)] text-sm text-red-400 transition-all duration-300 ${showError ? "opacity-100 translate-y-full" : "opacity-0 -translate-y-1/2 pointer-events-none"}`}
+          className={`absolute inset-x-0 md:left-1/2 md:-translate-x-1/2 -top-2 mb-2 md:-bottom-2 md:mx-auto flex w-full md:w-auto lg:max-w-screen-lg rounded-md border border-[var(--border)] bg-[var(--surface-2)]/80 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-[color-mix(in_oklab,var(--background)_70%,transparent)] text-sm text-red-400 transition-all duration-300 ${showError ? "opacity-100 -translate-y-full md:translate-y-full" : "opacity-0 translate-y-0 md:-translate-y-1/2 pointer-events-none"}`}
           role="alert"
           aria-live="polite"
         >

@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import MobileFooterSpacer from "@/components/MobileFooterSpacer";
 import { BaseRomProvider } from "@/contexts/BaseRomContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 
@@ -39,6 +40,7 @@ export default function RootLayout({
             <Header />
             <main className="flex-1 flex flex-col">{children}</main>
             <Footer />
+            <MobileFooterSpacer />
           </BaseRomProvider>
         </AuthProvider>
       </body>
