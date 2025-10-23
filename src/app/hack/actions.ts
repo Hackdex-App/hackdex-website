@@ -2,6 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import type { TablesInsert } from "@/types/db";
+import { getMinioClient, PATCHES_BUCKET } from "@/utils/minio/server";
 
 export async function updateHack(args: {
   slug: string;
@@ -157,6 +158,44 @@ export async function saveHackCovers(args: { slug: string; coverUrls: string[] }
   }
 
   return { ok: true } as const;
+}
+
+
+export async function presignNewPatchVersion(args: { slug: string; version: string; objectKey?: string }) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Unauthorized" } as const;
+
+  // Ensure hack exists and belongs to user
+  const { data: hack, error: hErr } = await supabase
+    .from("hacks")
+    .select("slug, created_by")
+    .eq("slug", args.slug)
+    .maybeSingle();
+  if (hErr) return { ok: false, error: hErr.message } as const;
+  if (!hack) return { ok: false, error: "Hack not found" } as const;
+  if (hack.created_by !== user.id) return { ok: false, error: "Forbidden" } as const;
+
+  // Enforce unique version per hack
+  const { data: existing } = await supabase
+    .from("patches")
+    .select("id")
+    .eq("parent_hack", args.slug)
+    .eq("version", args.version)
+    .limit(1)
+    .maybeSingle();
+  if (existing) return { ok: false, error: "That version already exists for this hack." } as const;
+
+  const safeVersion = args.version.replace(/[^a-zA-Z0-9._-]+/g, "-");
+  const objectKey = args.objectKey || `${args.slug}-${safeVersion}.bps`;
+
+  const client = getMinioClient();
+  // 10 minutes to upload
+  const url = await client.presignedPutObject(PATCHES_BUCKET, objectKey, 60 * 10);
+
+  return { ok: true, presignedUrl: url, objectKey } as const;
 }
 
 

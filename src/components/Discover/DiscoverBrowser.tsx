@@ -35,7 +35,7 @@ export default function DiscoverBrowser() {
 
       const { data: rows } = await supabase
         .from("hacks")
-        .select("slug,title,summary,description,base_rom,version,downloads,created_by,patch_url,updated_at")
+        .select("slug,title,summary,description,base_rom,downloads,created_by,updated_at,current_patch")
         .order(orderBy, { ascending: false });
       const slugs = (rows || []).map((r) => r.slug);
       const { data: coverRows } = await supabase
@@ -77,6 +77,20 @@ export default function DiscoverBrowser() {
         arr.push(r.tags.name);
         tagsBySlug.set(r.hack_slug, arr);
       });
+
+      let mappedVersions = new Map<string, string>();
+      await Promise.all((rows || []).map(async (r) => {
+        if (r.current_patch) {
+          const { data: currentPatch } = await supabase
+            .from("patches")
+            .select("version")
+            .eq("id", r.current_patch)
+            .maybeSingle();
+          mappedVersions.set(r.slug, currentPatch?.version || "Pre-release");
+        } else {
+          mappedVersions.set(r.slug, "Pre-release");
+        }
+      }));
       // Fetch all tags with category to build UI groups
       const { data: allTagRows } = await supabase
         .from("tags")
@@ -95,7 +109,7 @@ export default function DiscoverBrowser() {
         tags: tagsBySlug.get(r.slug) || [],
         downloads: r.downloads,
         baseRomId: r.base_rom,
-        version: r.version,
+        version: mappedVersions.get(r.slug) || "Pre-release",
         summary: r.summary,
         description: r.description,
       }));

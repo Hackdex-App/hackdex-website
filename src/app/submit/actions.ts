@@ -163,6 +163,16 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
   if (!hack) return { ok: false, error: "Hack not found" } as const;
   if (hack.created_by !== user.id) return { ok: false, error: "Forbidden" } as const;
 
+  // Enforce unique version per hack defensively (avoid race with presign step)
+  const { data: existing, error: vErr } = await supabase
+    .from("patches")
+    .select("id")
+    .eq("parent_hack", args.slug)
+    .eq("version", args.version)
+    .maybeSingle();
+  if (vErr) return { ok: false, error: vErr.message } as const;
+  if (existing) return { ok: false, error: "That version already exists for this hack." } as const;
+
   // Create patch row
   const { data: patch, error: pErr } = await supabase
     .from("patches")

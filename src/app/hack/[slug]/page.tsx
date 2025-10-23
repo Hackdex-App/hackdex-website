@@ -21,7 +21,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
   const supabase = await createClient();
   const { data: hack, error } = await supabase
     .from("hacks")
-    .select("slug,title,summary,description,base_rom,version,created_at,updated_at,downloads,current_patch,box_art,social_links,created_by")
+    .select("slug,title,summary,description,base_rom,created_at,updated_at,downloads,current_patch,box_art,social_links,created_by")
     .eq("slug", slug)
     .maybeSingle();
   if (error || !hack) return notFound();
@@ -62,16 +62,18 @@ export default async function HackDetail({ params }: HackDetailProps) {
 
   // Resolve a short-lived signed patch URL (if current_patch exists)
   let signedPatchUrl = "";
+  let patchVersion = "";
   if (hack.current_patch != null) {
     const { data: patch } = await supabase
       .from("patches")
-      .select("id,bucket,filename")
+      .select("id,bucket,filename,version")
       .eq("id", hack.current_patch as number)
       .maybeSingle();
     if (patch) {
       const client = getMinioClient();
       const bucket = patch.bucket || PATCHES_BUCKET;
       signedPatchUrl = await client.presignedGetObject(bucket, patch.filename, 60 * 5);
+      patchVersion = patch.version || "";
     }
   }
 
@@ -79,7 +81,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
     <div className="mx-auto max-w-screen-lg px-6 pb-28">
       <HackActions
         title={hack.title}
-        version={hack.version}
+        version={patchVersion || "Pre-release"}
         author={author}
         baseRom={baseRom?.name || ""}
         platform={baseRom?.platform}
@@ -92,7 +94,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
             <div className="flex items-center gap-3">
               <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{hack.title}</h1>
               <span className="rounded-full bg-[var(--surface-2)] px-3 py-1 text-xs font-medium text-foreground/85 ring-1 ring-[var(--border)]">
-                {hack.version}
+                {patchVersion || "Pre-release"}
               </span>
             </div>
             <p className="mt-1 text-[15px] text-foreground/70">By {author}</p>

@@ -57,38 +57,13 @@ export default function HackOptionsMenu({ slug, canEdit }: HackOptionsMenuProps)
               className="block w-full px-3 py-2 text-left text-sm data-focus:bg-black/5 dark:data-focus:bg-white/10">
               Edit
             </MenuItem>
-          </>}
-          {/* <MenuItem>
-            <button
-              className={`block w-full px-3 py-2 text-left text-sm data-focus:bg-[var(--surface-3)]`}
-              onClick={() => {
-                // TODO: Implement share
-              }}
-            >
-              Share
-            </button>
-          </MenuItem>
-          <MenuItem>
-            <button
-              className={`block w-full px-3 py-2 text-left text-sm data-focus:bg-[var(--surface-3)]`}
-              onClick={() => {
-                // TODO: Implement report
-              }}
-            >
-              Report
-            </button>
-          </MenuItem>
-          {canEdit && <div className="my-1 h-px bg-[var(--border)]" />}
-          {canEdit && (
-            <MenuItem>
-              <a
-                className={`block w-full px-3 py-2 text-left text-sm data-focus:bg-[var(--surface-3)]`}
-                href={`/hack/${slug}/edit`}
-              >
-                Edit
-              </a>
+            <MenuItem
+              as="a"
+              href={`/hack/${slug}/edit/patch`}
+              className="block w-full px-3 py-2 text-left text-sm data-focus:bg-black/5 dark:data-focus:bg-white/10">
+              Upload new version
             </MenuItem>
-          )} */}
+          </>}
         </MenuItems>
       </Transition>
     </Menu>
