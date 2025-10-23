@@ -2,10 +2,10 @@
 import type { Platform } from "@/data/baseRoms";
 import { PLATFORMS } from "@/data/baseRoms";
 
-const DB_NAME = "romhaven";
+const DB_NAME = "hackdex";
 const DB_VERSION = 2;
-const STORE = "roms";
-const BLOB_STORE = "rom_blobs";
+const STORE = "base_roms";
+const BLOB_STORE = "base_rom_blobs";
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -13,10 +13,10 @@ function openDB(): Promise<IDBDatabase> {
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains(STORE)) {
-        db.createObjectStore(STORE, { keyPath: "name" });
+        db.createObjectStore(STORE, { keyPath: "id" });
       }
       if (!db.objectStoreNames.contains(BLOB_STORE)) {
-        db.createObjectStore(BLOB_STORE, { keyPath: "name" });
+        db.createObjectStore(BLOB_STORE, { keyPath: "id" });
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -24,29 +24,29 @@ function openDB(): Promise<IDBDatabase> {
   });
 }
 
-export async function setRomHandle(name: string, handle: any): Promise<void> {
+export async function setRomHandle(id: string, handle: any): Promise<void> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE, "readwrite");
     const store = tx.objectStore(STORE);
-    store.put({ name, handle, updatedAt: Date.now() });
+    store.put({ id, handle, updatedAt: Date.now() });
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
 }
 
-export async function getRomHandle(name: string): Promise<any | null> {
+export async function getRomHandle(id: string): Promise<any | null> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE, "readonly");
     const store = tx.objectStore(STORE);
-    const req = store.get(name);
+    const req = store.get(id);
     req.onsuccess = () => resolve(req.result?.handle ?? null);
     req.onerror = () => reject(req.error);
   });
 }
 
-export async function getAllRomEntries(): Promise<Array<{ name: string; handle: any }>> {
+export async function getAllRomEntries(): Promise<Array<{ id: string; handle: any }>> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE, "readonly");
@@ -54,57 +54,57 @@ export async function getAllRomEntries(): Promise<Array<{ name: string; handle: 
     const req = store.getAll();
     req.onsuccess = () => {
       const rows = (req.result as any[]) || [];
-      resolve(rows.map((r) => ({ name: r.name, handle: r.handle })));
+      resolve(rows.map((r) => ({ id: r.id, handle: r.handle })));
     };
     req.onerror = () => reject(req.error);
   });
 }
 
-export async function deleteRomHandle(name: string): Promise<void> {
+export async function deleteRomHandle(id: string): Promise<void> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE, "readwrite");
     const store = tx.objectStore(STORE);
-    store.delete(name);
+    store.delete(id);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
 }
 
-export async function setRomBlob(name: string, blob: Blob): Promise<void> {
+export async function setRomBlob(id: string, blob: Blob): Promise<void> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(BLOB_STORE, "readwrite");
     const store = tx.objectStore(BLOB_STORE);
-    store.put({ name, blob, updatedAt: Date.now() });
+    store.put({ id, blob, updatedAt: Date.now() });
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
 }
 
-export async function getRomBlob(name: string): Promise<Blob | null> {
+export async function getRomBlob(id: string): Promise<Blob | null> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(BLOB_STORE, "readonly");
     const store = tx.objectStore(BLOB_STORE);
-    const req = store.get(name);
+    const req = store.get(id);
     req.onsuccess = () => resolve(req.result?.blob ?? null);
     req.onerror = () => reject(req.error);
   });
 }
 
-export async function deleteRomBlob(name: string): Promise<void> {
+export async function deleteRomBlob(id: string): Promise<void> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(BLOB_STORE, "readwrite");
     const store = tx.objectStore(BLOB_STORE);
-    store.delete(name);
+    store.delete(id);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
 }
 
-export async function getAllBlobEntries(): Promise<Array<{ name: string; blob: Blob; updatedAt?: number }>> {
+export async function getAllBlobEntries(): Promise<Array<{ id: string; blob: Blob; updatedAt?: number }>> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(BLOB_STORE, "readonly");

@@ -39,9 +39,9 @@ export default function HackPatchForm(props: HackPatchFormProps) {
   const baseRomName = baseRomEntry?.name;
 
   const { isLinked, hasPermission, hasCached, importUploadedBlob, ensurePermission, getFileBlob, supported } = useBaseRoms();
-  const baseRomReady = !!baseRomName && (hasPermission(baseRomName) || hasCached(baseRomName));
-  const baseRomNeedsPermission = !!baseRomName && isLinked(baseRomName) && !baseRomReady;
-  const baseRomMissing = !!baseRomName && !isLinked(baseRomName) && !hasCached(baseRomName);
+  const baseRomReady = !!baseRomId && (hasPermission(baseRomId) || hasCached(baseRomId));
+  const baseRomNeedsPermission = !!baseRomId && isLinked(baseRomId) && !baseRomReady;
+  const baseRomMissing = !!baseRomId && !isLinked(baseRomId) && !hasCached(baseRomId);
 
   const isVersionTaken = version.trim() && existingVersions.includes(version.trim());
   const canSubmit = React.useMemo(() => {
@@ -78,8 +78,8 @@ export default function HackPatchForm(props: HackPatchFormProps) {
   }, [patchMode]);
 
   async function onGrantPermission() {
-    if (!baseRomName) return;
-    await ensurePermission(baseRomName, true);
+    if (!baseRomId) return;
+    await ensurePermission(baseRomId, true);
   }
 
   async function onUploadBaseRom(e: React.ChangeEvent<HTMLInputElement>) {
@@ -92,7 +92,7 @@ export default function HackPatchForm(props: HackPatchFormProps) {
         setGenError("That ROM doesn't match any supported base ROM.");
         return;
       }
-      if (matched !== baseRomName) {
+      if (matched !== baseRomId) {
         setGenError(`This ROM matches "${matched}", but this hack requires "${baseRomName}".`);
         return;
       }
@@ -106,11 +106,11 @@ export default function HackPatchForm(props: HackPatchFormProps) {
       setGenStatus("generating");
       setGenError("");
       const mod = e.target.files?.[0] || null;
-      if (!mod || !baseRomName) {
+      if (!mod || !baseRomId) {
         setGenStatus("idle");
         return;
       }
-      let baseFile = await getFileBlob(baseRomName);
+      let baseFile = await getFileBlob(baseRomId);
       if (!baseFile) {
         setGenStatus("idle");
         setGenError("Base ROM not available.");

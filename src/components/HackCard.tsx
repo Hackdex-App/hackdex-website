@@ -25,9 +25,9 @@ type CardHack = {
 export default function HackCard({ hack, clickable = true, className = "" }: { hack: CardHack; clickable?: boolean; className?: string }) {
   const { isLinked, hasPermission, hasCached } = useBaseRoms();
   const match = baseRoms.find((r) => r.id === hack.baseRomId);
-  const baseName = match?.name ?? undefined;
-  const linked = baseName ? isLinked(baseName) : false;
-  const ready = baseName ? hasPermission(baseName) || hasCached(baseName) : false;
+  const baseId = match?.id ?? undefined;
+  const linked = baseId ? isLinked(baseId) : false;
+  const ready = baseId ? hasPermission(baseId) || hasCached(baseId) : false;
   const images = (hack.covers && hack.covers.length > 0 ? hack.covers : []).filter(Boolean);
   const isCarousel = images.length > 1;
   const pathname = usePathname();
@@ -156,7 +156,7 @@ export default function HackCard({ hack, clickable = true, className = "" }: { h
               return text.length > 120 ? text.slice(0, 120).trimEnd() + "…" : text;
             })()}
           </p>
-          <div className="mt-3 text-xs text-foreground/60">Base: {baseName ?? "Unknown"}</div>
+          <div className="mt-3 text-xs text-foreground/60">Base: {baseId ?? "Unknown"}</div>
         </div>
       </div>
   );

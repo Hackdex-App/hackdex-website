@@ -14,17 +14,17 @@ type ContextValue = {
   countGranted: number;
   countReady: number;
   totalCachedBytes: number;
-  isLinked: (name: string) => boolean;
-  hasPermission: (name: string) => boolean;
-  hasCached: (name: string) => boolean;
-  getHandle: (name: string) => any | null;
-  linkRom: (name: string) => Promise<void>;
-  unlinkRom: (name: string) => Promise<void>;
-  ensurePermission: (name: string, request?: boolean) => Promise<"granted" | "prompt" | "denied" | "error">;
-  getFileBlob: (name: string) => Promise<File | null>;
-  importToCache: (name: string) => Promise<void>;
-  removeFromCache: (name: string) => Promise<void>;
-  importUploadedBlob: (file: File) => Promise<string | null>; // returns matched name
+  isLinked: (id: string) => boolean;
+  hasPermission: (id: string) => boolean;
+  hasCached: (id: string) => boolean;
+  getHandle: (id: string) => any | null;
+  linkRom: (id: string) => Promise<void>;
+  unlinkRom: (id: string) => Promise<void>;
+  ensurePermission: (id: string, request?: boolean) => Promise<"granted" | "prompt" | "denied" | "error">;
+  getFileBlob: (id: string) => Promise<File | null>;
+  importToCache: (id: string) => Promise<void>;
+  removeFromCache: (id: string) => Promise<void>;
+  importUploadedBlob: (file: File) => Promise<string | null>; // returns matched id
 };
 
 const BaseRomContext = React.createContext<ContextValue | null>(null);
@@ -44,7 +44,7 @@ export function BaseRomProvider({ children }: { children: React.ReactNode }) {
         const st: Record<string, "granted" | "prompt" | "denied" | "error"> = {};
         const cacheState: Record<string, boolean> = {};
         for (const r of rows) {
-          map[r.name] = r.handle;
+          map[r.id] = r.handle;
           try {
             const perm = r.handle?.queryPermission?.({ mode: "read" });
             let state: any = "prompt";
@@ -52,16 +52,16 @@ export function BaseRomProvider({ children }: { children: React.ReactNode }) {
               const result = await perm;
               state = result;
             }
-            st[r.name] = state === "granted" ? "granted" : state === "denied" ? "denied" : "prompt";
+            st[r.id] = state === "granted" ? "granted" : state === "denied" ? "denied" : "prompt";
           } catch {
-            st[r.name] = "error";
+            st[r.id] = "error";
           }
         }
         // Check existing blobs for all known bases (and linked ones)
         const blobRows = await getAllBlobEntries();
         let total = 0;
         for (const row of blobRows) {
-          cacheState[row.name] = true;
+          cacheState[row.id] = true;
           total += row.blob?.size ?? 0;
         }
         setLinked(map);
@@ -74,23 +74,23 @@ export function BaseRomProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  function isLinked(name: string) {
-    return Boolean(linked[name]);
+  function isLinked(id: string) {
+    return Boolean(linked[id]);
   }
 
-  function getHandle(name: string) {
-    return linked[name] ?? null;
+  function getHandle(id: string) {
+    return linked[id] ?? null;
   }
 
-  function hasPermission(name: string) {
-    return statuses[name] === "granted";
+  function hasPermission(id: string) {
+    return statuses[id] === "granted";
   }
 
-  function hasCached(name: string) {
-    return Boolean(cached[name]);
+  function hasCached(id: string) {
+    return Boolean(cached[id]);
   }
 
-  async function linkRom(name: string) {
+  async function linkRom(id: string) {
     if (!supported) {
       // Fallback: use an <input type="file"> to allow selecting a ROM and cache it if recognized
       try {
@@ -107,8 +107,8 @@ export function BaseRomProvider({ children }: { children: React.ReactNode }) {
               const hash = await sha1Hex(file);
               const match = baseRoms.find((r) => r.sha1 && r.sha1.toLowerCase() === hash.toLowerCase());
               if (match) {
-                await setRomBlob(match.name, file);
-                setCached((prev) => ({ ...prev, [match.name]: true }));
+                await setRomBlob(match.id, file);
+                setCached((prev) => ({ ...prev, [match.id]: true }));
                 setTotalCachedBytes((n) => n + file.size);
               }
             } catch {}
@@ -141,30 +141,30 @@ export function BaseRomProvider({ children }: { children: React.ReactNode }) {
           await handle.requestPermission({ mode: "read" });
         }
       }
-      await setRomHandle(name, handle);
-      setLinked((prev) => ({ ...prev, [name]: handle }));
+      await setRomHandle(id, handle);
+      setLinked((prev) => ({ ...prev, [id]: handle }));
       try {
         const q = await handle.queryPermission?.({ mode: "read" });
-        setStatuses((prev) => ({ ...prev, [name]: q === "granted" ? "granted" : q === "denied" ? "denied" : "prompt" }));
+        setStatuses((prev) => ({ ...prev, [id]: q === "granted" ? "granted" : q === "denied" ? "denied" : "prompt" }));
       } catch {
-        setStatuses((prev) => ({ ...prev, [name]: "error" }));
+        setStatuses((prev) => ({ ...prev, [id]: "error" }));
       }
     } catch (e) {
       // canceled or failed
     }
   }
 
-  async function unlinkRom(name: string) {
+  async function unlinkRom(id: string) {
     try {
-      await deleteRomHandle(name);
+      await deleteRomHandle(id);
       setLinked((prev) => {
         const next = { ...prev };
-        delete next[name];
+        delete next[id];
         return next;
       });
       setStatuses((prev) => {
         const next = { ...prev };
-        delete next[name];
+        delete next[id];
         return next;
       });
       // Note: keep cached copy unless explicitly removed
@@ -173,8 +173,8 @@ export function BaseRomProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  async function ensurePermission(name: string, request = false) {
-    const handle = linked[name];
+  async function ensurePermission(id: string, request = false) {
+    const handle = linked[id];
     if (!handle) return "error";
     try {
       let state = await handle.queryPermission?.({ mode: "read" });
@@ -182,19 +182,19 @@ export function BaseRomProvider({ children }: { children: React.ReactNode }) {
         state = await handle.requestPermission({ mode: "read" });
       }
       const mapped = state === "granted" ? "granted" : state === "denied" ? "denied" : "prompt";
-      setStatuses((prev) => ({ ...prev, [name]: mapped }));
+      setStatuses((prev) => ({ ...prev, [id]: mapped }));
       return mapped;
     } catch {
-      setStatuses((prev) => ({ ...prev, [name]: "error" }));
+      setStatuses((prev) => ({ ...prev, [id]: "error" }));
       return "error";
     }
   }
 
-  async function getFileBlob(name: string): Promise<File | null> {
+  async function getFileBlob(id: string): Promise<File | null> {
     // Prefer cached
-    const cachedBlob = await getRomBlob(name);
-    if (cachedBlob) return new File([cachedBlob], name);
-    const handle = linked[name];
+    const cachedBlob = await getRomBlob(id);
+    if (cachedBlob) return new File([cachedBlob], id);
+    const handle = linked[id];
     if (!handle) return null;
     try {
       const file = await handle.getFile();
@@ -205,25 +205,25 @@ export function BaseRomProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  async function importToCache(name: string) {
-    const handle = linked[name];
+  async function importToCache(id: string) {
+    const handle = linked[id];
     if (!handle) return;
     try {
       const file = await handle.getFile();
-      await setRomBlob(name, file);
-      setCached((prev) => ({ ...prev, [name]: true }));
+      await setRomBlob(id, file);
+      setCached((prev) => ({ ...prev, [id]: true }));
       setTotalCachedBytes((n) => n + file.size);
     } catch {
       // noop
     }
   }
 
-  async function removeFromCache(name: string) {
+  async function removeFromCache(id: string) {
     try {
-      await deleteRomBlob(name);
+      await deleteRomBlob(id);
       setCached((prev) => {
         const next = { ...prev };
-        delete next[name];
+        delete next[id];
         return next;
       });
       // We cannot easily know the blob size now; recalc total
@@ -238,16 +238,16 @@ export function BaseRomProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  // Accept a user-uploaded base ROM, hash it, and if it matches a known base ROM, cache it under that name
+  // Accept a user-uploaded base ROM, hash it, and if it matches a known base ROM, cache it under that id
   async function importUploadedBlob(file: File): Promise<string | null> {
     try {
       const hash = await sha1Hex(file);
       const match = baseRoms.find((r) => r.sha1 && r.sha1.toLowerCase() === hash.toLowerCase());
       if (!match) return null;
-      await setRomBlob(match.name, file);
-      setCached((prev) => ({ ...prev, [match.name]: true }));
+      await setRomBlob(match.id, file);
+      setCached((prev) => ({ ...prev, [match.id]: true }));
       setTotalCachedBytes((n) => n + file.size);
-      return match.name;
+      return match.id;
     } catch {
       return null;
     }
@@ -262,9 +262,9 @@ export function BaseRomProvider({ children }: { children: React.ReactNode }) {
         const quota = estimate?.quota ?? Infinity;
         const usage = estimate?.usage ?? totalCachedBytes;
         const headroom = quota - usage;
-        for (const name of names) {
-          if (cached[name]) continue;
-          const handle = linked[name];
+        for (const id of names) {
+          if (cached[id]) continue;
+          const handle = linked[id];
           if (!handle) continue;
           try {
             const file = await handle.getFile();
@@ -272,8 +272,8 @@ export function BaseRomProvider({ children }: { children: React.ReactNode }) {
             const smallEnough = size <= 128 * 1024 * 1024; // 128MB default
             const hasRoom = headroom > size * 1.2 && headroom > 64 * 1024 * 1024; // some buffer
             if (smallEnough && hasRoom) {
-              await setRomBlob(name, file);
-              setCached((prev) => ({ ...prev, [name]: true }));
+              await setRomBlob(id, file);
+              setCached((prev) => ({ ...prev, [id]: true }));
               setTotalCachedBytes((n) => n + size);
             }
           } catch {}

@@ -11,7 +11,7 @@ interface HackActionsProps {
   title: string;
   version: string;
   author: string;
-  baseRom: string;
+  baseRomId: string;
   platform?: "GBA" | "GBC" | "GB" | "NDS";
   patchUrl: string;
 }
@@ -20,7 +20,7 @@ const HackActions: React.FC<HackActionsProps> = ({
   title,
   version,
   author,
-  baseRom,
+  baseRomId,
   platform,
   patchUrl,
 }) => {
@@ -30,10 +30,10 @@ const HackActions: React.FC<HackActionsProps> = ({
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (isLinked(baseRom) && (hasPermission(baseRom) || hasCached(baseRom))) {
+    if (isLinked(baseRomId) && (hasPermission(baseRomId) || hasCached(baseRomId))) {
       setStatus("ready");
     }
-  }, [baseRom, isLinked, hasPermission, hasCached]);
+  }, [baseRomId, isLinked, hasPermission, hasCached]);
 
   function onSelectFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0] ?? null;
@@ -47,12 +47,12 @@ const HackActions: React.FC<HackActionsProps> = ({
       setError(null);
       let baseFile = file;
       if (!baseFile) {
-        if (!isLinked(baseRom) && !hasCached(baseRom)) return;
-        if (!hasCached(baseRom)) {
-          const perm = await ensurePermission(baseRom, true);
+        if (!isLinked(baseRomId) && !hasCached(baseRomId)) return;
+        if (!hasCached(baseRomId)) {
+          const perm = await ensurePermission(baseRomId, true);
           if (perm !== "granted") return;
         }
-        const linkedFile = await getFileBlob(baseRom);
+        const linkedFile = await getFileBlob(baseRomId);
         if (!linkedFile) return;
         baseFile = linkedFile;
       }
@@ -100,9 +100,9 @@ const HackActions: React.FC<HackActionsProps> = ({
       author={author}
       onPatch={onPatch}
       status={status}
-      isLinked={isLinked(baseRom)}
-      ready={hasPermission(baseRom) || hasCached(baseRom)}
-      onClickLink={() => (isLinked(baseRom) ? ensurePermission(baseRom, true) : linkRom(baseRom))}
+      isLinked={isLinked(baseRomId)}
+      ready={hasPermission(baseRomId) || hasCached(baseRomId)}
+      onClickLink={() => (isLinked(baseRomId) ? ensurePermission(baseRomId, true) : linkRom(baseRomId))}
       supported={supported}
       onUploadChange={onSelectFile}
     />

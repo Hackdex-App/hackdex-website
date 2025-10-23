@@ -97,9 +97,9 @@ export default function HackSubmitForm({ dummy = false }: HackSubmitFormProps) {
   const baseRomPlatform = baseRomEntry?.platform;
   const { isLinked, hasPermission, hasCached, importUploadedBlob, ensurePermission, getFileBlob, supported } = useBaseRoms();
 
-  const baseRomReady = baseRomName && (hasPermission(baseRomName) || hasCached(baseRomName));
-  const baseRomNeedsPermission = baseRomName && isLinked(baseRomName) && !baseRomReady;
-  const baseRomMissing = baseRomName && !isLinked(baseRomName) && !hasCached(baseRomName);
+  const baseRomReady = baseRom && (hasPermission(baseRom) || hasCached(baseRom));
+  const baseRomNeedsPermission = baseRom && isLinked(baseRom) && !baseRomReady;
+  const baseRomMissing = baseRom && !isLinked(baseRom) && !hasCached(baseRom);
 
   const coverPreviews = React.useMemo(() => {
     return newCoverFiles.map((f) => URL.createObjectURL(f));
@@ -251,8 +251,8 @@ export default function HackSubmitForm({ dummy = false }: HackSubmitFormProps) {
   };
 
   async function onGrantPermission() {
-    if (!baseRomName) return;
-    await ensurePermission(baseRomName, true);
+    if (!baseRom) return;
+    await ensurePermission(baseRom, true);
   }
 
   async function onUploadBaseRom(e: React.ChangeEvent<HTMLInputElement>) {
@@ -260,13 +260,14 @@ export default function HackSubmitForm({ dummy = false }: HackSubmitFormProps) {
       setGenError("");
       const f = e.target.files?.[0];
       if (!f) return;
-      const matchedName = await importUploadedBlob(f);
-      if (!matchedName) {
+      const matchedId = await importUploadedBlob(f);
+      if (!matchedId) {
         setGenError("That ROM doesn't match any supported base ROM.");
         return;
       }
-      if (matchedName !== baseRomName) {
-        setGenError(`This ROM matches "${matchedName}", but the form requires "${baseRomName}".`);
+      if (matchedId !== baseRom) {
+        const matchedName = baseRoms.find(r => r.id === matchedId)?.name;
+        setGenError(`This ROM matches "${matchedName ?? matchedId}", but the form requires "${baseRomName}".`);
         return;
       }
     } catch {
@@ -279,11 +280,11 @@ export default function HackSubmitForm({ dummy = false }: HackSubmitFormProps) {
       setGenStatus("generating");
       setGenError("");
       const mod = e.target.files?.[0] || null;
-      if (!mod || !baseRomName) {
+      if (!mod || !baseRom) {
         setGenStatus("idle");
         return;
       }
-      let baseFile = await getFileBlob(baseRomName);
+      let baseFile = await getFileBlob(baseRom);
       if (!baseFile) {
         setGenStatus("idle");
         setGenError("Base ROM not available.");

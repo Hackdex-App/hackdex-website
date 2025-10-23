@@ -17,14 +17,15 @@ export default function RomsInteractive() {
   async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const name = await importUploadedBlob(file);
+    const id = await importUploadedBlob(file);
+    const name = baseRoms.find(r => r.id === id)?.name;
     if (name) setUploadMsg(`Recognized and cached: ${name}`);
     else setUploadMsg("Unrecognized ROM. Not cached.");
     e.target.value = "";
   }
 
-  const linkedOrCached = baseRoms.filter(({ name }) => Boolean(cached[name]) || Boolean(linked[name]));
-  const notLinked = baseRoms.filter(({ name }) => !cached[name] && !linked[name]);
+  const linkedOrCached = baseRoms.filter(({ id }) => Boolean(cached[id]) || Boolean(linked[id]));
+  const notLinked = baseRoms.filter(({ id }) => !cached[id] && !linked[id]);
 
   return (
     <>
@@ -66,7 +67,8 @@ export default function RomsInteractive() {
               setUploadMsg(`Unrecognized file. Not cached. Accepted types: ${ALLOWED_TYPES.join(", ")}`);
               return;
             }
-            const name = await importUploadedBlob(file);
+            const id = await importUploadedBlob(file);
+            const name = baseRoms.find(r => r.id === id)?.name;
             if (name) setUploadMsg(`Recognized and cached: ${name}`);
             else setUploadMsg("Unrecognized ROM. Not cached.");
           }}
@@ -98,23 +100,24 @@ export default function RomsInteractive() {
         <div className="mt-6">
           <div className="mb-3 text-xs font-medium uppercase tracking-wide text-foreground/70">Linked or cached</div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {linkedOrCached.map(({ name, platform, region }) => {
-              const isLinked = Boolean(linked[name]);
-              const status = statuses[name] ?? (isLinked ? "prompt" : "denied");
-              const isCached = Boolean(cached[name]);
+            {linkedOrCached.map(({ id, platform, region }) => {
+              const name = baseRoms.find(r => r.id === id)?.name;
+              const isLinked = Boolean(linked[id]);
+              const status = statuses[id] ?? (isLinked ? "prompt" : "denied");
+              const isCached = Boolean(cached[id]);
               return (
                 <BaseRomCard
-                  key={name}
-                  name={name}
+                  key={id}
+                  name={name ?? id}
                   platform={platform}
                   region={region}
                   isLinked={isLinked}
                   status={status}
                   isCached={isCached}
-                  onRemoveCache={() => removeFromCache(name)}
-                  onUnlink={() => unlinkRom(name)}
-                  onEnsurePermission={() => ensurePermission(name, true)}
-                  onImportCache={() => importToCache(name)}
+                  onRemoveCache={() => removeFromCache(id)}
+                  onUnlink={() => unlinkRom(id)}
+                  onEnsurePermission={() => ensurePermission(id, true)}
+                  onImportCache={() => importToCache(id)}
                 />
               );
             })}
@@ -125,9 +128,9 @@ export default function RomsInteractive() {
       <div className="mt-8">
         <div className="mb-3 text-xs font-medium uppercase tracking-wide text-foreground/70">Not linked</div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {notLinked.map(({ name, platform, region }) => (
+          {notLinked.map(({ id, name, platform, region }) => (
             <BaseRomCard
-              key={name}
+              key={id}
               name={name}
               platform={platform}
               region={region}

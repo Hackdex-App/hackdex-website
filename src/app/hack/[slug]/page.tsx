@@ -83,7 +83,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
         title={hack.title}
         version={patchVersion || "Pre-release"}
         author={author}
-        baseRom={baseRom?.name || ""}
+        baseRomId={baseRom?.id || ""}
         platform={baseRom?.platform}
         patchUrl={signedPatchUrl}
       />
