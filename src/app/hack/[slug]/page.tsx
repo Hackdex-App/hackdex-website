@@ -10,6 +10,7 @@ import { FaDiscord, FaTwitter } from "react-icons/fa6";
 import PokeCommunityIcon from "@/components/Icons/PokeCommunityIcon";
 import { createClient } from "@/utils/supabase/server";
 import { getMinioClient, PATCHES_BUCKET } from "@/utils/minio/server";
+import HackOptionsMenu from "@/components/Hack/HackOptionsMenu";
 
 interface HackDetailProps {
   params: Promise<{ slug: string }>;
@@ -53,6 +54,11 @@ export default async function HackDetail({ params }: HackDetailProps) {
     .eq("id", hack.created_by as string)
     .maybeSingle();
   const author = profile?.username || "Unknown";
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const canEdit = !!user && user.id === (hack.created_by as string);
 
   // Resolve a short-lived signed patch URL (if current_patch exists)
   let signedPatchUrl = "";
@@ -99,13 +105,16 @@ export default async function HackDetail({ params }: HackDetailProps) {
               ))}
             </div>
           </div>
-          <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-[var(--border)] bg-[var(--surface-2)] px-3 py-1 text-sm text-foreground/85">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-            <span>{formatCompactNumber(hack.downloads)}</span>
+          <div className="flex items-center gap-2">
+            <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-[var(--border)] bg-[var(--surface-2)] px-3 py-1 text-sm text-foreground/85">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              <span>{formatCompactNumber(hack.downloads)}</span>
+            </div>
+            <HackOptionsMenu slug={hack.slug} canEdit={canEdit} />
           </div>
         </div>
       </div>

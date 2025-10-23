@@ -11,9 +11,8 @@ import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } 
 import { CSS } from "@dnd-kit/utilities";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { RxDragHandleDots2, RxPlus } from "react-icons/rx";
+import { RxDragHandleDots2 } from "react-icons/rx";
 import { useAuthContext } from "@/contexts/AuthContext";
-import { Database } from "@/types/db";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
 import TagSelector from "@/components/Submit/TagSelector";
 import BinFile from "rom-patcher-js/rom-patcher-js/modules/BinFile.js";
@@ -56,20 +55,16 @@ function SortableCoverItem({ id, index, url, filename, onRemove }: { id: string;
   );
 }
 
-interface SubmitFormProps {
+interface HackSubmitFormProps {
   dummy?: boolean;
 }
 
-// Tag selection handled by TagSelector component
-
-export default function SubmitForm({ dummy = false }: SubmitFormProps) {
+export default function HackSubmitForm({ dummy = false }: HackSubmitFormProps) {
   const MAX_COVERS = 10;
   const { profile } = useAuthContext();
   const [title, setTitle] = React.useState("");
-  // Author derived from profile later
   const [summary, setSummary] = React.useState("");
   const [description, setDescription] = React.useState("");
-  // Deprecated: coverUrls removed; using files array for screenshots
   const [newCoverFiles, setNewCoverFiles] = React.useState<File[]>([]);
   const [coverErrors, setCoverErrors] = React.useState<string[]>([]);
   const [baseRom, setBaseRom] = React.useState("");
@@ -106,7 +101,6 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
   const baseRomNeedsPermission = baseRomName && isLinked(baseRomName) && !baseRomReady;
   const baseRomMissing = baseRomName && !isLinked(baseRomName) && !hasCached(baseRomName);
 
-  // Build object URLs for local screenshot previews and clean them up when files change
   const coverPreviews = React.useMemo(() => {
     return newCoverFiles.map((f) => URL.createObjectURL(f));
   }, [newCoverFiles]);
@@ -142,7 +136,6 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
   function getAllowedSizesForPlatform(platform: "GB" | "GBC" | "GBA" | "NDS") {
     if (platform === "GB" || platform === "GBC") return [{ w: 160, h: 144 }];
     if (platform === "GBA") return [{ w: 240, h: 160 }];
-    // NDS
     return [{ w: 256, h: 192 }, { w: 256, h: 384 }];
   }
 
@@ -164,7 +157,6 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
   }
   const overLimit = newCoverFiles.length > MAX_COVERS;
 
-
   const removeAt = (index: number) => {
     setNewCoverFiles((prev) => prev.filter((_, i) => i !== index));
   };
@@ -183,11 +175,6 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
     setNewCoverFiles((prev) => arrayMove(prev, oldIndex, newIndex));
   };
 
-  // Tags handled in TagSelector
-
-  // Tag fetching and filtering moved to TagSelector
-
-  // Focus the first input on each step when step changes
   React.useEffect(() => {
     if (isDummy) return;
     if (step === 1) {
@@ -200,8 +187,6 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
       patchInputRef.current?.focus();
     }
   }, [step, isDummy]);
-
-  // Removed legacy key handling; TagSelector manages interactions
 
   const slugify = (text: string) =>
     text
@@ -219,9 +204,7 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
 
   const urlLike = (s: string) => !s || /^https?:\/\//i.test(s);
 
-  const hasOneSocial = [discord, twitter, pokecommunity].some((s) => !!s.trim());
   const allSocialValid = [discord, twitter, pokecommunity].every((s) => !s || urlLike(s));
-
 
   const step1Valid = !!title.trim() && !!platform && !!baseRom.trim() && !!language.trim();
   const step2Valid = !!version.trim() && !!summary.trim() && !summaryTooLong && !!description.trim() && tags.length > 0;
@@ -232,7 +215,6 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
     if (!isValid || submitting) return;
     setSubmitting(true);
     try {
-      // Step 1: create hack & tags
       const fd = new FormData();
       fd.set('title', title);
       fd.set('summary', summary);
@@ -249,12 +231,10 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
       const prepared = await prepareSubmission(fd);
       if (!prepared.ok) throw new Error(prepared.error || 'Failed to prepare');
 
-      // Step 2: upload covers to storage and save rows
       const uploadedCoverUrls = await uploadCovers(prepared.slug);
       const presigned = await presignPatchAndSaveCovers({ slug: prepared.slug, version, coverUrls: uploadedCoverUrls });
       if (!presigned.ok) throw new Error(presigned.error || 'Failed to presign');
 
-      // Step 3: upload patch via signed URL
       if (patchFile) {
         await fetch(presigned.presignedUrl, { method: 'PUT', body: patchFile, headers: { 'Content-Type': 'application/octet-stream' } });
         const finalized = await confirmPatchUpload({ slug: prepared.slug, objectKey: presigned.objectKey!, version });
@@ -320,7 +300,7 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
       const [origBuf, modBuf] = await Promise.all([baseFile.arrayBuffer(), mod.arrayBuffer()]);
       const origBin = new BinFile(origBuf);
       const modBin = new BinFile(modBuf);
-      const deltaMode = origBin.fileSize <= 4194304; // Not having this check causes the site to freeze for larger ROMs
+      const deltaMode = origBin.fileSize <= 4194304;
       const patch = BPS.buildFromRoms(origBin, modBin, deltaMode);
       const fileName = slug || title || "patch";
       const patchBin = patch.export(fileName);
@@ -359,12 +339,10 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
     <div className="flex flex-col gap-8 lg:flex-row w-full">
       <div className="flex-1">
         <form className="grid gap-5">
-          {/* Required note */}
           <div className="text-xs italic text-foreground/60">* Required</div>
 
           {step === 1 && (
             <>
-              {/* Title */}
               <div className="grid gap-2">
                 <label className="text-sm text-foreground/80">Title <span className="text-red-500">*</span></label>
                 {!isDummy ? (
@@ -386,7 +364,6 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
                 <div className="mt-1 text-xs text-foreground/60">URL preview: <span className="text-foreground/80">/hack/{slug || "your-title"}</span></div>
               </div>
 
-              {/* Platform */}
               <div className="grid gap-2">
                 <label className="text-sm text-foreground/80">Platform <span className="text-red-500">*</span></label>
                 {!isDummy ? (
@@ -409,7 +386,6 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
                 )}
               </div>
 
-              {/* Base ROM */}
               <div className="grid gap-2">
                 <label className="text-sm text-foreground/80">Base ROM <span className="text-red-500">*</span></label>
                 {!isDummy ? (
@@ -431,7 +407,6 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
                 )}
               </div>
 
-              {/* Language */}
               <div className="grid gap-2">
                 <label className="text-sm text-foreground/80">Language <span className="text-red-500">*</span></label>
                 {!isDummy ? (
@@ -454,7 +429,6 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
 
           {step === 2 && (
             <>
-              {/* Version */}
               <div className="grid gap-2">
                 <label className="text-sm text-foreground/80">Version <span className="text-red-500">*</span></label>
                 {!isDummy ? (
@@ -470,13 +444,11 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
                 )}
               </div>
 
-              {/* Tags */}
               <div className="grid gap-2">
                 <label className="text-sm text-foreground/80">Tags <span className="text-red-500">*</span></label>
                 <TagSelector value={tags} onChange={setTags} />
               </div>
 
-              {/* Summary */}
               <div className="grid gap-1">
                 <div className="flex items-center justify-between">
                   <label className="text-sm text-foreground/80">Summary <span className="text-red-500">*</span></label>
@@ -500,7 +472,6 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
                 )}
               </div>
 
-              {/* Description */}
               <div className="grid gap-2">
                 <div className="flex items-center justify-between">
                   <label className="text-sm text-foreground/80">Description <span className="text-red-500">*</span></label>
@@ -524,7 +495,7 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
                     className={`rounded-md bg-[var(--surface-2)] px-3 py-2 min-h-[14rem] text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]`}
                   />
                 ) : (
-                  <div className={`prose max-w-none rounded-md bg-[var(--surface-2)] px-3 py-2 ring-1 ring-inset ring-[var(--border)] ${description ? "" : "text-foreground/60 text-sm"}`}>
+                  <div className={`prose max-w-none rounded-md bg-[var(--surface-2)] min-h-[14rem] px-3 py-2 ring-1 ring-inset ring-[var(--border)] ${description ? "" : "text-foreground/60 text-sm"}`}>
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{description || "Nothing to preview yet."}</ReactMarkdown>
                   </div>
                 )}
@@ -534,7 +505,6 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
 
           {step === 3 && (
             <>
-              {/* Screenshots */}
               <div className="grid gap-2">
                 <label className="text-sm text-foreground/80">Screenshots <span className="text-red-500">*</span></label>
                 {allowedSizes.length > 0 && (
@@ -568,12 +538,12 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
                       Choose images to upload
                     </div>
                   )}
-                   <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2">
                     {!isDummy ? (
                       <>
                         <button
                           type="button"
-                           onClick={() => { setNewCoverFiles([]); }}
+                          onClick={() => { setNewCoverFiles([]); }}
                           className="inline-flex h-9 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 text-xs font-medium text-foreground/80 transition-colors hover:bg-black/5 dark:hover:bg-white/10"
                         >
                           Clear
@@ -590,8 +560,8 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
                       </>
                     )}
                   </div>
-                   <div className="text-xs text-foreground/60 flex justify-between">
-                     <p>Images: <span className={overLimit ? "text-red-300 font-bold" : "text-foreground/60"}>{newCoverFiles.length}</span>/{MAX_COVERS}</p>
+                  <div className="text-xs text-foreground/60 flex justify-between">
+                    <p>Images: <span className={overLimit ? "text-red-300 font-bold" : "text-foreground/60"}>{newCoverFiles.length}</span>/{MAX_COVERS}</p>
                     {overLimit && <p className="text-red-300/80 italic">Remove some to submit.</p>}
                   </div>
                   {coverErrors.length > 0 && (
@@ -599,37 +569,36 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
                       Rejected (wrong size): {coverErrors.join(", ")}
                     </div>
                   )}
-                     <div className="grid gap-2">
-                       {newCoverFiles.length === 0 ? (
+                  <div className="grid gap-2">
+                    {newCoverFiles.length === 0 ? (
                       <p className="text-xs text-foreground/60">No images added yet. Add at least one to preview.</p>
                     ) : (
-                       !isDummy ? (
-                         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-                           <SortableContext
-                             items={newCoverFiles.map((f, i) => `${f.name}-${i}`)}
-                             strategy={verticalListSortingStrategy}
-                           >
-                             {newCoverFiles.map((f, i) => (
-                               <SortableCoverItem
-                                 key={`${f.name}-${i}`}
-                                 id={`${f.name}-${i}`}
-                                 index={i}
-                                 filename={f.name}
-                                 url={URL.createObjectURL(f)}
-                                 onRemove={() => removeAt(i)}
-                               />
-                             ))}
-                           </SortableContext>
-                         </DndContext>
-                       ) : null
+                      !isDummy ? (
+                        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+                          <SortableContext
+                            items={newCoverFiles.map((f, i) => `${f.name}-${i}`)}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            {newCoverFiles.map((f, i) => (
+                              <SortableCoverItem
+                                key={`${f.name}-${i}`}
+                                id={`${f.name}-${i}`}
+                                index={i}
+                                filename={f.name}
+                                url={URL.createObjectURL(f)}
+                                onRemove={() => removeAt(i)}
+                              />
+                            ))}
+                          </SortableContext>
+                        </DndContext>
+                      ) : null
                     )}
                   </div>
                 </div>
               </div>
 
-              {/* Box art URL */}
               <div className="grid gap-2">
-              <label className="text-sm text-foreground/80">Box art URL</label>
+                <label className="text-sm text-foreground/80">Box art URL</label>
                 {!isDummy ? (
                   <input
                     value={boxArt}
@@ -642,9 +611,8 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
                 )}
               </div>
 
-              {/* Social links */}
               <div className="grid gap-2">
-              <label className="text-sm text-foreground/80">Social links</label>
+                <label className="text-sm text-foreground/80">Social links</label>
                 <div className="grid gap-2 sm:grid-cols-3">
                   {!isDummy ? (
                     <>
@@ -680,7 +648,6 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
             </>
           )}
 
-          {/* Upload patch file */}
           {step === 4 && (
             <div className="grid gap-3">
               <label className="text-sm text-foreground/80">Provide patch <span className="text-red-500">*</span></label>
@@ -762,7 +729,6 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
             </div>
           )}
 
-          {/* Navigation */}
           {!isDummy && (
             <div className="flex items-center justify-between gap-3 border-t border-[var(--border)] pt-4 mt-4">
               <button
@@ -806,7 +772,7 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
       </div>
 
       <aside className="flex flex-col gap-5 lg:sticky lg:top-20 self-start basis-[360px]">
-        <PreviewCard hack={preview} />
+        <HackCard hack={preview} clickable={false} />
         <div className="card h-max p-5">
           <div className="text-[15px] font-semibold tracking-tight">Submission tips</div>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-foreground/75">
@@ -820,7 +786,4 @@ export default function SubmitForm({ dummy = false }: SubmitFormProps) {
   );
 }
 
-function PreviewCard({ hack }: { hack: any }) {
-  return <HackCard hack={hack} clickable={false} />;
-}
 

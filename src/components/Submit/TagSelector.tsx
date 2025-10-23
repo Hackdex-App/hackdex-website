@@ -276,7 +276,7 @@ export default function TagSelector({ value, onChange }: TagSelectorProps) {
             }}
             role="listbox"
             aria-label="Tags"
-            className="min-w-[18rem] max-w-[70vw] overflow-auto p-2 outline-none"
+            className="min-w-[18rem] flex-1 overflow-auto p-2 outline-none"
           >
             <div className="mb-1 px-1 text-xs uppercase tracking-wider text-foreground/60">{activeCategory === "advanced" ? "Advanced" : (activeCategory || "Pick a category")}</div>
             <div className="grid gap-1 pr-1">
