@@ -115,7 +115,9 @@ export async function getAllBlobEntries(): Promise<Array<{ id: string; blob: Blo
   });
 }
 
-export function platformAccept(p: Platform | Platform[]): string {
+export function platformAccept(p?: Platform | Platform[] | null): string {
+  if (!p) return platformAcceptAll();
+
   if (Array.isArray(p)) {
     // Gather all individual extensions and dedupe
     const extSet = new Set<string>();

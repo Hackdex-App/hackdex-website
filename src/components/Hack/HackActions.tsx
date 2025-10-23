@@ -29,14 +29,27 @@ const HackActions: React.FC<HackActionsProps> = ({
   const [status, setStatus] = React.useState<"idle" | "ready" | "patching" | "done" | "downloading">("idle");
   const [error, setError] = React.useState<string | null>(null);
   const [patchBlob, setPatchBlob] = React.useState<Blob | null>(null);
+  const baseRomName = React.useMemo(() => baseRoms.find(r => r.id === baseRomId)?.name || null, [baseRomId]);
 
   React.useEffect(() => {
-    if (isLinked(baseRomId) && (hasPermission(baseRomId) || hasCached(baseRomId))) {
+    if ((isLinked(baseRomId) && hasPermission(baseRomId)) || hasCached(baseRomId)) {
       if (status !== "downloading" && status !== "patching" && status !== "done") {
         setStatus("ready");
       }
     }
   }, [baseRomId, isLinked, hasPermission, hasCached, status]);
+
+  React.useEffect(() => {
+    let timeoutId: NodeJS.Timeout | undefined;
+    if (error) {
+      timeoutId = setTimeout(() => {
+        setError(null);
+      }, 3000);
+    }
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    }
+  }, [error]);
 
   // Pre-download patch on mount (or when patchUrl changes) and cache as Blob
   React.useEffect(() => {
@@ -76,11 +89,25 @@ const HackActions: React.FC<HackActionsProps> = ({
     };
   }, [patchUrl]);
 
-  function onSelectFile(e: React.ChangeEvent<HTMLInputElement>) {
+  async function onSelectFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0] ?? null;
     setFile(f);
-    setStatus(f ? "ready" : "idle");
-    if (f) importUploadedBlob(f);
+    if (f) {
+      const id = await importUploadedBlob(f);
+      if (!id) {
+        setError("That ROM doesn't match any supported base ROM.");
+        setStatus("idle");
+        e.target.value = "";
+        return;
+      }
+      if (id !== baseRomId) {
+        setError(`This ROM matches "${id}", but this hack requires "${baseRomName}".`);
+        setStatus("idle");
+        e.target.value = "";
+        return;
+      }
+      setStatus("ready");
+    }
   }
 
   async function onPatch() {
@@ -145,10 +172,12 @@ const HackActions: React.FC<HackActionsProps> = ({
       title={title}
       version={version}
       author={author}
+      baseRomPlatform={platform}
       onPatch={onPatch}
       status={status}
+      error={error}
       isLinked={isLinked(baseRomId)}
-      ready={hasPermission(baseRomId) || hasCached(baseRomId)}
+      romReady={hasPermission(baseRomId) || hasCached(baseRomId)}
       onClickLink={() => (isLinked(baseRomId) ? ensurePermission(baseRomId, true) : linkRom(baseRomId))}
       supported={supported}
       onUploadChange={onSelectFile}
