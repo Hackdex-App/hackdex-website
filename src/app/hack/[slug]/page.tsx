@@ -6,7 +6,7 @@ import { formatCompactNumber } from "@/utils/format";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Image from "next/image";
-import { FaDiscord, FaTwitter } from "react-icons/fa6";
+import { FaDiscord, FaDownload, FaTwitter } from "react-icons/fa6";
 import PokeCommunityIcon from "@/components/Icons/PokeCommunityIcon";
 import { createClient } from "@/utils/supabase/server";
 import { getMinioClient, PATCHES_BUCKET } from "@/utils/minio/server";
@@ -78,7 +78,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
   }
 
   return (
-    <div className="mx-auto max-w-screen-lg px-6 pb-28">
+    <div className="mx-auto max-w-screen-lg w-full pb-28">
       <HackActions
         title={hack.title}
         version={patchVersion || "Pre-release"}
@@ -88,8 +88,8 @@ export default async function HackDetail({ params }: HackDetailProps) {
         patchUrl={signedPatchUrl}
       />
 
-      <div className="pt-8 md:pt-10">
-        <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="pt-8 md:pt-10 px-6">
+        <div className="flex flex-col items-start justify-between gap-4 md:flex-wrap md:flex-row md:items-end">
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{hack.title}</h1>
@@ -107,13 +107,9 @@ export default async function HackDetail({ params }: HackDetailProps) {
               ))}
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 self-end md:self-auto">
             <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-[var(--border)] bg-[var(--surface-2)] px-3 py-1 text-sm text-foreground/85">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
+              <FaDownload size={16} className="text-foreground/85" />
               <span>{formatCompactNumber(hack.downloads)}</span>
             </div>
             <HackOptionsMenu slug={hack.slug} canEdit={canEdit} />
@@ -121,7 +117,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
         </div>
       </div>
 
-      <div className="mt-6 flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_260px]">
+      <div className="mt-6 px-6 flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_260px]">
         <div className="space-y-6 lg:min-w-[640px]">
           <Gallery images={images} title={hack.title} />
 
