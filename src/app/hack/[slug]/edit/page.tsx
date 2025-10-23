@@ -13,7 +13,7 @@ export default async function EditHackPage({ params }: EditPageProps) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    redirect(`/login?redirectTo=%2Fhack%2F${encodeURIComponent(slug)}%2Fedit`);
+    redirect(`/hack/${slug}`);
   }
 
   const { data: hack } = await supabase
@@ -22,7 +22,9 @@ export default async function EditHackPage({ params }: EditPageProps) {
     .eq("slug", slug)
     .maybeSingle();
   if (!hack) return notFound();
-  if (hack.created_by !== user!.id) notFound();
+  if (hack.created_by !== user!.id) {
+    redirect(`/hack/${slug}`);
+  }
 
   let coverKeys: string[] = [];
   let signedCoverUrls: string[] = [];

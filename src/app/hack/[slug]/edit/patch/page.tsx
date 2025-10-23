@@ -13,7 +13,7 @@ export default async function EditPatchPage({ params }: EditPatchPageProps) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    redirect(`/login?redirectTo=%2Fhack%2F${encodeURIComponent(slug)}%2Fedit%2Fpatch`);
+    redirect(`/hack/${slug}`);
   }
 
   const { data: hack } = await supabase
@@ -22,7 +22,9 @@ export default async function EditPatchPage({ params }: EditPatchPageProps) {
     .eq("slug", slug)
     .maybeSingle();
   if (!hack) return notFound();
-  if (hack.created_by !== user!.id) return notFound();
+  if (hack.created_by !== user!.id) {
+    redirect(`/hack/${slug}`);
+  }
 
   const { data: patchRows } = await supabase
     .from("patches")
