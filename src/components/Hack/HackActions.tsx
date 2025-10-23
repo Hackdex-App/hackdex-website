@@ -26,14 +26,55 @@ const HackActions: React.FC<HackActionsProps> = ({
 }) => {
   const { isLinked, hasPermission, hasCached, importUploadedBlob, ensurePermission, linkRom, getFileBlob, supported } = useBaseRoms();
   const [file, setFile] = React.useState<File | null>(null);
-  const [status, setStatus] = React.useState<"idle" | "ready" | "patching" | "done">("idle");
+  const [status, setStatus] = React.useState<"idle" | "ready" | "patching" | "done" | "downloading">("idle");
   const [error, setError] = React.useState<string | null>(null);
+  const [patchBlob, setPatchBlob] = React.useState<Blob | null>(null);
 
   React.useEffect(() => {
     if (isLinked(baseRomId) && (hasPermission(baseRomId) || hasCached(baseRomId))) {
-      setStatus("ready");
+      if (status !== "downloading" && status !== "patching" && status !== "done") {
+        setStatus("ready");
+      }
     }
-  }, [baseRomId, isLinked, hasPermission, hasCached]);
+  }, [baseRomId, isLinked, hasPermission, hasCached, status]);
+
+  // Pre-download patch on mount (or when patchUrl changes) and cache as Blob
+  React.useEffect(() => {
+    let aborted = false;
+    async function prefetchPatch() {
+      try {
+        setPatchBlob(null);
+        if (!patchUrl) return;
+        // indicate downloading while we fetch the patch blob
+        setStatus((prev) => (prev === "patching" || prev === "done" ? prev : "downloading"));
+        const res = await fetch(patchUrl);
+        if (!res.ok) throw new Error("Failed to fetch patch");
+        const blob = await res.blob();
+        if (aborted) return;
+        setPatchBlob(blob);
+        // restore status after download: ready if base rom uploaded/linked, else idle
+        setStatus((prev) => {
+          if (prev === "patching" || prev === "done") return prev;
+          const romReady = !!file || (isLinked(baseRomId) && (hasPermission(baseRomId) || hasCached(baseRomId)));
+          return romReady ? "ready" : "idle";
+        });
+      } catch {
+        if (!aborted) {
+          setPatchBlob(null);
+          // on error, fall back to current readiness state
+          setStatus((prev) => {
+            if (prev === "patching" || prev === "done") return prev;
+            const romReady = !!file || (isLinked(baseRomId) && (hasPermission(baseRomId) || hasCached(baseRomId)));
+            return romReady ? "ready" : "idle";
+          });
+        }
+      }
+    }
+    prefetchPatch();
+    return () => {
+      aborted = true;
+    };
+  }, [patchUrl]);
 
   function onSelectFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0] ?? null;
@@ -64,10 +105,16 @@ const HackActions: React.FC<HackActionsProps> = ({
       // Read inputs
       const [romBuf, patchBuf] = await Promise.all([
         baseFile.arrayBuffer(),
-        fetch(patchUrl).then((r) => {
-          if (!r.ok) throw new Error("Failed to fetch patch");
-          return r.arrayBuffer();
-        }),
+        (async () => {
+          let blob = patchBlob;
+          if (!blob) {
+            const resp = await fetch(patchUrl);
+            if (!resp.ok) throw new Error("Failed to fetch patch");
+            blob = await resp.blob();
+            setPatchBlob(blob);
+          }
+          return await blob.arrayBuffer();
+        })(),
       ]);
 
       // Build BinFiles

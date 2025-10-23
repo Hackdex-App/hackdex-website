@@ -7,7 +7,7 @@ export default function StickyActionBar({ title, version, author, onPatch, statu
   version?: string;
   author: string;
   onPatch: () => void;
-  status: "idle" | "ready" | "patching" | "done";
+  status: "idle" | "ready" | "patching" | "done" | "downloading";
   isLinked: boolean;
   ready: boolean;
   onClickLink: () => void;
@@ -31,13 +31,15 @@ export default function StickyActionBar({ title, version, author, onPatch, statu
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <span className={`rounded-full px-2 py-0.5 text-xs ring-1 ${
-            ready
+            status === "downloading"
+              ? "bg-[var(--surface-2)] text-foreground/85 ring-[var(--border)]"
+              : ready
               ? "bg-emerald-600/60 text-white ring-emerald-700/80 dark:bg-emerald-500/25 dark:text-emerald-100 dark:ring-emerald-400/90"
               : isLinked
               ? "bg-amber-600/60 text-white ring-amber-700/80 dark:bg-amber-500/50 dark:text-amber-100 dark:ring-amber-400/90"
               : "bg-red-600/60 text-white ring-red-700/80 dark:bg-red-500/50 dark:text-red-100 dark:ring-red-400/90"
           }`}>
-            {ready ? "Ready" : isLinked ? "Permission needed" : "Base ROM needed"}
+            {status === "downloading" ? "Downloading..." : ready ? "Ready" : isLinked ? "Permission needed" : "Base ROM needed"}
           </span>
           {!ready && !isLinked && (
             <label className="inline-flex items-center gap-2 text-xs text-foreground/80">
