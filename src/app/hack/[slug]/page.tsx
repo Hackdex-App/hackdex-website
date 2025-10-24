@@ -133,7 +133,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
           <div className="card p-5">
             <h3 className="text-[15px] font-semibold tracking-tight">Details</h3>
             <ul className="mt-3 grid gap-2 text-sm text-foreground/75">
-              <li>Base ROM: {hack.base_rom}</li>
+              <li>Base ROM: {baseRom?.name || "Unknown"}</li>
               <li>Format: BPS</li>
               <li>Created: {new Date(hack.created_at).toLocaleDateString()}</li>
               {hack.updated_at && (

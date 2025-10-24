@@ -105,7 +105,7 @@ export function BaseRomProvider({ children }: { children: React.ReactNode }) {
           if (file) {
             try {
               const hash = await sha1Hex(file);
-              const match = baseRoms.find((r) => r.sha1 && r.sha1.toLowerCase() === hash.toLowerCase());
+              const match = baseRoms.find((r) => r.sha1.toLowerCase() === hash.toLowerCase());
               if (match) {
                 await setRomBlob(match.id, file);
                 setCached((prev) => ({ ...prev, [match.id]: true }));
@@ -242,7 +242,7 @@ export function BaseRomProvider({ children }: { children: React.ReactNode }) {
   async function importUploadedBlob(file: File): Promise<string | null> {
     try {
       const hash = await sha1Hex(file);
-      const match = baseRoms.find((r) => r.sha1 && r.sha1.toLowerCase() === hash.toLowerCase());
+      const match = baseRoms.find((r) => r.sha1.toLowerCase() === hash.toLowerCase());
       if (!match) return null;
       await setRomBlob(match.id, file);
       setCached((prev) => ({ ...prev, [match.id]: true }));

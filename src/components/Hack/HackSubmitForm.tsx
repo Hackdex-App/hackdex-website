@@ -399,7 +399,7 @@ export default function HackSubmitForm({ dummy = false }: HackSubmitFormProps) {
                     <option value="" disabled>{platform ? "Select base rom" : "Select platform first"}</option>
                     {baseRoms.filter(r => !platform || r.platform === platform).map(({ id, name, region }) => (
                       <option key={id} value={id}>
-                        {name.replace('Pokemon ', '')} ({region})
+                        {name.replace('Pokémon ', '')} ({region})
                       </option>
                     ))}
                   </select>

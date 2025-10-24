@@ -26,6 +26,7 @@ export default function HackCard({ hack, clickable = true, className = "" }: { h
   const { isLinked, hasPermission, hasCached } = useBaseRoms();
   const match = baseRoms.find((r) => r.id === hack.baseRomId);
   const baseId = match?.id ?? undefined;
+  const baseName = match?.name ?? undefined;
   const linked = baseId ? isLinked(baseId) : false;
   const ready = baseId ? hasPermission(baseId) || hasCached(baseId) : false;
   const images = (hack.covers && hack.covers.length > 0 ? hack.covers : []).filter(Boolean);
@@ -156,7 +157,7 @@ export default function HackCard({ hack, clickable = true, className = "" }: { h
               return text.length > 120 ? text.slice(0, 120).trimEnd() + "…" : text;
             })()}
           </p>
-          <div className="mt-3 text-xs text-foreground/60">Base: {baseId ?? "Unknown"}</div>
+          <div className="mt-3 text-xs text-foreground/60">Base: {baseName ?? "Unknown"}</div>
         </div>
       </div>
   );
