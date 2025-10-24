@@ -4,10 +4,11 @@ import React from "react";
 import { platformAccept } from "@/utils/idb";
 import type { Platform } from "@/data/baseRoms";
 
-export default function StickyActionBar({ title, version, author, baseRomPlatform, onPatch, status, error, isLinked, romReady, onClickLink, supported, onUploadChange }: {
+export default function StickyActionBar({ title, version, author, baseRomName, baseRomPlatform, onPatch, status, error, isLinked, romReady, onClickLink, supported, onUploadChange }: {
   title: string;
   version?: string;
   author: string;
+  baseRomName?: string | null;
   baseRomPlatform?: Platform;
   onPatch: () => void;
   status: "idle" | "ready" | "patching" | "done" | "downloading";
@@ -86,7 +87,13 @@ export default function StickyActionBar({ title, version, author, baseRomPlatfor
                 onClick={() => uploadInputRef.current?.click()}
                 className="w-5/6 mx-auto md:w-auto md:mx-0 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-foreground text-sm md:text-xs cursor-pointer hover:bg-[var(--surface-3)] hover:text-foreground/80 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Select Base ROM
+                {baseRomName ? (
+                  <span>Select <span className="font-bold">{baseRomName}</span> ROM</span>
+                ) : baseRomPlatform ? (
+                  <span>Select <span className="font-bold">{baseRomPlatform}</span> ROM</span>
+                ) : (
+                  <span>Select Base ROM</span>
+                )}
               </button>
             </label>
           )}

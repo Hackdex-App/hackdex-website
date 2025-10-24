@@ -172,6 +172,7 @@ const HackActions: React.FC<HackActionsProps> = ({
       title={title}
       version={version}
       author={author}
+      baseRomName={baseRomName}
       baseRomPlatform={platform}
       onPatch={onPatch}
       status={status}
