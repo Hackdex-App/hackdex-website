@@ -91,7 +91,7 @@ export type Database = {
           estimated_release: string | null
           language: string
           patch_url: string
-          search: unknown | null
+          search: unknown
           slug: string
           social_links: Json | null
           summary: string
@@ -113,7 +113,7 @@ export type Database = {
           estimated_release?: string | null
           language: string
           patch_url: string
-          search?: unknown | null
+          search?: unknown
           slug: string
           social_links?: Json | null
           summary: string
@@ -135,7 +135,7 @@ export type Database = {
           estimated_release?: string | null
           language?: string
           patch_url?: string
-          search?: unknown | null
+          search?: unknown
           slug?: string
           social_links?: Json | null
           summary?: string
@@ -282,70 +282,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      delete_claim: {
-        Args: { claim: string; uid: string }
-        Returns: string
-      }
-      get_claim: {
-        Args: { claim: string; uid: string }
-        Returns: Json
-      }
-      get_claims: {
-        Args: { uid: string }
-        Returns: Json
-      }
-      get_my_claim: {
-        Args: { claim: string }
-        Returns: Json
-      }
-      get_my_claims: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      gtrgm_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gtrgm_decompress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gtrgm_in: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gtrgm_options: {
-        Args: { "": unknown }
-        Returns: undefined
-      }
-      gtrgm_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      is_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      is_claims_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      delete_claim: { Args: { claim: string; uid: string }; Returns: string }
+      get_claim: { Args: { claim: string; uid: string }; Returns: Json }
+      get_claims: { Args: { uid: string }; Returns: Json }
+      get_my_claim: { Args: { claim: string }; Returns: Json }
+      get_my_claims: { Args: never; Returns: Json }
+      is_admin: { Args: never; Returns: boolean }
+      is_claims_admin: { Args: never; Returns: boolean }
       set_claim: {
         Args: { claim: string; uid: string; value: Json }
         Returns: string
       }
-      set_limit: {
-        Args: { "": number }
-        Returns: number
-      }
-      show_limit: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
-      show_trgm: {
-        Args: { "": string }
-        Returns: string[]
-      }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       "Tag Categories":
