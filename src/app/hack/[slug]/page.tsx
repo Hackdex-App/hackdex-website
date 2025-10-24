@@ -63,10 +63,11 @@ export default async function HackDetail({ params }: HackDetailProps) {
   // Resolve a short-lived signed patch URL (if current_patch exists)
   let signedPatchUrl = "";
   let patchVersion = "";
+  let lastUpdated: string | null = null;
   if (hack.current_patch != null) {
     const { data: patch } = await supabase
       .from("patches")
-      .select("id,bucket,filename,version")
+      .select("id,bucket,filename,version,created_at")
       .eq("id", hack.current_patch as number)
       .maybeSingle();
     if (patch) {
@@ -74,6 +75,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
       const bucket = patch.bucket || PATCHES_BUCKET;
       signedPatchUrl = await client.presignedGetObject(bucket, patch.filename, 60 * 5);
       patchVersion = patch.version || "";
+      lastUpdated = new Date(patch.created_at).toLocaleDateString();
     }
   }
 
@@ -134,11 +136,8 @@ export default async function HackDetail({ params }: HackDetailProps) {
             <h3 className="text-[15px] font-semibold tracking-tight">Details</h3>
             <ul className="mt-3 grid gap-2 text-sm text-foreground/75">
               <li>Base ROM: {baseRom?.name || "Unknown"}</li>
-              <li>Format: BPS</li>
               <li>Created: {new Date(hack.created_at).toLocaleDateString()}</li>
-              {hack.updated_at && (
-                <li>Last updated: {new Date(hack.updated_at).toLocaleDateString()}</li>
-              )}
+              {lastUpdated && <li>Last updated: {lastUpdated}</li>}
               {hack.social_links && (
                 <li className="flex flex-wrap items-center justify-center gap-4 mt-4">
                   {((hack.social_links as unknown) as { discord?: string })?.discord && (
