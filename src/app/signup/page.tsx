@@ -11,7 +11,7 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
   const { redirectTo } = await searchParams;
 
   const supabase = await createClient();
-  const { data: user } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (user) {
     return redirect(redirectTo ? `/${redirectTo}` : "/account");
   }
