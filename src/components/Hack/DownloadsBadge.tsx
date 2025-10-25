@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { FaDownload } from "react-icons/fa6";
+import { ImDownload } from "react-icons/im";
 import { formatCompactNumber } from "@/utils/format";
 import type { DownloadEvent } from "@/types/util";
 
@@ -28,7 +28,7 @@ export default function DownloadsBadge({ slug, initialCount }: { slug: string; i
         anim ? "scale-110 shadow-md font-bold" : ""
       }`}
     >
-      <FaDownload size={16} className="text-foreground/85" />
+      <ImDownload size={16} className="text-foreground/85" />
       <span>{formatCompactNumber(count)}</span>
     </div>
   );
