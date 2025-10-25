@@ -2,15 +2,15 @@ import { baseRoms } from "@/data/baseRoms";
 import { notFound } from "next/navigation";
 import Gallery from "@/components/Hack/Gallery";
 import HackActions from "@/components/Hack/HackActions";
-import { formatCompactNumber } from "@/utils/format";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Image from "next/image";
-import { FaDiscord, FaDownload, FaTwitter } from "react-icons/fa6";
+import { FaDiscord, FaTwitter } from "react-icons/fa6";
 import PokeCommunityIcon from "@/components/Icons/PokeCommunityIcon";
 import { createClient } from "@/utils/supabase/server";
 import { getMinioClient, PATCHES_BUCKET } from "@/utils/minio/server";
 import HackOptionsMenu from "@/components/Hack/HackOptionsMenu";
+import DownloadsBadge from "@/components/Hack/DownloadsBadge";
 
 interface HackDetailProps {
   params: Promise<{ slug: string }>;
@@ -63,6 +63,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
   // Resolve a short-lived signed patch URL (if current_patch exists)
   let signedPatchUrl = "";
   let patchVersion = "";
+  let patchId: number | null = null;
   let lastUpdated: string | null = null;
   if (hack.current_patch != null) {
     const { data: patch } = await supabase
@@ -75,6 +76,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
       const bucket = patch.bucket || PATCHES_BUCKET;
       signedPatchUrl = await client.presignedGetObject(bucket, patch.filename, 60 * 5);
       patchVersion = patch.version || "";
+      patchId = patch.id;
       lastUpdated = new Date(patch.created_at).toLocaleDateString();
     }
   }
@@ -88,6 +90,8 @@ export default async function HackDetail({ params }: HackDetailProps) {
         baseRomId={baseRom?.id || ""}
         platform={baseRom?.platform}
         patchUrl={signedPatchUrl}
+        patchId={patchId ?? undefined}
+        hackSlug={hack.slug}
       />
 
       <div className="pt-8 md:pt-10 px-6">
@@ -110,10 +114,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
             </div>
           </div>
           <div className="flex items-center gap-2 self-end md:self-auto">
-            <div className="inline-flex items-center gap-2 rounded-full ring-1 ring-[var(--border)] bg-[var(--surface-2)] px-3 py-1 text-sm text-foreground/85">
-              <FaDownload size={16} className="text-foreground/85" />
-              <span>{formatCompactNumber(hack.downloads)}</span>
-            </div>
+            <DownloadsBadge slug={hack.slug} initialCount={hack.downloads} />
             <HackOptionsMenu slug={hack.slug} canEdit={canEdit} />
           </div>
         </div>

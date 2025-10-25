@@ -6,6 +6,7 @@ import { useBaseRoms } from "@/contexts/BaseRomContext";
 import { baseRoms } from "@/data/baseRoms";
 import BinFile from "rom-patcher-js/rom-patcher-js/modules/BinFile.js";
 import BPS from "rom-patcher-js/rom-patcher-js/modules/RomPatcher.format.bps.js";
+import type { DownloadEventDetail } from "@/types/util";
 
 interface HackActionsProps {
   title: string;
@@ -14,6 +15,8 @@ interface HackActionsProps {
   baseRomId: string;
   platform?: "GBA" | "GBC" | "GB" | "NDS";
   patchUrl: string;
+  patchId?: number;
+  hackSlug: string;
 }
 
 const HackActions: React.FC<HackActionsProps> = ({
@@ -23,6 +26,8 @@ const HackActions: React.FC<HackActionsProps> = ({
   baseRomId,
   platform,
   patchUrl,
+  patchId,
+  hackSlug,
 }) => {
   const { isLinked, hasPermission, hasCached, importUploadedBlob, ensurePermission, linkRom, getFileBlob, supported } = useBaseRoms();
   const [file, setFile] = React.useState<File | null>(null);
@@ -160,6 +165,29 @@ const HackActions: React.FC<HackActionsProps> = ({
       patchedRom.save();
 
       setStatus("done");
+
+      // Best-effort log applied event for counting and animate badge
+      try {
+        if (patchId != null) {
+          const key = "deviceId";
+          let deviceId = localStorage.getItem(key);
+          if (!deviceId) {
+            deviceId = crypto.randomUUID();
+            localStorage.setItem(key, deviceId);
+          }
+          await fetch(`/api/patches/${patchId}/applied`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ deviceId }),
+          })
+            .then((res) => {
+              if (res.status === 201) {
+                window.dispatchEvent(new CustomEvent<DownloadEventDetail>("hack:patch-applied", { detail: { slug: hackSlug } }));
+              }
+            })
+            .catch(() => {});
+        }
+      } catch {}
     } catch (e: any) {
       setError(e?.message || "Failed to patch ROM");
       setStatus("idle");

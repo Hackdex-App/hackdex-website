@@ -174,16 +174,19 @@ export type Database = {
       patch_downloads: {
         Row: {
           created_at: string
+          device_id: string
           id: number
           patch: number | null
         }
         Insert: {
           created_at?: string
+          device_id: string
           id?: number
           patch?: number | null
         }
         Update: {
           created_at?: string
+          device_id?: string
           id?: number
           patch?: number | null
         }
