@@ -1,3 +1,5 @@
+import { createClient } from "@/utils/supabase/server";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import SignupForm from "@/components/Auth/SignupForm";
 
@@ -7,6 +9,12 @@ interface SignupPageProps {
 
 export default async function SignupPage({ searchParams }: SignupPageProps) {
   const { redirectTo } = await searchParams;
+
+  const supabase = await createClient();
+  const { data: user } = await supabase.auth.getUser();
+  if (user) {
+    return redirect(redirectTo ? `/${redirectTo}` : "/account");
+  }
 
   return (
     <div className="mx-auto my-auto max-w-md w-full px-6 py-10">
