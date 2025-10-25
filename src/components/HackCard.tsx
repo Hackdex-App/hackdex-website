@@ -4,7 +4,7 @@ import Link from "next/link";
 import { formatCompactNumber } from "@/utils/format";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
 import { baseRoms } from "@/data/baseRoms";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import { usePathname } from "next/navigation";
 import { FaRegImages } from "react-icons/fa6";
@@ -37,6 +37,8 @@ export default function HackCard({ hack, clickable = true, className = "" }: { h
 
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const dragStartRef = useRef<{ x: number; y: number } | null>(null);
+  const didDragRef = useRef(false);
 
   useEffect(() => {
     if (!emblaApi) return;
@@ -61,7 +63,35 @@ export default function HackCard({ hack, clickable = true, className = "" }: { h
               <FaRegImages className={`text-[10rem] ${ready ? "text-emerald-600/40 dark:text-emerald-300/40" : "text-black/20 dark:text-white/30"} select-none text-center`} />
             </div>
           ) : isCarousel ? (
-            <div className="overflow-hidden h-full" ref={emblaRef}>
+            <div
+              className="overflow-hidden h-full"
+              ref={emblaRef}
+              onPointerDown={(e) => {
+                dragStartRef.current = { x: e.clientX, y: e.clientY };
+                didDragRef.current = false;
+                try {
+                  (e.currentTarget as any).setPointerCapture?.(e.pointerId);
+                } catch {}
+              }}
+              onPointerMove={(e) => {
+                const start = dragStartRef.current;
+                if (!start) return;
+                const dx = e.clientX - start.x;
+                const dy = e.clientY - start.y;
+                if (!didDragRef.current && dx * dx + dy * dy > 25) {
+                  didDragRef.current = true; // movement > 5px
+                }
+              }}
+              onPointerUp={(e) => {
+                dragStartRef.current = null;
+                try {
+                  (e.currentTarget as any).releasePointerCapture?.(e.pointerId);
+                } catch {}
+              }}
+              onPointerCancel={() => {
+                dragStartRef.current = null;
+              }}
+            >
               <div className="flex h-full">
                 {images.map((src, idx) => (
                   <div className="relative h-full flex-[0_0_100%]" key={`${src}-${idx}`}>
@@ -160,7 +190,21 @@ export default function HackCard({ hack, clickable = true, className = "" }: { h
   );
   if (clickable) {
     return (
-      <Link href={`/hack/${hack.slug}`} className={`group block ${className}`.trim()}>
+      <Link
+        href={`/hack/${hack.slug}`}
+        className={`group block ${className}`.trim()}
+        draggable={false}
+        onDragStart={(e) => {
+          e.preventDefault();
+        }}
+        onClick={(e) => {
+          if (didDragRef.current) {
+            e.preventDefault();
+            e.stopPropagation();
+            didDragRef.current = false;
+          }
+        }}
+      >
         {content}
       </Link>
     );
