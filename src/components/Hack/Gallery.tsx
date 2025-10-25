@@ -3,7 +3,6 @@
 import PixelImage from "../PixelImage";
 import React from "react";
 import useEmblaCarousel from "embla-carousel-react";
-import Image from "next/image";
 
 export default function Gallery({ images, title }: { images: string[]; title: string }) {
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
@@ -59,7 +58,7 @@ export default function Gallery({ images, title }: { images: string[]; title: st
             }`}
             aria-label={`Show image ${i + 1}`}
           >
-            <Image src={src} alt={`${title} screenshot ${i + 1}`} fill className="absolute inset-0 object-cover" />
+            <img src={src} alt={`${title} screenshot ${i + 1}`} className="absolute inset-0 object-cover" draggable={false} />
           </button>
         ))}
       </div>
