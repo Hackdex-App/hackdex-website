@@ -14,6 +14,4 @@ export function getMinioClient(): Client {
   return cachedClient;
 }
 
-export const PATCHES_BUCKET = "patches";
-
-
+export const PATCHES_BUCKET = process.env.PATCHES_BUCKET!;
