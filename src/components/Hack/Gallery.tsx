@@ -3,6 +3,7 @@
 import PixelImage from "../PixelImage";
 import React from "react";
 import useEmblaCarousel from "embla-carousel-react";
+import Image from "next/image";
 
 export default function Gallery({ images, title }: { images: string[]; title: string }) {
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
@@ -53,12 +54,12 @@ export default function Gallery({ images, title }: { images: string[]; title: st
           <button
             key={`${src}-${i}`}
             onClick={() => emblaApi && emblaApi.scrollTo(i)}
-            className={`relative h-16 w-28 overflow-hidden rounded ring-1 ${
-              i === selectedIndex ? "ring-[var(--accent)]" : "ring-[var(--border)]"
+            className={`relative h-16 w-28 overflow-hidden rounded border-2 ${
+              i === selectedIndex ? "border-[var(--accent)]" : "border-[var(--border)]"
             }`}
             aria-label={`Show image ${i + 1}`}
           >
-            <PixelImage src={src} alt={`${title} screenshot ${i + 1}`} mode="cover" className="absolute inset-0" />
+            <Image src={src} alt={`${title} screenshot ${i + 1}`} fill className="absolute inset-0 object-cover" />
           </button>
         ))}
       </div>
