@@ -3,11 +3,12 @@
 import React, { useActionState, useEffect} from "react";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { AuthActionState, login } from "@/app/login/actions";
-import { redirect, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthContext } from "@/contexts/AuthContext";
 
 export default function LoginForm() {
-  const { setUser } = useAuthContext();
+  const router = useRouter();
+  const { user, setUser } = useAuthContext();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [showPassword, setShowPassword] = React.useState(false);
@@ -18,19 +19,30 @@ export default function LoginForm() {
     "Email verification failed. Try again or request a new link." :
     state?.error || null;
   const redirectTo = searchParams.get("redirectTo");
+  const navigatedRef = React.useRef(false);
 
   const emailValid = /.+@.+\..+/.test(email);
   const passwordValid = password.length > 1;
   const isValid = emailValid && passwordValid;
 
+  // Update context and immediately redirect after successful login
   useEffect(() => {
-    if (state && state.error === null) {
+    if (state && state.error === null && !navigatedRef.current) {
       setUser(state.user);
-      if (state.redirectTo) {
-        redirect(state.redirectTo);
-      }
+      const to = state.redirectTo || (redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//') ? redirectTo : '/account');
+      navigatedRef.current = true;
+      router.replace(to);
     }
-  }, [state]);
+  }, [state, setUser, router, redirectTo]);
+
+  // Redirect when user becomes available in context
+  useEffect(() => {
+    if (!user || navigatedRef.current) return;
+    const isValidInternalPath = !!redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//');
+    const to = isValidInternalPath ? (redirectTo as string) : '/account';
+    navigatedRef.current = true;
+    router.replace(to);
+  }, [user, redirectTo, router]);
 
   return (
     <form className="grid gap-5 group">

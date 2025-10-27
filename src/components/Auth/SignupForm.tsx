@@ -1,13 +1,16 @@
 "use client";
 
 import React, { useActionState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { AuthActionState, signup } from "@/app/signup/actions";
+import { useAuthContext } from "@/contexts/AuthContext";
 import { validateEmail, validatePassword } from "@/utils/auth";
 
 export default function SignupForm() {
+  const router = useRouter();
   const searchParams = useSearchParams();
+  const { user } = useAuthContext();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [confirm, setConfirm] = React.useState("");
@@ -38,6 +41,14 @@ export default function SignupForm() {
       setInvite(inviteFromParams);
     }
   }, []);
+
+  // Redirect if user already authenticated (e.g., opened signup while logged in)
+  useEffect(() => {
+    if (!user) return;
+    const isValidInternalPath = !!redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//');
+    const to = isValidInternalPath ? (redirectTo as string) : '/account';
+    router.replace(to);
+  }, [user, redirectTo, router]);
 
   return (
     <form className="grid gap-5 group">
