@@ -109,11 +109,14 @@ export default function Header() {
                 </span>
               }
             />
-            <NavLink
+            <Link
               href="/submit"
-              label="Submit"
-              className="inline-flex h-9 items-center justify-center rounded-full font-semibold text-[var(--accent)] ring-1 ring-[var(--accent)] hover:bg-[var(--accent)]/10 focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-            />
+              className={`inline-flex h-9 items-center justify-center rounded-md px-3 text-sm font-semibold transition-colors bg-[var(--accent)] text-[var(--accent-foreground)] hover:bg-[var(--accent-700)] ${
+                pathname === "/submit" ? "ring-2 ring-[var(--ring)] ring-offset-2 ring-offset-[var(--background)] brightness-110" : ""
+              }`}
+            >
+              Submit
+            </Link>
             {isAuthenticated && (
               <Link
                 href="/account"
