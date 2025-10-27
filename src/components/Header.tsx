@@ -92,6 +92,7 @@ export default function Header() {
         <Link href="/" className="flex items-center gap-2">
           <div className="h-7 w-7 rounded-md bg-gradient-to-br from-[var(--accent)] to-[var(--accent-700)] ring-1 ring-[var(--border)]" />
           <span className="text-[15px] font-semibold tracking-tight hover:opacity-90 transition-opacity">Hackdex</span>
+          <span className="inline-flex items-center rounded-full bg-[var(--accent)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--accent)] ring-1 ring-[var(--accent)]/30">Beta</span>
         </Link>
 
         <div className="flex items-center">
