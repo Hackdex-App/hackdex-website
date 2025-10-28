@@ -242,6 +242,11 @@ export default function HackSubmitForm({ dummy = false }: HackSubmitFormProps) {
 
   const slugify = (text: string) =>
     text
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") // strip combining diacritics
+      .replace(/ß/g, "ss")
+      .replace(/æ/g, "ae")
+      .replace(/œ/g, "oe")
       .toLowerCase()
       .trim()
       .replace(/[^a-z0-9]+/g, "-")

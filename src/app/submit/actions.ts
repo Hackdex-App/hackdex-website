@@ -8,6 +8,11 @@ type HackInsert = TablesInsert<"hacks">;
 
 function slugify(text: string) {
   return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // strip combining diacritics
+    .replace(/ß/g, "ss")
+    .replace(/æ/g, "ae")
+    .replace(/œ/g, "oe")
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9]+/g, "-")
