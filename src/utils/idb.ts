@@ -3,9 +3,10 @@ import type { Platform } from "@/data/baseRoms";
 import { PLATFORMS } from "@/data/baseRoms";
 
 const DB_NAME = "hackdex";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE = "base_roms";
 const BLOB_STORE = "base_rom_blobs";
+const DRAFT_COVERS_STORE = "draft_covers";
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -17,6 +18,9 @@ function openDB(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains(BLOB_STORE)) {
         db.createObjectStore(BLOB_STORE, { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains(DRAFT_COVERS_STORE)) {
+        db.createObjectStore(DRAFT_COVERS_STORE, { keyPath: "id" });
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -112,6 +116,56 @@ export async function getAllBlobEntries(): Promise<Array<{ id: string; blob: Blo
     const req = store.getAll();
     req.onsuccess = () => resolve((req.result as any[]) || []);
     req.onerror = () => reject(req.error);
+  });
+}
+
+// Draft cover helpers (store per draft key)
+export async function setDraftCovers(id: string, files: File[]): Promise<void> {
+  const db = await openDB();
+  // We store each File as { name, type, lastModified, data: Blob }
+  const payload = await Promise.all(files.map(async (f) => ({
+    name: f.name,
+    type: f.type,
+    lastModified: f.lastModified,
+    blob: f,
+  })));
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DRAFT_COVERS_STORE, "readwrite");
+    const store = tx.objectStore(DRAFT_COVERS_STORE);
+    store.put({ id, files: payload, updatedAt: Date.now() });
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+export async function getDraftCovers(id: string): Promise<File[] | null> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DRAFT_COVERS_STORE, "readonly");
+    const store = tx.objectStore(DRAFT_COVERS_STORE);
+    const req = store.get(id);
+    req.onsuccess = async () => {
+      const row = (req.result as any) || null;
+      if (!row || !Array.isArray(row.files)) return resolve(null);
+      try {
+        const files = row.files.map((r: any) => new File([r.blob], r.name || "image", { type: r.type || "", lastModified: r.lastModified || Date.now() }));
+        resolve(files);
+      } catch {
+        resolve(null);
+      }
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function deleteDraftCovers(id: string): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DRAFT_COVERS_STORE, "readwrite");
+    const store = tx.objectStore(DRAFT_COVERS_STORE);
+    store.delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
   });
 }
 

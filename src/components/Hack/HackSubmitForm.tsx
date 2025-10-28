@@ -18,7 +18,7 @@ import TagSelector from "@/components/Submit/TagSelector";
 import BinFile from "rom-patcher-js/rom-patcher-js/modules/BinFile.js";
 import BPS from "rom-patcher-js/rom-patcher-js/modules/RomPatcher.format.bps.js";
 import { sha1Hex } from "@/utils/hash";
-import { platformAccept } from "@/utils/idb";
+import { platformAccept, setDraftCovers, getDraftCovers, deleteDraftCovers } from "@/utils/idb";
 
 function SortableCoverItem({ id, index, url, filename, onRemove }: { id: string; index: number; url: string; filename: string; onRemove: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
@@ -61,28 +61,48 @@ interface HackSubmitFormProps {
 
 export default function HackSubmitForm({ dummy = false }: HackSubmitFormProps) {
   const MAX_COVERS = 10;
-  const { profile } = useAuthContext();
-  const [title, setTitle] = React.useState("");
-  const [summary, setSummary] = React.useState("");
-  const [description, setDescription] = React.useState("");
+  const { profile, user } = useAuthContext();
+  const [isHydrating, setIsHydrating] = React.useState(true);
+  const [restoredDraft, setRestoredDraft] = React.useState(false);
+  const hydratedFromDraftRef = React.useRef(false);
+  const draftKey = React.useMemo(() => (user?.id ? `hack-submit/v1/${user.id}` : null), [user?.id]);
+  const initialDraftRef = React.useRef<any>(undefined);
+  if (initialDraftRef.current === undefined && typeof window !== "undefined") {
+    try {
+      if (draftKey) {
+        const raw = localStorage.getItem(draftKey);
+        initialDraftRef.current = raw ? JSON.parse(raw) : {};
+      } else {
+        initialDraftRef.current = null; // will hydrate later when user is known
+      }
+    } catch {
+      initialDraftRef.current = {};
+    }
+  }
+  const [title, setTitle] = React.useState(() => initialDraftRef.current?.title || "");
+  const [summary, setSummary] = React.useState(() => initialDraftRef.current?.summary || "");
+  const [description, setDescription] = React.useState(() => initialDraftRef.current?.description || "");
   const [newCoverFiles, setNewCoverFiles] = React.useState<File[]>([]);
   const [coverErrors, setCoverErrors] = React.useState<string[]>([]);
-  const [baseRom, setBaseRom] = React.useState("");
-  const [platform, setPlatform] = React.useState<"GB" | "GBC" | "GBA" | "NDS" | "">("");
-  const [version, setVersion] = React.useState("");
-  const [language, setLanguage] = React.useState("");
-  const [boxArt, setBoxArt] = React.useState("");
-  const [discord, setDiscord] = React.useState("");
-  const [twitter, setTwitter] = React.useState("");
-  const [pokecommunity, setPokecommunity] = React.useState("");
-  const [tags, setTags] = React.useState<string[]>([]);
-  const [showMdPreview, setShowMdPreview] = React.useState(false);
+  const [baseRom, setBaseRom] = React.useState(() => initialDraftRef.current?.baseRom || "");
+  const [platform, setPlatform] = React.useState<"GB" | "GBC" | "GBA" | "NDS" | "">(() => (initialDraftRef.current?.platform as any) || "");
+  const [version, setVersion] = React.useState(() => initialDraftRef.current?.version || "");
+  const [language, setLanguage] = React.useState(() => initialDraftRef.current?.language || "");
+  const [boxArt, setBoxArt] = React.useState(() => initialDraftRef.current?.boxArt || "");
+  const [discord, setDiscord] = React.useState(() => initialDraftRef.current?.discord || "");
+  const [twitter, setTwitter] = React.useState(() => initialDraftRef.current?.twitter || "");
+  const [pokecommunity, setPokecommunity] = React.useState(() => initialDraftRef.current?.pokecommunity || "");
+  const [tags, setTags] = React.useState<string[]>(() => (Array.isArray(initialDraftRef.current?.tags) ? initialDraftRef.current.tags : []));
+  const [showMdPreview, setShowMdPreview] = React.useState<boolean>(() => !!initialDraftRef.current?.showMdPreview);
   const [patchFile, setPatchFile] = React.useState<File | null>(null);
-  const [patchMode, setPatchMode] = React.useState<"bps" | "rom">("bps");
+  const [patchMode, setPatchMode] = React.useState<"bps" | "rom">(() => (initialDraftRef.current?.patchMode === "rom" ? "rom" : "bps"));
   const [genStatus, setGenStatus] = React.useState<"idle" | "generating" | "ready" | "error">("idle");
   const [genError, setGenError] = React.useState<string>("");
   const [submitting, setSubmitting] = React.useState(false);
-  const [step, setStep] = React.useState(1);
+  const [step, setStep] = React.useState<number>(() => {
+    const s = initialDraftRef.current?.step;
+    return Number.isInteger(s) ? Math.min(4, Math.max(1, s)) : 1;
+  });
   const supabase = createClient();
   const isDummy = !!dummy;
 
@@ -110,6 +130,20 @@ export default function HackSubmitForm({ dummy = false }: HackSubmitFormProps) {
       coverPreviews.forEach((u) => URL.revokeObjectURL(u));
     };
   }, [coverPreviews]);
+
+  // Load persisted screenshot blobs after user/draftKey known
+  React.useEffect(() => {
+    if (dummy || !draftKey) return;
+    (async () => {
+      try {
+        const files = await getDraftCovers(draftKey);
+        if (files && files.length) {
+          setNewCoverFiles(files);
+          hydratedFromDraftRef.current = true; setRestoredDraft(true);
+        }
+      } catch {}
+    })();
+  }, [dummy, draftKey]);
 
   React.useEffect(() => {
     setPatchFile(null);
@@ -175,18 +209,36 @@ export default function HackSubmitForm({ dummy = false }: HackSubmitFormProps) {
     setNewCoverFiles((prev) => arrayMove(prev, oldIndex, newIndex));
   };
 
+  // Persist draft covers whenever they change
   React.useEffect(() => {
-    if (isDummy) return;
+    if (dummy || !draftKey) return;
+    (async () => {
+      try { await setDraftCovers(draftKey, newCoverFiles); } catch {}
+    })();
+  }, [dummy, draftKey, newCoverFiles]);
+
+  React.useEffect(() => {
+    if (isDummy || isHydrating) return;
+    let target: HTMLInputElement | null = null;
     if (step === 1) {
-      titleInputRef.current?.focus();
+      target = titleInputRef.current;
     } else if (step === 2) {
-      versionInputRef.current?.focus();
+      target = versionInputRef.current;
     } else if (step === 3) {
-      screenshotsInputRef.current?.focus();
+      target = screenshotsInputRef.current;
     } else if (step === 4) {
-      patchInputRef.current?.focus();
+      target = patchInputRef.current;
     }
-  }, [step, isDummy]);
+    if (!target) return;
+    const raf1 = requestAnimationFrame(() => {
+      const raf2 = requestAnimationFrame(() => {
+        if (!target?.disabled) target?.focus();
+      });
+      // Cleanup nested rAF on effect re-run
+      return () => cancelAnimationFrame(raf2);
+    });
+    return () => cancelAnimationFrame(raf1);
+  }, [step, isDummy, isHydrating]);
 
   const slugify = (text: string) =>
     text
@@ -196,6 +248,121 @@ export default function HackSubmitForm({ dummy = false }: HackSubmitFormProps) {
       .replace(/^-+|-+$/g, "");
 
   const slug = slugify(title || "");
+
+  // Draft load after user is known (covers case where user id wasn't ready at first render)
+  React.useEffect(() => {
+    if (dummy) { setIsHydrating(false); return; }
+    if (!draftKey) return; // wait for user
+    try {
+      // If we didn't have the draft synchronously, hydrate now
+      if (!initialDraftRef.current || Object.keys(initialDraftRef.current || {}).length === 0) {
+        const raw = localStorage.getItem(draftKey);
+        if (raw) {
+          const data = JSON.parse(raw);
+          if (data && typeof data === "object") {
+            const isEmpty =
+              !title && !summary && !description && !baseRom && !platform && !version && !language && !boxArt && !discord && !twitter && !pokecommunity && (!tags || tags.length === 0);
+            if (isEmpty) {
+              let applied = false;
+              if (typeof data.title === "string") setTitle(data.title);
+              if (typeof data.title === "string") applied = applied || !!data.title;
+              if (typeof data.summary === "string") setSummary(data.summary);
+              if (typeof data.summary === "string") applied = applied || !!data.summary;
+              if (typeof data.description === "string") setDescription(data.description);
+              if (typeof data.description === "string") applied = applied || !!data.description;
+              if (typeof data.baseRom === "string") setBaseRom(data.baseRom);
+              if (typeof data.baseRom === "string") applied = applied || !!data.baseRom;
+              if (["GB","GBC","GBA","NDS",""].includes(data.platform)) setPlatform(data.platform);
+              if (["GB","GBC","GBA","NDS",""].includes(data.platform)) applied = applied || !!data.platform;
+              if (typeof data.version === "string") setVersion(data.version);
+              if (typeof data.version === "string") applied = applied || !!data.version;
+              if (typeof data.language === "string") setLanguage(data.language);
+              if (typeof data.language === "string") applied = applied || !!data.language;
+              if (typeof data.boxArt === "string") setBoxArt(data.boxArt);
+              if (typeof data.boxArt === "string") applied = applied || !!data.boxArt;
+              if (typeof data.discord === "string") setDiscord(data.discord);
+              if (typeof data.discord === "string") applied = applied || !!data.discord;
+              if (typeof data.twitter === "string") setTwitter(data.twitter);
+              if (typeof data.twitter === "string") applied = applied || !!data.twitter;
+              if (typeof data.pokecommunity === "string") setPokecommunity(data.pokecommunity);
+              if (typeof data.pokecommunity === "string") applied = applied || !!data.pokecommunity;
+              if (Array.isArray(data.tags)) setTags(data.tags.filter((t: any) => typeof t === "string"));
+              if (Array.isArray(data.tags)) applied = applied || data.tags.length > 0;
+              if (data.step && Number.isInteger(data.step)) setStep(Math.min(4, Math.max(1, data.step)));
+              if (typeof data.showMdPreview === "boolean") setShowMdPreview(data.showMdPreview);
+              if (data.patchMode === "bps" || data.patchMode === "rom") setPatchMode(data.patchMode);
+              if (applied) { hydratedFromDraftRef.current = true; setRestoredDraft(true); }
+            }
+          }
+        }
+      }
+    } catch {
+      // ignore
+    } finally {
+      setIsHydrating(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKey]);
+
+  // If we synchronously seeded from initialDraftRef, mark as restored
+  React.useEffect(() => {
+    if (dummy || !draftKey || hydratedFromDraftRef.current) return;
+    const d = initialDraftRef.current;
+    if (!d || typeof d !== "object") return;
+    const hasAny = Boolean(
+      d.title || d.summary || d.description || d.baseRom || d.platform || d.version || d.language || d.boxArt || d.discord || d.twitter || d.pokecommunity || (Array.isArray(d.tags) && d.tags.length > 0)
+    );
+    if (hasAny) { hydratedFromDraftRef.current = true; setRestoredDraft(true); }
+  }, [dummy, draftKey]);
+
+  React.useEffect(() => {
+    if (dummy || !draftKey || isHydrating) return;
+    const handle = setTimeout(() => {
+      try {
+        const data = {
+          title,
+          summary,
+          description,
+          baseRom,
+          platform,
+          version,
+          language,
+          boxArt,
+          discord,
+          twitter,
+          pokecommunity,
+          tags,
+          step,
+          showMdPreview,
+          patchMode,
+        };
+        localStorage.setItem(draftKey, JSON.stringify(data));
+      } catch {
+        // ignore
+      }
+    }, 400);
+    return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    dummy,
+    draftKey,
+    isHydrating,
+    title,
+    summary,
+    description,
+    baseRom,
+    platform,
+    version,
+    language,
+    boxArt,
+    discord,
+    twitter,
+    pokecommunity,
+    tags,
+    step,
+    showMdPreview,
+    patchMode,
+  ]);
 
   const summaryLimit = 120;
   const summaryTooLong = summary.length > summaryLimit;
@@ -239,8 +406,20 @@ export default function HackSubmitForm({ dummy = false }: HackSubmitFormProps) {
         await fetch(presigned.presignedUrl, { method: 'PUT', body: patchFile, headers: { 'Content-Type': 'application/octet-stream' } });
         const finalized = await confirmPatchUpload({ slug: prepared.slug, objectKey: presigned.objectKey!, version });
         if (!finalized.ok) throw new Error(finalized.error || 'Failed to finalize');
+        try {
+          if (draftKey) {
+            localStorage.removeItem(draftKey);
+            await deleteDraftCovers(draftKey);
+          }
+        } catch {}
         window.location.href = finalized.redirectTo!;
       } else {
+        try {
+          if (draftKey) {
+            localStorage.removeItem(draftKey);
+            await deleteDraftCovers(draftKey);
+          }
+        } catch {}
         window.location.href = `/hack/${prepared.slug}`;
       }
     } catch (e: any) {
@@ -341,434 +520,491 @@ export default function HackSubmitForm({ dummy = false }: HackSubmitFormProps) {
       <div className="flex-1">
         <form className="grid gap-5">
           <div className="text-xs italic text-foreground/60">* Required</div>
-
-          {step === 1 && (
-            <>
-              <div className="grid gap-2">
-                <label className="text-sm text-foreground/80">Title <span className="text-red-500">*</span></label>
-                {!isDummy ? (
-                  <input
-                    ref={titleInputRef}
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-                  />
-                ) : (
-                  <div
-                    role="textbox"
-                    aria-disabled
-                    className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none"
-                  >
-                    Your hack title
-                  </div>
-                )}
-                <div className="mt-1 text-xs text-foreground/60">URL preview: <span className="text-foreground/80">/hack/{slug || "your-title"}</span></div>
-              </div>
-
-              <div className="grid gap-2">
-                <label className="text-sm text-foreground/80">Platform <span className="text-red-500">*</span></label>
-                {!isDummy ? (
-                  <select
-                    value={platform}
-                    onChange={(e) => { if ((newCoverFiles.length) > 0) return; setPlatform(e.target.value as any); setBaseRom(""); }}
-                    disabled={newCoverFiles.length > 0}
-                    className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] disabled:opacity-50"
-                  >
-                    <option value="" disabled>Select platform</option>
-                    {(["GB","GBC","GBA","NDS"] as const).map(p => (
-                      <option key={p} value={p}>{p}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <div className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none">{platform || ""}</div>
-                )}
-                {newCoverFiles.length > 0 && (
-                  <div className="text-xs text-red-500">Please remove all screenshots before changing the platform.</div>
-                )}
-              </div>
-
-              <div className="grid gap-2">
-                <label className="text-sm text-foreground/80">Base ROM <span className="text-red-500">*</span></label>
-                {!isDummy ? (
-                  <select
-                    value={baseRom}
-                    onChange={(e) => setBaseRom(e.target.value)}
-                    disabled={!platform}
-                    className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] disabled:opacity-50"
-                  >
-                    <option value="" disabled>{platform ? "Select base rom" : "Select platform first"}</option>
-                    {baseRoms.filter(r => !platform || r.platform === platform).map(({ id, name, region }) => (
-                      <option key={id} value={id}>
-                        {name.replace('Pokémon ', '')} ({region})
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <div className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none">{baseRoms.find(r=>r.id===baseRom)?.name || baseRom}</div>
-                )}
-              </div>
-
-              <div className="grid gap-2">
-                <label className="text-sm text-foreground/80">Language <span className="text-red-500">*</span></label>
-                {!isDummy ? (
-                  <select
-                    value={language}
-                    onChange={(e) => setLanguage(e.target.value)}
-                    className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-                  >
-                    <option value="" disabled>Select language</option>
-                    {['English','Spanish','French','German','Italian','Portuguese','Japanese','Chinese','Korean','Other'].map(l => (
-                      <option key={l} value={l}>{l}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <div role="textbox" aria-disabled className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none">{language}</div>
-                )}
-              </div>
-            </>
-          )}
-
-          {step === 2 && (
-            <>
-              <div className="grid gap-2">
-                <label className="text-sm text-foreground/80">Version <span className="text-red-500">*</span></label>
-                {!isDummy ? (
-                  <input
-                    ref={versionInputRef}
-                    value={version}
-                    onChange={(e) => setVersion(e.target.value)}
-                    placeholder="e.g. v1.2.0"
-                    className={`h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]`}
-                  />
-                ) : (
-                  <div role="textbox" aria-disabled className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none">v0.1.0</div>
-                )}
-              </div>
-
-              <div className="grid gap-2">
-                <label className="text-sm text-foreground/80">Tags <span className="text-red-500">*</span></label>
-                <TagSelector value={tags} onChange={setTags} />
-              </div>
-
-              <div className="grid gap-1">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm text-foreground/80">Summary <span className="text-red-500">*</span></label>
-                  <span className={`text-[11px] ${summaryTooLong ? "text-red-300" : "text-foreground/60"}`}>{summary.length}/{summaryLimit}</span>
-                </div>
-                {!isDummy ? (
-                  <input
-                    value={summary}
-                    onChange={(e) => setSummary(e.target.value)}
-                    placeholder="<= 100 characters"
-                    className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${summaryTooLong ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
-                  />
-                ) : (
-                  <div
-                    role="textbox"
-                    aria-disabled
-                    className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center text-foreground/60 select-none ${summaryTooLong ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
-                  >
-                    Short description, max 100 characters.
-                  </div>
-                )}
-              </div>
-
-              <div className="grid gap-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm text-foreground/80">Description <span className="text-red-500">*</span></label>
-                  {!isDummy && (
-                    <div className="flex items-center gap-1 text-xs">
-                      <button type="button" onClick={() => setShowMdPreview(false)} className={`px-2 py-1 rounded ${!showMdPreview ? "bg-[var(--surface-2)] ring-1 ring-[var(--border)]" : "text-foreground/70"}`}>Write</button>
-                      <button type="button" onClick={() => setShowMdPreview(true)} className={`px-2 py-1 rounded ${showMdPreview ? "bg-[var(--surface-2)] ring-1 ring-[var(--border)]" : "text-foreground/70"}`}>Preview</button>
-                    </div>
-                  )}
-                </div>
-                {isDummy ? (
-                  <div className="prose max-w-none h-36 rounded-md bg-[var(--surface-2)] px-3 py-2 ring-1 ring-inset ring-[var(--border)] text-foreground/60 select-none">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{description || "Write a longer markdown description here."}</ReactMarkdown>
-                  </div>
-                ) : !showMdPreview ? (
-                  <textarea
-                    rows={14}
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Supports Markdown"
-                    className={`rounded-md bg-[var(--surface-2)] px-3 py-2 min-h-[14rem] text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]`}
-                  />
-                ) : (
-                  <div className={`prose max-w-none rounded-md bg-[var(--surface-2)] min-h-[14rem] px-3 py-2 ring-1 ring-inset ring-[var(--border)] ${description ? "" : "text-foreground/60 text-sm"}`}>
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{description || "Nothing to preview yet."}</ReactMarkdown>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-
-          {step === 3 && (
-            <>
-              <div className="grid gap-2">
-                <label className="text-sm text-foreground/80">Screenshots <span className="text-red-500">*</span></label>
-                {allowedSizes.length > 0 && (
-                  <p className="text-xs text-foreground/60">Upload screenshots of your game. Allowed sizes: {allowedSizes.map((s) => `${s.w}x${s.h}`).join(", ")}.</p>
-                )}
-                <div className="space-y-3">
-                  {!isDummy ? (
-                    <input
-                      ref={screenshotsInputRef}
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={async (e) => {
-                        const list = Array.from(e.target.files || []);
-                        const allowed = baseRoms.find(r => r.id === baseRom)?.platform;
-                        const sizes = allowed ? getAllowedSizesForPlatform(allowed) : [];
-                        const accepted: File[] = [];
-                        const errors: string[] = [];
-                        for (const f of list) {
-                          if (sizes.length === 0) { accepted.push(f); continue; }
-                          const ok = await validateImageDimensions(f, sizes);
-                          if (ok) accepted.push(f); else errors.push(f.name);
-                        }
-                        setCoverErrors(errors);
-                        setNewCoverFiles((prev) => [...prev, ...accepted]);
-                      }}
-                      className={`w-full rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none ${!hasBaseRom ? 'pointer-events-none opacity-50 blur-[1px]' : ''}`}
-                    />
-                  ) : (
-                    <div className="w-full h-14 rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm ring-1 ring-inset ring-[var(--border)] text-foreground/60 select-none">
-                      Choose images to upload
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2">
-                    {!isDummy ? (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => { setNewCoverFiles([]); }}
-                          className="inline-flex h-9 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 text-xs font-medium text-foreground/80 transition-colors hover:bg-black/5 dark:hover:bg-white/10"
-                        >
-                          Clear
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button type="button" disabled className="inline-flex h-9 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 text-xs font-medium text-foreground/70 disabled:opacity-40">
-                          Add
-                        </button>
-                        <button type="button" disabled className="inline-flex h-9 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 text-xs font-medium text-foreground/60 disabled:opacity-40">
-                          Clear
-                        </button>
-                      </>
-                    )}
-                  </div>
-                  <div className="text-xs text-foreground/60 flex justify-between">
-                    <p>Images: <span className={overLimit ? "text-red-300 font-bold" : "text-foreground/60"}>{newCoverFiles.length}</span>/{MAX_COVERS}</p>
-                    {overLimit && <p className="text-red-300/80 italic">Remove some to submit.</p>}
-                  </div>
-                  {coverErrors.length > 0 && (
-                    <div className="text-xs text-red-400">
-                      Rejected (wrong size): {coverErrors.join(", ")}
-                    </div>
-                  )}
-                  <div className="grid gap-2">
-                    {newCoverFiles.length === 0 ? (
-                      <p className="text-xs text-foreground/60">No images added yet. Add at least one to preview.</p>
-                    ) : (
-                      !isDummy ? (
-                        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-                          <SortableContext
-                            items={newCoverFiles.map((f, i) => `${f.name}-${i}`)}
-                            strategy={verticalListSortingStrategy}
-                          >
-                            {newCoverFiles.map((f, i) => (
-                              <SortableCoverItem
-                                key={`${f.name}-${i}`}
-                                id={`${f.name}-${i}`}
-                                index={i}
-                                filename={f.name}
-                                url={URL.createObjectURL(f)}
-                                onRemove={() => removeAt(i)}
-                              />
-                            ))}
-                          </SortableContext>
-                        </DndContext>
-                      ) : null
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid gap-2">
-                <label className="text-sm text-foreground/80">Box art URL</label>
-                {!isDummy ? (
-                  <input
-                    value={boxArt}
-                    onChange={(e) => setBoxArt(e.target.value)}
-                    placeholder="https://..."
-                    className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${boxArt && !urlLike(boxArt) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
-                  />
-                ) : (
-                  <div className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center text-foreground/60 select-none ${boxArt && !urlLike(boxArt) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}>https://...</div>
-                )}
-              </div>
-
-              <div className="grid gap-2">
-                <label className="text-sm text-foreground/80">Social links</label>
-                <div className="grid gap-2 sm:grid-cols-3">
-                  {!isDummy ? (
-                    <>
-                      <input
-                        value={discord}
-                        onChange={(e) => setDiscord(e.target.value)}
-                        placeholder="Discord invite URL"
-                        className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${discord && !urlLike(discord) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
-                      />
-                      <input
-                        value={twitter}
-                        onChange={(e) => setTwitter(e.target.value)}
-                        placeholder="Twitter/X profile URL"
-                        className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${twitter && !urlLike(twitter) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
-                      />
-                      <input
-                        value={pokecommunity}
-                        onChange={(e) => setPokecommunity(e.target.value)}
-                        placeholder="PokeCommunity thread URL"
-                        className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${pokecommunity && !urlLike(pokecommunity) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
-                      />
-                    </>
-                  ) : (
-                    <>
-                      <div className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center text-foreground/60 select-none ${discord && !urlLike(discord) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}>Discord invite URL</div>
-                      <div className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center text-foreground/60 select-none ${twitter && !urlLike(twitter) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}>Twitter/X profile URL</div>
-                      <div className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center text-foreground/60 select-none ${pokecommunity && !urlLike(pokecommunity) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}>PokeCommunity thread URL</div>
-                    </>
-                  )}
-                </div>
-                <p className="text-xs text-foreground/60">Use full URLs starting with http:// or https://</p>
-              </div>
-            </>
-          )}
-
-          {step === 4 && (
-            <div className="grid gap-3">
-              <label className="text-sm text-foreground/80">Provide patch <span className="text-red-500">*</span></label>
-              {!isDummy ? (
-                <div className="flex flex-col gap-3">
-                  <div className="inline-flex items-center">
-                    <button
-                      type="button"
-                      onClick={() => setPatchMode("bps")}
-                      className={`rounded-md rounded-r-none px-3 py-1.5 text-xs border-l-1 border-y-1 ${patchMode === "bps" ? "bg-[var(--surface-2)] border-[var(--border)]" : "text-foreground/70 border-[var(--border)]"}`}
-                    >
-                      Upload .bps
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPatchMode("rom")}
-                      className={`rounded-md rounded-l-none px-3 py-1.5 text-xs border-1 ${patchMode === "rom" ? "bg-[var(--surface-2)] border-[var(--border)]" : "text-foreground/70 border-[var(--border)]"}`}
-                    >
-                      Upload modified ROM (auto-generate .bps)
-                    </button>
-                  </div>
-
-                  {patchMode === "bps" && (
-                    <div className="grid gap-2">
-                      <input
-                        ref={patchInputRef}
-                        onChange={(e) => setPatchFile(e.target.files?.[0] || null)}
-                        type="file"
-                        accept=".bps"
-                        className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] file:bg-black/10 dark:file:bg-[var(--surface-2)] file:text-foreground/80 file:text-sm file:font-medium file:not-italic file:rounded-md file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer"
-                      />
-                      <p className="text-xs text-foreground/60">Upload a BPS patch file.</p>
-                    </div>
-                  )}
-
-                  {patchMode === "rom" && (
-                    <div className="grid gap-3">
-                      <div className="rounded-md border border-[var(--border)] p-3 bg-[var(--surface-2)]/50">
-                        <div className="text-xs text-foreground/75">Required base ROM</div>
-                        <div className="mt-1 text-sm font-medium">{baseRomEntry ? `${baseRomEntry.name} (${baseRomEntry.platform})` : "Select a base ROM in Step 1"}</div>
-                        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                          <span className={`rounded-full px-2 py-0.5 ring-1 ${baseRomReady ? "bg-emerald-600/60 text-white ring-emerald-700/80 dark:bg-emerald-500/25 dark:text-emerald-100 dark:ring-emerald-400/90" : baseRomNeedsPermission ? "bg-amber-600/60 text-white ring-amber-700/80 dark:bg-amber-500/50 dark:text-amber-100 dark:ring-amber-400/90" : "bg-red-600/60 text-white ring-red-700/80 dark:bg-red-500/50 dark:text-red-100 dark:ring-red-400/90"}`}>
-                            {baseRomReady ? "Ready" : baseRomNeedsPermission ? "Permission needed" : "Base ROM needed"}
-                          </span>
-                          {baseRomNeedsPermission && (
-                            <button type="button" onClick={onGrantPermission} disabled={!supported} className="rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2 py-1 disabled:opacity-60 disabled:cursor-not-allowed">Grant permission</button>
-                          )}
-                          {baseRomMissing && (
-                            <label className="inline-flex items-center gap-2 text-xs text-foreground/80">
-                              <input type="file" onChange={onUploadBaseRom} className="rounded-md bg-[var(--surface-2)] px-2 py-1 text-xs ring-1 ring-inset ring-[var(--border)]" />
-                              <span>Upload base ROM</span>
-                            </label>
-                          )}
-                        </div>
-                        {!!genError && <div className="mt-2 text-xs text-red-400">{genError}</div>}
-                      </div>
-
-                      <div className="grid gap-2">
-                        <label className="text-sm text-foreground/80">Modified ROM</label>
-                        <input
-                          ref={modifiedRomInputRef}
-                          type="file"
-                          accept={baseRomPlatform ? platformAccept(baseRomPlatform) : "*/*"}
-                          disabled={!baseRomEntry || !baseRomReady || !baseRomPlatform}
-                          onChange={onUploadModifiedRom}
-                          className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm ring-1 ring-inset ring-[var(--border)] disabled:opacity-50 disabled:cursor-not-allowed"
-                        />
-                        <p className="text-xs text-foreground/60">We'll generate a .bps patch on-device. No ROMs are uploaded.</p>
-                        {genStatus === "generating" && <div className="text-xs text-foreground/70">Generating patch…</div>}
-                        {genStatus === "ready" && patchFile && <div className="text-xs text-emerald-400/90">Patch ready: {patchFile.name}</div>}
-                        {genStatus === "error" && !!genError && <div className="text-xs text-red-400">{genError}</div>}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] select-none">Choose file</div>
-              )}
+          {isHydrating && (
+            <div className="flex items-center gap-2 text-[13px] text-foreground/70 animate-pulse">
+              <span className="inline-block h-2 w-2 rounded-full bg-foreground/50"></span>
+              Checking for existing draft…
             </div>
           )}
-
-          {!isDummy && (
-            <div className="flex items-center justify-between gap-3 border-t border-[var(--border)] pt-4 mt-4">
+          {!isHydrating && restoredDraft && (
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="inline-block h-2 w-2 rounded-full bg-amber-400"></span>
+                Restored a previously saved draft.
+              </div>
               <button
                 type="button"
-                onClick={() => setStep((s) => Math.max(1, s - 1))}
-                disabled={step === 1 || submitting}
-                className="inline-flex h-11 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-4 text-sm font-semibold text-foreground transition-colors hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={async () => {
+                  const ok = window.confirm("Clear saved draft? This will remove all saved fields and screenshots.");
+                  if (!ok) return;
+                  try {
+                    if (draftKey) {
+                      localStorage.removeItem(draftKey);
+                      await deleteDraftCovers(draftKey);
+                    }
+                  } catch {}
+                  // Reset form state
+                  setTitle("");
+                  setSummary("");
+                  setDescription("");
+                  setBaseRom("");
+                  setPlatform("");
+                  setVersion("");
+                  setLanguage("");
+                  setBoxArt("");
+                  setDiscord("");
+                  setTwitter("");
+                  setPokecommunity("");
+                  setTags([]);
+                  setNewCoverFiles([]);
+                  setCoverErrors([]);
+                  setPatchFile(null);
+                  setShowMdPreview(false);
+                  setStep(1);
+                  // Clear file inputs if present
+                  if (screenshotsInputRef.current) screenshotsInputRef.current.value = "";
+                  if (patchInputRef.current) patchInputRef.current.value = "";
+                  if (modifiedRomInputRef.current) modifiedRomInputRef.current.value = "";
+                  setRestoredDraft(false);
+                }}
+                className="inline-flex h-8 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 text-xs font-medium text-foreground/80 transition-colors hover:bg-black/5 dark:hover:bg-white/10"
               >
-                Back
+                Clear saved draft
               </button>
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-foreground/60">Step {step} of 4</span>
-              </div>
-              {step < 4 ? (
-                <button
-                  type="button"
-                  onClick={() => setStep((s) => Math.min(4, s + 1))}
-                  disabled={
-                    submitting ||
-                    (step === 1 && !step1Valid) ||
-                    (step === 2 && !step2Valid) ||
-                    (step === 3 && !step3Valid)
-                  }
-                  className="inline-flex h-11 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-4 text-sm font-semibold text-foreground transition-colors hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Next
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={onSubmit}
-                  disabled={!isValid || submitting}
-                  className="shine-wrap btn-premium h-11 min-w-[7.5rem] text-sm font-semibold dark:disabled:opacity-70 disabled:cursor-not-allowed disabled:[box-shadow:0_0_0_1px_var(--border)]"
-                >
-                  <span>{submitting ? 'Submitting…' : 'Submit'}</span>
-                </button>
-              )}
             </div>
           )}
+          <fieldset disabled={isHydrating} aria-busy={isHydrating} className="grid gap-5">
+
+            {step === 1 && (
+              <>
+                <div className="grid gap-2">
+                  <label className="text-sm text-foreground/80">Title <span className="text-red-500">*</span></label>
+                  {!isDummy ? (
+                    <input
+                      ref={titleInputRef}
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+                    />
+                  ) : (
+                    <div
+                      role="textbox"
+                      aria-disabled
+                      className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none"
+                    >
+                      Your hack title
+                    </div>
+                  )}
+                  <div className="mt-1 text-xs text-foreground/60">URL preview: <span className="text-foreground/80">/hack/{slug || "your-title"}</span></div>
+                </div>
+
+                <div className="grid gap-2">
+                  <label className="text-sm text-foreground/80">Platform <span className="text-red-500">*</span></label>
+                  {!isDummy ? (
+                    <select
+                      value={platform}
+                      onChange={(e) => { if ((newCoverFiles.length) > 0) return; setPlatform(e.target.value as any); setBaseRom(""); }}
+                      disabled={newCoverFiles.length > 0}
+                      className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] disabled:opacity-50"
+                    >
+                      <option value="" disabled>Select platform</option>
+                      {(["GB","GBC","GBA","NDS"] as const).map(p => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none">{platform || ""}</div>
+                  )}
+                  {newCoverFiles.length > 0 && (
+                    <div className="text-xs text-red-500">Please remove all screenshots before changing the platform.</div>
+                  )}
+                </div>
+
+                <div className="grid gap-2">
+                  <label className="text-sm text-foreground/80">Base ROM <span className="text-red-500">*</span></label>
+                  {!isDummy ? (
+                    <select
+                      value={baseRom}
+                      onChange={(e) => setBaseRom(e.target.value)}
+                      disabled={!platform}
+                      className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] disabled:opacity-50"
+                    >
+                      <option value="" disabled>{platform ? "Select base rom" : "Select platform first"}</option>
+                      {baseRoms.filter(r => !platform || r.platform === platform).map(({ id, name, region }) => (
+                        <option key={id} value={id}>
+                          {name.replace('Pokémon ', '')} ({region})
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none">{baseRoms.find(r=>r.id===baseRom)?.name || baseRom}</div>
+                  )}
+                </div>
+
+                <div className="grid gap-2">
+                  <label className="text-sm text-foreground/80">Language <span className="text-red-500">*</span></label>
+                  {!isDummy ? (
+                    <select
+                      value={language}
+                      onChange={(e) => setLanguage(e.target.value)}
+                      className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+                    >
+                      <option value="" disabled>Select language</option>
+                      {['English','Spanish','French','German','Italian','Portuguese','Japanese','Chinese','Korean','Other'].map(l => (
+                        <option key={l} value={l}>{l}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div role="textbox" aria-disabled className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none">{language}</div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {step === 2 && (
+              <>
+                <div className="grid gap-2">
+                  <label className="text-sm text-foreground/80">Version <span className="text-red-500">*</span></label>
+                  {!isDummy ? (
+                    <input
+                      ref={versionInputRef}
+                      value={version}
+                      onChange={(e) => setVersion(e.target.value)}
+                      placeholder="e.g. v1.2.0"
+                      className={`h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]`}
+                    />
+                  ) : (
+                    <div role="textbox" aria-disabled className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none">v0.1.0</div>
+                  )}
+                </div>
+
+                <div className="grid gap-2">
+                  <label className="text-sm text-foreground/80">Tags <span className="text-red-500">*</span></label>
+                  <TagSelector value={tags} onChange={setTags} />
+                </div>
+
+                <div className="grid gap-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm text-foreground/80">Summary <span className="text-red-500">*</span></label>
+                    <span className={`text-[11px] ${summaryTooLong ? "text-red-300" : "text-foreground/60"}`}>{summary.length}/{summaryLimit}</span>
+                  </div>
+                  {!isDummy ? (
+                    <input
+                      value={summary}
+                      onChange={(e) => setSummary(e.target.value)}
+                      placeholder="<= 100 characters"
+                      className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${summaryTooLong ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
+                    />
+                  ) : (
+                    <div
+                      role="textbox"
+                      aria-disabled
+                      className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center text-foreground/60 select-none ${summaryTooLong ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
+                    >
+                      Short description, max 100 characters.
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid gap-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm text-foreground/80">Description <span className="text-red-500">*</span></label>
+                    {!isDummy && (
+                      <div className="flex items-center gap-1 text-xs">
+                        <button type="button" onClick={() => setShowMdPreview(false)} className={`px-2 py-1 rounded ${!showMdPreview ? "bg-[var(--surface-2)] ring-1 ring-[var(--border)]" : "text-foreground/70"}`}>Write</button>
+                        <button type="button" onClick={() => setShowMdPreview(true)} className={`px-2 py-1 rounded ${showMdPreview ? "bg-[var(--surface-2)] ring-1 ring-[var(--border)]" : "text-foreground/70"}`}>Preview</button>
+                      </div>
+                    )}
+                  </div>
+                  {isDummy ? (
+                    <div className="prose max-w-none h-36 rounded-md bg-[var(--surface-2)] px-3 py-2 ring-1 ring-inset ring-[var(--border)] text-foreground/60 select-none">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{description || "Write a longer markdown description here."}</ReactMarkdown>
+                    </div>
+                  ) : !showMdPreview ? (
+                    <textarea
+                      rows={14}
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="Supports Markdown"
+                      className={`rounded-md bg-[var(--surface-2)] px-3 py-2 min-h-[14rem] text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]`}
+                    />
+                  ) : (
+                    <div className={`prose max-w-none rounded-md bg-[var(--surface-2)] min-h-[14rem] px-3 py-2 ring-1 ring-inset ring-[var(--border)] ${description ? "" : "text-foreground/60 text-sm"}`}>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{description || "Nothing to preview yet."}</ReactMarkdown>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {step === 3 && (
+              <>
+                <div className="grid gap-2">
+                  <label className="text-sm text-foreground/80">Screenshots <span className="text-red-500">*</span></label>
+                  {allowedSizes.length > 0 && (
+                    <p className="text-xs text-foreground/60">Upload screenshots of your game. Allowed sizes: {allowedSizes.map((s) => `${s.w}x${s.h}`).join(", ")}.</p>
+                  )}
+                  <div className="space-y-3">
+                    {!isDummy ? (
+                      <input
+                        ref={screenshotsInputRef}
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const list = Array.from(e.target.files || []);
+                          const allowed = baseRoms.find(r => r.id === baseRom)?.platform;
+                          const sizes = allowed ? getAllowedSizesForPlatform(allowed) : [];
+                          const accepted: File[] = [];
+                          const errors: string[] = [];
+                          for (const f of list) {
+                            if (sizes.length === 0) { accepted.push(f); continue; }
+                            const ok = await validateImageDimensions(f, sizes);
+                            if (ok) accepted.push(f); else errors.push(f.name);
+                          }
+                        setCoverErrors(errors);
+                        // Compute next files list and update once
+                        const nextFiles = [...newCoverFiles, ...accepted];
+                        setNewCoverFiles(nextFiles);
+                        }}
+                        className={`w-full rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none ${!hasBaseRom ? 'pointer-events-none opacity-50 blur-[1px]' : ''}`}
+                      />
+                    ) : (
+                      <div className="w-full h-14 rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm ring-1 ring-inset ring-[var(--border)] text-foreground/60 select-none">
+                        Choose images to upload
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      {!isDummy ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => { setNewCoverFiles([]); try { if (draftKey) deleteDraftCovers(draftKey); } catch {} }}
+                            className="inline-flex h-9 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 text-xs font-medium text-foreground/80 transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                          >
+                            Clear
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button type="button" disabled className="inline-flex h-9 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 text-xs font-medium text-foreground/70 disabled:opacity-40">
+                            Add
+                          </button>
+                          <button type="button" disabled className="inline-flex h-9 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 text-xs font-medium text-foreground/60 disabled:opacity-40">
+                            Clear
+                          </button>
+                        </>
+                      )}
+                    </div>
+                    <div className="text-xs text-foreground/60 flex justify-between">
+                      <p>Images: <span className={overLimit ? "text-red-300 font-bold" : "text-foreground/60"}>{newCoverFiles.length}</span>/{MAX_COVERS}</p>
+                      {overLimit && <p className="text-red-300/80 italic">Remove some to submit.</p>}
+                    </div>
+                    {coverErrors.length > 0 && (
+                      <div className="text-xs text-red-400">
+                        Rejected (wrong size): {coverErrors.join(", ")}
+                      </div>
+                    )}
+                    <div className="grid gap-2">
+                      {newCoverFiles.length === 0 ? (
+                        <p className="text-xs text-foreground/60">No images added yet. Add at least one to preview.</p>
+                      ) : (
+                        !isDummy ? (
+                          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+                            <SortableContext
+                              items={newCoverFiles.map((f, i) => `${f.name}-${i}`)}
+                              strategy={verticalListSortingStrategy}
+                            >
+                              {newCoverFiles.map((f, i) => (
+                                <SortableCoverItem
+                                  key={`${f.name}-${i}`}
+                                  id={`${f.name}-${i}`}
+                                  index={i}
+                                  filename={f.name}
+                                  url={URL.createObjectURL(f)}
+                                  onRemove={() => removeAt(i)}
+                                />
+                              ))}
+                            </SortableContext>
+                          </DndContext>
+                        ) : null
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-2">
+                  <label className="text-sm text-foreground/80">Box art URL</label>
+                  {!isDummy ? (
+                    <input
+                      value={boxArt}
+                      onChange={(e) => setBoxArt(e.target.value)}
+                      placeholder="https://..."
+                      className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${boxArt && !urlLike(boxArt) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
+                    />
+                  ) : (
+                    <div className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center text-foreground/60 select-none ${boxArt && !urlLike(boxArt) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}>https://...</div>
+                  )}
+                </div>
+
+                <div className="grid gap-2">
+                  <label className="text-sm text-foreground/80">Social links</label>
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    {!isDummy ? (
+                      <>
+                        <input
+                          value={discord}
+                          onChange={(e) => setDiscord(e.target.value)}
+                          placeholder="Discord invite URL"
+                          className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${discord && !urlLike(discord) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
+                        />
+                        <input
+                          value={twitter}
+                          onChange={(e) => setTwitter(e.target.value)}
+                          placeholder="Twitter/X profile URL"
+                          className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${twitter && !urlLike(twitter) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
+                        />
+                        <input
+                          value={pokecommunity}
+                          onChange={(e) => setPokecommunity(e.target.value)}
+                          placeholder="PokeCommunity thread URL"
+                          className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${pokecommunity && !urlLike(pokecommunity) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <div className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center text-foreground/60 select-none ${discord && !urlLike(discord) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}>Discord invite URL</div>
+                        <div className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center text-foreground/60 select-none ${twitter && !urlLike(twitter) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}>Twitter/X profile URL</div>
+                        <div className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center text-foreground/60 select-none ${pokecommunity && !urlLike(pokecommunity) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}>PokeCommunity thread URL</div>
+                      </>
+                    )}
+                  </div>
+                  <p className="text-xs text-foreground/60">Use full URLs starting with http:// or https://</p>
+                </div>
+              </>
+            )}
+
+            {step === 4 && (
+              <div className="grid gap-3">
+                <label className="text-sm text-foreground/80">Provide patch <span className="text-red-500">*</span></label>
+                {!isDummy ? (
+                  <div className="flex flex-col gap-3">
+                    <div className="inline-flex items-center">
+                      <button
+                        type="button"
+                        onClick={() => setPatchMode("bps")}
+                        className={`rounded-md rounded-r-none px-3 py-1.5 text-xs border-l-1 border-y-1 ${patchMode === "bps" ? "bg-[var(--surface-2)] border-[var(--border)]" : "text-foreground/70 border-[var(--border)]"}`}
+                      >
+                        Upload .bps
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPatchMode("rom")}
+                        className={`rounded-md rounded-l-none px-3 py-1.5 text-xs border-1 ${patchMode === "rom" ? "bg-[var(--surface-2)] border-[var(--border)]" : "text-foreground/70 border-[var(--border)]"}`}
+                      >
+                        Upload modified ROM (auto-generate .bps)
+                      </button>
+                    </div>
+
+                    {patchMode === "bps" && (
+                      <div className="grid gap-2">
+                        <input
+                          ref={patchInputRef}
+                          onChange={(e) => setPatchFile(e.target.files?.[0] || null)}
+                          type="file"
+                          accept=".bps"
+                          className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] file:bg-black/10 dark:file:bg-[var(--surface-2)] file:text-foreground/80 file:text-sm file:font-medium file:not-italic file:rounded-md file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer"
+                        />
+                        <p className="text-xs text-foreground/60">Upload a BPS patch file.</p>
+                      </div>
+                    )}
+
+                    {patchMode === "rom" && (
+                      <div className="grid gap-3">
+                        <div className="rounded-md border border-[var(--border)] p-3 bg-[var(--surface-2)]/50">
+                          <div className="text-xs text-foreground/75">Required base ROM</div>
+                          <div className="mt-1 text-sm font-medium">{baseRomEntry ? `${baseRomEntry.name} (${baseRomEntry.platform})` : "Select a base ROM in Step 1"}</div>
+                          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                            <span className={`rounded-full px-2 py-0.5 ring-1 ${baseRomReady ? "bg-emerald-600/60 text-white ring-emerald-700/80 dark:bg-emerald-500/25 dark:text-emerald-100 dark:ring-emerald-400/90" : baseRomNeedsPermission ? "bg-amber-600/60 text-white ring-amber-700/80 dark:bg-amber-500/50 dark:text-amber-100 dark:ring-amber-400/90" : "bg-red-600/60 text-white ring-red-700/80 dark:bg-red-500/50 dark:text-red-100 dark:ring-red-400/90"}`}>
+                              {baseRomReady ? "Ready" : baseRomNeedsPermission ? "Permission needed" : "Base ROM needed"}
+                            </span>
+                            {baseRomNeedsPermission && (
+                              <button type="button" onClick={onGrantPermission} disabled={!supported} className="rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2 py-1 disabled:opacity-60 disabled:cursor-not-allowed">Grant permission</button>
+                            )}
+                            {baseRomMissing && (
+                              <label className="inline-flex items-center gap-2 text-xs text-foreground/80">
+                                <input type="file" onChange={onUploadBaseRom} className="rounded-md bg-[var(--surface-2)] px-2 py-1 text-xs ring-1 ring-inset ring-[var(--border)]" />
+                                <span>Upload base ROM</span>
+                              </label>
+                            )}
+                          </div>
+                          {!!genError && <div className="mt-2 text-xs text-red-400">{genError}</div>}
+                        </div>
+
+                        <div className="grid gap-2">
+                          <label className="text-sm text-foreground/80">Modified ROM</label>
+                          <input
+                            ref={modifiedRomInputRef}
+                            type="file"
+                            accept={baseRomPlatform ? platformAccept(baseRomPlatform) : "*/*"}
+                            disabled={!baseRomEntry || !baseRomReady || !baseRomPlatform}
+                            onChange={onUploadModifiedRom}
+                            className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm ring-1 ring-inset ring-[var(--border)] disabled:opacity-50 disabled:cursor-not-allowed"
+                          />
+                          <p className="text-xs text-foreground/60">We'll generate a .bps patch on-device. No ROMs are uploaded.</p>
+                          {genStatus === "generating" && <div className="text-xs text-foreground/70">Generating patch…</div>}
+                          {genStatus === "ready" && patchFile && <div className="text-xs text-emerald-400/90">Patch ready: {patchFile.name}</div>}
+                          {genStatus === "error" && !!genError && <div className="text-xs text-red-400">{genError}</div>}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] select-none">Choose file</div>
+                )}
+              </div>
+            )}
+
+            {!isDummy && (
+              <div className="flex items-center justify-between gap-3 border-t border-[var(--border)] pt-4 mt-4">
+                <button
+                  type="button"
+                  onClick={() => setStep((s) => Math.max(1, s - 1))}
+                  disabled={step === 1 || submitting}
+                  className="inline-flex h-11 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-4 text-sm font-semibold text-foreground transition-colors hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Back
+                </button>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-foreground/60">Step {step} of 4</span>
+                </div>
+                {step < 4 ? (
+                  <button
+                    type="button"
+                    onClick={() => setStep((s) => Math.min(4, s + 1))}
+                    disabled={
+                      submitting ||
+                      (step === 1 && !step1Valid) ||
+                      (step === 2 && !step2Valid) ||
+                      (step === 3 && !step3Valid)
+                    }
+                    className="inline-flex h-11 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-4 text-sm font-semibold text-foreground transition-colors hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={onSubmit}
+                    disabled={!isValid || submitting}
+                    className="shine-wrap btn-premium h-11 min-w-[7.5rem] text-sm font-semibold dark:disabled:opacity-70 disabled:cursor-not-allowed disabled:[box-shadow:0_0_0_1px_var(--border)]"
+                  >
+                    <span>{submitting ? 'Submitting…' : 'Submit'}</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </fieldset>
         </form>
       </div>
 
