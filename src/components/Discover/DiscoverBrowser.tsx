@@ -21,9 +21,13 @@ export default function DiscoverBrowser() {
   const [hacks, setHacks] = React.useState<any[]>([]);
   const [tagGroups, setTagGroups] = React.useState<Record<string, string[]>>({});
   const [ungroupedTags, setUngroupedTags] = React.useState<string[]>([]);
+  const [loadingHacks, setLoadingHacks] = React.useState(true);
+  const [loadingTags, setLoadingTags] = React.useState(true);
 
   React.useEffect(() => {
     const run = async () => {
+      setLoadingHacks(true);
+      setLoadingTags(true);
       let orderBy: string | undefined = undefined;
       if (sort === "popular") {
         orderBy = "downloads";
@@ -115,6 +119,7 @@ export default function DiscoverBrowser() {
       }));
 
       setHacks(mapped);
+      setLoadingHacks(false);
       if (allTagRows) {
         const groups: Record<string, string[]> = {};
         const ungrouped: string[] = [];
@@ -138,6 +143,8 @@ export default function DiscoverBrowser() {
         setTagGroups(groups);
         setUngroupedTags(ungrouped);
       }
+      // Ensure loadingTags is cleared even if no rows were returned
+      setLoadingTags(false);
     };
     run();
   }, [sort]);
@@ -210,38 +217,50 @@ export default function DiscoverBrowser() {
           values={selectedBaseRoms}
           onChange={setSelectedBaseRoms}
         />
-        {Object.keys(tagGroups)
-          .sort((a, b) => a.localeCompare(b))
-          .map((cat) => (
-            <MultiSelectDropdown
-              key={cat}
-              icon={CATEGORY_ICONS[cat]}
-              label={cat}
-              options={tagGroups[cat].map((t) => ({ id: t, name: t }))}
-              values={selectedTags.filter((t) => tagGroups[cat].includes(t))}
-              onChange={(vals) => {
-                // Replace selections for this category while keeping others
-                setSelectedTags((prev) => {
-                  const others = prev.filter((t) => !tagGroups[cat].includes(t));
-                  return [...others, ...vals];
-                });
-              }}
-            />
-          ))}
-        {/* Advanced dropdown for ungrouped tags at the end */}
-        {ungroupedTags.length > 0 && (
-          <MultiSelectDropdown
-            icon={MdTune}
-            label="Advanced"
-            options={ungroupedTags.map((t) => ({ id: t, name: t }))}
-            values={selectedTags.filter((t) => ungroupedTags.includes(t))}
-            onChange={(vals) => {
-              setSelectedTags((prev) => {
-                const others = prev.filter((t) => !ungroupedTags.includes(t));
-                return [...others, ...vals];
-              });
-            }}
-          />
+        {loadingTags ? (
+          <>
+            {[
+              "w-28","w-36","w-32","w-24","w-24","w-28","w-36","w-36"
+            ].map((w, i) => (
+              <div key={i} className={`h-8 ${w} animate-pulse rounded-full bg-[var(--surface-2)]`} />
+            ))}
+          </>
+        ) : (
+          <>
+            {Object.keys(tagGroups)
+              .sort((a, b) => a.localeCompare(b))
+              .map((cat) => (
+                <MultiSelectDropdown
+                  key={cat}
+                  icon={CATEGORY_ICONS[cat]}
+                  label={cat}
+                  options={tagGroups[cat].map((t) => ({ id: t, name: t }))}
+                  values={selectedTags.filter((t) => tagGroups[cat].includes(t))}
+                  onChange={(vals) => {
+                    // Replace selections for this category while keeping others
+                    setSelectedTags((prev) => {
+                      const others = prev.filter((t) => !tagGroups[cat].includes(t));
+                      return [...others, ...vals];
+                    });
+                  }}
+                />
+              ))}
+            {/* Advanced dropdown for ungrouped tags at the end */}
+            {ungroupedTags.length > 0 && (
+              <MultiSelectDropdown
+                icon={MdTune}
+                label="Advanced"
+                options={ungroupedTags.map((t) => ({ id: t, name: t }))}
+                values={selectedTags.filter((t) => ungroupedTags.includes(t))}
+                onChange={(vals) => {
+                  setSelectedTags((prev) => {
+                    const others = prev.filter((t) => !ungroupedTags.includes(t));
+                    return [...others, ...vals];
+                  });
+                }}
+              />
+            )}
+          </>
         )}
         {(selectedTags.length > 0 || selectedBaseRoms.length > 0) && (
           <button
@@ -256,11 +275,24 @@ export default function DiscoverBrowser() {
         )}
       </div>
 
-      <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {filtered.map((hack) => (
-          <HackCard key={hack.slug} hack={hack} />
-        ))}
-      </div>
+      {loadingHacks ? (
+        <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <HackCardSkeleton key={i} />
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="mt-12 flex flex-col items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-8 text-center">
+          <div className="mb-2 text-lg font-medium text-foreground">No hacks found</div>
+          <p className="mb-2 text-sm text-foreground/70">Please try again later.</p>
+        </div>
+      ) : (
+        <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {filtered.map((hack) => (
+            <HackCard key={hack.slug} hack={hack} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -357,6 +389,33 @@ function MultiSelectDropdown({
         </Transition>
       </div>
     </Listbox>
+  );
+}
+
+
+function HackCardSkeleton() {
+  return (
+    <div className="group block">
+      <div className="rounded-[12px] overflow-hidden card ring-1 ring-[var(--border)]">
+        <div className="relative aspect-[3/2] w-full rounded-[12px] overflow-hidden bg-[var(--surface-2)]">
+          <div className="absolute inset-0 animate-pulse bg-gradient-to-b from-black/5 to-black/0 dark:from-white/5 dark:to-white/0" />
+        </div>
+        <div className="p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="h-4 w-2/3 animate-pulse rounded bg-[var(--surface-2)]" />
+              <div className="mt-2 h-3 w-24 animate-pulse rounded bg-[var(--surface-2)]" />
+            </div>
+            <div className="h-4 w-12 shrink-0 animate-pulse rounded bg-[var(--surface-2)]" />
+          </div>
+          <div className="mt-3 space-y-2">
+            <div className="h-3 w-full animate-pulse rounded bg-[var(--surface-2)]" />
+            <div className="h-3 w-5/6 animate-pulse rounded bg-[var(--surface-2)]" />
+          </div>
+          <div className="mt-3 h-3 w-32 animate-pulse rounded bg-[var(--surface-2)]" />
+        </div>
+      </div>
+    </div>
   );
 }
 
