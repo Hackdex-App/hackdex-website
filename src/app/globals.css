@@ -75,6 +75,22 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Smooth scrolling and anchor offset for sticky header */
+html { scroll-behavior: smooth; }
+:root { --anchor-offset: 38px; }
+@media (min-width: 768px) { :root { --anchor-offset: 72px; } }
+/* Modern browsers honor scroll-padding-top on the scroll container */
+html { scroll-padding-top: var(--anchor-offset); }
+/* Fallback for elements targeted directly (especially headings) */
+.prose h1[id],
+.prose h2[id],
+.prose h3[id],
+.prose h4[id],
+.prose h5[id],
+.prose h6[id] {
+  scroll-margin-top: var(--anchor-offset);
+}
+
 .bg-grid { background-image: radial-gradient(var(--grid-dot-color) 1px, transparent 1px); background-size: 22px 22px; }
 
 .card {

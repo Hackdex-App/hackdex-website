@@ -3,6 +3,7 @@ declare module "react-markdown" {
   export interface ReactMarkdownProps {
     children?: React.ReactNode;
     remarkPlugins?: any[];
+    rehypePlugins?: any[];
     className?: string;
     [key: string]: any;
   }
@@ -13,6 +14,11 @@ declare module "react-markdown" {
 declare module "remark-gfm" {
   const remarkGfm: any;
   export default remarkGfm;
+}
+
+declare module "rehype-slug" {
+  const rehypeSlug: any;
+  export default rehypeSlug;
 }
 
 

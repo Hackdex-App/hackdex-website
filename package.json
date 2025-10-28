@@ -23,6 +23,7 @@
     "react-dom": "19.1.0",
     "react-icons": "^5.5.0",
     "react-markdown": "9.0.3",
+    "rehype-slug": "^6.0.0",
     "remark-gfm": "4.0.0",
     "rom-patcher-js": "github:marcrobledo/RomPatcher.js#91e522e247f709e894761157ccba3189004d0859"
   },

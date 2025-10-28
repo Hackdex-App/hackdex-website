@@ -4,6 +4,7 @@ import Gallery from "@/components/Hack/Gallery";
 import HackActions from "@/components/Hack/HackActions";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeSlug from "rehype-slug";
 import Image from "next/image";
 import { FaDiscord, FaTwitter } from "react-icons/fa6";
 import PokeCommunityIcon from "@/components/Icons/PokeCommunityIcon";
@@ -127,7 +128,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
           <div className="card p-5">
             <h2 className="text-xl font-semibold tracking-tight">About this hack</h2>
             <div className="prose prose-sm mt-3 max-w-none text-foreground/80">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{hack.description}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSlug]}>{hack.description}</ReactMarkdown>
             </div>
           </div>
         </div>

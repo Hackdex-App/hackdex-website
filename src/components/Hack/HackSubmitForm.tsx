@@ -11,6 +11,7 @@ import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } 
 import { CSS } from "@dnd-kit/utilities";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeSlug from "rehype-slug";
 import { RxDragHandleDots2 } from "react-icons/rx";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
@@ -723,7 +724,7 @@ export default function HackSubmitForm({ dummy = false }: HackSubmitFormProps) {
                   </div>
                   {isDummy ? (
                     <div className="prose max-w-none h-36 rounded-md bg-[var(--surface-2)] px-3 py-2 ring-1 ring-inset ring-[var(--border)] text-foreground/60 select-none">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{description || "Write a longer markdown description here."}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSlug]}>{description || "Write a longer markdown description here."}</ReactMarkdown>
                     </div>
                   ) : !showMdPreview ? (
                     <textarea
@@ -735,7 +736,7 @@ export default function HackSubmitForm({ dummy = false }: HackSubmitFormProps) {
                     />
                   ) : (
                     <div className={`prose max-w-none rounded-md bg-[var(--surface-2)] min-h-[14rem] px-3 py-2 ring-1 ring-inset ring-[var(--border)] ${description ? "" : "text-foreground/60 text-sm"}`}>
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{description || "Nothing to preview yet."}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSlug]}>{description || "Nothing to preview yet."}</ReactMarkdown>
                     </div>
                   )}
                 </div>
