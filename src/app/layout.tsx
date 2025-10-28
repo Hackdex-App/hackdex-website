@@ -18,8 +18,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Hackdex",
-  description: "Discover and share Pokémon ROM hack patches.",
+  title: {
+    default: "Hackdex",
+    template: "%s | Hackdex",
+  },
+  description: "Discover and share Pokémon romhack patches.",
 };
 
 export default function RootLayout({

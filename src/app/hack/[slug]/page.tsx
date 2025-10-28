@@ -1,4 +1,5 @@
 import { baseRoms } from "@/data/baseRoms";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Gallery from "@/components/Hack/Gallery";
 import HackActions from "@/components/Hack/HackActions";
@@ -15,6 +16,21 @@ import DownloadsBadge from "@/components/Hack/DownloadsBadge";
 
 interface HackDetailProps {
   params: Promise<{ slug: string }>;
+}
+
+export async function generateMetadata({ params }: HackDetailProps): Promise<Metadata> {
+  const { slug } = await params;
+  const supabase = await createClient();
+  const { data: hack } = await supabase
+    .from("hacks")
+    .select("title,summary,approved")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (!hack || !hack.approved) return { title: "Hack not found" };
+  return {
+    title: hack.title,
+    description: hack.summary || undefined,
+  };
 }
 
 export default async function HackDetail({ params }: HackDetailProps) {
