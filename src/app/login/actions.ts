@@ -51,3 +51,39 @@ export async function login(state: AuthActionState, payload: FormData) {
   }
 
 }
+
+export type ResetActionState =
+  | { ok: true; error: null }
+  | { ok: false; error: string }
+  | null
+
+export async function requestPasswordReset(
+  state: ResetActionState,
+  payload: FormData
+): Promise<ResetActionState> {
+  const supabase = await createClient()
+
+  const email = (payload.get('resetEmail') as string | null)?.trim() || ''
+  if (!/.+@.+\..+/.test(email)) {
+    return { ok: false, error: 'Please enter a valid email address.' } as const
+  }
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+  // Fallback to localhost if env is not set in dev
+  const baseUrl = siteUrl && /^https?:\/\//.test(siteUrl)
+    ? siteUrl.replace(/\/$/, '')
+    : 'http://localhost:3000'
+
+  const redirectTo = `${baseUrl}/auth/confirm?next=${encodeURIComponent('/account/update-password')}`
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo,
+  })
+
+  if (error) {
+    // Do not reveal whether the email exists – return a generic error
+    return { ok: false, error: 'Unable to send reset email. Please try again later.' } as const
+  }
+
+  return { ok: true, error: null } as const
+}

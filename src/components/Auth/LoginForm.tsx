@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useActionState, useEffect} from "react";
+import Link from "next/link";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { AuthActionState, login } from "@/app/login/actions";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -99,6 +100,15 @@ export default function LoginForm() {
             {showPassword ? <FiEyeOff className="h-4 w-4" /> : <FiEye className="h-4 w-4" />}
           </button>
         </div>
+      </div>
+
+      <div className="flex justify-end">
+        <Link
+          href={redirectTo ? `/login/forgot?redirectTo=${encodeURIComponent(redirectTo)}` : "/login/forgot"}
+          className="text-xs text-foreground/70 hover:underline"
+        >
+          Forgot your password?
+        </Link>
       </div>
 
       <div className="flex flex-col items-center gap-3">

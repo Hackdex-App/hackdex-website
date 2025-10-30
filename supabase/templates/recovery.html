@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Reset your password</title>
+    <style>
+      /* Basic email reset */
+      body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+      img { -ms-interpolation-mode: bicubic; border: 0; outline: none; text-decoration: none; }
+      table { border-collapse: collapse; }
+      body { margin: 0; padding: 0; width: 100%; height: 100%; }
+
+      /* Layout */
+      .wrapper { width: 100%; padding: 24px 0; }
+      .container { width: 100%; max-width: 640px; margin: 0 auto; background: #ffffff; border: 1px solid #e5e5e5; }
+      .header { padding: 24px; background: #fafafa; border-bottom: 1px solid #e5e5e5; }
+      .brand { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; font-weight: 800; letter-spacing: -0.02em; font-size: 20px; margin: 0; color: #171717; }
+      .content { padding: 24px; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; color: #171717; }
+      .heading { margin: 0 0 8px 0; font-size: 20px; line-height: 1.3; font-weight: 700; }
+      .muted { color: #4b5563; font-size: 14px; line-height: 1.6; }
+      .card { background: #ffffff; border: 1px solid #e5e5e5; border-radius: 10px; padding: 16px; }
+      .spacer { height: 12px; }
+
+      /* Button */
+      .btn { display: inline-block; padding: 12px 18px; border-radius: 999px; text-decoration: none; color: #ffffff; font-weight: 600; font-size: 14px; background: #f43f5e; }
+
+      .code { font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace; background: #fafafa; border: 1px solid #ededed; border-radius: 8px; padding: 10px 12px; display: block; color: #0a0a0a; }
+
+      /* Footer */
+      .footer { padding: 16px 24px 24px 24px; text-align: center; color: #6b7280; font-size: 12px; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+    </style>
+  </head>
+  <body>
+    <div class="wrapper">
+      <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#0a0a0a">
+        <tr>
+          <td align="center" style="padding: 0 16px;">
+            <table role="presentation" class="container" width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#ffffff">
+              <tr>
+                <td class="header">
+                  <h1 class="brand">Hackdex</h1>
+                </td>
+              </tr>
+              <tr>
+                <td class="content">
+                  <h2 class="heading">Reset your password</h2>
+                  <p class="muted">We received a request to reset the password for your account. Click the button below to choose a new password.</p>
+                  <div class="spacer"></div>
+                  <table role="presentation" border="0" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td>
+                        <a class="btn" href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=account/update-password" target="_blank" rel="noopener">Set new password</a>
+                      </td>
+                    </tr>
+                  </table>
+                  <div class="spacer"></div>
+                  <div class="card">
+                    <p class="muted" style="margin:0 0 8px 0;">If the button doesn't work, copy and paste this link into your browser:</p>
+                    <span class="code">{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=recovery&amp;next=account/update-password</span>
+                  </div>
+                  <div class="spacer"></div>
+                  <p class="muted" style="margin:0;">If you didn't request a password reset, you can safely ignore this email.</p>
+                </td>
+              </tr>
+              <tr>
+                <td class="footer">
+                  © 2025 Hackdex. All rights reserved. Please do not reply to this message.
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </div>
+  </body>
+  </html>
