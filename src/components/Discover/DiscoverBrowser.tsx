@@ -10,6 +10,7 @@ import { IconType } from "react-icons";
 import { MdTune } from "react-icons/md";
 import { BsSdCardFill } from "react-icons/bs";
 import { CATEGORY_ICONS } from "@/components/Icons/tagCategories";
+import { useBaseRoms } from "@/contexts/BaseRomContext";
 
 
 export default function DiscoverBrowser() {
@@ -23,6 +24,21 @@ export default function DiscoverBrowser() {
   const [ungroupedTags, setUngroupedTags] = React.useState<string[]>([]);
   const [loadingHacks, setLoadingHacks] = React.useState(true);
   const [loadingTags, setLoadingTags] = React.useState(true);
+  const [onlyReady, setOnlyReady] = React.useState(false);
+
+  const { cached, statuses, countReady } = useBaseRoms();
+  const readyBaseRomIds = React.useMemo(() => {
+    const set = new Set<string>();
+    try {
+      Object.entries(cached || {}).forEach(([id, v]) => {
+        if (v) set.add(id);
+      });
+      Object.entries(statuses || {}).forEach(([id, s]) => {
+        if (s === "granted") set.add(id);
+      });
+    } catch {}
+    return set;
+  }, [cached, statuses]);
 
   React.useEffect(() => {
     const run = async () => {
@@ -167,8 +183,12 @@ export default function DiscoverBrowser() {
     if (selectedBaseRoms.length > 0) {
       out = out.filter((h) => selectedBaseRoms.includes(h.baseRomId));
     }
+    // Filter to hacks whose base ROM is ready (linked with permission or cached)
+    if (onlyReady) {
+      out = out.filter((h) => readyBaseRomIds.has(h.baseRomId));
+    }
     return out;
-  }, [hacks, query, selectedTags, selectedBaseRoms]);
+  }, [hacks, query, selectedTags, selectedBaseRoms, onlyReady, readyBaseRomIds]);
 
   function toggleTag(name: string) {
     setSelectedTags((prev) => (prev.includes(name) ? prev.filter((t) => t !== name) : [...prev, name]));
@@ -210,12 +230,38 @@ export default function DiscoverBrowser() {
 
       {/* Unified filter section: Base ROM dropdown first, category dropdowns next, ungrouped tags last */}
       <div className="mt-6 flex flex-wrap items-center gap-2">
+        {countReady > 0 && (
+          <button
+            type="button"
+            aria-pressed={onlyReady}
+            onClick={() =>
+              setOnlyReady((v) => {
+                const next = !v;
+                if (next) setSelectedBaseRoms([]);
+                return next;
+              })
+            }
+            title="Show only hacks playable on your device (base ROM ready)"
+            className={`flex items-center gap-2 rounded-full px-3 py-1 text-sm ring-1 ring-inset transition-colors ${
+              onlyReady
+                ? "bg-[var(--accent)]/15 text-[var(--foreground)] ring-[var(--accent)]/35"
+                : "bg-[var(--surface-2)] text-foreground/80 ring-[var(--border)] hover:bg-black/5 dark:hover:bg-white/10"
+            }`}
+          >
+            <span className="inline-block h-2 w-2 rounded-full bg-[var(--accent)]" />
+            <span className="truncate">Ready on your device</span>
+            <span className="rounded-full bg-black/5 px-1.5 py-0.5 text-xs leading-none text-foreground/70 dark:bg-white/10">{countReady}</span>
+          </button>
+        )}
         <MultiSelectDropdown
           icon={BsSdCardFill}
           label="Base ROM"
           options={baseRoms.map((b) => ({ id: b.id, name: b.name }))}
           values={selectedBaseRoms}
-          onChange={setSelectedBaseRoms}
+          onChange={(vals) => {
+            setSelectedBaseRoms(vals);
+            if (vals.length > 0) setOnlyReady(false);
+          }}
         />
         {loadingTags ? (
           <>
@@ -262,11 +308,12 @@ export default function DiscoverBrowser() {
             )}
           </>
         )}
-        {(selectedTags.length > 0 || selectedBaseRoms.length > 0) && (
+        {(selectedTags.length > 0 || selectedBaseRoms.length > 0 || onlyReady) && (
           <button
             onClick={() => {
               clearTags();
               clearBaseRoms();
+              setOnlyReady(false);
             }}
             className="ml-2 rounded-full px-3 py-1 text-sm ring-1 ring-inset transition-colors bg-[var(--surface-2)] text-foreground/80 ring-[var(--border)] hover:bg-black/5 dark:hover:bg-white/10"
           >
@@ -307,11 +354,12 @@ export default function DiscoverBrowser() {
                 Clear search
               </button>
             )}
-            {(selectedTags.length > 0 || selectedBaseRoms.length > 0) && (
+            {(selectedTags.length > 0 || selectedBaseRoms.length > 0 || onlyReady) && (
               <button
                 onClick={() => {
                   clearTags();
                   clearBaseRoms();
+                  setOnlyReady(false);
                 }}
                 className="rounded-full px-3 py-1 text-sm ring-1 ring-inset transition-colors bg-[var(--surface-2)] text-foreground/80 ring-[var(--border)] hover:bg-black/5 dark:hover:bg-white/10"
               >
