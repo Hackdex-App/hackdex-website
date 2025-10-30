@@ -3,7 +3,7 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { FiMoreVertical } from "react-icons/fi";
-import { Menu, MenuButton, MenuItem, MenuItems, MenuSeparator, Transition } from "@headlessui/react";
+import { Menu, MenuButton, MenuItem, MenuItems, MenuSeparator } from "@headlessui/react";
 
 interface HackOptionsMenuProps {
   slug: string;
@@ -23,49 +23,42 @@ export default function HackOptionsMenu({ slug, canEdit }: HackOptionsMenuProps)
         <FiMoreVertical size={18} />
       </MenuButton>
 
-      <Transition
-        as={React.Fragment}
-        enter="transition ease-out duration-100"
-        enterFrom="transform opacity-0 scale-95"
-        enterTo="transform opacity-100 scale-100"
-        leave="transition ease-in duration-75"
-        leaveFrom="transform opacity-100 scale-100"
-        leaveTo="transform opacity-0 scale-95"
+      <MenuItems
+        transition
+        className="absolute right-0 z-10 mt-2 w-40 origin-top-right overflow-hidden rounded-md border border-[var(--border)] bg-[var(--surface-2)] backdrop-blur-lg shadow-lg focus:outline-none transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
       >
-        <MenuItems anchor="bottom end" className="mt-2 w-40 overflow-hidden rounded-md border border-[var(--border)] bg-[var(--surface-2)] backdrop-blur-lg shadow-lg focus:outline-none">
+        <MenuItem
+          as="button"
+          onClick={() => {
+          // TODO: Implement share
+          }}
+          className="block w-full px-3 py-2 text-left text-sm data-focus:bg-black/5 dark:data-focus:bg-white/10">
+          Share
+        </MenuItem>
+        <MenuItem
+          as="button"
+          onClick={() => {
+            // TODO: Implement report
+          }}
+          className="block w-full px-3 py-2 text-left text-sm data-focus:bg-black/5 dark:data-focus:bg-white/10">
+          Report
+        </MenuItem>
+        {canEdit && <>
+          <MenuSeparator className="my-1 h-px bg-[var(--border)]" />
           <MenuItem
-           as="button"
-           onClick={() => {
-            // TODO: Implement share
-           }}
-           className="block w-full px-3 py-2 text-left text-sm data-focus:bg-black/5 dark:data-focus:bg-white/10">
-            Share
-          </MenuItem>
-          <MenuItem
-            as="button"
-            onClick={() => {
-              // TODO: Implement report
-            }}
+            as="a"
+            href={`/hack/${slug}/edit`}
             className="block w-full px-3 py-2 text-left text-sm data-focus:bg-black/5 dark:data-focus:bg-white/10">
-            Report
+            Edit
           </MenuItem>
-          {canEdit && <>
-            <MenuSeparator className="my-1 h-px bg-[var(--border)]" />
-            <MenuItem
-              as="a"
-              href={`/hack/${slug}/edit`}
-              className="block w-full px-3 py-2 text-left text-sm data-focus:bg-black/5 dark:data-focus:bg-white/10">
-              Edit
-            </MenuItem>
-            <MenuItem
-              as="a"
-              href={`/hack/${slug}/edit/patch`}
-              className="block w-full px-3 py-2 text-left text-sm data-focus:bg-black/5 dark:data-focus:bg-white/10">
-              Upload new version
-            </MenuItem>
-          </>}
-        </MenuItems>
-      </Transition>
+          <MenuItem
+            as="a"
+            href={`/hack/${slug}/edit/patch`}
+            className="block w-full px-3 py-2 text-left text-sm data-focus:bg-black/5 dark:data-focus:bg-white/10">
+            Upload new version
+          </MenuItem>
+        </>}
+      </MenuItems>
     </Menu>
   );
 }
