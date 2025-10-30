@@ -122,17 +122,19 @@ export default async function HackDetail({ params }: HackDetailProps) {
             </div>
             <p className="mt-1 text-[15px] text-foreground/70">By {author}</p>
             <p className="mt-2 text-sm text-foreground/75">{hack.summary}</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {tags.map((t) => (
-                <span key={t} className="rounded-full bg-[var(--surface-2)] px-2.5 py-1 text-xs ring-1 ring-[var(--border)]">
+          </div>
+          <div className="w-full mt-2 flex flex-col justify-between gap-6 md:flex-row md:items-end">
+            <div className="flex flex-wrap gap-2">
+              {tags.map((t, i) => (
+                <span key={i} style={{ paddingRight: (i % 10) + 10 }} className="rounded-full bg-[var(--surface-2)] px-2.5 py-1 text-xs ring-1 ring-[var(--border)]">
                   {t}
                 </span>
               ))}
             </div>
-          </div>
-          <div className="flex items-center gap-2 self-end md:self-auto">
-            <DownloadsBadge slug={hack.slug} initialCount={hack.downloads} />
-            <HackOptionsMenu slug={hack.slug} canEdit={canEdit} />
+            <div className="flex items-center justify-end gap-2 self-end md:self-auto lg:min-w-[260px]">
+              <DownloadsBadge slug={hack.slug} initialCount={hack.downloads} />
+              <HackOptionsMenu slug={hack.slug} canEdit={canEdit} />
+            </div>
           </div>
         </div>
       </div>

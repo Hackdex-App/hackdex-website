@@ -73,13 +73,13 @@ export default async function EditHackPage({ params }: EditPageProps) {
 
   return (
     <div className="mx-auto max-w-screen-lg px-6 py-10">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
         <h1 className="flex items-center text-3xl tracking-tight">
           Edit
           <FaChevronRight size={22} className="inline-block mx-2 text-foreground/50 align-middle" />
           <span className="gradient-text font-bold">{hack.title}</span>
         </h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-end lg:self-auto mt-8 lg:mt-0">
           <Link href={`/hack/${slug}`} className="inline-flex items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm font-medium hover:bg-black/5 dark:hover:bg-white/10">
             <FaChevronLeft size={16} className="inline-block mr-1" />
             Back to hack
@@ -89,7 +89,7 @@ export default async function EditHackPage({ params }: EditPageProps) {
           </Link>
         </div>
       </div>
-      <div className="mt-8">
+      <div className="mt-4 lg:mt-8">
         <HackForm mode="edit" slug={slug} initial={initial} />
       </div>
     </div>
