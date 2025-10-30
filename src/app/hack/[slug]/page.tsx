@@ -70,7 +70,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
     .select("username")
     .eq("id", hack.created_by as string)
     .maybeSingle();
-  const author = profile?.username || "Unknown";
+  const author = profile?.username ? `@${profile.username}` : "Unknown";
 
   const {
     data: { user },

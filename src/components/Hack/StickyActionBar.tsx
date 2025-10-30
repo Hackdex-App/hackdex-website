@@ -65,7 +65,7 @@ export default function StickyActionBar({ title, version, author, baseRomName, b
               <span className="shrink-0 rounded-full bg-[var(--surface-2)] ml-auto md:ml-0 px-2 py-0.5 text-[11px] font-medium text-foreground/85 ring-1 ring-[var(--border)]">{version}</span>
             )}
           </div>
-          <div className="truncate text-sm md:text-xs text-foreground/60">By @{author}</div>
+          <div className="truncate text-sm md:text-xs text-foreground/60">By {author}</div>
         </div>
         <div className="flex w-full md:w-auto flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-2 mb-4 md:mb-0">
           <span className={`rounded-full mx-auto md:mx-0 px-2 py-0.5 text-xs ring-1 ${
