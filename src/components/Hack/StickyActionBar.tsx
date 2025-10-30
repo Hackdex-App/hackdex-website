@@ -72,7 +72,7 @@ export default function StickyActionBar({ title, version, author, baseRomName, b
             status === "downloading"
               ? "bg-[var(--surface-2)] text-foreground/85 ring-[var(--border)]"
               : romReady
-              ? "bg-emerald-600/60 text-white ring-emerald-700/80 dark:bg-emerald-500/25 dark:text-emerald-100 dark:ring-emerald-400/90"
+              ? "hidden md:block bg-emerald-600/60 text-white ring-emerald-700/80 dark:bg-emerald-500/25 dark:text-emerald-100 dark:ring-emerald-400/90"
               : isLinked
               ? "bg-amber-600/60 text-white ring-amber-700/80 dark:bg-amber-500/50 dark:text-amber-100 dark:ring-amber-400/90"
               : "bg-red-600/60 text-white ring-red-700/80 dark:bg-red-500/50 dark:text-red-100 dark:ring-red-400/90"
@@ -111,7 +111,7 @@ export default function StickyActionBar({ title, version, author, baseRomName, b
             onClick={onPatch}
             data-ready={romReady}
             disabled={!mounted || (status !== "ready" && status !== "done") || !patchAgainReady}
-            className="shine-wrap btn-premium max-md:data-[ready=false]:hidden! h-11 md:h-9 w-full md:w-auto md:min-w-[7.5rem] text-base md:text-sm font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70"
+            className={`shine-wrap btn-premium max-md:data-[ready=false]:hidden! h-11 md:h-9 w-full md:w-auto md:min-w-[7.5rem] text-base md:text-sm font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 ${romReady && status !== 'downloading' ? "mt-6 md:mt-0" : ""}`}
           >
             <span>{status === "patching" ? "Patching…" : (
               status === "done" ? (
