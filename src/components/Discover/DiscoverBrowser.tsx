@@ -284,7 +284,41 @@ export default function DiscoverBrowser() {
       ) : filtered.length === 0 ? (
         <div className="mt-12 flex flex-col items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-8 text-center">
           <div className="mb-2 text-lg font-medium text-foreground">No hacks found</div>
-          <p className="mb-2 text-sm text-foreground/70">Please try again later.</p>
+          <p className="mb-4 text-sm text-foreground/70">
+            {query ? (
+              <>
+                No results for &quot;{query}&quot;
+              </>
+            ) : (
+              <>No results</>
+            )}
+            {(selectedTags.length > 0 || selectedBaseRoms.length > 0) && (
+              <>
+                {" "}with the selected filters
+              </>
+            )}.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {query && (
+              <button
+                onClick={() => setQuery("")}
+                className="rounded-full px-3 py-1 text-sm ring-1 ring-inset transition-colors bg-[var(--surface-2)] text-foreground/80 ring-[var(--border)] hover:bg-black/5 dark:hover:bg-white/10"
+              >
+                Clear search
+              </button>
+            )}
+            {(selectedTags.length > 0 || selectedBaseRoms.length > 0) && (
+              <button
+                onClick={() => {
+                  clearTags();
+                  clearBaseRoms();
+                }}
+                className="rounded-full px-3 py-1 text-sm ring-1 ring-inset transition-colors bg-[var(--surface-2)] text-foreground/80 ring-[var(--border)] hover:bg-black/5 dark:hover:bg-white/10"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
         </div>
       ) : (
         <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
