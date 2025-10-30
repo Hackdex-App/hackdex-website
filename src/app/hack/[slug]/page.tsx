@@ -125,8 +125,8 @@ export default async function HackDetail({ params }: HackDetailProps) {
           </div>
           <div className="w-full mt-2 flex flex-col justify-between gap-6 md:flex-row md:items-end">
             <div className="flex flex-wrap gap-2">
-              {tags.map((t, i) => (
-                <span key={i} style={{ paddingRight: (i % 10) + 10 }} className="rounded-full bg-[var(--surface-2)] px-2.5 py-1 text-xs ring-1 ring-[var(--border)]">
+              {tags.map((t) => (
+                <span key={t} className="rounded-full bg-[var(--surface-2)] px-2.5 py-1 text-xs ring-1 ring-[var(--border)]">
                   {t}
                 </span>
               ))}
