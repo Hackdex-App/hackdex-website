@@ -20,6 +20,6 @@ export default async function Sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return routes.map((route) => ({
     ...route,
-    url: `${process.env.NEXT_PUBLIC_SITE_URL!}/${route.url}`,
+    url: `${process.env.NEXT_PUBLIC_SITE_URL!}${route.url}`,
   }));
 }
