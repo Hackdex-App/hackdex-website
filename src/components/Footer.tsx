@@ -6,7 +6,7 @@ export default function Footer() {
       <div className="mx-auto max-w-screen-2xl px-6 py-8 text-sm text-foreground/70">
         <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
           <div>
-            <p>© {new Date().getFullYear()} Hackdex</p>
+            <p>© 2025 Hackdex</p>
             <p className="mt-2 max-w-2xl text-xs text-foreground/60">
               Pokémon, Nintendo, Game Boy, Game Boy Color, Game Boy Advance, and Nintendo DS are
               trademarks of their respective owners. Hackdex is an independent fan project and is not
@@ -19,7 +19,7 @@ export default function Footer() {
           </div>
           <div className="grid grid-cols-1 gap-x-12 gap-y-8 sm:gap-y-4 sm:grid-cols-2 md:grid-cols-3 md:min-w-[465px]">
             <div>
-              <div className="mb-3 pb-2 border-b border-white/10 text-xs font-medium uppercase tracking-wider text-foreground/80">Product</div>
+              <div className="mb-3 pb-2 border-b border-white/10 text-xs font-medium uppercase tracking-wider text-foreground/80">Platform</div>
               <ul className="space-y-1.5 sm:space-y-2">
                 <li>
                   <Link href="/discover" className="block py-1 hover:underline">Discover</Link>
@@ -41,12 +41,6 @@ export default function Footer() {
                 <li>
                   <Link href="/privacy" className="block py-1 hover:underline">Privacy Policy</Link>
                 </li>
-                <li>
-                  <Link href="/cookies" className="block py-1 hover:underline">Cookie Preferences</Link>
-                </li>
-                <li>
-                  <Link href="/dmca" className="block py-1 hover:underline">DMCA / Takedown</Link>
-                </li>
               </ul>
             </div>
             <div>
@@ -56,7 +50,7 @@ export default function Footer() {
                   <Link href="/contact" className="block py-1 hover:underline">Contact</Link>
                 </li>
                 <li>
-                  <Link href="/report" className="block py-1 hover:underline">Report Content</Link>
+                  <Link href="https://github.com/Hackdex-App/hackdex-website" className="block py-1 hover:underline">GitHub</Link>
                 </li>
               </ul>
             </div>
