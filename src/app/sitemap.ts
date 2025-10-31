@@ -5,6 +5,7 @@ export default async function Sitemap(): Promise<MetadataRoute.Sitemap> {
   let routes: MetadataRoute.Sitemap = [
     { url: "/", lastModified: new Date().toISOString() },
     { url: "/discover", lastModified: new Date().toISOString(), changeFrequency: "daily" as const },
+    { url: "/terms", lastModified: new Date().toISOString(), changeFrequency: "monthly" as const },
   ];
 
   const supabase = await createClient();

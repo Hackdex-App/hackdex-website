@@ -27,3 +27,17 @@ SOFTWARE.
 The name “Hackdex” is reserved for use by [https://hackdex.app].
 Please do not use this name or related branding for derivative projects,
 distributions, or promotional purposes without permission.
+
+### Legal Documents and Policies
+
+The following files are excluded from the MIT License and are provided for
+reference only. Unless a different license is expressly stated within the file,
+they are © The Hackdex Project, all rights reserved, and may not be reused
+without permission.
+
+- docs/legal/TERMS.md (canonical: https://hackdex.app/terms)
+- docs/legal/PRIVACY.md (canonical: https://hackdex.app/privacy)
+- Any other files under docs/legal/
+
+This exception applies only to the legal/policy documents listed above; all
+source code remains under the MIT License as stated above.

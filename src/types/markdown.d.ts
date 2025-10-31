@@ -21,4 +21,8 @@ declare module "rehype-slug" {
   export default rehypeSlug;
 }
 
+declare module "*.md" {
+  const content: string;
+  export default content;
+}
 

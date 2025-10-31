@@ -12,6 +12,15 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  turbopack: {
+    resolveExtensions: ['.mdx', '.md', '.tsx', '.ts', '.jsx', '.js', '.mjs', '.json'],
+    rules: {
+      '*.md': {
+        loaders: ['raw-loader'],
+        as: '*.js',
+      }
+    }
+  }
 };
 
 export default nextConfig;
