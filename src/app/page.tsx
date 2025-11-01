@@ -13,22 +13,22 @@ export default function Home() {
             <p className="mt-4 text-[15px] text-foreground/80">
               Find community-made hacks and patch in-browser with your own legally-obtained base ROMs for Game Boy, Game Boy Color, Game Boy Advance, and Nintendo DS.
             </p>
-            <div className="mt-8 flex flex-col items-start sm:flex-row sm:items-center gap-3">
+            <div className="mt-12 sm:mt-8 mx-auto flex flex-col items-start max-w-[320px] sm:flex-row sm:items-center sm:max-w-none gap-3">
               <Link
                 href="/discover"
-                className="inline-flex h-12 items-center justify-center rounded-md bg-[var(--accent)] px-5 text-base font-medium text-[var(--accent-foreground)] transition-colors hover:bg-[var(--accent-700)] elevate"
+                className="inline-flex h-14 w-full sm:h-12 sm:w-auto items-center justify-center rounded-md bg-[var(--accent)] px-5 text-base font-semibold sm:font-medium text-[var(--accent-foreground)] transition-colors hover:bg-[var(--accent-700)] elevate"
               >
                 Explore hacks
               </Link>
               <Link
                 href="/submit"
-                className="inline-flex h-12 items-center justify-center rounded-md border border-white/10 bg-white/10 px-5 text-base font-medium text-foreground transition-colors hover:bg-white/15 elevate"
+                className="inline-flex h-14 w-full sm:h-12 sm:w-auto items-center justify-center rounded-md border border-white/10 bg-white/10 px-5 text-base font-semibold sm:font-medium text-foreground transition-colors hover:bg-white/15 elevate"
               >
                 Submit a patch
               </Link>
               <Link
                 href="/login"
-                className="inline-flex sm:h-12 items-center justify-center rounded-md sm:px-5 text-base font-medium text-foreground/90 hover:underline"
+                className="inline-flex h-14 w-full sm:h-12 sm:w-auto items-center justify-center rounded-md sm:px-5 text-base font-medium text-foreground/90 hover:underline"
               >
                 Already a creator? Log in
               </Link>
