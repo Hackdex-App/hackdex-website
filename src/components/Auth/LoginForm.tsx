@@ -30,7 +30,7 @@ export default function LoginForm() {
   useEffect(() => {
     if (state && state.error === null && !navigatedRef.current) {
       setUser(state.user);
-      const to = state.redirectTo || (redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//') ? redirectTo : '/account');
+      const to = state.redirectTo || (redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//') ? redirectTo : '/dashboard');
       navigatedRef.current = true;
       router.replace(to);
     }
@@ -40,7 +40,7 @@ export default function LoginForm() {
   useEffect(() => {
     if (!user || navigatedRef.current) return;
     const isValidInternalPath = !!redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//');
-    const to = isValidInternalPath ? (redirectTo as string) : '/account';
+    const to = isValidInternalPath ? (redirectTo as string) : '/dashboard';
     navigatedRef.current = true;
     router.replace(to);
   }, [user, redirectTo, router]);

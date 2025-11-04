@@ -120,11 +120,11 @@ export default function Header() {
             </Link>
             {isAuthenticated && (
               <Link
-                href="/account"
-                data-active={pathname === "/account" || undefined}
+                href="/dashboard"
+                data-active={pathname === "/dashboard" || undefined}
                 className="ml-1 relative group inline-flex items-center justify-center rounded-full ring-1 ring-[var(--border)] p-[2px] data-active:ring-2 data-active:ring-[var(--ring)]"
-                aria-label="Open account"
-                title="Account"
+                aria-label="Open dashboard"
+                title="Dashboard"
               >
                 <Avatar uid={userId} url={avatarUrl} size={36} />
                 <div className="absolute inset-0 rounded-full bg-transparent group-hover:bg-black/30 transition-colors m-[2px]" />
@@ -183,15 +183,15 @@ export default function Header() {
             />
             {isAuthenticated && (
               <Link
-                href="/account"
+                href="/dashboard"
                 onClick={() => setIsMobileMenuOpen(false)}
-                data-active={pathname === "/account" || undefined}
+                data-active={pathname === "/dashboard" || undefined}
                 className="mt-1 inline-flex items-center gap-3 rounded-md px-3 py-3 ring-1 ring-[var(--border)]"
-                aria-label="Open account"
-                title="Account"
+                aria-label="Open dashboard"
+                title="Dashboard"
               >
                 <Avatar uid={userId} url={avatarUrl} size={28} />
-                <span className="text-[15px]">Account</span>
+                <span className="text-[15px]">Dashboard</span>
               </Link>
             )}
           </div>

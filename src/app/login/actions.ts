@@ -47,7 +47,7 @@ export async function login(state: AuthActionState, payload: FormData) {
   return {
     error: null,
     user: authData.user,
-    redirectTo: isValidInternalPath ? redirectTo : '/account'
+    redirectTo: isValidInternalPath ? redirectTo : '/dashboard'
   }
 
 }
