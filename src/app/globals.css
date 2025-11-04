@@ -289,6 +289,34 @@ html { scroll-padding-top: var(--anchor-offset); }
   @apply mt-1;
 }
 
+.prose strong {
+  @apply font-semibold text-foreground/90;
+}
+
+.prose hr {
+  @apply my-6 border-t border-black/10 dark:border-white/10;
+}
+
+.prose table {
+  @apply my-6 w-full text-sm text-left text-foreground/70;
+}
+.prose table th, .prose table td {
+  @apply px-6 py-4 border border-zinc-400/30 dark:border-zinc-600/50;
+}
+.prose table th {
+  @apply font-semibold bg-zinc-200/40 dark:bg-zinc-700/20;
+}
+
+.prose > ul {
+  @apply list-disc list-outside mt-1 mb-4 text-foreground/70;
+}
+.prose > ol {
+  @apply list-decimal list-outside mt-1 mb-4 text-foreground/70;
+}
+.prose li::marker {
+  @apply text-foreground/70;
+}
+
 .scrollbar-thin {
   scrollbar-width: thin;
 }

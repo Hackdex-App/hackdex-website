@@ -10,12 +10,10 @@ export const metadata = {
 
 export default function TermsPage() {
   return (
-    <div className="mx-auto max-w-screen-2xl px-6 py-6 sm:py-12">
+    <div className="mx-auto max-w-screen-lg px-6 py-6 sm:py-12">
       <div className="prose prose-invert max-w-none">
-        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSlug]}>{termsMd as unknown as string}</ReactMarkdown>
+        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSlug]}>{termsMd}</ReactMarkdown>
       </div>
     </div>
   );
 }
-
-
