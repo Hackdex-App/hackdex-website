@@ -1,4 +1,4 @@
-import { baseRoms } from "@/data/baseRoms";
+import { baseRoms, PLATFORM_NAMES } from "@/data/baseRoms";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Gallery from "@/components/Hack/Gallery";
@@ -13,6 +13,9 @@ import { createClient } from "@/utils/supabase/server";
 import { getMinioClient, PATCHES_BUCKET } from "@/utils/minio/server";
 import HackOptionsMenu from "@/components/Hack/HackOptionsMenu";
 import DownloadsBadge from "@/components/Hack/DownloadsBadge";
+import type { CreativeWork, WithContext } from "schema-dts";
+import serialize from "serialize-javascript";
+import { headers } from "next/headers";
 
 interface HackDetailProps {
   params: Promise<{ slug: string }>;
@@ -23,14 +26,68 @@ export async function generateMetadata({ params }: HackDetailProps): Promise<Met
   const supabase = await createClient();
   const { data: hack } = await supabase
     .from("hacks")
-    .select("title,summary,approved")
+    .select("title,summary,approved,base_rom,box_art,created_by,created_at,updated_at")
     .eq("slug", slug)
     .maybeSingle();
   if (!hack || !hack.approved) return { title: "Hack not found" };
+  const baseRomName = baseRoms.find((r) => r.id === hack.base_rom)?.name ?? "Pokémon";
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", hack.created_by as string)
+    .maybeSingle();
+  const author = profile?.username ? `@${profile.username}` : undefined;
+
+  // Build canonical and page URLs
+  const hdrs = await headers();
+  const siteBase = process.env.NEXT_PUBLIC_SITE_URL ? process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "") : "";
+  const proto = siteBase ? "" : (hdrs.get("x-forwarded-proto") || "https");
+  const host = siteBase ? "" : (hdrs.get("host") || "");
+  const baseUrl = siteBase || (proto && host ? `${proto}://${host}` : "");
+  const pageUrl = baseUrl ? `${baseUrl}/hack/${slug}` : `/hack/${slug}`;
+
+  const title = `${hack.title} hack download | A ${baseRomName} ROM fan game`;
+  const description = `Play ${hack.title}, a fan-made Pokémon ROM hack for ${baseRomName}. ${hack.summary}`;
+
+  const keywords: string[] = [
+    hack.title,
+    `${hack.title} rom hack`,
+    `${hack.title} patch`,
+    `${hack.title} patcher`,
+    `${hack.title} patched rom`,
+    `${hack.title} rom download`,
+    `${hack.title} download patch`,
+    baseRomName,
+    "Pokemon rom hack",
+    "Pokemon patch file",
+    `${baseRomName} rom hack`,
+    `${baseRomName} patch file`,
+  ];
+
   return {
-    title: hack.title,
-    description: hack.summary || undefined,
-  };
+    title,
+    description,
+    keywords,
+    alternates: {
+      canonical: pageUrl,
+    },
+    openGraph: {
+      title,
+      description,
+      url: pageUrl,
+      authors: author ? [author] : undefined,
+      type: "article",
+      publishedTime: new Date(hack.created_at).toISOString(),
+      modifiedTime: hack.updated_at ? new Date(hack.updated_at).toISOString() : undefined,
+      images: hack.box_art ? [
+        {
+          url: hack.box_art,
+          alt: `${hack.title} ROM hack box art`,
+        },
+      ] : undefined,
+    },
+  } satisfies Metadata;
 }
 
 export default async function HackDetail({ params }: HackDetailProps) {
@@ -82,6 +139,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
   let patchVersion = "";
   let patchId: number | null = null;
   let lastUpdated: string | null = null;
+  let patchCreatedAt: string | null = null;
   if (hack.current_patch != null) {
     const { data: patch } = await supabase
       .from("patches")
@@ -95,11 +153,65 @@ export default async function HackDetail({ params }: HackDetailProps) {
       patchVersion = patch.version || "";
       patchId = patch.id;
       lastUpdated = new Date(patch.created_at).toLocaleDateString();
+      patchCreatedAt = patch.created_at;
     }
   }
 
+  // Build canonical URL, sameAs, dates, and JSON-LD
+  const hdrs = await headers();
+  const siteBase = process.env.NEXT_PUBLIC_SITE_URL ? process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "") : "";
+  const proto = siteBase ? "" : (hdrs.get("x-forwarded-proto") || "https");
+  const host = siteBase ? "" : (hdrs.get("host") || "");
+  const baseUrl = siteBase || (proto && host ? `${proto}://${host}` : "");
+  const pageUrl = baseUrl ? `${baseUrl}/hack/${hack.slug}` : `/hack/${hack.slug}`;
+
+  const authorName = profile?.username || "Unknown";
+
+  const sameAs: string[] = [];
+  const social = (hack.social_links as unknown) as { discord?: string; twitter?: string; pokecommunity?: string } | null;
+  if (social?.discord) sameAs.push(social.discord);
+  if (social?.twitter) sameAs.push(social.twitter);
+  if (social?.pokecommunity) sameAs.push(social.pokecommunity);
+
+  const dateCreated = new Date(hack.created_at).toISOString();
+  const modifiedRaw = patchCreatedAt || (hack.updated_at as string) || (hack.created_at as string);
+  const dateModified = new Date(modifiedRaw).toISOString();
+  // Add common tags to keywords
+  const commonTags = ["Pokémon", "ROM Hack", "Patch", "BPS", "Romhack", "Pokemon", "Mod", "Game", "Hack"];
+  if (baseRom) commonTags.push(PLATFORM_NAMES[baseRom.platform], baseRom.platform, baseRom.name);
+  const keywords = tags.length ? [...tags, ...commonTags] : commonTags;
+
+  const jsonLd: WithContext<CreativeWork> = {
+    '@context': 'https://schema.org',
+    '@type': 'CreativeWork',
+    name: hack.title,
+    description: hack.summary || undefined,
+    url: pageUrl || undefined,
+    mainEntityOfPage: pageUrl || undefined,
+    image: images.length ? images : undefined,
+    thumbnailUrl: images.length ? images[0] : hack.box_art || undefined,
+    author: { '@type': 'Person', name: authorName },
+    sameAs: sameAs.length ? sameAs : undefined,
+    genre: "Game Mod",
+    dateCreated,
+    dateModified,
+    keywords: keywords,
+    version: patchVersion || undefined,
+    inLanguage: 'en',
+    isAccessibleForFree: true,
+    isBasedOn: baseRom ? {
+      '@type': 'VideoGame',
+      name: baseRom.name,
+      gamePlatform: PLATFORM_NAMES[baseRom.platform],
+    } : undefined,
+  };
+
   return (
     <div className="mx-auto max-w-screen-lg w-full pb-28">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serialize(jsonLd, { isJSON: true }) }}
+      />
       <HackActions
         title={hack.title}
         version={patchVersion || "Pre-release"}
@@ -144,9 +256,22 @@ export default async function HackDetail({ params }: HackDetailProps) {
           <Gallery images={images} title={hack.title} />
 
           <div className="card p-5">
-            <h2 className="text-xl font-semibold tracking-tight">About this hack</h2>
+            <h2 className="text-2xl font-semibold tracking-tight">About this hack</h2>
             <div className="prose prose-sm mt-3 max-w-none text-foreground/80">
-              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSlug]}>{hack.description}</ReactMarkdown>
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[rehypeSlug]}
+                components={{
+                  h1: 'h2',
+                  h2: 'h3',
+                  h3: 'h4',
+                  h4: 'h5',
+                  h5: 'h6',
+                  h6: 'h6',
+                }}
+              >
+                {hack.description}
+              </ReactMarkdown>
             </div>
           </div>
         </div>
@@ -198,6 +323,18 @@ export default async function HackDetail({ params }: HackDetailProps) {
               </div>
             </div>
           )}
+          <div className="card overflow-hidden p-4 mt-4 text-sm text-foreground/60">
+            <p>
+              This page provides the official patch file for <span className="font-semibold">{hack.title}</span>. You can safely download the patched ROM for this hack
+              using our built-in patcher.
+            </p>
+            <p className="mt-2">
+              By pressing the "Patch Now" button, your browser will apply the downloaded <span className="font-semibold">Fire of Sky</span> .bps patch file to your legally-obtained <span className="font-semibold">{baseRom?.name}</span> ROM. The patched ROM will then be automatically downloaded.
+            </p>
+            <p className="mt-2">
+              No pre-patched ROMs or base ROMs are hosted or distributed on this site. All patching is done locally on your device.
+            </p>
+          </div>
         </aside>
       </div>
     </div>

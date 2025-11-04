@@ -16,6 +16,7 @@
     "@headlessui/react": "^2.2.9",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.74.0",
+    "@types/serialize-javascript": "^5.0.4",
     "chart.js": "^4.5.1",
     "embla-carousel-react": "8.6.0",
     "minio": "^8.0.6",
@@ -27,7 +28,9 @@
     "react-markdown": "9.0.3",
     "rehype-slug": "^6.0.0",
     "remark-gfm": "4.0.0",
-    "rom-patcher-js": "github:marcrobledo/RomPatcher.js#91e522e247f709e894761157ccba3189004d0859"
+    "rom-patcher-js": "github:marcrobledo/RomPatcher.js#91e522e247f709e894761157ccba3189004d0859",
+    "schema-dts": "^1.1.5",
+    "serialize-javascript": "^7.0.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

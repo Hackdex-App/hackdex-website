@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     default: "Hackdex",
     template: "%s | Hackdex",
   },
-  description: "Discover and share Pokémon romhack patches.",
+  description: "Discover and download Pokémon rom hacks.",
 };
 
 export default function RootLayout({

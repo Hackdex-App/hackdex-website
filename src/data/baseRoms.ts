@@ -6,6 +6,13 @@ export const PLATFORMS = [
 ] as const;
 export type Platform = typeof PLATFORMS[number];
 
+export const PLATFORM_NAMES: Record<Platform, string> = {
+  GB: "Game Boy",
+  GBC: "Game Boy Color",
+  GBA: "Game Boy Advance",
+  NDS: "Nintendo DS",
+};
+
 export type BaseRom = {
   id: string;
   name: string;
