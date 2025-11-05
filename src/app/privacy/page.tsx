@@ -1,11 +1,15 @@
 import React from "react";
+import type { Metadata } from "next";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSlug from "rehype-slug";
 import privacyMd from "@/../docs/legal/PRIVACY.md";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Privacy Policy",
+  alternates: {
+    canonical: "/privacy",
+  },
 };
 
 export default function PrivacyPage() {

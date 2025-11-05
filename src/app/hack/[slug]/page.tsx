@@ -39,14 +39,7 @@ export async function generateMetadata({ params }: HackDetailProps): Promise<Met
     .maybeSingle();
   const author = profile?.username ? `@${profile.username}` : undefined;
 
-  // Build canonical and page URLs
-  const hdrs = await headers();
-  const siteBase = process.env.NEXT_PUBLIC_SITE_URL ? process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "") : "";
-  const proto = siteBase ? "" : (hdrs.get("x-forwarded-proto") || "https");
-  const host = siteBase ? "" : (hdrs.get("host") || "");
-  const baseUrl = siteBase || (proto && host ? `${proto}://${host}` : "");
-  const pageUrl = baseUrl ? `${baseUrl}/hack/${slug}` : `/hack/${slug}`;
-
+  const pageUrl = `/hack/${slug}`;
   const title = `${hack.title} hack download | A ${baseRomName} ROM fan game`;
   const description = `Play ${hack.title}, a fan-made Pokémon ROM hack for ${baseRomName}. ${hack.summary}`;
 

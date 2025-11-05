@@ -1,6 +1,13 @@
 import HackForm from "@/components/Hack/HackForm";
 import { createClient } from "@/utils/supabase/server";
 import SubmitAuthOverlay from "@/components/Submit/SubmitAuthOverlay";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  alternates: {
+    canonical: "/submit",
+  },
+};
 
 export default async function SubmitPage() {
   const supabase = await createClient();

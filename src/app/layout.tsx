@@ -23,6 +23,7 @@ export const metadata: Metadata = {
     template: "%s | Hackdex",
   },
   description: "Discover and download Pokémon rom hacks.",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL!),
 };
 
 export default function RootLayout({

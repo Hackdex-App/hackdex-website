@@ -1,4 +1,11 @@
 import DiscoverBrowser from "@/components/Discover/DiscoverBrowser";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  alternates: {
+    canonical: "/discover",
+  },
+};
 
 export default function DiscoverPage() {
   return (

@@ -1,12 +1,16 @@
 import React from "react";
+import type { Metadata } from "next";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSlug from "rehype-slug";
 import entriesMd from "./entries.md";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "FAQ",
   description: "Frequently asked questions about Hackdex, how it works, and what makes it unique.",
+  alternates: {
+    canonical: "/faq",
+  },
 };
 
 export default function FAQPage() {

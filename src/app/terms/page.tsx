@@ -1,11 +1,15 @@
 import React from "react";
+import type { Metadata } from "next";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSlug from "rehype-slug";
 import termsMd from "@/../docs/legal/TERMS.md";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Terms of Service",
+  alternates: {
+    canonical: "/terms",
+  },
 };
 
 export default function TermsPage() {

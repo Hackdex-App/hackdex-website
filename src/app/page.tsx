@@ -1,5 +1,12 @@
+import { Metadata } from "next";
 import Link from "next/link";
 import { FaArrowRightLong } from "react-icons/fa6";
+
+export const metadata: Metadata = {
+  alternates: {
+    canonical: "/",
+  },
+};
 
 export default function Home() {
   return (
