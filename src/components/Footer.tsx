@@ -47,6 +47,9 @@ export default function Footer() {
               <div className="mb-3 pb-2 border-b border-white/10 text-xs font-medium uppercase tracking-wider text-foreground/80">Support</div>
               <ul className="space-y-1.5 sm:space-y-2">
                 <li>
+                  <Link href="/faq" className="block py-1 hover:underline">FAQ</Link>
+                </li>
+                <li>
                   <Link href="/contact" className="block py-1 hover:underline">Contact</Link>
                 </li>
                 <li>

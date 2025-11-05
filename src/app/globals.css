@@ -91,6 +91,10 @@ html { scroll-padding-top: var(--anchor-offset); }
   scroll-margin-top: var(--anchor-offset);
 }
 
+/* Smaller anchor offset for FAQ page only */
+.faq-prose { --anchor-offset: 8px; }
+@media (min-width: 768px) { .faq-prose { --anchor-offset: 16px; } }
+
 .bg-grid { background-image: radial-gradient(var(--grid-dot-color) 1px, transparent 1px); background-size: 22px 22px; }
 
 .card {
@@ -287,6 +291,28 @@ html { scroll-padding-top: var(--anchor-offset); }
 }
 .prose p:not(h6 + p) {
   @apply mt-1;
+}
+
+.faq-prose h2 {
+  @apply text-2xl font-semibold;
+}
+
+.faq-prose h1:not(:first-child),
+.faq-prose h2:not(:first-child),
+.faq-prose h3:not(:first-child),
+.faq-prose h4:not(:first-child),
+.faq-prose h5:not(:first-child),
+.faq-prose h6:not(:first-child) {
+  @apply mt-6;
+}
+
+.faq-prose p:not(h1 + p),
+.faq-prose p:not(h2 + p),
+.faq-prose p:not(h3 + p),
+.faq-prose p:not(h4 + p),
+.faq-prose p:not(h5 + p),
+.faq-prose p:not(h6 + p) {
+  @apply mt-2;
 }
 
 .prose strong {
