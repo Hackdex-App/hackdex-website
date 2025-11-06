@@ -1,6 +1,14 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import ContactForm from "@/components/Contact/ContactForm";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Contact",
+  alternates: {
+    canonical: "/contact",
+  },
+};
 
 export default function ContactPage() {
   return (

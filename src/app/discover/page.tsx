@@ -2,6 +2,7 @@ import DiscoverBrowser from "@/components/Discover/DiscoverBrowser";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
+  description: "Find and download Pokémon romhacks for Game Boy, Game Boy Color, Game Boy Advance, and Nintendo DS.",
   alternates: {
     canonical: "/discover",
   },

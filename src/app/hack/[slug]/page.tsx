@@ -40,7 +40,7 @@ export async function generateMetadata({ params }: HackDetailProps): Promise<Met
   const author = profile?.username ? `@${profile.username}` : undefined;
 
   const pageUrl = `/hack/${slug}`;
-  const title = `${hack.title} hack download | A ${baseRomName} ROM fan game`;
+  const title = `${hack.title} | ROM hack download`;
   const description = `Play ${hack.title}, a fan-made Pokémon ROM hack for ${baseRomName}. ${hack.summary}`;
 
   const keywords: string[] = [

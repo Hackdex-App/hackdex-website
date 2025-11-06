@@ -19,10 +19,10 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Hackdex",
+    default: "Hackdex | Discover and download Pokémon rom hacks",
     template: "%s | Hackdex",
   },
-  description: "Discover and download Pokémon rom hacks.",
+  description: "Use our built-in patcher to download and play Pokémon romhacks for Game Boy, Game Boy Color, Game Boy Advance, and Nintendo DS.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL!),
 };
 
