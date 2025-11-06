@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { AuthError } from '@supabase/supabase-js'
+import { get } from '@vercel/edge-config'
 
 import { createClient, createServiceClient } from '@/utils/supabase/server'
 import { validateEmail, validatePassword } from '@/utils/auth'
@@ -54,16 +55,27 @@ export async function signup(state: AuthActionState, payload: FormData) {
     return { error: 'An invite code is required to sign up.' }
   }
 
-  // Pre-check: ensure invite exists and is unused before attempting signup
-  const { data: availableInvite, error: inviteCheckError } = await service
-    .from('invite_codes')
-    .select('code')
-    .eq('code', inviteCode)
-    .is('used_by', null)
-    .maybeSingle()
+  // Allow static invite codes via Edge Config to bypass DB checks
+  let isStaticInvite = false
+  try {
+    const staticCodes = (await get<string[] | null>('staticInviteCodes')) || []
+    if (Array.isArray(staticCodes)) {
+      isStaticInvite = staticCodes.includes(inviteCode)
+    }
+  } catch {}
 
-  if (inviteCheckError || !availableInvite) {
-    return { error: 'Invalid or already used invite code.' }
+  if (!isStaticInvite) {
+    // Pre-check: ensure invite exists and is unused before attempting signup
+    const { data: availableInvite, error: inviteCheckError } = await service
+      .from('invite_codes')
+      .select('code')
+      .eq('code', inviteCode)
+      .is('used_by', null)
+      .maybeSingle()
+
+    if (inviteCheckError || !availableInvite) {
+      return { error: 'Invalid or already used invite code.' }
+    }
   }
 
   const { data: signUpResult, error } = await supabase.auth.signUp(data)
@@ -73,23 +85,27 @@ export async function signup(state: AuthActionState, payload: FormData) {
   }
 
   const userId = signUpResult.user?.id || null
-  // Finalize: set used_by to the new user id iff still unused (atomic)
-  const { data: finalized, error: finalizeError } = await service
-    .from('invite_codes')
-    .update({ used_by: userId ?? null })
-    .eq('code', inviteCode)
-    .is('used_by', null)
-    .select('code')
-    .maybeSingle()
+  if (isStaticInvite) {
+    console.log('[signup] Static invite code used:', { inviteCode, userId })
+  } else {
+    // Finalize: set used_by to the new user id iff still unused (atomic)
+    const { data: finalized, error: finalizeError } = await service
+      .from('invite_codes')
+      .update({ used_by: userId ?? null })
+      .eq('code', inviteCode)
+      .is('used_by', null)
+      .select('code')
+      .maybeSingle()
 
-  if (finalizeError || !finalized) {
-    // The code claim could not be finalized (race). Roll back user creation.
-    if (userId) {
-      try {
-        await service.auth.admin.deleteUser(userId)
-      } catch {}
+    if (finalizeError || !finalized) {
+      // The code claim could not be finalized (race). Roll back user creation.
+      if (userId) {
+        try {
+          await service.auth.admin.deleteUser(userId)
+        } catch {}
+      }
+      return { error: 'Invite code is no longer available. Please try again.' }
     }
-    return { error: 'Invite code is no longer available. Please try again.' }
   }
 
   revalidatePath('/', 'layout');

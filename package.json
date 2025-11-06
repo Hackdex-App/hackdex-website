@@ -17,6 +17,7 @@
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.74.0",
     "@types/serialize-javascript": "^5.0.4",
+    "@vercel/edge-config": "^1.4.3",
     "chart.js": "^4.5.1",
     "embla-carousel-react": "8.6.0",
     "minio": "^8.0.6",
