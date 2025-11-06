@@ -14,7 +14,7 @@ Yes. Hackdex distributes patches, not complete, pre-patched ROM files. You must 
 ### Is using Hackdex legal?
 Unlike some other ROM sharing sites, Hackdex focuses on legal distribution by hosting and sharing patches rather than complete ROMs. You're responsible for obtaining your base ROMs legally. While it might *feel* like you're downloading a ROM, your browser is actually applying the patch to your rom behind the scenes.
 
-### How do I play a ROM hack on Hackdex?
+### How do I play a ROM hack from Hackdex?
 Browse the Discover page to find a ROM hack that interests you. Once you've selected a hack, you'll use Hackdex's built-in patching system to apply the patch to your legally obtained base ROM. The patching happens client-side in your browser, so you can start playing without needing any external patching tools. Below are some [recommended emulators](#recommended-emulators) for different platforms.
 
 ### Do I need an account to browse and download patches?
@@ -29,7 +29,7 @@ Hackdex is specifically focused on Pokémon ROM hack patches across different ge
 ### How does Hackdex make money?
 *We don't.*
 
-Hackdex is a labor of love for the Pokémon community. That means no ads or paid features. Romhack development is already a gray area, so we don't want to add further risks to the project.
+Hackdex is a labor of love for the Pokémon community. That means no ads or paid features. Romhack development can already be considered a gray area, so we don't want to compound any risks through monetization.
 
 The code is [fully open source](https://github.com/Hackdex-App/hackdex-website), so if you really want to support the project, feel free to contribute!
 
