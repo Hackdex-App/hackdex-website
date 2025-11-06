@@ -1,10 +1,8 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import ContactForm from "@/components/Contact/ContactForm";
 
 export default function ContactPage() {
-  const copyrightEmail = process.env.EMAIL_COPYRIGHT!;
-  const contactEmail = process.env.EMAIL_CONTACT!;
-
   return (
     <div className="mx-auto my-auto max-w-2xl w-full px-6 py-10">
       <div className="card p-6">
@@ -16,11 +14,11 @@ export default function ContactPage() {
           For intellectual property concerns (DMCA), please see our <Link className="text-[var(--accent)] hover:underline" href="/terms">Terms of Service</Link>.
         </p>
         <div className="mt-6">
-          <ContactForm />
+          <Suspense fallback={<div>Loading...</div>}>
+            <ContactForm />
+          </Suspense>
         </div>
       </div>
     </div>
   );
 }
-
-
