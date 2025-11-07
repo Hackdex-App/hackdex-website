@@ -60,6 +60,12 @@ export default function HackOptionsMenu({ slug, canEdit }: HackOptionsMenuProps)
           <MenuSeparator className="my-1 h-px bg-[var(--border)]" />
           <MenuItem
             as="a"
+            href={`/hack/${slug}/stats`}
+            className="block w-full px-3 py-2 text-left text-sm data-focus:bg-black/5 dark:data-focus:bg-white/10">
+            Stats
+          </MenuItem>
+          <MenuItem
+            as="a"
             href={`/hack/${slug}/edit`}
             className="block w-full px-3 py-2 text-left text-sm data-focus:bg-black/5 dark:data-focus:bg-white/10">
             Edit
