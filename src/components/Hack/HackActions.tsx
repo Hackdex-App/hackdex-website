@@ -15,6 +15,7 @@ interface HackActionsProps {
   baseRomId: string;
   platform?: "GBA" | "GBC" | "GB" | "NDS";
   patchUrl: string;
+  patchFilename: string | null;
   patchId?: number;
   hackSlug: string;
 }
@@ -26,6 +27,7 @@ const HackActions: React.FC<HackActionsProps> = ({
   baseRomId,
   platform,
   patchUrl,
+  patchFilename,
   patchId,
   hackSlug,
 }) => {
@@ -200,6 +202,7 @@ const HackActions: React.FC<HackActionsProps> = ({
       title={title}
       version={version}
       author={author}
+      filename={patchFilename}
       baseRomName={baseRomName}
       baseRomPlatform={platform}
       onPatch={onPatch}

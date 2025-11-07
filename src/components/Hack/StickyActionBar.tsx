@@ -4,10 +4,11 @@ import React from "react";
 import { platformAccept } from "@/utils/idb";
 import type { Platform } from "@/data/baseRoms";
 
-export default function StickyActionBar({ title, version, author, baseRomName, baseRomPlatform, onPatch, status, error, isLinked, romReady, onClickLink, supported, onUploadChange }: {
+interface StickyActionBarProps {
   title: string;
   version?: string;
   author: string;
+  filename: string | null;
   baseRomName?: string | null;
   baseRomPlatform?: Platform;
   onPatch: () => void;
@@ -18,7 +19,24 @@ export default function StickyActionBar({ title, version, author, baseRomName, b
   onClickLink: () => void;
   supported: boolean;
   onUploadChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-}) {
+}
+
+export default function StickyActionBar({
+  title,
+  version,
+  author,
+  filename,
+  baseRomName,
+  baseRomPlatform,
+  onPatch,
+  status,
+  error,
+  isLinked,
+  romReady,
+  onClickLink,
+  supported,
+  onUploadChange,
+}: StickyActionBarProps) {
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
   const uploadInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -72,12 +90,12 @@ export default function StickyActionBar({ title, version, author, baseRomName, b
             status === "downloading"
               ? "bg-[var(--surface-2)] text-foreground/85 ring-[var(--border)]"
               : romReady
-              ? "hidden md:block bg-emerald-600/60 text-white ring-emerald-700/80 dark:bg-emerald-500/25 dark:text-emerald-100 dark:ring-emerald-400/90"
+              ? "bg-emerald-600/60 text-white ring-emerald-700/80 dark:bg-emerald-500/25 dark:text-emerald-100 dark:ring-emerald-400/90"
               : isLinked
               ? "bg-amber-600/60 text-white ring-amber-700/80 dark:bg-amber-500/50 dark:text-amber-100 dark:ring-amber-400/90"
               : "bg-red-600/60 text-white ring-red-700/80 dark:bg-red-500/50 dark:text-red-100 dark:ring-red-400/90"
           }`}>
-            {status === "downloading" ? "Downloading..." : romReady ? "Ready" : isLinked ? "Permission needed" : "Base ROM needed"}
+            {status === "downloading" ? "Downloading..." : romReady ? (filename ?? ".bps file ready") : isLinked ? "Permission needed" : "Base ROM needed"}
           </span>
           {!romReady && !isLinked && (
             <label className="inline-flex items-center gap-2 text-xs text-foreground/80">
@@ -111,7 +129,7 @@ export default function StickyActionBar({ title, version, author, baseRomName, b
             onClick={onPatch}
             data-ready={romReady}
             disabled={!mounted || (status !== "ready" && status !== "done") || !patchAgainReady}
-            className={`shine-wrap btn-premium max-md:data-[ready=false]:hidden! h-11 md:h-9 w-full md:w-auto md:min-w-[7.5rem] text-base md:text-sm font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 ${romReady && status !== 'downloading' ? "mt-6 md:mt-0" : ""}`}
+            className={`shine-wrap btn-premium max-md:data-[ready=false]:hidden! h-11 md:h-9 w-full md:w-auto md:min-w-[7.5rem] text-base md:text-sm font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 ${romReady && status !== 'downloading' && status !== 'ready' ? "mt-6 md:mt-0" : ""}`}
           >
             <span>{status === "patching" ? "Patching…" : (
               status === "done" ? (

@@ -128,6 +128,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
   const canEdit = !!user && user.id === (hack.created_by as string);
 
   // Resolve a short-lived signed patch URL (if current_patch exists)
+  let patchFilename: string | null = null;
   let signedPatchUrl = "";
   let patchVersion = "";
   let patchId: number | null = null;
@@ -143,6 +144,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
       const client = getMinioClient();
       const bucket = patch.bucket || PATCHES_BUCKET;
       signedPatchUrl = await client.presignedGetObject(bucket, patch.filename, 60 * 5);
+      patchFilename = patch.filename;
       patchVersion = patch.version || "";
       patchId = patch.id;
       lastUpdated = new Date(patch.created_at).toLocaleDateString();
@@ -212,6 +214,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
         baseRomId={baseRom?.id || ""}
         platform={baseRom?.platform}
         patchUrl={signedPatchUrl}
+        patchFilename={patchFilename}
         patchId={patchId ?? undefined}
         hackSlug={hack.slug}
       />
