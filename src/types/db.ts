@@ -96,6 +96,35 @@ export type Database = {
           },
         ]
       }
+      hack_team: {
+        Row: {
+          created_at: string
+          hack_slug: string
+          name: string | null
+          userid: string | null
+        }
+        Insert: {
+          created_at?: string
+          hack_slug: string
+          name?: string | null
+          userid?: string | null
+        }
+        Update: {
+          created_at?: string
+          hack_slug?: string
+          name?: string | null
+          userid?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hack_team_hack_slug_fkey"
+            columns: ["hack_slug"]
+            isOneToOne: true
+            referencedRelation: "hacks"
+            referencedColumns: ["slug"]
+          },
+        ]
+      }
       hacks: {
         Row: {
           approved: boolean
@@ -110,6 +139,7 @@ export type Database = {
           downloads: number
           estimated_release: string | null
           language: string
+          original_author: string | null
           patch_url: string
           search: unknown
           slug: string
@@ -132,6 +162,7 @@ export type Database = {
           downloads?: number
           estimated_release?: string | null
           language: string
+          original_author?: string | null
           patch_url: string
           search?: unknown
           slug: string
@@ -154,6 +185,7 @@ export type Database = {
           downloads?: number
           estimated_release?: string | null
           language?: string
+          original_author?: string | null
           patch_url?: string
           search?: unknown
           slug?: string
