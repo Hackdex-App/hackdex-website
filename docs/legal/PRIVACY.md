@@ -2,7 +2,7 @@
 
 Last updated: 2025-11-03
 
-Canonical URL: https://hackdex.app/privacy
+Canonical URL: https://www.hackdex.app/privacy
 
 Contact: [admin@hackdex.app](mailto:admin@hackdex.app)
 
@@ -18,7 +18,7 @@ Important notices
 Welcome to **Hackdex**, a platform that allows users to download and apply patches to their legally obtained ROM files.
 This Privacy Policy explains how we collect, use, and protect your data in compliance with the **General Data Protection Regulation (GDPR)** and other applicable privacy laws.
 
-By using Hackdex, you agree to this Privacy Policy and our [Terms of Service](https://hackdex.app/terms).
+By using Hackdex, you agree to this Privacy Policy and our [Terms of Service](https://www.hackdex.app/terms).
 
 ---
 
@@ -148,7 +148,7 @@ You have the following rights regarding your personal data:
 
 ### How to exercise your rights
 You can:
-- Modify your account data directly from the [account page](https://hackdex.app/account).
+- Modify your account data directly from the [account page](https://www.hackdex.app/account).
 - Request data deletion or any other GDPR-related action by emailing us at [admin@hackdex.app](mailto:admin@hackdex.app).
 
 We will respond to all valid requests within **30 days**.

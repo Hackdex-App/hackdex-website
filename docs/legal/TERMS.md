@@ -2,7 +2,7 @@
 
 Version 1.0.0 • Effective: 2025-10-31
 
-Canonical URL: https://hackdex.app/terms
+Canonical URL: https://www.hackdex.app/terms
 
 Important notices
 - This Terms of Service applies only to the Hackdex service available at the domain hackdex.app (including subdomains). Any copies of this document in public source repositories are provided for reference only and are void unless explicitly hosted under hackdex.app.
@@ -11,7 +11,7 @@ Important notices
 
 ## 1. Acceptance of Terms and Privacy
 
-By accessing or using Hackdex (the "Service"), you agree to this Terms of Service ("Terms") and our Privacy Policy available at [https://hackdex.app/privacy](https://hackdex.app/privacy). If you do not agree, do not use the Service. We may update these Terms as described in Section 13. If you continue to use the Service after changes take effect, you accept the updated Terms.
+By accessing or using Hackdex (the "Service"), you agree to this Terms of Service ("Terms") and our Privacy Policy available at [https://www.hackdex.app/privacy](https://www.hackdex.app/privacy). If you do not agree, do not use the Service. We may update these Terms as described in Section 13. If you continue to use the Service after changes take effect, you accept the updated Terms.
 
 ## 2. Definitions
 
@@ -123,4 +123,4 @@ If any provision of these Terms is deemed unenforceable, it will be enforced to 
 
 Copyright Agent: [copyright@hackdex.app](mailto:copyright@hackdex.app)
 
-General inquiries: see the contact form at [https://hackdex.app/contact](https://hackdex.app/contact)
+General inquiries: see the contact form at [https://www.hackdex.app/contact](https://www.hackdex.app/contact)
