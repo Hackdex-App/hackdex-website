@@ -9,7 +9,7 @@ import rehypeSlug from "rehype-slug";
 import Image from "next/image";
 import { FaDiscord, FaTwitter, FaTriangleExclamation } from "react-icons/fa6";
 import PokeCommunityIcon from "@/components/Icons/PokeCommunityIcon";
-import { createClient } from "@/utils/supabase/server";
+import { createClient, createServiceClient } from "@/utils/supabase/server";
 import { getMinioClient, PATCHES_BUCKET } from "@/utils/minio/server";
 import HackOptionsMenu from "@/components/Hack/HackOptionsMenu";
 import DownloadsBadge from "@/components/Hack/DownloadsBadge";
@@ -21,6 +21,22 @@ import { FaCircleCheck } from "react-icons/fa6";
 
 interface HackDetailProps {
   params: Promise<{ slug: string }>;
+}
+
+export const revalidate = 60 * 60; // 1 hour
+
+export async function generateStaticParams() {
+  const supabase = await createServiceClient();
+  const { data: hacks } = await supabase
+    .from("hacks")
+    .select("slug")
+    .eq("approved", true)
+    .order("downloads", { ascending: false })
+    .limit(100); // Pre-render top 100 most popular hacks
+
+  return (hacks || []).map((hack) => ({
+    slug: hack.slug,
+  }));
 }
 
 export async function generateMetadata({ params }: HackDetailProps): Promise<Metadata> {
