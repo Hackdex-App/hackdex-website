@@ -10,9 +10,10 @@ export default async function Sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const supabase = await createClient();
 
-  const { data: hacks } = await supabase.from("hacks").select("slug,updated_at");
+  const { data: hacks } = await supabase.from("hacks").select("slug,updated_at,approved");
   if (hacks) {
-    routes.push(...hacks.map((hack) => ({
+    const approvedHacks = hacks.filter((hack) => hack.approved);
+    routes.push(...approvedHacks.map((hack) => ({
       url: `/hack/${hack.slug}`,
       changeFrequency: "weekly" as const,
       lastModified: hack.updated_at || new Date().toISOString(),
