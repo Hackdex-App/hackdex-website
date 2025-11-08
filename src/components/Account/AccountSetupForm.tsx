@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/client'
 import { type User } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
 import { FiCheck, FiX, FiCopy } from 'react-icons/fi'
+import { setupProfile } from '@/app/account/actions'
 
 type UsernameState =
   | { status: 'idle'; message: string }
@@ -114,13 +115,12 @@ export default function AccountSetupForm({ user }: { user: User }) {
 
     try {
       setSubmitting(true)
-      const { error } = await supabase.from('profiles').upsert({
-        id: user.id,
-        username,
-        updated_at: new Date().toISOString(),
-      })
+      const result = await setupProfile(username)
 
-      if (error) throw error
+      if (!result || !result.ok) {
+        setUsernameState({ status: 'invalid', message: result?.error || 'There was an error saving. Please try again.' })
+        return
+      }
 
       // Refresh SSR boundary so the page re-renders into the update form state
       router.refresh()

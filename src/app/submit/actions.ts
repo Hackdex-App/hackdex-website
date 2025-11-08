@@ -3,6 +3,8 @@
 import { createClient } from "@/utils/supabase/server";
 import type { TablesInsert } from "@/types/db";
 import { getMinioClient, PATCHES_BUCKET } from "@/utils/minio/server";
+import { sendDiscordMessageEmbed } from "@/utils/discord";
+import { APIEmbed } from "discord-api-types/v10";
 
 type HackInsert = TablesInsert<"hacks">;
 
@@ -152,7 +154,7 @@ export async function presignPatchAndSaveCovers(args: {
   return { ok: true, presignedUrl: url, objectKey } as const;
 }
 
-export async function confirmPatchUpload(args: { slug: string; objectKey: string; version: string }) {
+export async function confirmPatchUpload(args: { slug: string; objectKey: string; version: string, firstUpload?: boolean }) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -161,7 +163,7 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
 
   const { data: hack, error: hErr } = await supabase
     .from("hacks")
-    .select("slug, created_by")
+    .select("slug, created_by, title")
     .eq("slug", args.slug)
     .maybeSingle();
   if (hErr) return { ok: false, error: hErr.message } as const;
@@ -191,6 +193,33 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
     .update({ current_patch: patch.id })
     .eq("slug", args.slug);
   if (uErr) return { ok: false, error: uErr.message } as const;
+
+  if (process.env.DISCORD_WEBHOOK_ADMIN_URL) {
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+
+    const displayName = profile?.username ? `@${profile.username}` : user.id;
+    const embed: APIEmbed = args.firstUpload ? {
+      title: `:tada: ${hack.title}`,
+      description: `A new hack by **${displayName}** is pending approval by an admin.`,
+      color: 0x40f56a,
+      url: `${process.env.NEXT_PUBLIC_SITE_URL}/hack/${args.slug}`,
+      footer: {
+        text: `This message brought to you by Hackdex`
+      }
+    } : {
+      title: `New update for ${hack.title}`,
+      description: `**${hack.title}** has been updated to **${args.version}**`,
+      color: 0x40f56a,
+      url: `${process.env.NEXT_PUBLIC_SITE_URL}/hack/${args.slug}`,
+      footer: {
+        text: `This message brought to you by Hackdex`
+      }
+    }
+
+    await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_ADMIN_URL, [
+      embed,
+    ]);
+  }
 
   return { ok: true, patchId: patch.id, redirectTo: `/hack/${args.slug}` } as const;
 }

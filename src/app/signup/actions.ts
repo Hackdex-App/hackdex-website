@@ -7,6 +7,7 @@ import { get } from '@vercel/edge-config'
 
 import { createClient, createServiceClient } from '@/utils/supabase/server'
 import { validateEmail, validatePassword } from '@/utils/auth'
+import { sendDiscordMessageEmbed } from '@/utils/discord'
 
 function getErrorMessage(error: AuthError): string {
   const code = (error.code)?.toLowerCase()
@@ -87,6 +88,18 @@ export async function signup(state: AuthActionState, payload: FormData) {
   const userId = signUpResult.user?.id || null
   if (isStaticInvite) {
     console.log('[signup] Static invite code used:', { inviteCode, userId })
+    if (process.env.DISCORD_WEBHOOK_ADMIN_URL) {
+      await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_ADMIN_URL, [
+        {
+          title: 'New User Signup',
+          description: `A new user (\`${userId}\`) has signed up using the static invite code: \`${inviteCode}\``,
+          color: 0x40f56a,
+          footer: {
+            text: 'A notification will be sent when this user has created their profile'
+          }
+        },
+      ]);
+    }
   } else {
     // Finalize: set used_by to the new user id iff still unused (atomic)
     const { data: finalized, error: finalizeError } = await service
@@ -105,6 +118,19 @@ export async function signup(state: AuthActionState, payload: FormData) {
         } catch {}
       }
       return { error: 'Invite code is no longer available. Please try again.' }
+    } else {
+      if (process.env.DISCORD_WEBHOOK_ADMIN_URL) {
+        await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_ADMIN_URL, [
+          {
+            title: 'New User Signup',
+            description: `A new user (\`${userId}\`) has signed up using the invite code: \`${inviteCode}\``,
+            color: 0x40f56a,
+            footer: {
+              text: 'A notification will be sent when this user has created their profile'
+            }
+          },
+        ]);
+      }
     }
   }
 
