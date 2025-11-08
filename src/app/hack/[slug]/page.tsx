@@ -23,7 +23,7 @@ interface HackDetailProps {
   params: Promise<{ slug: string }>;
 }
 
-export const revalidate = 60 * 60; // 1 hour
+export const revalidate = 3600; // 1 hour
 
 export async function generateStaticParams() {
   const supabase = await createServiceClient();
