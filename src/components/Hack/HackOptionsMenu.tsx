@@ -7,9 +7,10 @@ import { Menu, MenuButton, MenuItem, MenuItems, MenuSeparator } from "@headlessu
 interface HackOptionsMenuProps {
   slug: string;
   canEdit: boolean;
+  children?: React.ReactNode;
 }
 
-export default function HackOptionsMenu({ slug, canEdit }: HackOptionsMenuProps) {
+export default function HackOptionsMenu({ slug, canEdit, children }: HackOptionsMenuProps) {
   return (
     <Menu as="div" className="relative">
       <MenuButton
@@ -76,6 +77,10 @@ export default function HackOptionsMenu({ slug, canEdit }: HackOptionsMenuProps)
             className="block w-full px-3 py-2 text-left text-sm data-focus:bg-black/5 dark:data-focus:bg-white/10">
             Upload new version
           </MenuItem>
+        </>}
+        {children && <>
+          <MenuSeparator className="my-1 h-px bg-[var(--border)]" />
+          {children}
         </>}
       </MenuItems>
     </Menu>

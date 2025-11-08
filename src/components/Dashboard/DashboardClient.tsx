@@ -7,7 +7,7 @@ import { DashboardProvider } from "@/contexts/DashboardContext";
 import DownloadsChart from "@/components/Dashboard/DownloadsChart";
 import HackList from "@/components/Dashboard/HackList";
 
-type HackRow = {
+export type HackRow = {
   slug: string;
   title: string;
   approved: boolean;
@@ -98,8 +98,6 @@ export default function DashboardClient({
           <h2 className="text-xl font-semibold">Your hacks</h2>
           <HackList hacks={hacks} />
         </div>
-
-        {/* Per-hack insights removed; deeper stats are on each hack's /stats page */}
       </div>
     </DashboardProvider>
   );

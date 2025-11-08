@@ -3,6 +3,10 @@
 import { createClient } from "@/utils/supabase/server";
 import type { TablesInsert } from "@/types/db";
 import { getMinioClient, PATCHES_BUCKET } from "@/utils/minio/server";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { APIEmbed } from "discord-api-types/v10";
+import { sendDiscordMessageEmbed } from "@/utils/discord";
 
 export async function updateHack(args: {
   slug: string;
@@ -198,4 +202,62 @@ export async function presignNewPatchVersion(args: { slug: string; version: stri
   return { ok: true, presignedUrl: url, objectKey } as const;
 }
 
+export async function approveHack(slug: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Unauthorized" } as const;
+
+  // Check if user is admin
+  const { data: isAdmin } = await supabase.rpc("is_admin");
+  if (!isAdmin) return { ok: false, error: "Forbidden" } as const;
+
+  // Check if hack exists
+  const { data: hack, error: hErr } = await supabase
+    .from("hacks")
+    .select("slug, approved, title")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (hErr) return { ok: false, error: hErr.message } as const;
+  if (!hack) return { ok: false, error: "Hack not found" } as const;
+
+  // If already approved, return success
+  if (hack.approved) {
+    revalidatePath(`/hack/${slug}`);
+    return { ok: true } as const;
+  }
+
+  // Approve the hack
+  const { error: updateErr } = await supabase
+    .from("hacks")
+    .update({
+      approved: true,
+      approved_at: new Date().toISOString(),
+      approved_by: user.id,
+    })
+    .eq("slug", slug);
+
+  if (updateErr) return { ok: false, error: updateErr.message } as const;
+
+  if (process.env.DISCORD_WEBHOOK_ADMIN_URL) {
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+    const displayName = profile?.username ? `@${profile.username}` : user.id;
+    const embed: APIEmbed = {
+      title: `:tada: ${hack.title} :tada:`,
+      description: `A new hack by **${displayName}** is now live!`,
+      color: 0x40f56a,
+      url: `${process.env.NEXT_PUBLIC_SITE_URL}/hack/${slug}`,
+      footer: {
+        text: `This message brought to you by Hackdex`
+      }
+    }
+    await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_ADMIN_URL, [
+      embed,
+    ]);
+  }
+
+  revalidatePath(`/hack/${slug}`);
+  redirect(`/hack/${slug}`);
+}
 

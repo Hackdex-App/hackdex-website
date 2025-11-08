@@ -7,7 +7,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSlug from "rehype-slug";
 import Image from "next/image";
-import { FaDiscord, FaTwitter } from "react-icons/fa6";
+import { FaDiscord, FaTwitter, FaTriangleExclamation } from "react-icons/fa6";
 import PokeCommunityIcon from "@/components/Icons/PokeCommunityIcon";
 import { createClient } from "@/utils/supabase/server";
 import { getMinioClient, PATCHES_BUCKET } from "@/utils/minio/server";
@@ -16,6 +16,8 @@ import DownloadsBadge from "@/components/Hack/DownloadsBadge";
 import type { CreativeWork, WithContext } from "schema-dts";
 import serialize from "serialize-javascript";
 import { headers } from "next/headers";
+import { MenuItem } from "@headlessui/react";
+import { FaCircleCheck } from "react-icons/fa6";
 
 interface HackDetailProps {
   params: Promise<{ slug: string }>;
@@ -29,16 +31,21 @@ export async function generateMetadata({ params }: HackDetailProps): Promise<Met
     .select("title,summary,approved,base_rom,box_art,created_by,created_at,updated_at")
     .eq("slug", slug)
     .maybeSingle();
-  if (!hack || !hack.approved) return { title: "Hack not found" };
-  const baseRomName = baseRoms.find((r) => r.id === hack.base_rom)?.name ?? "Pokémon";
+  if (!hack) return { title: "Hack not found" };
 
   const { data: profile } = await supabase
-    .from("profiles")
-    .select("username")
-    .eq("id", hack.created_by as string)
-    .maybeSingle();
+  .from("profiles")
+  .select("username")
+  .eq("id", hack.created_by as string)
+  .maybeSingle();
   const author = profile?.username ? `@${profile.username}` : undefined;
 
+  if (!hack.approved) return {
+    title: hack.title,
+    description: 'This hack is pending approval by an admin.',
+  } satisfies Metadata;
+
+  const baseRomName = baseRoms.find((r) => r.id === hack.base_rom)?.name ?? "Pokémon";
   const pageUrl = `/hack/${slug}`;
   const title = `${hack.title} | ROM hack download`;
   const description = `Play ${hack.title}, a fan-made Pokémon ROM hack for ${baseRomName}. ${hack.summary}`;
@@ -88,7 +95,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
   const supabase = await createClient();
   const { data: hack, error } = await supabase
     .from("hacks")
-    .select("slug,title,summary,description,base_rom,created_at,updated_at,downloads,current_patch,box_art,social_links,created_by")
+    .select("slug,title,summary,description,base_rom,created_at,updated_at,downloads,current_patch,box_art,social_links,created_by,approved")
     .eq("slug", slug)
     .maybeSingle();
   if (error || !hack) return notFound();
@@ -126,6 +133,16 @@ export default async function HackDetail({ params }: HackDetailProps) {
     data: { user },
   } = await supabase.auth.getUser();
   const canEdit = !!user && user.id === (hack.created_by as string);
+
+  let isAdmin = false;
+  if (!hack.approved && !canEdit) {
+    const { data: admin } = await supabase.rpc("is_admin");
+    if (admin) {
+      isAdmin = true;
+    } else {
+      return notFound();
+    }
+  }
 
   // Resolve a short-lived signed patch URL (if current_patch exists)
   let patchFilename: string | null = null;
@@ -219,6 +236,42 @@ export default async function HackDetail({ params }: HackDetailProps) {
         hackSlug={hack.slug}
       />
 
+      {!hack.approved && (
+        isAdmin ? (
+          <div className="mx-6 mt-6 rounded-lg border-2 border-yellow-500/60 bg-yellow-50 dark:bg-yellow-900/20 p-4 md:pl-6">
+            <div className="flex items-center gap-4 md:gap-6">
+              <div className="flex-shrink-0">
+                <FaTriangleExclamation className="text-yellow-600 dark:text-yellow-400" size={24} />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-yellow-900 dark:text-yellow-100 mb-2">
+                  You are viewing this unpublished hack as an admin.
+                </h3>
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  This hack is pending approval. Please review the contents of this hack before making a decision. Then choose Approve from the dropdown options.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="mx-6 mt-6 rounded-lg border-2 border-yellow-500/60 bg-yellow-50 dark:bg-yellow-900/20 p-4 md:pl-6">
+            <div className="flex items-center gap-4 md:gap-6">
+              <div className="flex-shrink-0">
+                <FaTriangleExclamation className="text-yellow-600 dark:text-yellow-400" size={24} />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-yellow-900 dark:text-yellow-100 mb-2">
+                  This hack is pending approval.
+                </h3>
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  Your hack is currently under review and will be visible to all users once approved by an admin.
+                </p>
+              </div>
+            </div>
+          </div>
+        )
+      )}
+
       <div className="pt-8 md:pt-10 px-6">
         <div className="flex flex-col items-start justify-between gap-4 md:flex-wrap md:flex-row md:items-end">
           <div>
@@ -241,7 +294,18 @@ export default async function HackDetail({ params }: HackDetailProps) {
             </div>
             <div className="flex items-center justify-end gap-2 self-end md:self-auto lg:min-w-[260px]">
               <DownloadsBadge slug={hack.slug} initialCount={hack.downloads} />
-              <HackOptionsMenu slug={hack.slug} canEdit={canEdit} />
+              <HackOptionsMenu slug={hack.slug} canEdit={canEdit}>
+                {isAdmin && (
+                  <MenuItem
+                    as="a"
+                    href={`/hack/${hack.slug}/approve`}
+                    className="block w-full px-3 py-2 text-left text-sm text-green-500 font-medium data-focus:bg-black/5 dark:data-focus:bg-white/10"
+                  >
+                    <FaCircleCheck className="mr-2 inline-block align-middle mb-0.5 text-green-500" size={12} />
+                    Approve
+                  </MenuItem>
+                )}
+              </HackOptionsMenu>
             </div>
           </div>
         </div>
