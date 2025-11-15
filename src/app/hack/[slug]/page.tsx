@@ -10,7 +10,6 @@ import Image from "next/image";
 import { FaDiscord, FaTwitter, FaTriangleExclamation } from "react-icons/fa6";
 import PokeCommunityIcon from "@/components/Icons/PokeCommunityIcon";
 import { createClient, createServiceClient } from "@/utils/supabase/server";
-import { getMinioClient, PATCHES_BUCKET } from "@/utils/minio/server";
 import HackOptionsMenu from "@/components/Hack/HackOptionsMenu";
 import DownloadsBadge from "@/components/Hack/DownloadsBadge";
 import type { CreativeWork, WithContext } from "schema-dts";
@@ -160,9 +159,8 @@ export default async function HackDetail({ params }: HackDetailProps) {
     }
   }
 
-  // Resolve a short-lived signed patch URL (if current_patch exists)
+  // Get patch info, but don't sign URL yet (happens on user interaction)
   let patchFilename: string | null = null;
-  let signedPatchUrl = "";
   let patchVersion = "";
   let patchId: number | null = null;
   let lastUpdated: string | null = null;
@@ -174,9 +172,6 @@ export default async function HackDetail({ params }: HackDetailProps) {
       .eq("id", hack.current_patch as number)
       .maybeSingle();
     if (patch) {
-      const client = getMinioClient();
-      const bucket = patch.bucket || PATCHES_BUCKET;
-      signedPatchUrl = await client.presignedGetObject(bucket, patch.filename, 60 * 5);
       patchFilename = patch.filename;
       patchVersion = patch.version || "";
       patchId = patch.id;
@@ -236,6 +231,13 @@ export default async function HackDetail({ params }: HackDetailProps) {
 
   return (
     <div className="mx-auto max-w-screen-lg w-full pb-28">
+      {/* Honeypot links - hidden from users and screen readers */}
+      <div style={{ display: 'none' }} aria-hidden="true">
+        <a href={`/api/download/${hack.slug}/${hack.slug}.bps`} tabIndex={-1} aria-hidden="true" />
+        <a href={`/api/download/${hack.slug}/patch.bps`} tabIndex={-1} aria-hidden="true" />
+        <a href={`/api/download/${hack.slug}/download.bps`} tabIndex={-1} aria-hidden="true" />
+        <a href={`/api/download/${hack.slug}/rom.${baseRom?.platform?.toLowerCase() || 'gba'}`} tabIndex={-1} aria-hidden="true" />
+      </div>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serialize(jsonLd, { isJSON: true }) }}
@@ -246,7 +248,6 @@ export default async function HackDetail({ params }: HackDetailProps) {
         author={author}
         baseRomId={baseRom?.id || ""}
         platform={baseRom?.platform}
-        patchUrl={signedPatchUrl}
         patchFilename={patchFilename}
         patchId={patchId ?? undefined}
         hackSlug={hack.slug}

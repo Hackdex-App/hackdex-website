@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { platformAccept } from "@/utils/idb";
 import type { Platform } from "@/data/baseRoms";
 
@@ -19,6 +20,7 @@ interface StickyActionBarProps {
   onClickLink: () => void;
   supported: boolean;
   onUploadChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  termsAgreed: boolean;
 }
 
 export default function StickyActionBar({
@@ -36,6 +38,7 @@ export default function StickyActionBar({
   onClickLink,
   supported,
   onUploadChange,
+  termsAgreed,
 }: StickyActionBarProps) {
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
@@ -86,17 +89,21 @@ export default function StickyActionBar({
           <div className="truncate text-sm md:text-xs text-foreground/60">By {author}</div>
         </div>
         <div className="flex w-full md:w-auto flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-2 mb-4 md:mb-0">
-          <span className={`rounded-full mx-auto md:mx-0 px-2 py-0.5 text-xs ring-1 ${
-            status === "downloading"
-              ? "bg-[var(--surface-2)] text-foreground/85 ring-[var(--border)]"
-              : romReady
-              ? "bg-emerald-600/60 text-white ring-emerald-700/80 dark:bg-emerald-500/25 dark:text-emerald-100 dark:ring-emerald-400/90"
-              : isLinked
-              ? "bg-amber-600/60 text-white ring-amber-700/80 dark:bg-amber-500/50 dark:text-amber-100 dark:ring-amber-400/90"
-              : "bg-red-600/60 text-white ring-red-700/80 dark:bg-red-500/50 dark:text-red-100 dark:ring-red-400/90"
-          }`}>
-            {status === "downloading" ? "Downloading..." : romReady ? (filename ?? ".bps file ready") : isLinked ? "Permission needed" : "Base ROM needed"}
-          </span>
+          {!termsAgreed || status === "downloading" ? (
+            <p className="rounded-full mx-auto md:mx-0 px-2 py-0.5 text-xs">
+              By downloading this patch, you agree to the <Link href="/terms" target="_blank" className="underline">Terms of Service</Link>.
+            </p>
+          ) : (
+            <span className={`rounded-full mx-auto md:mx-0 px-2 py-0.5 text-xs ring-1 transition-opacity duration-300 ${
+              romReady
+                ? "bg-emerald-600/60 text-white ring-emerald-700/80 dark:bg-emerald-500/25 dark:text-emerald-100 dark:ring-emerald-400/90"
+                : isLinked
+                ? "bg-amber-600/60 text-white ring-amber-700/80 dark:bg-amber-500/50 dark:text-amber-100 dark:ring-amber-400/90"
+                : "bg-red-600/60 text-white ring-red-700/80 dark:bg-red-500/50 dark:text-red-100 dark:ring-red-400/90"
+            }`}>
+              {romReady ? (filename ?? ".bps file ready") : isLinked ? "Permission needed" : "Base ROM needed"}
+            </span>
+          )}
           {!romReady && !isLinked && (
             <label className="inline-flex items-center gap-2 text-xs text-foreground/80">
               <input ref={uploadInputRef} type="file" accept={platformAccept(baseRomPlatform)} onChange={onUploadChange} className="hidden" />
@@ -128,14 +135,16 @@ export default function StickyActionBar({
           <button
             onClick={onPatch}
             data-ready={romReady}
-            disabled={!mounted || (status !== "ready" && status !== "done") || !patchAgainReady}
-            className={`shine-wrap btn-premium max-md:data-[ready=false]:hidden! h-11 md:h-9 w-full md:w-auto md:min-w-[7.5rem] text-base md:text-sm font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 ${romReady && status !== 'downloading' && status !== 'ready' ? "mt-6 md:mt-0" : ""}`}
+            disabled={!mounted || (status !== "ready" && status !== "done" && status !== "idle") || !patchAgainReady}
+            className={`shine-wrap btn-premium max-md:data-[ready=false]:hidden! h-11 md:h-9 w-full md:min-w-[7.5rem] ${!termsAgreed || status === 'downloading' ? "md:w-32" : "md:w-auto"} text-base md:text-sm font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 ${romReady && status !== 'downloading' && status !== 'ready' && termsAgreed ? "mt-6 md:mt-0" : ""}`}
           >
-            <span>{status === "patching" ? "Patching…" : (
+            <span>{
+              status === "patching" ? "Patching…" :
+              status === "downloading" ? "Downloading…" :
               status === "done" ? (
                 patchAgainReady ? "Patch Again" : "Patched"
-              ) : "Patch Now"
-            )}</span>
+              ) : termsAgreed ? "Patch Now" : "I Agree"
+            }</span>
           </button>
         </div>
       </div>

@@ -7,6 +7,7 @@ import { baseRoms } from "@/data/baseRoms";
 import BinFile from "rom-patcher-js/rom-patcher-js/modules/BinFile.js";
 import BPS from "rom-patcher-js/rom-patcher-js/modules/RomPatcher.format.bps.js";
 import type { DownloadEventDetail } from "@/types/util";
+import { getSignedPatchUrl } from "@/app/hack/[slug]/actions";
 
 interface HackActionsProps {
   title: string;
@@ -14,7 +15,6 @@ interface HackActionsProps {
   author: string;
   baseRomId: string;
   platform?: "GBA" | "GBC" | "GB" | "NDS";
-  patchUrl: string;
   patchFilename: string | null;
   patchId?: number;
   hackSlug: string;
@@ -26,7 +26,6 @@ const HackActions: React.FC<HackActionsProps> = ({
   author,
   baseRomId,
   platform,
-  patchUrl,
   patchFilename,
   patchId,
   hackSlug,
@@ -36,15 +35,35 @@ const HackActions: React.FC<HackActionsProps> = ({
   const [status, setStatus] = React.useState<"idle" | "ready" | "patching" | "done" | "downloading">("idle");
   const [error, setError] = React.useState<string | null>(null);
   const [patchBlob, setPatchBlob] = React.useState<Blob | null>(null);
+  const [patchUrl, setPatchUrl] = React.useState<string | null>(null);
+  const [termsAgreed, setTermsAgreed] = React.useState(false);
   const baseRomName = React.useMemo(() => baseRoms.find(r => r.id === baseRomId)?.name || null, [baseRomId]);
+
+  // Basic client-side bot detection
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (typeof localStorage === 'undefined') {
+      setError("Browser features not available");
+      return;
+    }
+    // Check for basic browser features
+    if (!window.navigator || !window.navigator.userAgent) {
+      setError("Invalid browser environment");
+      return;
+    }
+  }, []);
 
   React.useEffect(() => {
     if ((isLinked(baseRomId) && hasPermission(baseRomId)) || hasCached(baseRomId)) {
       if (status !== "downloading" && status !== "patching" && status !== "done") {
-        setStatus("ready");
+        if (termsAgreed && patchUrl) {
+          setStatus("ready");
+        } else {
+          setStatus("idle");
+        }
       }
     }
-  }, [baseRomId, isLinked, hasPermission, hasCached, status]);
+  }, [baseRomId, isLinked, hasPermission, hasCached, status, termsAgreed, patchUrl]);
 
   React.useEffect(() => {
     let timeoutId: NodeJS.Timeout | undefined;
@@ -58,43 +77,21 @@ const HackActions: React.FC<HackActionsProps> = ({
     }
   }, [error]);
 
-  // Pre-download patch on mount (or when patchUrl changes) and cache as Blob
+  // When patch URL is fetched and terms are agreed, automatically proceed with patching if ROM is ready
   React.useEffect(() => {
-    let aborted = false;
-    async function prefetchPatch() {
-      try {
-        setPatchBlob(null);
-        if (!patchUrl) return;
-        // indicate downloading while we fetch the patch blob
-        setStatus((prev) => (prev === "patching" || prev === "done" ? prev : "downloading"));
-        const res = await fetch(patchUrl);
-        if (!res.ok) throw new Error("Failed to fetch patch");
-        const blob = await res.blob();
-        if (aborted) return;
-        setPatchBlob(blob);
-        // restore status after download: ready if base rom uploaded/linked, else idle
-        setStatus((prev) => {
-          if (prev === "patching" || prev === "done") return prev;
-          const romReady = !!file || (isLinked(baseRomId) && (hasPermission(baseRomId) || hasCached(baseRomId)));
-          return romReady ? "ready" : "idle";
-        });
-      } catch {
-        if (!aborted) {
-          setPatchBlob(null);
-          // on error, fall back to current readiness state
-          setStatus((prev) => {
-            if (prev === "patching" || prev === "done") return prev;
-            const romReady = !!file || (isLinked(baseRomId) && (hasPermission(baseRomId) || hasCached(baseRomId)));
-            return romReady ? "ready" : "idle";
-          });
-        }
+    if (termsAgreed && patchUrl && patchBlob && status === "idle") {
+      const romReady = !!file || (isLinked(baseRomId) && (hasPermission(baseRomId) || hasCached(baseRomId)));
+      if (romReady) {
+        // Automatically start patching
+        setStatus("ready");
+        // Use setTimeout to avoid calling onPatch during render
+        const timeoutId = setTimeout(() => {
+          onPatch();
+        }, 0);
+        return () => clearTimeout(timeoutId);
       }
     }
-    prefetchPatch();
-    return () => {
-      aborted = true;
-    };
-  }, [patchUrl]);
+  }, [termsAgreed, patchUrl, patchBlob, file, baseRomId, isLinked, hasPermission, hasCached, status]);
 
   async function onSelectFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0] ?? null;
@@ -117,9 +114,56 @@ const HackActions: React.FC<HackActionsProps> = ({
     }
   }
 
+  async function onAgreeToTerms() {
+    try {
+      setError(null);
+      setStatus("downloading");
+
+      // Fetch signed URL from server
+      const result = await getSignedPatchUrl(hackSlug);
+      if (!result.ok) {
+        setError(result.error);
+        setStatus("idle");
+        return;
+      }
+
+      setPatchUrl(result.url);
+      setTermsAgreed(true);
+
+      // Download patch blob
+      const res = await fetch(result.url);
+      if (!res.ok) throw new Error("Failed to fetch patch");
+      const blob = await res.blob();
+      setPatchBlob(blob);
+
+      // Update status based on ROM readiness
+      const romReady = !!file || (isLinked(baseRomId) && (hasPermission(baseRomId) || hasCached(baseRomId)));
+      if (romReady) {
+        setStatus("ready");
+      } else {
+        setStatus("idle");
+      }
+    } catch (e: any) {
+      setError(e?.message || "Failed to fetch patch URL");
+      setStatus("idle");
+    }
+  }
+
   async function onPatch() {
     try {
       setError(null);
+
+      // If terms not agreed yet, trigger agreement flow
+      if (!termsAgreed || !patchUrl || !patchBlob) {
+        await onAgreeToTerms();
+        return;
+      }
+
+      // Prevent multiple patching attempts
+      if (status === "patching" || status === "done") {
+        return;
+      }
+
       let baseFile = file;
       if (!baseFile) {
         if (!isLinked(baseRomId) && !hasCached(baseRomId)) return;
@@ -213,6 +257,7 @@ const HackActions: React.FC<HackActionsProps> = ({
       onClickLink={() => (isLinked(baseRomId) ? ensurePermission(baseRomId, true) : linkRom(baseRomId))}
       supported={supported}
       onUploadChange={onSelectFile}
+      termsAgreed={termsAgreed}
     />
   );
 };
