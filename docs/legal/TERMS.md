@@ -1,6 +1,6 @@
 # Hackdex Terms of Service
 
-Version 1.0.0 • Effective: 2025-10-31
+Version 1.0.1 • Effective: 2025-11-15
 
 Canonical URL: https://www.hackdex.app/terms
 
@@ -64,7 +64,10 @@ Do not, and do not allow or encourage others to:
 - upload malware, malicious code, or content that interferes with the Service or others' devices;
 - upload personal data of others without permission;
 - engage in illegal, infringing, misleading, defamatory, hateful, harassing, or otherwise unlawful conduct;
-- attempt to access accounts or systems without authorization or to disrupt or degrade the Service.
+- attempt to access accounts or systems without authorization or to disrupt or degrade the Service;
+- use automated tools (including bots, scrapers, crawlers, scripts, or similar software) to access, scrape, crawl, or systematically download content from the Service without Hackdex's prior written permission;
+- engage in excessive, systematic, or bulk downloading of patch files or other content in a manner that could disrupt, overload, or degrade the Service or its infrastructure;
+- redistribute, republish, or commercially exploit patch files or other content downloaded from the Service without authorization from the respective Creator or Hackdex, as applicable.
 
 ## 9. IP Infringement and DMCA
 
