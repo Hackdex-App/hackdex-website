@@ -22,6 +22,7 @@ import BPS from "rom-patcher-js/rom-patcher-js/modules/RomPatcher.format.bps.js"
 import { sha1Hex } from "@/utils/hash";
 import { platformAccept, setDraftCovers, getDraftCovers, deleteDraftCovers } from "@/utils/idb";
 import { slugify, sortOrderedTags } from "@/utils/format";
+import { YouTubeEmbed } from "@next/third-parties/google";
 
 function SortableCoverItem({ id, index, url, filename, onRemove }: { id: string; index: number; url: string; filename: string; onRemove: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
@@ -103,6 +104,7 @@ export default function HackSubmitForm({
   const [discord, setDiscord] = React.useState(() => initialDraftRef.current?.discord || "");
   const [twitter, setTwitter] = React.useState(() => initialDraftRef.current?.twitter || "");
   const [pokecommunity, setPokecommunity] = React.useState(() => initialDraftRef.current?.pokecommunity || "");
+  const [youtubeVideoId, setYoutubeVideoId] = React.useState(() => initialDraftRef.current?.youtubeVideoId || "");
   const [tags, setTags] = React.useState<string[]>(() => (Array.isArray(initialDraftRef.current?.tags) ? initialDraftRef.current.tags : []));
   const [showMdPreview, setShowMdPreview] = React.useState<boolean>(() => !!initialDraftRef.current?.showMdPreview);
   const [originalAuthor, setOriginalAuthor] = React.useState<string>(() => {
@@ -281,7 +283,7 @@ export default function HackSubmitForm({
           const data = JSON.parse(raw);
           if (data && typeof data === "object") {
             const isEmpty =
-              !title && !summary && !description && !baseRom && !platform && !version && !language && !boxArt && !discord && !twitter && !pokecommunity && (!tags || tags.length === 0) && !originalAuthor;
+              !title && !summary && !description && !baseRom && !platform && !version && !language && !boxArt && !discord && !twitter && !pokecommunity && !youtubeVideoId && (!tags || tags.length === 0) && !originalAuthor;
             if (isEmpty) {
               let applied = false;
               if (typeof data.title === "string") setTitle(data.title);
@@ -336,7 +338,7 @@ export default function HackSubmitForm({
     if (!d || typeof d !== "object") return;
     // Don't count originalAuthor if customCreator is provided
     const hasAny = Boolean(
-      d.title || d.summary || d.description || d.baseRom || d.platform || d.version || d.language || d.boxArt || d.discord || d.twitter || d.pokecommunity || (Array.isArray(d.tags) && d.tags.length > 0) || (!customCreator && d.originalAuthor)
+      d.title || d.summary || d.description || d.baseRom || d.platform || d.version || d.language || d.boxArt || d.discord || d.twitter || d.pokecommunity || d.youtubeVideoId || (Array.isArray(d.tags) && d.tags.length > 0) || (!customCreator && d.originalAuthor)
     );
     if (hasAny) { hydratedFromDraftRef.current = true; setRestoredDraft(true); }
   }, [dummy, draftKey, customCreator]);
@@ -357,6 +359,7 @@ export default function HackSubmitForm({
           discord,
           twitter,
           pokecommunity,
+          youtubeVideoId,
           tags,
           step,
           showMdPreview,
@@ -388,6 +391,7 @@ export default function HackSubmitForm({
     discord,
     twitter,
     pokecommunity,
+    youtubeVideoId,
     tags,
     originalAuthor,
     customCreator,
@@ -425,6 +429,7 @@ export default function HackSubmitForm({
       if (discord) fd.set('discord', discord);
       if (twitter) fd.set('twitter', twitter);
       if (pokecommunity) fd.set('pokecommunity', pokecommunity);
+      if (youtubeVideoId) fd.set('youtube_video_id', youtubeVideoId);
       if (tags.length) fd.set('tags', tags.join(','));
       if (isArchive) {
         fd.set('isArchive', 'true');
@@ -1033,6 +1038,23 @@ export default function HackSubmitForm({
                   </div>
                   <p className="text-xs text-foreground/60">Use full URLs starting with http:// or https://</p>
                 </div>
+                <div className="space-y-2">
+                  <label className="text-sm text-foreground/80 flex items-center gap-1">
+                    YouTube video
+                  </label>
+                  <div>
+                    {!isDummy ? (
+                      <input
+                        value={youtubeVideoId}
+                        onChange={(e) => setYoutubeVideoId(e.target.value)}
+                        placeholder="Video ID (e.g., aBcDeFgHijK)"
+                        className="h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] bg-[var(--surface-2)] ring-[var(--border)] w-full"
+                      />
+                    ) : (
+                      <div className="h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center text-foreground/60 select-none bg-[var(--surface-2)] ring-[var(--border)]">Video ID (e.g., aBcDeFgHijK)</div>
+                    )}
+                  </div>
+                </div>
               </>
             )}
 
@@ -1174,6 +1196,14 @@ export default function HackSubmitForm({
             <li>Describe notable features, difficulty, and target players.</li>
           </ul>
         </div>
+        {youtubeVideoId && (
+          <div>
+            <div className="text-[13px] font-medium tracking-tight text-foreground/70 mb-2 px-1">Video preview</div>
+            <div className="rounded-[12px] overflow-hidden ring-1 ring-[var(--border)]">
+              <YouTubeEmbed videoid={youtubeVideoId} playlabel="Play video preview" />
+            </div>
+          </div>
+        )}
       </aside>
     </div>
   );

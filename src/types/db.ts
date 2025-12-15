@@ -153,6 +153,8 @@ export type Database = {
           title: string
           updated_at: string | null
           version: string
+          video_first: boolean
+          youtube_video_id: string | null
         }
         Insert: {
           approved?: boolean
@@ -178,6 +180,8 @@ export type Database = {
           title: string
           updated_at?: string | null
           version: string
+          video_first?: boolean
+          youtube_video_id?: string | null
         }
         Update: {
           approved?: boolean
@@ -203,6 +207,8 @@ export type Database = {
           title?: string
           updated_at?: string | null
           version?: string
+          video_first?: boolean
+          youtube_video_id?: string | null
         }
         Relationships: [
           {

@@ -20,7 +20,7 @@ export default async function EditHackPage({ params }: EditPageProps) {
 
   const { data: hack } = await supabase
     .from("hacks")
-    .select("slug,title,summary,description,base_rom,language,box_art,social_links,created_by,current_patch,original_author,permission_from")
+    .select("slug,title,summary,description,base_rom,language,box_art,social_links,youtube_video_id,video_first,created_by,current_patch,original_author,permission_from")
     .eq("slug", slug)
     .maybeSingle();
   if (!hack) return notFound();
@@ -70,6 +70,8 @@ export default async function EditHackPage({ params }: EditPageProps) {
     version: isArchive ? "Archive" : (version || "Pre-release"),
     box_art: hack.box_art,
     social_links: (hack.social_links as unknown) as { discord?: string; twitter?: string; pokecommunity?: string } | null,
+    youtube_video_id: hack.youtube_video_id,
+    video_first: hack.video_first,
     tags,
     coverKeys,
     signedCoverUrls,
