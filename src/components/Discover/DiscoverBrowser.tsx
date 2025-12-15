@@ -13,6 +13,7 @@ import { CATEGORY_ICONS } from "@/components/Icons/tagCategories";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
 import { sortOrderedTags, OrderedTag } from "@/utils/format";
 import { getCoverSignedUrls } from "@/app/hack/actions";
+import Select from "@/components/Primitives/Select";
 import { HackCardAttributes } from "@/components/HackCard";
 
 
@@ -224,15 +225,15 @@ export default function DiscoverBrowser() {
             className="h-11 w-full rounded-md bg-[var(--surface-2)] px-3 text-sm text-foreground placeholder:text-foreground/60 ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
           />
         </div>
-        <select
+        <Select
           value={sort}
-          onChange={(e) => setSort(e.target.value)}
-          className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-        >
-          <option value="popular">Most popular</option>
-          <option value="new">Newest</option>
-          <option value="updated">Recently updated</option>
-        </select>
+          onChange={setSort}
+          options={[
+            { value: "popular", label: "Most popular" },
+            { value: "new", label: "Newest" },
+            { value: "updated", label: "Recently updated" },
+          ]}
+        />
       </div>
 
       {/* Unified filter section: Base ROM dropdown first, category dropdowns next, ungrouped tags last */}
