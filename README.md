@@ -71,6 +71,13 @@ S3_PORT=
 S3_ACCESS_KEY_ID=
 S3_SECRET_ACCESS_KEY=
 S3_USE_SSL=
+PATCHES_BUCKET=
+COVERS_BUCKET=
+
+SUPABASE_SECRET_KEY=
+
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA
+TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
 ```
 
 ### Supabase (local)
@@ -88,7 +95,8 @@ Typical flow:
 
 ### S3‑compatible storage for patches
 
-- Create a bucket named `patches`
+- Create a bucket for patches matching your `PATCHES_BUCKET`
+- Create a bucket for covers matching your `COVERS_BUCKET`
 - Point the `S3_*` environment variables to your S3 endpoint (Minio locally or your vendor)
 
 ### Install & run
