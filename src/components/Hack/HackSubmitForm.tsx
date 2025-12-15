@@ -18,6 +18,7 @@ import { useAuthContext } from "@/contexts/AuthContext";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
 import TagSelector from "@/components/Submit/TagSelector";
 import BinFile from "rom-patcher-js/rom-patcher-js/modules/BinFile.js";
+import Select from "@/components/Primitives/Select";
 import BPS from "rom-patcher-js/rom-patcher-js/modules/RomPatcher.format.bps.js";
 import { sha1Hex } from "@/utils/hash";
 import { platformAccept, setDraftCovers, getDraftCovers, deleteDraftCovers } from "@/utils/idb";
@@ -733,17 +734,16 @@ export default function HackSubmitForm({
                 <div className="grid gap-2">
                   <label className="text-sm text-foreground/80">Platform <span className="text-red-500">*</span></label>
                   {!isDummy ? (
-                    <select
+                    <Select
                       value={platform}
-                      onChange={(e) => { if ((newCoverFiles.length) > 0) return; setPlatform(e.target.value as any); setBaseRom(""); }}
+                      onChange={(value) => { if ((newCoverFiles.length) > 0) return; setPlatform(value as any); setBaseRom(""); }}
                       disabled={newCoverFiles.length > 0}
-                      className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] disabled:opacity-50"
-                    >
-                      <option value="" disabled>Select platform</option>
-                      {(["GB","GBC","GBA","NDS"] as const).map(p => (
-                        <option key={p} value={p}>{p}</option>
-                      ))}
-                    </select>
+                      placeholder="Select platform"
+                      options={(["GB","GBC","GBA","NDS"] as const).map(p => ({
+                        value: p,
+                        label: p,
+                      }))}
+                    />
                   ) : (
                     <div className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none">{platform || ""}</div>
                   )}
@@ -755,19 +755,16 @@ export default function HackSubmitForm({
                 <div className="grid gap-2">
                   <label className="text-sm text-foreground/80">Base ROM <span className="text-red-500">*</span></label>
                   {!isDummy ? (
-                    <select
+                    <Select
                       value={baseRom}
-                      onChange={(e) => setBaseRom(e.target.value)}
+                      onChange={setBaseRom}
                       disabled={!platform}
-                      className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] disabled:opacity-50"
-                    >
-                      <option value="" disabled>{platform ? "Select base rom" : "Select platform first"}</option>
-                      {baseRoms.filter(r => !platform || r.platform === platform).map(({ id, name, region }) => (
-                        <option key={id} value={id}>
-                          {name.replace('Pokémon ', '')} ({region})
-                        </option>
-                      ))}
-                    </select>
+                      placeholder={platform ? "Select base rom" : "Select platform first"}
+                      options={baseRoms.filter(r => !platform || r.platform === platform).map(({ id, name, region }) => ({
+                        value: id,
+                        label: `${name.replace('Pokémon ', '')} (${region})`,
+                      }))}
+                    />
                   ) : (
                     <div className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none">{baseRoms.find(r=>r.id===baseRom)?.name || baseRom}</div>
                   )}
@@ -776,16 +773,15 @@ export default function HackSubmitForm({
                 <div className="grid gap-2">
                   <label className="text-sm text-foreground/80">Language <span className="text-red-500">*</span></label>
                   {!isDummy ? (
-                    <select
+                    <Select
                       value={language}
-                      onChange={(e) => setLanguage(e.target.value)}
-                      className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-                    >
-                      <option value="" disabled>Select language</option>
-                      {['English','Spanish','French','German','Italian','Portuguese','Japanese','Chinese','Korean','Other'].map(l => (
-                        <option key={l} value={l}>{l}</option>
-                      ))}
-                    </select>
+                      onChange={setLanguage}
+                      placeholder="Select language"
+                      options={['English','Spanish','French','German','Italian','Portuguese','Japanese','Chinese','Korean','Other'].map(l => ({
+                        value: l,
+                        label: l,
+                      }))}
+                    />
                   ) : (
                     <div role="textbox" aria-disabled className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none">{language}</div>
                   )}
