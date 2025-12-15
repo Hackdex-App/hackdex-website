@@ -10,6 +10,7 @@ import Image from "next/image";
 import { createClient } from "@/utils/supabase/client";
 import { updateHack, saveHackCovers, presignCoverUpload } from "@/app/hack/actions";
 import SortableCovers from "@/components/Hack/SortableCovers";
+import Select from "@/components/Primitives/Select";
 
 interface HackEditFormProps {
   slug: string;
@@ -393,11 +394,15 @@ export default function HackEditForm({ slug, initial }: HackEditFormProps) {
                   </div>
                 )}
               </div>
-              <select value={language} onChange={(e) => setLanguage(e.target.value)} className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 ${languageChanged ? 'ring-[var(--ring)] bg-[var(--surface-2)]' : 'bg-[var(--surface-2)] ring-[var(--border)]'}`}>
-                {['English','Spanish','French','German','Italian','Portuguese','Japanese','Chinese','Korean','Other'].map(l => (
-                  <option key={l} value={l}>{l}</option>
-                ))}
-              </select>
+              <Select
+                value={language}
+                onChange={setLanguage}
+                className={languageChanged ? 'ring-[var(--ring)]' : ''}
+                options={['English','Spanish','French','German','Italian','Portuguese','Japanese','Chinese','Korean','Other'].map(l => ({
+                  value: l,
+                  label: l,
+                }))}
+              />
             </div>
             <div className="grid gap-2">
               <label className="text-sm text-foreground/80">Current version</label>

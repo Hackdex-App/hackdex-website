@@ -4,6 +4,7 @@ import React, { useActionState } from "react";
 import { useSearchParams } from "next/navigation";
 import { validateEmail } from "@/utils/auth";
 import { sendContact, type ContactActionState } from "@/app/contact/actions";
+import Select from "@/components/Primitives/Select";
 
 type Topic =
   | "general"
@@ -70,17 +71,16 @@ export default function ContactForm() {
       )}
       <div className="grid gap-2">
         <label htmlFor="topic" className="text-sm text-foreground/80">Topic</label>
-        <select
+        <Select
           id="topic"
           name="topic"
           value={topic}
-          onChange={(e) => setTopic(e.target.value as Topic)}
-          className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-        >
-          {(Object.keys(topicLabels) as Topic[]).map((key) => (
-            <option key={key} value={key}>{topicLabels[key]}</option>
-          ))}
-        </select>
+          onChange={(value) => setTopic(value as Topic)}
+          options={(Object.keys(topicLabels) as Topic[]).map((key) => ({
+            value: key,
+            label: topicLabels[key],
+          }))}
+        />
         <span className="text-xs text-foreground/60">
           Choose the most relevant topic so we can help you better.
         </span>
