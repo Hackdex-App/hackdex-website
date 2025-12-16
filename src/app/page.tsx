@@ -73,17 +73,19 @@ export default async function Home() {
       tagsBySlug.set(r.hack_slug, arr);
     });
 
-    // Fetch versions
+    // Fetch versions and patch IDs
     let mappedVersions = new Map<string, string>();
+    let mappedPatchIds = new Map<string, number>();
     await Promise.all(
       popularHacks.map(async (r) => {
         if (r.current_patch) {
           const { data: currentPatch } = await supabase
             .from("patches")
-            .select("version")
+            .select("version,id")
             .eq("id", r.current_patch)
             .maybeSingle();
           mappedVersions.set(r.slug, currentPatch?.version || "Pre-release");
+          if (currentPatch?.id) mappedPatchIds.set(r.slug, currentPatch.id);
         } else {
           mappedVersions.set(r.slug, r.original_author ? "Archive" : "Pre-release");
         }
@@ -112,6 +114,7 @@ export default async function Home() {
       summary: r.summary,
       description: r.description,
       isArchive: r.original_author != null && r.current_patch === null,
+      patchId: mappedPatchIds.get(r.slug),
     }));
   }
   return (
