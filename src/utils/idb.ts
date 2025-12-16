@@ -3,10 +3,11 @@ import type { Platform } from "@/data/baseRoms";
 import { PLATFORMS } from "@/data/baseRoms";
 
 const DB_NAME = "hackdex";
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const STORE = "base_roms";
 const BLOB_STORE = "base_rom_blobs";
 const DRAFT_COVERS_STORE = "draft_covers";
+const PATCHED_HACKS_STORE = "patched_hacks";
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -21,6 +22,9 @@ function openDB(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains(DRAFT_COVERS_STORE)) {
         db.createObjectStore(DRAFT_COVERS_STORE, { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains(PATCHED_HACKS_STORE)) {
+        db.createObjectStore(PATCHED_HACKS_STORE, { keyPath: "hackSlug" });
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -198,4 +202,49 @@ export function platformAccept(p?: Platform | Platform[] | null): string {
 
 export function platformAcceptAll(): string {
   return platformAccept([...PLATFORMS]);
+}
+
+export async function setPatchedVersion(hackSlug: string, patchId: number, version: string): Promise<void> {
+  const db = await openDB();
+  if (!db.objectStoreNames.contains(PATCHED_HACKS_STORE)) {
+    return;
+  }
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PATCHED_HACKS_STORE, "readwrite");
+    const store = tx.objectStore(PATCHED_HACKS_STORE);
+    store.put({ hackSlug, patchId, version, patchedAt: Date.now() });
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+export async function getPatchedVersion(hackSlug: string): Promise<{ patchId: number; version: string; patchedAt: number } | null> {
+  const db = await openDB();
+  if (!db.objectStoreNames.contains(PATCHED_HACKS_STORE)) {
+    return null;
+  }
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PATCHED_HACKS_STORE, "readonly");
+    const store = tx.objectStore(PATCHED_HACKS_STORE);
+    const req = store.get(hackSlug);
+    req.onsuccess = () => {
+      const result = req.result as any;
+      resolve(result ? { patchId: result.patchId, version: result.version, patchedAt: result.patchedAt } : null);
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function getAllPatchedVersions(): Promise<Array<{ hackSlug: string; patchId: number; version: string; patchedAt: number }>> {
+  const db = await openDB();
+  if (!db.objectStoreNames.contains(PATCHED_HACKS_STORE)) {
+    return [];
+  }
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PATCHED_HACKS_STORE, "readonly");
+    const store = tx.objectStore(PATCHED_HACKS_STORE);
+    const req = store.getAll();
+    req.onsuccess = () => resolve((req.result as any[]) || []);
+    req.onerror = () => reject(req.error);
+  });
 }

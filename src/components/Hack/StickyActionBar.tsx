@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { platformAccept } from "@/utils/idb";
 import type { Platform } from "@/data/baseRoms";
+import UpdateBadge from "./UpdateBadge";
 
 interface StickyActionBarProps {
   title: string;
@@ -21,6 +22,8 @@ interface StickyActionBarProps {
   supported: boolean;
   onUploadChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   termsAgreed: boolean;
+  hackSlug?: string;
+  patchId?: number;
 }
 
 export default function StickyActionBar({
@@ -39,6 +42,8 @@ export default function StickyActionBar({
   supported,
   onUploadChange,
   termsAgreed,
+  hackSlug,
+  patchId,
 }: StickyActionBarProps) {
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
@@ -103,6 +108,9 @@ export default function StickyActionBar({
             }`}>
               {romReady ? (filename ?? ".bps file ready") : isLinked ? "Permission needed" : "Base ROM needed"}
             </span>
+          )}
+          {hackSlug && patchId != null && (
+            <UpdateBadge hackSlug={hackSlug} currentPatchId={patchId} />
           )}
           {!romReady && !isLinked && (
             <label className="inline-flex items-center gap-2 text-xs text-foreground/80">

@@ -12,6 +12,7 @@ import { usePathname } from "next/navigation";
 import { FaRegImages } from "react-icons/fa6";
 import { ImDownload } from "react-icons/im";
 import { RiArchiveStackFill } from "react-icons/ri";
+import { getPatchedVersion } from "@/utils/idb";
 
 export interface HackCardAttributes {
   slug: string;
@@ -25,6 +26,7 @@ export interface HackCardAttributes {
   summary?: string;
   description?: string;
   isArchive?: boolean;
+  patchId?: number;
 };
 
 export default function HackCard({ hack, clickable = true, className = "" }: { hack: HackCardAttributes; clickable?: boolean; className?: string }) {
@@ -46,6 +48,7 @@ export default function HackCard({ hack, clickable = true, className = "" }: { h
   const [selectedIndex, setSelectedIndex] = useState(0);
   const dragStartRef = useRef<{ x: number; y: number } | null>(null);
   const didDragRef = useRef(false);
+  const [hasUpdate, setHasUpdate] = useState(false);
 
   useEffect(() => {
     if (!emblaApi) return;
@@ -56,6 +59,15 @@ export default function HackCard({ hack, clickable = true, className = "" }: { h
       emblaApi.off("select", onSelect);
     };
   }, [emblaApi]);
+
+  useEffect(() => {
+    if (!hack.patchId || isArchive) return;
+    getPatchedVersion(hack.slug).then((stored) => {
+      if (stored && stored.patchId !== hack.patchId) {
+        setHasUpdate(true);
+      }
+    }).catch(() => {});
+  }, [hack.slug, hack.patchId, isArchive]);
   const cardClass = `rounded-[12px] overflow-hidden h-full ${
     clickable ? "transition-transform duration-300 hover:-translate-y-0.5 hover:shadow-xl anim-float" : ""
   } ring-1 ${ready ? "ring-emerald-400/50 bg-emerald-500/10" : "card ring-[var(--border)]"}`;
@@ -181,9 +193,16 @@ export default function HackCard({ hack, clickable = true, className = "" }: { h
                 <h3 className="line-clamp-1 text-[15px] font-semibold tracking-tight">
                   {hack.title}
                 </h3>
-                <span className="shrink-0 rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[11px] font-medium text-foreground/85 ring-1 ring-[var(--border)]">
-                  {hack.version}
-                </span>
+                <div className="flex items-center gap-1 shrink-0">
+                  <span className="rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[11px] font-medium text-foreground/85 ring-1 ring-[var(--border)]">
+                    {hack.version}
+                  </span>
+                  {hasUpdate && (
+                    <span className="anim-pulse rounded-full bg-rose-600/70 px-2.5 py-1 text-xs font-semibold text-white ring-2 ring-rose-700/80 backdrop-blur-sm dark:bg-rose-500/60 dark:text-rose-100 dark:ring-rose-400/90">
+                      Update
+                    </span>
+                  )}
+                </div>
               </div>
               <p className="mt-1 text-xs text-foreground/60">By {hack.author}</p>
             </div>
