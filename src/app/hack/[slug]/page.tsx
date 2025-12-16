@@ -22,6 +22,7 @@ import { sortOrderedTags, getCoverUrls } from "@/utils/format";
 import { RiArchiveStackFill } from "react-icons/ri";
 import { isInformationalArchiveHack, isDownloadableArchiveHack, isArchiveHack, checkEditPermission } from "@/utils/hack";
 import Avatar from "@/components/Account/Avatar";
+import { YouTubeEmbed } from "@next/third-parties/google";
 
 interface HackDetailProps {
   params: Promise<{ slug: string }>;
@@ -118,7 +119,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
   const supabase = await createClient();
   const { data: hack, error } = await supabase
     .from("hacks")
-    .select("slug,title,summary,description,base_rom,created_at,updated_at,downloads,current_patch,box_art,social_links,created_by,approved,original_author,permission_from")
+    .select("slug,title,summary,description,base_rom,created_at,updated_at,downloads,current_patch,box_art,social_links,youtube_video_id,video_first,created_by,approved,original_author,permission_from")
     .eq("slug", slug)
     .maybeSingle();
   if (error || !hack) return notFound();
@@ -392,7 +393,19 @@ export default async function HackDetail({ params }: HackDetailProps) {
 
       <div className="mt-6 px-6 flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_260px]">
         <div className="space-y-6 lg:min-w-[640px]">
+          {hack.video_first && hack.youtube_video_id && (
+            <div className="card-simple overflow-hidden">
+              <YouTubeEmbed videoid={hack.youtube_video_id} playlabel={`Play video about ${hack.title}`} />
+            </div>
+          )}
+
           <Gallery images={images} title={hack.title} />
+
+          {!hack.video_first && hack.youtube_video_id && (
+            <div className="card-simple overflow-hidden">
+              <YouTubeEmbed videoid={hack.youtube_video_id} playlabel={`Play video about ${hack.title}`} />
+            </div>
+          )}
 
           <div className="card-simple p-5">
             <h2 className="text-2xl font-semibold tracking-tight">About this hack</h2>
