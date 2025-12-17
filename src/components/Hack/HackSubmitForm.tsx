@@ -3,6 +3,7 @@
 import React from "react";
 import Image from "next/image";
 import { baseRoms } from "@/data/baseRoms";
+import { LANGUAGES } from "@/data/languages";
 import HackCard from "@/components/HackCard";
 import { createClient } from "@/utils/supabase/client";
 import { prepareSubmission, presignPatchAndSaveCovers, confirmPatchUpload, saveHackCovers } from "@/app/submit/actions";
@@ -782,7 +783,7 @@ export default function HackSubmitForm({
                       className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
                     >
                       <option value="" disabled>Select language</option>
-                      {['English','Spanish','French','German','Italian','Portuguese','Japanese','Chinese','Korean','Other'].map(l => (
+                      {LANGUAGES.map(l => (
                         <option key={l} value={l}>{l}</option>
                       ))}
                     </select>

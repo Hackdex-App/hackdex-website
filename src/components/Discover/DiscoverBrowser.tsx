@@ -4,6 +4,7 @@ import React, { Fragment } from "react";
 import HackCard from "@/components/HackCard";
 import { createClient } from "@/utils/supabase/client";
 import { baseRoms } from "@/data/baseRoms";
+import { LANGUAGES } from "@/data/languages";
 import { Listbox, ListboxButton, ListboxOption, ListboxOptions, Transition } from "@headlessui/react";
 import { useFloating, offset, flip, shift, size, autoUpdate } from "@floating-ui/react";
 import { IconType } from "react-icons";
@@ -21,6 +22,7 @@ export default function DiscoverBrowser() {
   const [query, setQuery] = React.useState("");
   const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
   const [selectedBaseRoms, setSelectedBaseRoms] = React.useState<string[]>([]);
+  const [selectedLanguages, setSelectedLanguages] = React.useState<string[]>([]);
   const [sort, setSort] = React.useState("popular");
   const [hacks, setHacks] = React.useState<HackCardAttributes[]>([]);
   const [tagGroups, setTagGroups] = React.useState<Record<string, string[]>>({});
@@ -48,7 +50,7 @@ export default function DiscoverBrowser() {
   React.useEffect(() => {
     // Reset to first page when filters or sort change
     setCurrentPage(1);
-  }, [query, selectedTags, selectedBaseRoms, onlyReady, sort]);
+  }, [query, selectedTags, selectedBaseRoms, selectedLanguages, onlyReady, sort]);
 
   React.useEffect(() => {
     const run = async () => {
@@ -56,7 +58,7 @@ export default function DiscoverBrowser() {
       setLoadingTags(true);
       let query = supabase
         .from("hacks")
-        .select("slug,title,summary,description,base_rom,downloads,created_by,updated_at,current_patch,original_author");
+        .select("slug,title,summary,description,base_rom,language,downloads,created_by,updated_at,current_patch,original_author");
 
       if (sort === "popular") {
         // When sorting by popularity, always show non-archive hacks first.
@@ -163,6 +165,7 @@ export default function DiscoverBrowser() {
         summary: r.summary,
         description: r.description,
         isArchive: r.original_author != null && r.current_patch === null,
+        language: r.language,
       }));
 
       setHacks(mapped);
@@ -214,12 +217,16 @@ export default function DiscoverBrowser() {
     if (selectedBaseRoms.length > 0) {
       out = out.filter((h) => h.baseRomId && selectedBaseRoms.includes(h.baseRomId));
     }
+    // OR filter across languages: hack's language must be in selectedLanguages
+    if (selectedLanguages.length > 0) {
+      out = out.filter((h) => h.language && selectedLanguages.includes(h.language));
+    }
     // Filter to hacks whose base ROM is ready (linked with permission or cached)
     if (onlyReady) {
       out = out.filter((h) => !h.isArchive && h.baseRomId && readyBaseRomIds.has(h.baseRomId));
     }
     return out;
-  }, [hacks, query, selectedTags, selectedBaseRoms, onlyReady, readyBaseRomIds]);
+  }, [hacks, query, selectedTags, selectedBaseRoms, selectedLanguages, onlyReady, readyBaseRomIds]);
 
   const totalPages = React.useMemo(
     () => Math.max(1, Math.ceil(filtered.length / HACKS_PER_PAGE)),
@@ -286,6 +293,10 @@ export default function DiscoverBrowser() {
     setSelectedBaseRoms([]);
   }
 
+  function clearLanguages() {
+    setSelectedLanguages([]);
+  }
+
   return (
     <div className="max-w-[1200px] mx-auto">
       <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
@@ -343,6 +354,12 @@ export default function DiscoverBrowser() {
             if (vals.length > 0) setOnlyReady(false);
           }}
         />
+        <MultiSelectDropdown
+          label="Language"
+          options={LANGUAGES.map(l => ({ id: l, name: l }))}
+          values={selectedLanguages}
+          onChange={setSelectedLanguages}
+        />
         {loadingTags ? (
           <>
             {[
@@ -388,11 +405,12 @@ export default function DiscoverBrowser() {
             )}
           </>
         )}
-        {(selectedTags.length > 0 || selectedBaseRoms.length > 0 || onlyReady) && (
+        {(selectedTags.length > 0 || selectedBaseRoms.length > 0 || selectedLanguages.length > 0 || onlyReady) && (
           <button
             onClick={() => {
               clearTags();
               clearBaseRoms();
+              clearLanguages();
               setOnlyReady(false);
             }}
             className="ml-2 rounded-full px-3 py-1 text-sm ring-1 ring-inset transition-colors bg-[var(--surface-2)] text-foreground/80 ring-[var(--border)] hover:bg-black/5 dark:hover:bg-white/10"
@@ -419,7 +437,7 @@ export default function DiscoverBrowser() {
             ) : (
               <>No results</>
             )}
-            {(selectedTags.length > 0 || selectedBaseRoms.length > 0) && (
+            {(selectedTags.length > 0 || selectedBaseRoms.length > 0 || selectedLanguages.length > 0) && (
               <>
                 {" "}with the selected filters
               </>
@@ -434,11 +452,12 @@ export default function DiscoverBrowser() {
                 Clear search
               </button>
             )}
-            {(selectedTags.length > 0 || selectedBaseRoms.length > 0 || onlyReady) && (
+            {(selectedTags.length > 0 || selectedBaseRoms.length > 0 || selectedLanguages.length > 0 || onlyReady) && (
               <button
                 onClick={() => {
                   clearTags();
                   clearBaseRoms();
+                  clearLanguages();
                   setOnlyReady(false);
                 }}
                 className="rounded-full px-3 py-1 text-sm ring-1 ring-inset transition-colors bg-[var(--surface-2)] text-foreground/80 ring-[var(--border)] hover:bg-black/5 dark:hover:bg-white/10"

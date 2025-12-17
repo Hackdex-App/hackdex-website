@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 import rehypeSlug from "rehype-slug";
 import TagSelector from "@/components/Submit/TagSelector";
 import { baseRoms } from "@/data/baseRoms";
+import { LANGUAGES } from "@/data/languages";
 import Image from "next/image";
 import { createClient } from "@/utils/supabase/client";
 import { updateHack, saveHackCovers, presignCoverUpload } from "@/app/hack/actions";
@@ -394,7 +395,7 @@ export default function HackEditForm({ slug, initial }: HackEditFormProps) {
                 )}
               </div>
               <select value={language} onChange={(e) => setLanguage(e.target.value)} className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 ${languageChanged ? 'ring-[var(--ring)] bg-[var(--surface-2)]' : 'bg-[var(--surface-2)] ring-[var(--border)]'}`}>
-                {['English','Spanish','French','German','Italian','Portuguese','Japanese','Chinese','Korean','Other'].map(l => (
+                {LANGUAGES.map(l => (
                   <option key={l} value={l}>{l}</option>
                 ))}
               </select>

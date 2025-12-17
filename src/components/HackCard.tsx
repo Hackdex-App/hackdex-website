@@ -25,6 +25,7 @@ export interface HackCardAttributes {
   summary?: string;
   description?: string;
   isArchive?: boolean;
+  language?: string;
 };
 
 export default function HackCard({ hack, clickable = true, className = "" }: { hack: HackCardAttributes; clickable?: boolean; className?: string }) {
@@ -200,7 +201,10 @@ export default function HackCard({ hack, clickable = true, className = "" }: { h
               return text.length > 120 ? text.slice(0, 120).trimEnd() + "…" : text;
             })()}
           </p>
-          <div className="mt-3 text-xs text-foreground/60">Base: {baseName ?? "Unknown"}</div>
+          <div className="mt-3 flex items-center gap-3 text-xs text-foreground/60">
+            <span>Base: {baseName ?? "Unknown"}</span>
+            {hack.language && <span>{hack.language}</span>}
+          </div>
         </div>
       </div>
   );

@@ -118,7 +118,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
   const supabase = await createClient();
   const { data: hack, error } = await supabase
     .from("hacks")
-    .select("slug,title,summary,description,base_rom,created_at,updated_at,downloads,current_patch,box_art,social_links,created_by,approved,original_author,permission_from")
+    .select("slug,title,summary,description,base_rom,language,created_at,updated_at,downloads,current_patch,box_art,social_links,created_by,approved,original_author,permission_from")
     .eq("slug", slug)
     .maybeSingle();
   if (error || !hack) return notFound();
@@ -420,6 +420,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
             <h3 className="text-[15px] font-semibold tracking-tight">Details</h3>
             <ul className="mt-3 grid gap-2 text-sm text-foreground/75">
               <li>Base ROM: {baseRom?.name || "Unknown"}</li>
+              <li>Language: {hack.language}</li>
               <li>Created: {new Date(hack.created_at).toLocaleDateString()}</li>
               {lastUpdated && <li>Last updated: {lastUpdated}</li>}
               {hack.social_links && (
