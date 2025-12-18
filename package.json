@@ -14,6 +14,7 @@
     "@dnd-kit/sortable": "10.0.0",
     "@dnd-kit/utilities": "3.2.2",
     "@headlessui/react": "^2.2.9",
+    "@next/third-parties": "^16.0.10",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.74.0",
     "@types/serialize-javascript": "^5.0.4",

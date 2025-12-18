@@ -19,6 +19,8 @@ export async function updateHack(args: {
   version?: string;
   box_art?: string | null;
   social_links?: { discord?: string; twitter?: string; pokecommunity?: string } | null;
+  youtube_video_id?: string | null;
+  video_first?: boolean;
   tags?: string[];
 }) {
   const supabase = await createClient();
@@ -49,6 +51,8 @@ export async function updateHack(args: {
   if (args.version !== undefined) updatePayload.version = args.version;
   if (args.box_art !== undefined) updatePayload.box_art = args.box_art;
   if (args.social_links !== undefined) updatePayload.social_links = args.social_links;
+  if (args.youtube_video_id !== undefined) updatePayload.youtube_video_id = args.youtube_video_id;
+  if (args.video_first !== undefined) updatePayload.video_first = args.video_first;
 
   if (Object.keys(updatePayload).length > 0) {
     const { error: uErr } = await supabase

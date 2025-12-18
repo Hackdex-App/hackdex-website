@@ -22,6 +22,8 @@ interface HackEditFormProps {
     version: string;
     box_art: string | null;
     social_links: { discord?: string; twitter?: string; pokecommunity?: string } | null;
+    youtube_video_id: string | null;
+    video_first: boolean;
     tags: string[];
     coverKeys: string[]; // storage keys for covers in order
     signedCoverUrls?: string[]; // optional signed URLs aligned to keys
@@ -42,6 +44,8 @@ export default function HackEditForm({ slug, initial }: HackEditFormProps) {
   const [discord, setDiscord] = React.useState(initial.social_links?.discord || "");
   const [twitter, setTwitter] = React.useState(initial.social_links?.twitter || "");
   const [pokecommunity, setPokecommunity] = React.useState(initial.social_links?.pokecommunity || "");
+  const [youtubeVideoId, setYoutubeVideoId] = React.useState(initial.youtube_video_id || "");
+  const [videoFirst, setVideoFirst] = React.useState(initial.video_first || false);
   const [tags, setTags] = React.useState<string[]>(initial.tags || []);
 
   // Baseline state used for change detection and reverting
@@ -55,6 +59,8 @@ export default function HackEditForm({ slug, initial }: HackEditFormProps) {
     discord: initial.social_links?.discord || "",
     twitter: initial.social_links?.twitter || "",
     pokecommunity: initial.social_links?.pokecommunity || "",
+    youtubeVideoId: initial.youtube_video_id || "",
+    videoFirst: initial.video_first || false,
   });
 
   type CoverItem =
@@ -112,7 +118,9 @@ export default function HackEditForm({ slug, initial }: HackEditFormProps) {
   const discordChanged = discord !== baseline.discord;
   const twitterChanged = twitter !== baseline.twitter;
   const pokeChanged = pokecommunity !== baseline.pokecommunity;
-  const contentChanged = titleChanged || summaryChanged || descriptionChanged || languageChanged || boxArtChanged || tagsChanged || discordChanged || twitterChanged || pokeChanged;
+  const youtubeVideoIdChanged = youtubeVideoId !== baseline.youtubeVideoId;
+  const videoFirstChanged = videoFirst !== baseline.videoFirst;
+  const contentChanged = titleChanged || summaryChanged || descriptionChanged || languageChanged || boxArtChanged || tagsChanged || discordChanged || twitterChanged || pokeChanged || youtubeVideoIdChanged || videoFirstChanged;
 
   const newItemsCount = coverItems.filter((i) => i.type === "new").length;
   const currentExistingKeys = coverItems.filter((i): i is { type: "existing"; key: string; url: string } => i.type === "existing").map((i) => i.key);
@@ -163,6 +171,8 @@ export default function HackEditForm({ slug, initial }: HackEditFormProps) {
       if (boxArtChanged) updateArgs.box_art = boxArt ? boxArt.trim() : null;
       if (tagsChanged) updateArgs.tags = tags.slice();
       if (discordChanged || twitterChanged || pokeChanged) updateArgs.social_links = social; // may be null to clear
+      if (youtubeVideoIdChanged) updateArgs.youtube_video_id = youtubeVideoId ? youtubeVideoId.trim() : null;
+      if (videoFirstChanged) updateArgs.video_first = videoFirst;
 
       const { ok, error } = await updateHack(updateArgs);
       if (!ok) throw new Error(error || "Save failed");
@@ -177,6 +187,8 @@ export default function HackEditForm({ slug, initial }: HackEditFormProps) {
         discord,
         twitter,
         pokecommunity,
+        youtubeVideoId,
+        videoFirst,
       });
     } catch (e: any) {
       alert(e.message || "Save failed");
@@ -231,7 +243,7 @@ export default function HackEditForm({ slug, initial }: HackEditFormProps) {
               {contentChanged && (
                 <button
                   type="button"
-                  onClick={() => { setTitle(baseline.title); setSummary(baseline.summary); setDescription(baseline.description); setLanguage(baseline.language); setBoxArt(baseline.boxArt); setTags(baseline.tags.slice()); setDiscord(baseline.discord); setTwitter(baseline.twitter); setPokecommunity(baseline.pokecommunity); }}
+                  onClick={() => { setTitle(baseline.title); setSummary(baseline.summary); setDescription(baseline.description); setLanguage(baseline.language); setBoxArt(baseline.boxArt); setTags(baseline.tags.slice()); setDiscord(baseline.discord); setTwitter(baseline.twitter); setPokecommunity(baseline.pokecommunity); setYoutubeVideoId(baseline.youtubeVideoId); setVideoFirst(baseline.videoFirst); }}
                     className="inline-flex items-center underline underline-offset-2 text-[12px] font-semibold cursor-pointer"
                 >
                   Revert all
@@ -436,8 +448,32 @@ export default function HackEditForm({ slug, initial }: HackEditFormProps) {
                 </div>
               </div>
             </div>
+            <div className="grid gap-2">
+              <label className="text-sm text-foreground/80">YouTube video</label>
+              <div className="flex items-center gap-2">
+                <input value={youtubeVideoId} onChange={(e) => setYoutubeVideoId(e.target.value)} placeholder="Video ID (e.g., aBcDeFgHijK)" className={`flex-1 h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 ${youtubeVideoIdChanged ? 'ring-[var(--ring)] bg-[var(--surface-2)]' : 'bg-[var(--surface-2)] ring-[var(--border)]'}`} />
+                {youtubeVideoIdChanged && <button type="button" onClick={() => setYoutubeVideoId(baseline.youtubeVideoId)} className="text-[11px] underline underline-offset-2 cursor-pointer">Revert</button>}
+              </div>
+            </div>
           </div>
         </div>
+
+        {youtubeVideoId && (
+          <div className="card p-5">
+            <h3 className="text-[15px] font-semibold tracking-tight">Settings</h3>
+            <div className="mt-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={videoFirst} 
+                  onChange={(e) => setVideoFirst(e.target.checked)}
+                  className="h-4 w-4 accent-[var(--accent)]"
+                />
+                <span className="text-sm text-foreground/80">Show video before images</span>
+              </label>
+            </div>
+          </div>
+        )}
       </aside>
     </div>
   );

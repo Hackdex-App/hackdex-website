@@ -45,6 +45,7 @@ export async function prepareSubmission(formData: FormData) {
   const discord = (formData.get("discord") as string)?.trim();
   const twitter = (formData.get("twitter") as string)?.trim();
   const pokecommunity = (formData.get("pokecommunity") as string)?.trim();
+  const youtube_video_id = (formData.get("youtube_video_id") as string)?.trim() || null;
   const tags = (formData.get("tags") as string)?.split(",").map((t) => t.trim()).filter(Boolean) || [];
   const original_author = (formData.get("original_author") as string)?.trim() || null;
   const permission_from = (formData.get("permission_from") as string)?.trim() || null;
@@ -84,6 +85,7 @@ export async function prepareSubmission(formData: FormData) {
     downloads: 0,
     box_art,
     social_links,
+    youtube_video_id,
     approved: isArchive, // Auto-approve archives
     patch_url: "",
     original_author: original_author || null,
