@@ -133,10 +133,12 @@ export default function DiscoverBrowser() {
       }
 
       const mappedVersions = new Map<string, string>();
+      const mappedPatchIds = new Map<string, number>();
       (rows || []).forEach((r: any) => {
         if (typeof r.current_patch === "number") {
           const version = versionsByPatchId.get(r.current_patch) || "Pre-release";
           mappedVersions.set(r.slug, version);
+          mappedPatchIds.set(r.slug, r.current_patch);
         } else {
           mappedVersions.set(r.slug, r.original_author ? "Archive" : "Pre-release");
         }
@@ -163,6 +165,7 @@ export default function DiscoverBrowser() {
         summary: r.summary,
         description: r.description,
         isArchive: r.original_author != null && r.current_patch === null,
+        patchId: mappedPatchIds.get(r.slug),
       }));
 
       setHacks(mapped);

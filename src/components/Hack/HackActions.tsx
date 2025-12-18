@@ -8,6 +8,7 @@ import BinFile from "rom-patcher-js/rom-patcher-js/modules/BinFile.js";
 import BPS from "rom-patcher-js/rom-patcher-js/modules/RomPatcher.format.bps.js";
 import type { DownloadEventDetail } from "@/types/util";
 import { getSignedPatchUrl, updatePatchDownloadCount } from "@/app/hack/[slug]/actions";
+import { setPatchedVersion } from "@/utils/idb";
 
 interface HackActionsProps {
   title: string;
@@ -215,6 +216,7 @@ const HackActions: React.FC<HackActionsProps> = ({
       // Best-effort log applied event for counting and animate badge
       try {
         if (patchId != null) {
+          await setPatchedVersion(hackSlug, patchId, version);
           const key = "deviceId";
           let deviceId = localStorage.getItem(key);
           if (!deviceId) {
@@ -223,7 +225,7 @@ const HackActions: React.FC<HackActionsProps> = ({
           }
           // Defer count update to avoid Safari cancelling the request
           setTimeout(async () => {
-            const deviceIdObscured = deviceId.split("-");
+            const deviceIdObscured = deviceId!.split("-");
             const result = await updatePatchDownloadCount(patchId, deviceIdObscured);
             if (!result.ok) {
               console.error(result.error);
@@ -259,6 +261,8 @@ const HackActions: React.FC<HackActionsProps> = ({
       supported={supported}
       onUploadChange={onSelectFile}
       termsAgreed={termsAgreed}
+      hackSlug={hackSlug}
+      patchId={patchId}
     />
   );
 };
