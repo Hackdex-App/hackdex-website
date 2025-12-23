@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { FiExternalLink, FiEdit2, FiUpload, FiShare2, FiBarChart2, FiMoreVertical, FiCheck } from "react-icons/fi";
+import { TbVersions } from "react-icons/tb";
 import { useFloating, offset, flip, shift, autoUpdate } from "@floating-ui/react";
 import ActionSheet from "@/components/Primitives/ActionSheet";
 
@@ -65,8 +66,8 @@ export default function HackList({ hacks }: { hacks: HackRow[] }) {
                 <IconTooltipButton href={`/hack/${h.slug}/edit`} label="Edit">
                   <FiEdit2 className="h-4 w-4" />
                 </IconTooltipButton>
-                <IconTooltipButton href={`/hack/${h.slug}/edit/patch`} label="Upload patch">
-                  <FiUpload className="h-4 w-4" />
+                <IconTooltipButton href={`/hack/${h.slug}/versions`} label="Manage versions">
+                  <TbVersions className="h-5 w-5" />
                 </IconTooltipButton>
                 <ShareIconButton slug={h.slug} />
               </div>
@@ -131,7 +132,7 @@ function buildActions(slug: string | null) {
     { key: "view", label: "View", href: `/hack/${slug}`, icon: <FiExternalLink className="h-4 w-4" /> },
     { key: "stats", label: "Stats", href: `/hack/${slug}/stats`, icon: <FiBarChart2 className="h-4 w-4" /> },
     { key: "edit", label: "Edit", href: `/hack/${slug}/edit`, icon: <FiEdit2 className="h-4 w-4" /> },
-    { key: "upload", label: "Upload patch", href: `/hack/${slug}/edit/patch`, icon: <FiUpload className="h-4 w-4" /> },
+    { key: "versions", label: "Manage versions", href: `/hack/${slug}/versions`, icon: <TbVersions className="h-4 w-4" /> },
     { key: "share", label: "Share link", onClick: () => copyShare(slug), icon: <FiShare2 className="h-4 w-4" /> },
   ];
 }

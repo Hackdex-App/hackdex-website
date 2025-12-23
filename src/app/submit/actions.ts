@@ -213,7 +213,7 @@ export async function presignPatchAndSaveCovers(args: {
   return { ok: true, presignedUrl: url, objectKey } as const;
 }
 
-export async function confirmPatchUpload(args: { slug: string; objectKey: string; version: string, firstUpload?: boolean }) {
+export async function confirmPatchUpload(args: { slug: string; objectKey: string; version: string, firstUpload?: boolean; publishAutomatically?: boolean }) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -247,18 +247,51 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
   if (existing) return { ok: false, error: "That version already exists for this hack." } as const;
 
   // Create patch row
+  const patchInsert: any = {
+    bucket: PATCHES_BUCKET,
+    filename: args.objectKey,
+    version: args.version,
+    parent_hack: args.slug,
+  };
+
+  // Set published status based on publishAutomatically flag
+  if (args.publishAutomatically) {
+    patchInsert.published = true;
+    patchInsert.published_at = new Date().toISOString();
+  } else {
+    patchInsert.published = false;
+  }
+
   const { data: patch, error: pErr } = await supabase
     .from("patches")
-    .insert({ bucket: PATCHES_BUCKET, filename: args.objectKey, version: args.version, parent_hack: args.slug })
-    .select("id")
+    .insert(patchInsert)
+    .select("id, created_at")
     .single();
   if (pErr) return { ok: false, error: pErr.message } as const;
 
+  // Only update current_patch if publishAutomatically is true
+  if (args.publishAutomatically) {
+    // Check if this patch is newer than current_patch
+    let shouldUpdateCurrentPatch = true;
+    if (hack.current_patch) {
+      const { data: currentPatch } = await supabase
+        .from("patches")
+        .select("created_at")
+        .eq("id", hack.current_patch)
+        .maybeSingle();
+      if (currentPatch && new Date(patch.created_at) <= new Date(currentPatch.created_at)) {
+        shouldUpdateCurrentPatch = false;
+      }
+    }
+
+    if (shouldUpdateCurrentPatch) {
   const { error: uErr } = await supabase
     .from("hacks")
     .update({ current_patch: patch.id })
     .eq("slug", args.slug);
   if (uErr) return { ok: false, error: uErr.message } as const;
+    }
+  }
 
   if (process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL) {
     const { data: profile } = await supabase.from('profiles').select('*').eq('id', hack.created_by).single();
@@ -292,7 +325,9 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
     ]);
   }
 
-  return { ok: true, patchId: patch.id, redirectTo: `/hack/${args.slug}` } as const;
+  // Redirect to versions page if not publishing automatically, otherwise to hack page
+  const redirectTo = args.publishAutomatically ? `/hack/${args.slug}` : `/hack/${args.slug}/versions`;
+  return { ok: true, patchId: patch.id, redirectTo } as const;
 }
 
 

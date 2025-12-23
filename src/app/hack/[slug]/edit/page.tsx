@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import HackForm from "@/components/Hack/HackForm";
 import { createClient } from "@/utils/supabase/server";
-import { FaChevronLeft, FaChevronRight } from "react-icons/fa6";
+import { FaChevronLeft, FaChevronRight, FaPlus } from "react-icons/fa6";
 import Link from "next/link";
 import { sortOrderedTags, getCoverUrls } from "@/utils/format";
 import { checkEditPermission } from "@/utils/hack";
@@ -90,16 +90,26 @@ export default async function EditHackPage({ params }: EditPageProps) {
           <FaChevronRight size={22} className="inline-block mx-2 text-foreground/50 align-middle" />
           <span className="gradient-text font-bold">{hack.title}</span>
         </h1>
-        <div className="flex items-center gap-2 self-end lg:self-auto mt-8 lg:mt-0">
-          <Link href={`/hack/${slug}`} className="inline-flex items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm font-medium hover:bg-black/5 dark:hover:bg-white/10">
+        <div className="flex items-center gap-2 md:flex-row flex-col md:self-end lg:self-auto mt-8 lg:mt-0">
+          <Link href={`/hack/${slug}`} className="inline-flex items-center justify-center h-12 md:h-10 w-full md:w-auto rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm font-medium hover:bg-black/5 dark:hover:bg-white/10">
             <FaChevronLeft size={16} className="inline-block mr-1" />
             Back to hack
           </Link>
-          {!isArchive && (
-            <Link href={`/hack/${slug}/edit/patch`} className="inline-flex items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm font-medium hover:bg-black/5 dark:hover:bg-white/10">
-              Upload new version
+          {!isArchive && <>
+            <Link
+              href={`/hack/${slug}/versions`}
+              className="inline-flex items-center justify-center h-12 md:h-10 w-full md:w-auto px-4 text-sm font-medium rounded-md border border-[var(--border)] bg-[var(--surface-2)] hover:bg-[var(--surface-3)] transition-colors"
+            >
+              Manage Versions
             </Link>
-          )}
+            <Link
+              href={`/hack/${slug}/edit/patch`}
+              className="inline-flex items-center justify-center h-12 md:h-10 w-full md:w-auto px-4 text-sm font-semibold rounded-md bg-[var(--accent)] text-[var(--accent-foreground)] hover:bg-[var(--accent-700)] transition-colors"
+            >
+              <FaPlus size={14} className="mr-2" />
+              Upload New Version
+            </Link>
+          </>}
         </div>
       </div>
       <div className="mt-4 lg:mt-8">

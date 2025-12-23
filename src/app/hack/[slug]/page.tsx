@@ -23,6 +23,7 @@ import { sortOrderedTags, getCoverUrls } from "@/utils/format";
 import { RiArchiveStackFill } from "react-icons/ri";
 import { isInformationalArchiveHack, isDownloadableArchiveHack, isArchiveHack, checkEditPermission } from "@/utils/hack";
 import Avatar from "@/components/Account/Avatar";
+import CollapsibleCard from "@/components/Primitives/CollapsibleCard";
 
 interface HackDetailProps {
   params: Promise<{ slug: string }>;
@@ -197,10 +198,11 @@ export default async function HackDetail({ params }: HackDetailProps) {
   let patchId: number | null = null;
   let lastUpdated: string | null = null;
   let patchCreatedAt: string | null = null;
+  let patchChangelog: string | null = null;
   if (hack.current_patch != null) {
     const { data: patch } = await supabase
       .from("patches")
-      .select("id,bucket,filename,version,created_at")
+      .select("id,bucket,filename,version,created_at,changelog")
       .eq("id", hack.current_patch as number)
       .maybeSingle();
     if (patch) {
@@ -209,6 +211,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
       patchId = patch.id;
       lastUpdated = new Date(patch.created_at).toLocaleDateString();
       patchCreatedAt = patch.created_at;
+      patchChangelog = patch.changelog;
     }
   }
 
@@ -404,6 +407,37 @@ export default async function HackDetail({ params }: HackDetailProps) {
       <div className="mt-6 px-6 flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_260px]">
         <div className="space-y-6 lg:min-w-[640px]">
           <Gallery images={images} title={hack.title} />
+
+          {patchId && patchCreatedAt && (
+            <CollapsibleCard
+              title={`${patchVersion || "Pre-release"} released on ${new Date(patchCreatedAt).toLocaleDateString(undefined, {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}`}
+            >
+              {patchChangelog && patchChangelog.trim().length > 0 ? (
+                <div className="prose prose-sm max-w-none text-foreground/80">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeSlug]}
+                    components={{
+                      h1: 'h2',
+                      h2: 'h3',
+                      h3: 'h4',
+                      h4: 'h5',
+                      h5: 'h6',
+                      h6: 'h6',
+                    }}
+                  >
+                    {patchChangelog}
+                  </ReactMarkdown>
+                </div>
+              ) : (
+                <p className="italic text-foreground/60">No changelog provided</p>
+              )}
+            </CollapsibleCard>
+          )}
 
           <div className="card-simple p-5">
             <h2 className="text-2xl font-semibold tracking-tight">About this hack</h2>

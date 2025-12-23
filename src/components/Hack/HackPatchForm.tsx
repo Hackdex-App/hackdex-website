@@ -28,6 +28,7 @@ export default function HackPatchForm(props: HackPatchFormProps) {
   const [genError, setGenError] = React.useState<string>("");
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string>("");
+  const [publishAutomatically, setPublishAutomatically] = React.useState(false);
 
   const versionInputRef = React.useRef<HTMLInputElement | null>(null);
   const patchInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -148,7 +149,7 @@ export default function HackPatchForm(props: HackPatchFormProps) {
       const presigned = await presignNewPatchVersion({ slug, version: version.trim() });
       if (!presigned.ok) throw new Error(presigned.error || 'Failed to presign');
       await fetch(presigned.presignedUrl!, { method: 'PUT', body: patchFile!, headers: { 'Content-Type': 'application/octet-stream' } });
-      const finalized = await confirmPatchUpload({ slug, objectKey: presigned.objectKey!, version: version.trim() });
+      const finalized = await confirmPatchUpload({ slug, objectKey: presigned.objectKey!, version: version.trim(), publishAutomatically });
       if (!finalized.ok) throw new Error(finalized.error || 'Failed to finalize');
       window.location.href = finalized.redirectTo!;
     } catch (e: any) {
@@ -260,7 +261,24 @@ export default function HackPatchForm(props: HackPatchFormProps) {
 
       {!!error && <div className="text-sm text-red-400">{error}</div>}
 
-      <div className="flex items-center justify-end gap-3 border-t border-[var(--border)] pt-4 mt-2">
+      <div className="flex items-start gap-3 border-t border-[var(--border)] pt-4 mt-2">
+        <label className="flex items-start gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={publishAutomatically}
+            onChange={(e) => setPublishAutomatically(e.target.checked)}
+            className="mt-0.5 rounded border-[var(--border)] text-emerald-600 focus:ring-emerald-600"
+          />
+          <div className="text-sm">
+            <div className="font-medium text-foreground/90">Publish Automatically</div>
+            <div className="text-foreground/60 mt-0.5">
+              If checked, this version will be published and set as the current patch immediately after upload.
+            </div>
+          </div>
+        </label>
+      </div>
+
+      <div className="flex items-center justify-end gap-3">
         <button
           type="button"
           onClick={onSubmit}
