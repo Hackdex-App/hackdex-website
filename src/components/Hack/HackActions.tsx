@@ -93,35 +93,6 @@ const HackActions: React.FC<HackActionsProps> = ({
     }
   }, [termsAgreed, patchUrl, patchBlob, file, baseRomId, isLinked, hasPermission, hasCached, status]);
 
-  React.useEffect(() => {
-    const fetchPatchBlob = async () => {
-      if (!patchUrl) return;
-
-      // Defer fetch to attempt to avoid "Failed to fetch" errors
-      setTimeout(async () => {
-      const res = await fetch(patchUrl);
-        if (!res.ok) throw new Error("Failed to fetch patch");
-        const blob = await res.blob();
-        setPatchBlob(blob);
-      }, 50);
-    };
-
-    if (patchUrl) {
-      fetchPatchBlob();
-    }
-  }, [patchUrl]);
-
-  React.useEffect(() => {
-    if (patchBlob) {
-      const romReady = !!file || (isLinked(baseRomId) && (hasPermission(baseRomId) || hasCached(baseRomId)));
-      if (romReady) {
-        setStatus("ready");
-      } else {
-        setStatus("idle");
-      }
-    }
-  }, [patchBlob, file, baseRomId, isLinked, hasPermission, hasCached, status]);
-
   async function onSelectFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0] ?? null;
     setFile(f);
@@ -149,18 +120,29 @@ const HackActions: React.FC<HackActionsProps> = ({
       setStatus("downloading");
 
       // Fetch signed URL from server
-      // Defer fetch to attempt to avoid "Failed to fetch" errors
-      setTimeout(async () => {
-        const result = await getSignedPatchUrl(hackSlug);
-        if (!result.ok) {
-          setError(result.error);
-          setStatus("idle");
-          return;
-        }
+      const result = await getSignedPatchUrl(hackSlug);
+      if (!result.ok) {
+        setError(result.error);
+        setStatus("idle");
+        return;
+      }
 
-        setPatchUrl(result.url);
-        setTermsAgreed(true);
-      }, 50);
+      setPatchUrl(result.url);
+      setTermsAgreed(true);
+
+      // Download patch blob
+      const res = await fetch(result.url);
+      if (!res.ok) throw new Error("Failed to fetch patch");
+      const blob = await res.blob();
+      setPatchBlob(blob);
+
+      // Update status based on ROM readiness
+      const romReady = !!file || (isLinked(baseRomId) && (hasPermission(baseRomId) || hasCached(baseRomId)));
+      if (romReady) {
+        setStatus("ready");
+      } else {
+        setStatus("idle");
+      }
     } catch (e: any) {
       setError(e?.message || "Failed to fetch patch URL");
       setStatus("idle");
@@ -204,8 +186,6 @@ const HackActions: React.FC<HackActionsProps> = ({
         (async () => {
           let blob = patchBlob;
           if (!blob) {
-            // Should likely never happen, but just in case
-            console.log('Blob missing, fetching from URL');
             const resp = await fetch(patchUrl);
             if (!resp.ok) throw new Error("Failed to fetch patch");
             blob = await resp.blob();
