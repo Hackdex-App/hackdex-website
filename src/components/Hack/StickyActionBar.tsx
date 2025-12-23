@@ -156,11 +156,12 @@ export default function StickyActionBar({
       </div>
       {errorMessage !== null && (
         <div
-          className={`absolute inset-x-0 md:left-1/2 md:-translate-x-1/2 -top-2 mb-2 md:-bottom-2 md:mx-auto flex w-full md:w-auto lg:max-w-screen-lg rounded-md border border-[var(--border)] bg-[var(--surface-2)]/80 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-[color-mix(in_oklab,var(--background)_70%,transparent)] text-sm text-red-400 transition-all duration-300 ${showError ? "opacity-100 -translate-y-full md:translate-y-full" : "opacity-0 translate-y-0 md:-translate-y-1/2 pointer-events-none"}`}
+          className={`absolute inset-x-0 md:left-1/2 md:-translate-x-1/2 md:mt-4 mb-2 md:mx-auto flex flex-col w-full md:w-auto lg:max-w-screen-lg rounded-md border border-[var(--border)] bg-[var(--surface-2)]/80 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-[color-mix(in_oklab,var(--background)_70%,transparent)] text-sm text-red-400 transition-all duration-300 ${showError ? "opacity-100 -translate-y-full md:translate-y-full" : "opacity-0 translate-y-0 md:-translate-y-1/2 pointer-events-none"}`}
           role="alert"
           aria-live="polite"
         >
-          {errorMessage}
+          <p className="mb-2 text-center font-bold">{errorMessage}</p>
+          <p className="text-xs">If the issue persists, try clearing your browser cache or using a different browser.</p>
         </div>
       )}
     </div>
