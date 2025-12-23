@@ -467,7 +467,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
             <ul className="mt-3 grid gap-2 text-sm text-foreground/75">
               <li>Language: {hack.language || "Unknown"}</li>
               <li>Base ROM: {baseRom?.name || "Unknown"}</li>
-              <li>Created: {new Date(hack.created_at).toLocaleDateString()}</li>
+              <li>First uploaded: {new Date(hack.created_at).toLocaleDateString()}</li>
               {lastUpdated && <li>Last updated: {lastUpdated}</li>}
               {hack.social_links && (
                 <li className="flex flex-wrap items-center justify-center gap-4 mt-4">
