@@ -415,6 +415,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
                 month: "long",
                 day: "numeric",
               })}`}
+              className="card-simple"
             >
               {patchChangelog && patchChangelog.trim().length > 0 ? (
                 <div className="prose prose-sm max-w-none text-foreground/80">

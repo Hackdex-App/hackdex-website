@@ -88,7 +88,10 @@ export default async function VersionsPage({ params }: VersionsPageProps) {
         </div>
       </div>
 
-      <CollapsibleCard title="Version Status Guide">
+      <CollapsibleCard
+        title="Version Status Guide"
+        className="mb-6 bg-[var(--surface-1)] border border-[var(--border)]/50 rounded-lg"
+      >
         <div className="space-y-5 sm:space-y-2.5 text-sm text-foreground/80">
           <div className="flex flex-col sm:grid sm:grid-cols-[100px_1fr] gap-2 sm:gap-1 items-start">
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400 shrink-0 w-fit">
