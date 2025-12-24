@@ -1,12 +1,13 @@
 import { IconType } from "react-icons";
-import { MdCatchingPokemon, MdNewReleases, MdAutoFixHigh, MdSettingsSuggest } from "react-icons/md";
+import { MdCategory, MdCatchingPokemon, MdNewReleases, MdAutoFixHigh, MdSettingsSuggest } from "react-icons/md";
 import { BiSolidGame } from "react-icons/bi";
 import { FaClock, FaGaugeHigh, FaMasksTheater } from "react-icons/fa6";
 import { IoLogoGameControllerA } from "react-icons/io";
 
 export const CATEGORY_ICONS: Record<string, IconType> = {
+  "Category": MdCategory,
   "Pokédex": MdCatchingPokemon,
-  "Sprites": BiSolidGame,
+  "Graphics": BiSolidGame,
   "New": MdNewReleases,
   "Altered": MdAutoFixHigh,
   "Quality of Life": MdSettingsSuggest,
