@@ -463,7 +463,7 @@ export type Database = {
       "Patches Download Permission": "None" | "Current" | "All"
       "Tag Categories":
         | "Pokédex"
-        | "Sprites"
+        | "Graphics"
         | "New"
         | "Altered"
         | "Quality of Life"
@@ -471,6 +471,7 @@ export type Database = {
         | "Difficulty"
         | "Scale"
         | "Tone"
+        | "Category"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -605,7 +606,7 @@ export const Constants = {
       "Patches Download Permission": ["None", "Current", "All"],
       "Tag Categories": [
         "Pokédex",
-        "Sprites",
+        "Graphics",
         "New",
         "Altered",
         "Quality of Life",
@@ -613,6 +614,7 @@ export const Constants = {
         "Difficulty",
         "Scale",
         "Tone",
+        "Category",
       ],
     },
   },
