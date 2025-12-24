@@ -84,17 +84,22 @@ export default async function DashboardPage() {
 
   const { data: hacks } = await supa
     .from("hacks")
-    .select("slug,title,approved,updated_at,downloads,current_patch,version,created_at,original_author")
+    .select("slug,title,approved,updated_at,downloads,current_patch(id,version),created_at,original_author")
     .eq("created_by", user.id)
-    .is("original_author", null) // Exclude Archive hacks
     .order("updated_at", { ascending: false });
+
+  const hacksWithVersions = hacks?.map((h) => ({
+    ...h,
+    version: h.current_patch?.version || "Pre-release",
+    current_patch: h.current_patch?.id || null,
+  }));
 
   const seriesAll = await getDownloadsSeriesAll({ days: 30 });
 
   return (
     <div className="mx-auto my-auto max-w-screen-2xl px-6 py-8">
       <DashboardClient
-        hacks={hacks ?? []}
+        hacks={hacksWithVersions ?? []}
         initialSeriesAll={seriesAll}
         displayName={full_name || `@${username}`}
       />
