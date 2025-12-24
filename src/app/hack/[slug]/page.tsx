@@ -8,7 +8,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSlug from "rehype-slug";
 import Image from "next/image";
-import { FaDiscord, FaTwitter, FaTriangleExclamation, FaArrowUpRightFromSquare } from "react-icons/fa6";
+import { FaDiscord, FaTwitter, FaGithub, FaTriangleExclamation, FaArrowUpRightFromSquare } from "react-icons/fa6";
 import PokeCommunityIcon from "@/components/Icons/PokeCommunityIcon";
 import { createClient, createServiceClient } from "@/utils/supabase/server";
 import HackOptionsMenu from "@/components/Hack/HackOptionsMenu";
@@ -484,6 +484,11 @@ export default async function HackDetail({ params }: HackDetailProps) {
                   {((hack.social_links as unknown) as { pokecommunity?: string })?.pokecommunity && (
                     <a className="underline underline-offset-2 hover:text-foreground/90 hover:scale-110 transition-transform duration-300" href={((hack.social_links as unknown) as { pokecommunity?: string }).pokecommunity!} target="_blank" rel="noreferrer">
                       <PokeCommunityIcon width={32} height={32} color="currentColor" />
+                    </a>
+                  )}
+                  {((hack.social_links as unknown) as { github?: string })?.github && (
+                    <a className="underline underline-offset-2 hover:text-foreground/90 hover:scale-110 transition-transform duration-300" href={((hack.social_links as unknown) as { github?: string }).github!} target="_blank" rel="noreferrer">
+                      <FaGithub size={32} />
                     </a>
                   )}
                 </li>

@@ -45,6 +45,7 @@ export async function prepareSubmission(formData: FormData) {
   const discord = (formData.get("discord") as string)?.trim();
   const twitter = (formData.get("twitter") as string)?.trim();
   const pokecommunity = (formData.get("pokecommunity") as string)?.trim();
+  const github = (formData.get("github") as string)?.trim();
   const tags = (formData.get("tags") as string)?.split(",").map((t) => t.trim()).filter(Boolean) || [];
   const original_author = (formData.get("original_author") as string)?.trim() || null;
   const permission_from = (formData.get("permission_from") as string)?.trim() || null;
@@ -64,11 +65,12 @@ export async function prepareSubmission(formData: FormData) {
   const slug = await ensureUniqueSlug(baseSlug, supabase);
 
   const social_links: HackInsert["social_links"] =
-    discord || twitter || pokecommunity
+    discord || twitter || pokecommunity || github
       ? {
           discord: discord || undefined,
           twitter: twitter || undefined,
           pokecommunity: pokecommunity || undefined,
+          github: github || undefined,
         }
       : null;
 

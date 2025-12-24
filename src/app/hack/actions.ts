@@ -18,7 +18,12 @@ export async function updateHack(args: {
   language?: string;
   version?: string;
   box_art?: string | null;
-  social_links?: { discord?: string; twitter?: string; pokecommunity?: string } | null;
+  social_links?: {
+    discord?: string;
+    twitter?: string;
+    pokecommunity?: string;
+    github?: string;
+  } | null;
   tags?: string[];
 }) {
   const supabase = await createClient();

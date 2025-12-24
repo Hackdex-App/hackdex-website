@@ -14,6 +14,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSlug from "rehype-slug";
 import { RxDragHandleDots2 } from "react-icons/rx";
+import { FaDiscord, FaTwitter, FaGithub } from "react-icons/fa6";
+import PokeCommunityIcon from "@/components/Icons/PokeCommunityIcon";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
 import TagSelector from "@/components/Submit/TagSelector";
@@ -104,6 +106,7 @@ export default function HackSubmitForm({
   const [discord, setDiscord] = React.useState(() => initialDraftRef.current?.discord || "");
   const [twitter, setTwitter] = React.useState(() => initialDraftRef.current?.twitter || "");
   const [pokecommunity, setPokecommunity] = React.useState(() => initialDraftRef.current?.pokecommunity || "");
+  const [github, setGithub] = React.useState(() => initialDraftRef.current?.github || "");
   const [tags, setTags] = React.useState<string[]>(() => (Array.isArray(initialDraftRef.current?.tags) ? initialDraftRef.current.tags : []));
   const [showMdPreview, setShowMdPreview] = React.useState<boolean>(() => !!initialDraftRef.current?.showMdPreview);
   const [originalAuthor, setOriginalAuthor] = React.useState<string>(() => {
@@ -282,7 +285,7 @@ export default function HackSubmitForm({
           const data = JSON.parse(raw);
           if (data && typeof data === "object") {
             const isEmpty =
-              !title && !summary && !description && !baseRom && !platform && !version && !language && !boxArt && !discord && !twitter && !pokecommunity && (!tags || tags.length === 0) && !originalAuthor;
+              !title && !summary && !description && !baseRom && !platform && !version && !language && !boxArt && !discord && !twitter && !pokecommunity && !github && (!tags || tags.length === 0) && !originalAuthor;
             if (isEmpty) {
               let applied = false;
               if (typeof data.title === "string") setTitle(data.title);
@@ -307,6 +310,8 @@ export default function HackSubmitForm({
               if (typeof data.twitter === "string") applied = applied || !!data.twitter;
               if (typeof data.pokecommunity === "string") setPokecommunity(data.pokecommunity);
               if (typeof data.pokecommunity === "string") applied = applied || !!data.pokecommunity;
+              if (typeof data.github === "string") setGithub(data.github);
+              if (typeof data.github === "string") applied = applied || !!data.github;
               if (Array.isArray(data.tags)) setTags(data.tags.filter((t: any) => typeof t === "string"));
               if (Array.isArray(data.tags)) applied = applied || data.tags.length > 0;
               // Only load originalAuthor from draft if customCreator is not provided
@@ -337,7 +342,7 @@ export default function HackSubmitForm({
     if (!d || typeof d !== "object") return;
     // Don't count originalAuthor if customCreator is provided
     const hasAny = Boolean(
-      d.title || d.summary || d.description || d.baseRom || d.platform || d.version || d.language || d.boxArt || d.discord || d.twitter || d.pokecommunity || (Array.isArray(d.tags) && d.tags.length > 0) || (!customCreator && d.originalAuthor)
+      d.title || d.summary || d.description || d.baseRom || d.platform || d.version || d.language || d.boxArt || d.discord || d.twitter || d.pokecommunity || d.github || (Array.isArray(d.tags) && d.tags.length > 0) || (!customCreator && d.originalAuthor)
     );
     if (hasAny) { hydratedFromDraftRef.current = true; setRestoredDraft(true); }
   }, [dummy, draftKey, customCreator]);
@@ -358,6 +363,7 @@ export default function HackSubmitForm({
           discord,
           twitter,
           pokecommunity,
+          github,
           tags,
           step,
           showMdPreview,
@@ -389,6 +395,7 @@ export default function HackSubmitForm({
     discord,
     twitter,
     pokecommunity,
+    github,
     tags,
     originalAuthor,
     customCreator,
@@ -404,7 +411,7 @@ export default function HackSubmitForm({
 
   const urlLike = (s: string) => !s || /^https?:\/\//i.test(s);
 
-  const allSocialValid = [discord, twitter, pokecommunity].every((s) => !s || urlLike(s));
+  const allSocialValid = [discord, twitter, pokecommunity, github].every((s) => !s || urlLike(s));
 
   const step1Valid = !!title.trim() && !!platform && !!baseRom.trim() && !!language.trim() && (isArchive ? !!originalAuthor.trim() : true);
   const step2Valid = (isArchive ? true : !!version.trim()) && !!summary.trim() && !summaryTooLong && !!description.trim() && tags.length > 0;
@@ -426,6 +433,7 @@ export default function HackSubmitForm({
       if (discord) fd.set('discord', discord);
       if (twitter) fd.set('twitter', twitter);
       if (pokecommunity) fd.set('pokecommunity', pokecommunity);
+      if (github) fd.set('github', github);
       if (tags.length) fd.set('tags', tags.join(','));
       if (isArchive) {
         fd.set('isArchive', 'true');
@@ -619,8 +627,8 @@ export default function HackSubmitForm({
     tags: sortOrderedTags(tags.map((name, index) => ({ name, order: index + 1 }))),
     ...(boxArt ? { boxArt } : {}),
     socialLinks:
-      discord || twitter || pokecommunity
-        ? { discord: discord || undefined, twitter: twitter || undefined, pokecommunity: pokecommunity || undefined }
+      discord || twitter || pokecommunity || github
+        ? { discord: discord || undefined, twitter: twitter || undefined, pokecommunity: pokecommunity || undefined, github: github || undefined }
         : undefined,
     createdAt: new Date().toISOString(),
     patchUrl: "",
@@ -687,6 +695,7 @@ export default function HackSubmitForm({
                   setDiscord("");
                   setTwitter("");
                   setPokecommunity("");
+                  setGithub("");
                   setTags([]);
                   setNewCoverFiles([]);
                   setCoverErrors([]);
@@ -997,37 +1006,76 @@ export default function HackSubmitForm({
 
                 <div className="grid gap-2">
                   <label className="text-sm text-foreground/80">Social links</label>
-                  <div className="grid gap-2 sm:grid-cols-3">
+                  <p className="text-xs text-foreground/60">Use full URLs starting with http:// or https://</p>
+                  <div className="grid gap-2">
                     {!isDummy ? (
                       <>
-                        <input
-                          value={discord}
-                          onChange={(e) => setDiscord(e.target.value)}
-                          placeholder="Discord invite URL"
-                          className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${discord && !urlLike(discord) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
-                        />
-                        <input
-                          value={twitter}
-                          onChange={(e) => setTwitter(e.target.value)}
-                          placeholder="Twitter/X profile URL"
-                          className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${twitter && !urlLike(twitter) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
-                        />
-                        <input
-                          value={pokecommunity}
-                          onChange={(e) => setPokecommunity(e.target.value)}
-                          placeholder="PokeCommunity thread URL"
-                          className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${pokecommunity && !urlLike(pokecommunity) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
-                        />
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center justify-center w-10 h-11 shrink-0">
+                            <FaDiscord size={20} className="text-foreground/70" />
+                          </div>
+                          <input
+                            value={discord}
+                            onChange={(e) => setDiscord(e.target.value)}
+                            placeholder="Discord invite URL"
+                            className={`flex-1 h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${discord && !urlLike(discord) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center justify-center w-10 h-11 shrink-0">
+                            <FaTwitter size={20} className="text-foreground/70" />
+                          </div>
+                          <input
+                            value={twitter}
+                            onChange={(e) => setTwitter(e.target.value)}
+                            placeholder="Twitter/X profile URL"
+                            className={`flex-1 h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${twitter && !urlLike(twitter) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center justify-center w-10 h-11 shrink-0">
+                            <PokeCommunityIcon width={20} height={20} color="currentColor" className="text-foreground/70" />
+                          </div>
+                          <input
+                            value={pokecommunity}
+                            onChange={(e) => setPokecommunity(e.target.value)}
+                            placeholder="PokeCommunity thread URL"
+                            className={`flex-1 h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${pokecommunity && !urlLike(pokecommunity) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center justify-center w-10 h-11 shrink-0">
+                            <FaGithub size={20} className="text-foreground/70" />
+                          </div>
+                          <input
+                            value={github}
+                            onChange={(e) => setGithub(e.target.value)}
+                            placeholder="GitHub repository URL"
+                            className={`flex-1 h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${github && !urlLike(github) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
+                          />
+                        </div>
                       </>
                     ) : (
                       <>
-                        <div className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center text-foreground/60 select-none ${discord && !urlLike(discord) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}>Discord invite URL</div>
-                        <div className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center text-foreground/60 select-none ${twitter && !urlLike(twitter) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}>Twitter/X profile URL</div>
-                        <div className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center text-foreground/60 select-none ${pokecommunity && !urlLike(pokecommunity) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}>PokeCommunity thread URL</div>
+                        <div className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center gap-2 text-foreground/60 select-none ${discord && !urlLike(discord) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}>
+                          <FaDiscord size={20} className="text-foreground/50" />
+                          <span>Discord invite URL</span>
+                        </div>
+                        <div className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center gap-2 text-foreground/60 select-none ${twitter && !urlLike(twitter) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}>
+                          <FaTwitter size={20} className="text-foreground/50" />
+                          <span>Twitter/X profile URL</span>
+                        </div>
+                        <div className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center gap-2 text-foreground/60 select-none ${pokecommunity && !urlLike(pokecommunity) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}>
+                          <PokeCommunityIcon width={20} height={20} color="currentColor" className="text-foreground/50" />
+                          <span>PokeCommunity thread URL</span>
+                        </div>
+                        <div className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center gap-2 text-foreground/60 select-none ${github && !urlLike(github) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}>
+                          <FaGithub size={20} className="text-foreground/50" />
+                          <span>GitHub repository URL</span>
+                        </div>
                       </>
                     )}
                   </div>
-                  <p className="text-xs text-foreground/60">Use full URLs starting with http:// or https://</p>
                 </div>
               </>
             )}

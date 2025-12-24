@@ -76,7 +76,12 @@ export default async function EditHackPage({ params }: EditPageProps) {
     language: hack.language,
     version: isArchive ? "Archive" : (version || "Pre-release"),
     box_art: hack.box_art,
-    social_links: (hack.social_links as unknown) as { discord?: string; twitter?: string; pokecommunity?: string } | null,
+    social_links: (hack.social_links as unknown) as {
+      discord?: string;
+      twitter?: string;
+      pokecommunity?: string;
+      github?: string;
+    } | null,
     tags,
     coverKeys,
     signedCoverUrls,

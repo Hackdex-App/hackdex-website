@@ -22,7 +22,12 @@ interface HackEditFormProps {
     language: string;
     version: string;
     box_art: string | null;
-    social_links: { discord?: string; twitter?: string; pokecommunity?: string } | null;
+    social_links: {
+      discord?: string;
+      twitter?: string;
+      pokecommunity?: string;
+      github?: string;
+    } | null;
     tags: string[];
     coverKeys: string[]; // storage keys for covers in order
     signedCoverUrls?: string[]; // optional signed URLs aligned to keys
@@ -43,6 +48,7 @@ export default function HackEditForm({ slug, initial }: HackEditFormProps) {
   const [discord, setDiscord] = React.useState(initial.social_links?.discord || "");
   const [twitter, setTwitter] = React.useState(initial.social_links?.twitter || "");
   const [pokecommunity, setPokecommunity] = React.useState(initial.social_links?.pokecommunity || "");
+  const [github, setGithub] = React.useState(initial.social_links?.github || "");
   const [tags, setTags] = React.useState<string[]>(initial.tags || []);
 
   // Baseline state used for change detection and reverting
@@ -56,6 +62,7 @@ export default function HackEditForm({ slug, initial }: HackEditFormProps) {
     discord: initial.social_links?.discord || "",
     twitter: initial.social_links?.twitter || "",
     pokecommunity: initial.social_links?.pokecommunity || "",
+    github: initial.social_links?.github || "",
   });
 
   type CoverItem =
@@ -113,7 +120,8 @@ export default function HackEditForm({ slug, initial }: HackEditFormProps) {
   const discordChanged = discord !== baseline.discord;
   const twitterChanged = twitter !== baseline.twitter;
   const pokeChanged = pokecommunity !== baseline.pokecommunity;
-  const contentChanged = titleChanged || summaryChanged || descriptionChanged || languageChanged || boxArtChanged || tagsChanged || discordChanged || twitterChanged || pokeChanged;
+  const githubChanged = github !== baseline.github;
+  const contentChanged = titleChanged || summaryChanged || descriptionChanged || languageChanged || boxArtChanged || tagsChanged || discordChanged || twitterChanged || pokeChanged || githubChanged;
 
   const newItemsCount = coverItems.filter((i) => i.type === "new").length;
   const currentExistingKeys = coverItems.filter((i): i is { type: "existing"; key: string; url: string } => i.type === "existing").map((i) => i.key);
@@ -155,7 +163,7 @@ export default function HackEditForm({ slug, initial }: HackEditFormProps) {
   async function onSaveMeta() {
     setSaving(true);
     try {
-      const social = discord || twitter || pokecommunity ? { discord: discord || undefined, twitter: twitter || undefined, pokecommunity: pokecommunity || undefined } : null;
+      const social = discord || twitter || pokecommunity || github ? { discord: discord || undefined, twitter: twitter || undefined, pokecommunity: pokecommunity || undefined, github: github || undefined } : null;
       const updateArgs: any = { slug };
       if (titleChanged) updateArgs.title = title.trim();
       if (summaryChanged) updateArgs.summary = summary.trim();
@@ -163,7 +171,7 @@ export default function HackEditForm({ slug, initial }: HackEditFormProps) {
       if (languageChanged) updateArgs.language = language;
       if (boxArtChanged) updateArgs.box_art = boxArt ? boxArt.trim() : null;
       if (tagsChanged) updateArgs.tags = tags.slice();
-      if (discordChanged || twitterChanged || pokeChanged) updateArgs.social_links = social; // may be null to clear
+      if (discordChanged || twitterChanged || pokeChanged || githubChanged) updateArgs.social_links = social; // may be null to clear
 
       const { ok, error } = await updateHack(updateArgs);
       if (!ok) throw new Error(error || "Save failed");
@@ -178,6 +186,7 @@ export default function HackEditForm({ slug, initial }: HackEditFormProps) {
         discord,
         twitter,
         pokecommunity,
+        github,
       });
     } catch (e: any) {
       alert(e.message || "Save failed");
@@ -232,8 +241,19 @@ export default function HackEditForm({ slug, initial }: HackEditFormProps) {
               {contentChanged && (
                 <button
                   type="button"
-                  onClick={() => { setTitle(baseline.title); setSummary(baseline.summary); setDescription(baseline.description); setLanguage(baseline.language); setBoxArt(baseline.boxArt); setTags(baseline.tags.slice()); setDiscord(baseline.discord); setTwitter(baseline.twitter); setPokecommunity(baseline.pokecommunity); }}
-                    className="inline-flex items-center underline underline-offset-2 text-[12px] font-semibold cursor-pointer"
+                  onClick={() => {
+                    setTitle(baseline.title);
+                    setSummary(baseline.summary);
+                    setDescription(baseline.description);
+                    setLanguage(baseline.language);
+                    setBoxArt(baseline.boxArt);
+                    setTags(baseline.tags.slice());
+                    setDiscord(baseline.discord);
+                    setTwitter(baseline.twitter);
+                    setPokecommunity(baseline.pokecommunity);
+                    setGithub(baseline.github);
+                  }}
+                  className="inline-flex items-center underline underline-offset-2 text-[12px] font-semibold cursor-pointer"
                 >
                   Revert all
                 </button>
@@ -438,6 +458,10 @@ export default function HackEditForm({ slug, initial }: HackEditFormProps) {
                 <div className="flex items-center gap-2">
                   <input value={pokecommunity} onChange={(e) => setPokecommunity(e.target.value)} placeholder="PokeCommunity thread URL" className={`flex-1 h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 ${pokecommunity && !urlLike(pokecommunity) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : pokeChanged ? 'ring-[var(--ring)] bg-[var(--surface-2)]' : 'bg-[var(--surface-2)] ring-[var(--border)]'}`} />
                   {pokeChanged && <button type="button" onClick={() => setPokecommunity(baseline.pokecommunity)} className="text-[11px] underline underline-offset-2 cursor-pointer">Revert</button>}
+                </div>
+                <div className="flex items-center gap-2">
+                  <input value={github} onChange={(e) => setGithub(e.target.value)} placeholder="GitHub repository URL" className={`flex-1 h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 ${github && !urlLike(github) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : githubChanged ? 'ring-[var(--ring)] bg-[var(--surface-2)]' : 'bg-[var(--surface-2)] ring-[var(--border)]'}`} />
+                  {githubChanged && <button type="button" onClick={() => setGithub(baseline.github)} className="text-[11px] underline underline-offset-2 cursor-pointer">Revert</button>}
                 </div>
               </div>
             </div>
