@@ -19,7 +19,7 @@ export async function getSignedPatchUrl(slug: string): Promise<{ ok: true; url: 
   // Fetch hack to validate it exists
   const { data: hack, error: hackError } = await supabase
     .from("hacks")
-    .select("slug, approved, created_by, current_patch, original_author")
+    .select("slug, approved, created_by, current_patch, original_author, is_archive")
     .eq("slug", slug)
     .maybeSingle();
 
@@ -266,7 +266,7 @@ export async function archivePatchVersion(slug: string, patchId: number): Promis
   // Fetch hack and verify permissions
   const { data: hack, error: hErr } = await supabase
     .from("hacks")
-    .select("slug, created_by, current_patch, original_author")
+    .select("slug, created_by, current_patch, original_author, is_archive")
     .eq("slug", slug)
     .maybeSingle();
   if (hErr || !hack) return { ok: false, error: "Hack not found" };
@@ -311,12 +311,12 @@ export async function restorePatchVersion(slug: string, patchId: number): Promis
   // Fetch hack and verify permissions
   const { data: hack, error: hErr } = await supabase
     .from("hacks")
-    .select("slug, created_by, current_patch, original_author")
+    .select("slug, created_by, current_patch, original_author, is_archive")
     .eq("slug", slug)
     .maybeSingle();
   if (hErr || !hack) return { ok: false, error: "Hack not found" };
 
-  if (!canEditAsCreator({ created_by: hack.created_by, current_patch: hack.current_patch, original_author: hack.original_author }, user.id)) {
+  if (!canEditAsCreator(hack, user.id)) {
     return { ok: false, error: "Forbidden" };
   }
 
@@ -351,7 +351,7 @@ export async function rollbackToVersion(slug: string, patchId: number): Promise<
   // Fetch hack and verify permissions
   const { data: hack, error: hErr } = await supabase
     .from("hacks")
-    .select("slug, created_by, current_patch, original_author")
+    .select("slug, created_by, current_patch, original_author, is_archive")
     .eq("slug", slug)
     .maybeSingle();
   if (hErr || !hack) return { ok: false, error: "Hack not found" };
@@ -400,12 +400,12 @@ export async function updatePatchChangelog(slug: string, patchId: number, change
   // Fetch hack and verify permissions
   const { data: hack, error: hErr } = await supabase
     .from("hacks")
-    .select("slug, created_by, current_patch, original_author")
+    .select("slug, created_by, current_patch, original_author, is_archive")
     .eq("slug", slug)
     .maybeSingle();
   if (hErr || !hack) return { ok: false, error: "Hack not found" };
 
-  if (!canEditAsCreator({ created_by: hack.created_by, current_patch: hack.current_patch, original_author: hack.original_author }, user.id)) {
+  if (!canEditAsCreator(hack, user.id)) {
     return { ok: false, error: "Forbidden" };
   }
 
@@ -441,12 +441,12 @@ export async function updatePatchVersion(slug: string, patchId: number, version:
   // Fetch hack and verify permissions
   const { data: hack, error: hErr } = await supabase
     .from("hacks")
-    .select("slug, created_by, current_patch, original_author")
+    .select("slug, created_by, current_patch, original_author, is_archive")
     .eq("slug", slug)
     .maybeSingle();
   if (hErr || !hack) return { ok: false, error: "Hack not found" };
 
-  if (!canEditAsCreator({ created_by: hack.created_by, current_patch: hack.current_patch, original_author: hack.original_author }, user.id)) {
+  if (!canEditAsCreator(hack, user.id)) {
     return { ok: false, error: "Forbidden" };
   }
 
@@ -504,7 +504,7 @@ export async function publishPatchVersion(slug: string, patchId: number): Promis
   // Fetch hack and verify permissions
   const { data: hack, error: hErr } = await supabase
     .from("hacks")
-    .select("slug, created_by, current_patch, original_author")
+    .select("slug, created_by, current_patch, original_author, is_archive")
     .eq("slug", slug)
     .maybeSingle();
   if (hErr || !hack) return { ok: false, error: "Hack not found" };
@@ -572,12 +572,12 @@ export async function reuploadPatchVersion(
   // Fetch hack and verify permissions
   const { data: hack, error: hErr } = await supabase
     .from("hacks")
-    .select("slug, created_by, current_patch, original_author")
+    .select("slug, created_by, current_patch, original_author, is_archive")
     .eq("slug", slug)
     .maybeSingle();
   if (hErr || !hack) return { ok: false, error: "Hack not found" };
 
-  if (!canEditAsCreator({ created_by: hack.created_by, current_patch: hack.current_patch, original_author: hack.original_author }, user.id)) {
+  if (!canEditAsCreator(hack, user.id)) {
     return { ok: false, error: "Forbidden" };
   }
 
@@ -611,12 +611,12 @@ export async function confirmReuploadPatchVersion(
   // Fetch hack and verify permissions
   const { data: hack, error: hErr } = await supabase
     .from("hacks")
-    .select("slug, created_by, current_patch, original_author")
+    .select("slug, created_by, current_patch, original_author, is_archive")
     .eq("slug", slug)
     .maybeSingle();
   if (hErr || !hack) return { ok: false, error: "Hack not found" };
 
-  if (!canEditAsCreator({ created_by: hack.created_by, current_patch: hack.current_patch, original_author: hack.original_author }, user.id)) {
+  if (!canEditAsCreator(hack, user.id)) {
     return { ok: false, error: "Forbidden" };
   }
 

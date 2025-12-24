@@ -127,7 +127,7 @@ export default function DiscoverBrowser({ initialSort = "trending" }: DiscoverBr
     }
     // Filter to hacks whose base ROM is ready (linked with permission or cached)
     if (onlyReady) {
-      out = out.filter((h) => !h.isArchive && h.baseRomId && readyBaseRomIds.has(h.baseRomId));
+      out = out.filter((h) => !h.is_archive && h.baseRomId && readyBaseRomIds.has(h.baseRomId));
     }
     return out;
   }, [hacks, query, selectedTags, selectedBaseRoms, onlyReady, readyBaseRomIds]);

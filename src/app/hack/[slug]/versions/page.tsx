@@ -18,7 +18,7 @@ export default async function VersionsPage({ params }: VersionsPageProps) {
   // Fetch hack
   const { data: hack } = await supabase
     .from("hacks")
-    .select("slug, title, created_by, current_patch, original_author, permission_from, base_rom")
+    .select("slug, title, created_by, current_patch, original_author, permission_from, base_rom, is_archive")
     .eq("slug", slug)
     .maybeSingle();
 

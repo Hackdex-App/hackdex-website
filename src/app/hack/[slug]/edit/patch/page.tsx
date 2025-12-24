@@ -19,7 +19,7 @@ export default async function EditPatchPage({ params }: EditPatchPageProps) {
 
   const { data: hack } = await supabase
     .from("hacks")
-    .select("slug,base_rom,created_by,title,current_patch,original_author,permission_from")
+    .select("slug,base_rom,created_by,title,current_patch,original_author,permission_from,is_archive")
     .eq("slug", slug)
     .maybeSingle();
   if (!hack) return notFound();
