@@ -135,17 +135,26 @@ export type Database = {
           approved_by: string | null
           base_rom: string
           box_art: string | null
+          completion_status:
+            | Database["public"]["Enums"]["Completion Status"]
+            | null
           created_at: string
           created_by: string
           current_patch: number | null
           description: string
           downloads: number
           estimated_release: string | null
+          is_archive: boolean
           language: string
           original_author: string | null
           patch_url: string
+          patches_download_permission: Database["public"]["Enums"]["Patches Download Permission"]
           permission_from: string | null
           published: boolean
+          rejected: boolean
+          rejected_at: string | null
+          rejected_by: string | null
+          rejected_reason: string | null
           search: unknown
           slug: string
           social_links: Json | null
@@ -160,17 +169,26 @@ export type Database = {
           approved_by?: string | null
           base_rom: string
           box_art?: string | null
+          completion_status?:
+            | Database["public"]["Enums"]["Completion Status"]
+            | null
           created_at?: string
           created_by: string
           current_patch?: number | null
           description: string
           downloads?: number
           estimated_release?: string | null
+          is_archive?: boolean
           language: string
           original_author?: string | null
           patch_url: string
+          patches_download_permission?: Database["public"]["Enums"]["Patches Download Permission"]
           permission_from?: string | null
           published?: boolean
+          rejected?: boolean
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejected_reason?: string | null
           search?: unknown
           slug: string
           social_links?: Json | null
@@ -185,17 +203,26 @@ export type Database = {
           approved_by?: string | null
           base_rom?: string
           box_art?: string | null
+          completion_status?:
+            | Database["public"]["Enums"]["Completion Status"]
+            | null
           created_at?: string
           created_by?: string
           current_patch?: number | null
           description?: string
           downloads?: number
           estimated_release?: string | null
+          is_archive?: boolean
           language?: string
           original_author?: string | null
           patch_url?: string
+          patches_download_permission?: Database["public"]["Enums"]["Patches Download Permission"]
           permission_from?: string | null
           published?: boolean
+          rejected?: boolean
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejected_reason?: string | null
           search?: unknown
           slug?: string
           social_links?: Json | null
@@ -255,6 +282,51 @@ export type Database = {
           {
             foreignKeyName: "patch_downloads_patch_fkey"
             columns: ["patch"]
+            isOneToOne: false
+            referencedRelation: "patches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patch_groups: {
+        Row: {
+          created_at: string
+          hack_slug: string
+          id: number
+          name: string
+          order: number
+          patch_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          hack_slug: string
+          id?: number
+          name: string
+          order: number
+          patch_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          hack_slug?: string
+          id?: number
+          name?: string
+          order?: number
+          patch_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patch_groups_hack_slug_fkey"
+            columns: ["hack_slug"]
+            isOneToOne: false
+            referencedRelation: "hacks"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "patch_groups_patch_id_fkey"
+            columns: ["patch_id"]
             isOneToOne: false
             referencedRelation: "patches"
             referencedColumns: ["id"]
@@ -387,6 +459,8 @@ export type Database = {
       show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
+      "Completion Status": "Complete" | "Demo" | "Alpha" | "Beta"
+      "Patches Download Permission": "None" | "Current" | "All"
       "Tag Categories":
         | "Pokédex"
         | "Sprites"
@@ -527,6 +601,8 @@ export const Constants = {
   },
   public: {
     Enums: {
+      "Completion Status": ["Complete", "Demo", "Alpha", "Beta"],
+      "Patches Download Permission": ["None", "Current", "All"],
       "Tag Categories": [
         "Pokédex",
         "Sprites",
