@@ -84,7 +84,8 @@ export default async function DashboardPage() {
 
   const { data: hacks } = await supa
     .from("hacks")
-    .select("slug,title,approved,updated_at,downloads,current_patch(id,version),created_at,original_author")
+    .select("slug,title,approved,updated_at,downloads,current_patch(id,version),created_at,original_author,is_archive")
+    .is("is_archive", false)
     .eq("created_by", user.id)
     .order("updated_at", { ascending: false });
 

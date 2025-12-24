@@ -34,7 +34,7 @@ export async function updateHack(args: {
 
   const { data: hack, error: hErr } = await supabase
     .from("hacks")
-    .select("slug, created_by, current_patch, original_author, permission_from")
+    .select("slug, created_by, current_patch, original_author, permission_from, is_archive")
     .eq("slug", args.slug)
     .maybeSingle();
   if (hErr) return { ok: false, error: hErr.message } as const;
@@ -125,7 +125,7 @@ export async function saveHackCovers(args: { slug: string; coverUrls: string[] }
 
   const { data: hack, error: hErr } = await supabase
     .from("hacks")
-    .select("slug, created_by, current_patch, original_author, permission_from")
+    .select("slug, created_by, current_patch, original_author, permission_from, is_archive")
     .eq("slug", args.slug)
     .maybeSingle();
   if (hErr) return { ok: false, error: hErr.message } as const;
@@ -208,7 +208,7 @@ export async function presignNewPatchVersion(args: { slug: string; version: stri
   // Ensure hack exists and user has permission
   const { data: hack, error: hErr } = await supabase
     .from("hacks")
-    .select("slug, created_by, current_patch, original_author, permission_from")
+    .select("slug, created_by, current_patch, original_author, permission_from, is_archive")
     .eq("slug", args.slug)
     .maybeSingle();
   if (hErr) return { ok: false, error: hErr.message } as const;
@@ -252,7 +252,7 @@ export async function presignCoverUpload(args: { slug: string; objectKey: string
   // Ensure hack exists and user has permission
   const { data: hack, error: hErr } = await supabase
     .from("hacks")
-    .select("slug, created_by, current_patch, original_author, permission_from")
+    .select("slug, created_by, current_patch, original_author, permission_from, is_archive")
     .eq("slug", args.slug)
     .maybeSingle();
   if (hErr) return { ok: false, error: hErr.message } as const;

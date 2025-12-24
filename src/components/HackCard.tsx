@@ -24,11 +24,11 @@ export interface HackCardAttributes {
   version: string;
   summary?: string;
   description?: string;
-  isArchive?: boolean;
+  is_archive: boolean;
 };
 
 export default function HackCard({ hack, clickable = true, className = "" }: { hack: HackCardAttributes; clickable?: boolean; className?: string }) {
-  const isArchive = !!hack.isArchive;
+  const isArchive = hack.is_archive;
   const { isLinked, hasPermission, hasCached } = useBaseRoms();
   const match = baseRoms.find((r) => r.id === hack.baseRomId);
   const baseId = match?.id ?? undefined;

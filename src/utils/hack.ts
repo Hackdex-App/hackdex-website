@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { checkUserRoles } from "@/utils/user";
 
 type HackWithArchiveFields = {
+  is_archive: boolean;
   original_author: string | null;
   current_patch: number | null;
   permission_from?: string | null;
@@ -9,24 +10,24 @@ type HackWithArchiveFields = {
 };
 
 /**
- * Check if a hack is an informational archive (has original_author but no patch)
+ * Check if a hack is an informational archive (archive flag set, no patch)
  */
 export function isInformationalArchiveHack(hack: HackWithArchiveFields): boolean {
-  return hack.original_author != null && hack.current_patch === null;
+  return hack.is_archive === true && hack.current_patch === null;
 }
 
 /**
- * Check if a hack is a downloadable archive (has original_author, patch, and permission_from)
+ * Check if a hack is a downloadable archive (archive flag set with patch and permission)
  */
 export function isDownloadableArchiveHack(hack: HackWithArchiveFields): boolean {
-  return hack.original_author != null && hack.current_patch !== null && hack.permission_from != null;
+  return hack.is_archive === true && hack.current_patch !== null && hack.permission_from != null;
 }
 
 /**
  * Check if a hack is any type of archive (informational or downloadable)
  */
 export function isArchiveHack(hack: HackWithArchiveFields): boolean {
-  return isInformationalArchiveHack(hack) || isDownloadableArchiveHack(hack);
+  return hack.is_archive === true;
 }
 
 /**

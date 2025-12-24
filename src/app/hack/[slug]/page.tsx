@@ -50,7 +50,7 @@ export async function generateMetadata({ params }: HackDetailProps): Promise<Met
   const supabase = await createClient();
   const { data: hack } = await supabase
     .from("hacks")
-    .select("title,summary,approved,base_rom,box_art,created_by,created_at,updated_at,original_author,current_patch,permission_from")
+    .select("title,summary,approved,base_rom,box_art,created_by,created_at,updated_at,original_author,current_patch,permission_from,is_archive")
     .eq("slug", slug)
     .maybeSingle();
   if (!hack) return { title: "Hack not found" };
@@ -120,7 +120,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
   const supabase = await createClient();
   const { data: hack, error } = await supabase
     .from("hacks")
-    .select("slug,title,summary,description,base_rom,created_at,updated_at,downloads,current_patch,box_art,social_links,created_by,approved,original_author,permission_from,language")
+    .select("slug,title,summary,description,base_rom,created_at,updated_at,downloads,current_patch,box_art,social_links,created_by,approved,original_author,permission_from,language,is_archive")
     .eq("slug", slug)
     .maybeSingle();
   if (error || !hack) return notFound();
@@ -156,15 +156,24 @@ export default async function HackDetail({ params }: HackDetailProps) {
     .maybeSingle();
   const author = hack.original_author ? hack.original_author : (profile?.username ? `@${profile.username}` : "Unknown");
 
-  // Get other approved hacks by the same author
-  const { data: otherHacks } = await supabase
-    .from("hacks")
-    .select("slug,title,summary")
-    .eq("created_by", hack.created_by)
-    .eq("approved", true)
-    .neq("slug", hack.slug)
-    .order("downloads", { ascending: false })
-    .limit(10);
+  // Get other approved hacks by the same author (non-archive hacks only)
+  let otherHacks: {
+    slug: string;
+    title: string;
+    summary: string;
+  }[] = [];
+  if (!hack.is_archive) {
+    const { data: otherHacksData } = await supabase
+      .from("hacks")
+      .select("slug,title,summary")
+      .eq("created_by", hack.created_by)
+      .eq("approved", true)
+      .eq("is_archive", false)
+      .neq("slug", hack.slug)
+      .order("downloads", { ascending: false })
+      .limit(10);
+    otherHacks = otherHacksData ?? [];
+  }
 
   const {
     data: { user },

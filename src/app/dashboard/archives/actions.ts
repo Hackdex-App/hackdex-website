@@ -35,9 +35,8 @@ export async function getArchives(args: {
 
   let query = serviceClient
     .from("hacks")
-    .select("slug,title,original_author,base_rom,created_at,created_by,approved,permission_from,current_patch", { count: "exact" })
-    .not("original_author", "is", null)
-    .or("current_patch.is.null,permission_from.not.is.null")
+    .select("slug,title,original_author,base_rom,created_at,created_by,approved,permission_from,current_patch,is_archive", { count: "exact" })
+    .eq("is_archive", true)
     .order(sortBy, { ascending: sortOrder === "asc" })
     .range(offset, offset + limit - 1);
 
@@ -82,6 +81,7 @@ export async function getArchives(args: {
     creator_username: usernameById.get(h.created_by as string) || null,
     approved: h.approved,
     current_patch: h.current_patch,
+    is_archive: h.is_archive,
   }));
 
   return {
@@ -110,7 +110,7 @@ export async function deleteArchive(slug: string) {
   // Verify it's an Archive hack
   const { data: hack } = await supabase
     .from("hacks")
-    .select("slug, original_author, current_patch")
+    .select("slug, is_archive")
     .eq("slug", slug)
     .maybeSingle();
 
@@ -118,7 +118,7 @@ export async function deleteArchive(slug: string) {
     return { ok: false, error: "Archive not found" } as const;
   }
 
-  if (hack.original_author == null || hack.current_patch != null) {
+  if (!hack.is_archive) {
     return { ok: false, error: "This is not an Archive hack" } as const;
   }
 

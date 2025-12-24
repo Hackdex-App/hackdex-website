@@ -436,7 +436,7 @@ export default function HackSubmitForm({
       if (github) fd.set('github', github);
       if (tags.length) fd.set('tags', tags.join(','));
       if (isArchive) {
-        fd.set('isArchive', 'true');
+        fd.set('is_archive', 'true');
       }
       if (originalAuthor) {
         fd.set('original_author', originalAuthor);
@@ -632,6 +632,7 @@ export default function HackSubmitForm({
         : undefined,
     createdAt: new Date().toISOString(),
     patchUrl: "",
+    is_archive: isArchive,
   };
 
   const hasBaseRom = !!baseRom.trim();

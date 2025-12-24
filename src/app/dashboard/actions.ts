@@ -59,15 +59,16 @@ export const getDownloadsSeriesAll = async ({ days = 30 }: { days?: number }): P
   // Get hacks owned by user
   const { data: ownedHacks } = await supa
     .from("hacks")
-    .select("slug,created_by,current_patch,original_author,permission_from")
+    .select("slug,created_by,current_patch,original_author,permission_from,is_archive")
+    .is("is_archive", false)
     .eq("created_by", user.id);
   const ownedSlugs = (ownedHacks ?? []).map((h) => h.slug);
 
   // Get archive hacks that user can edit as archiver
   const { data: allArchiveHacks } = await supa
     .from("hacks")
-    .select("slug,created_by,current_patch,original_author,permission_from")
-    .not("original_author", "is", null);
+    .select("slug,created_by,current_patch,original_author,permission_from,is_archive")
+    .eq("is_archive", true);
 
   const accessibleArchiveSlugs: string[] = [];
   if (allArchiveHacks) {
@@ -167,7 +168,7 @@ export const getHackInsights = async ({ slug }: { slug: string }): Promise<HackI
   if (!user) throw new Error("Unauthorized");
   const { data: hack } = await supa
     .from("hacks")
-    .select("slug,created_by,current_patch,created_at,original_author,permission_from")
+    .select("slug,created_by,current_patch,created_at,original_author,permission_from,is_archive")
     .eq("slug", slug)
     .maybeSingle();
   if (!hack) throw new Error("Not found");

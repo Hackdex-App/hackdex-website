@@ -49,15 +49,15 @@ export async function prepareSubmission(formData: FormData) {
   const tags = (formData.get("tags") as string)?.split(",").map((t) => t.trim()).filter(Boolean) || [];
   const original_author = (formData.get("original_author") as string)?.trim() || null;
   const permission_from = (formData.get("permission_from") as string)?.trim() || null;
-  const isArchive = formData.get("isArchive") === "true";
+  const is_archive = formData.get("is_archive") === "true";
 
   // For archives, version is not required; for regular hacks, it is
-  if (!title || !summary || !description || !base_rom || !language || (!isArchive && !version)) {
+  if (!title || !summary || !description || !base_rom || !language || (!is_archive && !version)) {
     return { ok: false, error: "Missing required fields" } as const;
   }
 
   // For archives, original_author is required
-  if (isArchive && !original_author) {
+  if (is_archive && !original_author) {
     return { ok: false, error: "Original author is required for Archive hacks" } as const;
   }
 
@@ -86,7 +86,8 @@ export async function prepareSubmission(formData: FormData) {
     downloads: 0,
     box_art,
     social_links,
-    approved: isArchive, // Auto-approve archives
+    approved: is_archive, // Auto-approve archives
+    is_archive,
     patch_url: "",
     original_author: original_author || null,
     permission_from: permission_from || null,
@@ -143,7 +144,7 @@ export async function saveHackCovers(args: { slug: string; coverUrls: string[] }
   // Ensure hack exists and user has permission
   const { data: hack, error: hErr } = await supabase
     .from("hacks")
-    .select("slug, created_by, current_patch, original_author, permission_from")
+    .select("slug, created_by, current_patch, original_author, permission_from, is_archive")
     .eq("slug", args.slug)
     .maybeSingle();
   if (hErr) return { ok: false, error: hErr.message } as const;
@@ -182,7 +183,7 @@ export async function presignPatchAndSaveCovers(args: {
   // Ensure hack exists and user has permission
   const { data: hack, error: hErr } = await supabase
     .from("hacks")
-    .select("slug, created_by, current_patch, original_author, permission_from")
+    .select("slug, created_by, current_patch, original_author, permission_from, is_archive")
     .eq("slug", args.slug)
     .maybeSingle();
   if (hErr) return { ok: false, error: hErr.message } as const;
@@ -224,7 +225,7 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
 
   const { data: hack, error: hErr } = await supabase
     .from("hacks")
-    .select("slug, created_by, title, current_patch, original_author, permission_from")
+    .select("slug, created_by, title, current_patch, original_author, permission_from, is_archive")
     .eq("slug", args.slug)
     .maybeSingle();
   if (hErr) return { ok: false, error: hErr.message } as const;

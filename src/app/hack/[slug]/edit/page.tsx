@@ -20,7 +20,7 @@ export default async function EditHackPage({ params }: EditPageProps) {
 
   const { data: hack } = await supabase
     .from("hacks")
-    .select("slug,title,summary,description,base_rom,language,box_art,social_links,created_by,current_patch,original_author,permission_from")
+    .select("slug,title,summary,description,base_rom,language,box_art,social_links,created_by,current_patch,original_author,permission_from,is_archive")
     .eq("slug", slug)
     .maybeSingle();
   if (!hack) return notFound();

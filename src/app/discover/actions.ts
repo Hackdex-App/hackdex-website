@@ -34,23 +34,22 @@ export async function getDiscoverData(sort: DiscoverSortOption): Promise<Discove
         // Build base query for hacks (public/anon view: only approved hacks)
         let query = supabase
           .from("hacks")
-          .select("slug,title,summary,description,base_rom,downloads,created_by,updated_at,current_patch,original_author,approved_at")
+          .select("slug,title,summary,description,base_rom,downloads,created_by,updated_at,current_patch,original_author,approved_at,is_archive")
           .eq("approved", true);
 
       // Apply sorting based on sort type
       if (sort === "popular") {
         // When sorting by popularity, always show non-archive hacks first.
-        // Archives are defined as rows where original_author IS NOT NULL and current_patch IS NULL,
-        // so ordering by current_patch with NULLS LAST effectively pushes archives to the end.
+        // Archives are defined by the `is_archive` flag, so we order by that after downloads.
         query = query
           .order("downloads", { ascending: false })
-          .order("current_patch", { ascending: false, nullsFirst: false });
+          .order("is_archive", { ascending: true });
       } else if (sort === "trending") {
         // For trending, we'll fetch all and calculate scores in JS
-        // Still order by downloads first for efficiency
+        // Still order by downloads first for efficiency, then `is_archive` to keep non-archives first.
         query = query
           .order("downloads", { ascending: false })
-          .order("current_patch", { ascending: false, nullsFirst: false });
+          .order("is_archive", { ascending: true });
       } else if (sort === "updated") {
         // Will sort by current patch published_at in JS after fetching patches
       } else if (sort === "alphabetical") {
@@ -224,7 +223,7 @@ export async function getDiscoverData(sort: DiscoverSortOption): Promise<Discove
           const publishedAt = publishedAtByPatchId.get(r.current_patch) ?? null;
           publishedAtBySlug.set(r.slug, publishedAt);
         } else {
-          mappedVersions.set(r.slug, r.original_author ? "Archive" : "Pre-release");
+          mappedVersions.set(r.slug, r.is_archive ? "Archive" : "Pre-release");
           publishedAtBySlug.set(r.slug, null);
         }
       });
@@ -256,7 +255,7 @@ export async function getDiscoverData(sort: DiscoverSortOption): Promise<Discove
         version: mappedVersions.get(r.slug) || "Pre-release",
         summary: r.summary,
         description: r.description,
-        isArchive: r.original_author != null && r.current_patch === null,
+        is_archive: r.is_archive,
       }));
 
       // Sort by current patch published_at for "updated" sort
@@ -275,8 +274,8 @@ export async function getDiscoverData(sort: DiscoverSortOption): Promise<Discove
 
           // Secondary sort: when times are equal, push archives to end
           if (aTime === bTime) {
-            if (a.isArchive && !b.isArchive) return 1;
-            if (!a.isArchive && b.isArchive) return -1;
+            if (a.is_archive && !b.is_archive) return 1;
+            if (!a.is_archive && b.is_archive) return -1;
           }
 
           return bTime - aTime; // Descending order (newest first)
@@ -291,8 +290,8 @@ export async function getDiscoverData(sort: DiscoverSortOption): Promise<Discove
 
           // Secondary sort: push archives to end
           if (scoreA === scoreB) {
-            if (a.isArchive && !b.isArchive) return 1;
-            if (!a.isArchive && b.isArchive) return -1;
+            if (a.is_archive && !b.is_archive) return 1;
+            if (!a.is_archive && b.is_archive) return -1;
           }
 
           return scoreB - scoreA; // Descending order

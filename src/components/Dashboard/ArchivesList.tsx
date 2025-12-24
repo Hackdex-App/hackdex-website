@@ -18,6 +18,7 @@ type Archive = {
   creator_username: string | null;
   approved: boolean;
   current_patch: number | null;
+  is_archive: boolean;
 };
 
 type ArchivesData =

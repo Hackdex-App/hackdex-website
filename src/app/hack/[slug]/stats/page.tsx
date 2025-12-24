@@ -12,7 +12,7 @@ export default async function HackStatsPage({ params: { slug } }: { params: { sl
 
   const { data: hack } = await supa
     .from("hacks")
-    .select("slug,created_by,title,original_author,current_patch,permission_from")
+    .select("slug,created_by,title,original_author,current_patch,permission_from,is_archive")
     .eq("slug", slug)
     .maybeSingle();
   if (!hack) notFound();
