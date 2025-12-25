@@ -370,14 +370,18 @@ export default async function HackDetail({ params }: HackDetailProps) {
               )}
             </div>
             <div className={`mt-1 flex items-center gap-2 ${!hack.original_author ? "h-[28px]" : ""}`}>
-              {!hack.original_author && (
-                <Avatar
-                  uid={hack.created_by as string}
-                  url={profile?.avatar_url ?? null}
-                  size={28}
-                />
+              {!hack.original_author ? (
+                <>
+                  <Avatar
+                    uid={hack.created_by as string}
+                    url={profile?.avatar_url ?? null}
+                    size={28}
+                  />
+                  <p className="text-[16px] md:text-[18px] text-foreground/70">{author}</p>
+                </>
+              ) : (
+                <p className="text-[16px] md:text-[18px] text-foreground/70">By {author}</p>
               )}
-              <p className="text-[16px] md:text-[18px] text-foreground/70">By {author}</p>
             </div>
             <p className={`${!isArchive ? "mt-4" : "mt-2"} text-sm text-foreground/75`}>{hack.summary}</p>
           </div>
