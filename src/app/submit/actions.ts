@@ -225,7 +225,7 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
 
   const { data: hack, error: hErr } = await supabase
     .from("hacks")
-    .select("slug, created_by, title, current_patch, original_author, permission_from, is_archive")
+    .select("slug, created_by, title, current_patch, original_author, permission_from, is_archive, approved")
     .eq("slug", args.slug)
     .maybeSingle();
   if (hErr) return { ok: false, error: hErr.message } as const;
@@ -288,11 +288,11 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
     }
 
     if (shouldUpdateCurrentPatch) {
-  const { error: uErr } = await supabase
-    .from("hacks")
-    .update({ current_patch: patch.id })
-    .eq("slug", args.slug);
-  if (uErr) return { ok: false, error: uErr.message } as const;
+      const { error: uErr } = await supabase
+        .from("hacks")
+        .update({ current_patch: patch.id })
+        .eq("slug", args.slug);
+      if (uErr) return { ok: false, error: uErr.message } as const;
     }
   }
 
@@ -315,11 +315,11 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
       color: 0x40f56a,
       url: `${process.env.NEXT_PUBLIC_SITE_URL}/hack/${args.slug}`,
       footer: {
-        text: `This message brought to you by Hackdex`
+        text: hack.approved ? `This message brought to you by Hackdex` : `This hack is still pending approval`
       }
     }
 
-    const webhookUrl = args.firstUpload ?
+    const webhookUrl = args.firstUpload || !hack.approved ?
       process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL :
       process.env.DISCORD_WEBHOOK_HACKDEX_HACKS_URL || process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL;
 
