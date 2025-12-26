@@ -3,7 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import type { TablesInsert } from "@/types/db";
 import { getMinioClient, PATCHES_BUCKET, COVERS_BUCKET } from "@/utils/minio/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { APIEmbed } from "discord-api-types/v10";
 import { sendDiscordMessageEmbed } from "@/utils/discord";
@@ -113,6 +113,7 @@ export async function updateHack(args: {
     }
   }
 
+  revalidateTag(`hack:${args.slug}:metadata`);
   return { ok: true } as const;
 }
 
@@ -194,6 +195,7 @@ export async function saveHackCovers(args: { slug: string; coverUrls: string[] }
 
   }
 
+  revalidateTag(`hack:${args.slug}:metadata`);
   return { ok: true } as const;
 }
 
@@ -326,6 +328,8 @@ export async function approveHack(slug: string) {
     ]);
   }
 
+  revalidateTag(`hack:${slug}:metadata`);
+  revalidateTag(`hack:${slug}:downloads`);
   revalidatePath(`/hack/${slug}`);
   redirect(`/hack/${slug}`);
 }

@@ -6,7 +6,182 @@ import { isInformationalArchiveHack, canEditAsCreator } from "@/utils/hack";
 import { sendDiscordMessageEmbed } from "@/utils/discord";
 import { headers } from "next/headers";
 import { validateEmail } from "@/utils/auth";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { unstable_cache as cache } from "next/cache";
+import { sortOrderedTags, getCoverUrls } from "@/utils/format";
+
+export interface HackMetadata {
+  hack: {
+    slug: string;
+    title: string;
+    summary: string;
+    description: string;
+    base_rom: string;
+    created_at: string;
+    updated_at: string | null;
+    current_patch: number | null;
+    box_art: string | null;
+    social_links: unknown;
+    created_by: string;
+    approved: boolean;
+    original_author: string | null;
+    permission_from: string | null;
+    language: string | null;
+    is_archive: boolean;
+  };
+  images: string[];
+  tags: string[];
+  profile: {
+    username: string | null;
+    avatar_url: string | null;
+  } | null;
+  otherHacks: {
+    slug: string;
+    title: string;
+    summary: string;
+  }[];
+  patch: {
+    id: number;
+    filename: string;
+    version: string | null;
+    created_at: string;
+    changelog: string | null;
+  } | null;
+}
+
+export async function getHackMetadata(slug: string): Promise<HackMetadata | null> {
+  const runner = cache(
+    async () => {
+      const supabase = await createServiceClient();
+      
+      const { data: hack, error } = await supabase
+        .from("hacks")
+        .select("slug,title,summary,description,base_rom,created_at,updated_at,current_patch,box_art,social_links,created_by,approved,original_author,permission_from,language,is_archive")
+        .eq("slug", slug)
+        .maybeSingle();
+      
+      if (error || !hack) return null;
+
+      // Fetch covers
+      let images: string[] = [];
+      const { data: covers } = await supabase
+        .from("hack_covers")
+        .select("url, position")
+        .eq("hack_slug", slug)
+        .order("position", { ascending: true });
+      if (covers && covers.length > 0) {
+        images = getCoverUrls(covers.map(c => c.url));
+      }
+
+      // Fetch tags
+      const { data: tagRows } = await supabase
+        .from("hack_tags")
+        .select("order,tags(name)")
+        .eq("hack_slug", slug);
+
+      const tags = sortOrderedTags(
+        (tagRows || [])
+          .map((r) => ({
+            name: r.tags.name,
+            order: r.order,
+          }))
+      ).map((t) => t.name);
+
+      // Fetch profile
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("username,avatar_url")
+        .eq("id", hack.created_by as string)
+        .maybeSingle();
+
+      // Get other approved hacks by the same author (non-archive hacks only)
+      let otherHacks: {
+        slug: string;
+        title: string;
+        summary: string;
+      }[] = [];
+      if (!hack.is_archive) {
+        const { data: otherHacksData } = await supabase
+          .from("hacks")
+          .select("slug,title,summary")
+          .eq("created_by", hack.created_by)
+          .eq("approved", true)
+          .eq("is_archive", false)
+          .neq("slug", hack.slug)
+          .order("downloads", { ascending: false })
+          .limit(10);
+        otherHacks = otherHacksData ?? [];
+      }
+
+      // Get patch info
+      let patch: {
+        id: number;
+        filename: string;
+        version: string | null;
+        created_at: string;
+        changelog: string | null;
+      } | null = null;
+      if (hack.current_patch != null) {
+        const { data: patchData } = await supabase
+          .from("patches")
+          .select("id,bucket,filename,version,created_at,changelog")
+          .eq("id", hack.current_patch)
+          .maybeSingle();
+        if (patchData) {
+          patch = {
+            id: patchData.id,
+            filename: patchData.filename,
+            version: patchData.version || null,
+            created_at: patchData.created_at,
+            changelog: patchData.changelog || null,
+          };
+        }
+      }
+
+      return {
+        hack,
+        images,
+        tags,
+        profile: profile ? {
+          username: profile.username,
+          avatar_url: profile.avatar_url,
+        } : null,
+        otherHacks,
+        patch,
+      };
+    },
+    [`hack:${slug}:metadata`],
+    {
+      revalidate: 14400, // 4 hours
+      tags: ["hack", `hack:${slug}:metadata`],
+    }
+  );
+
+  return runner();
+}
+
+export async function getHackDownloads(slug: string): Promise<number | null> {
+  const runner = cache(
+    async () => {
+      const supabase = await createServiceClient();
+      const { data: hack, error } = await supabase
+        .from("hacks")
+        .select("downloads")
+        .eq("slug", slug)
+        .maybeSingle();
+      
+      if (error || !hack) return null;
+      return hack.downloads || 0;
+    },
+    [`hack:${slug}:downloads`],
+    {
+      revalidate: 600, // 10 minutes
+      tags: ["hack", `hack:${slug}:downloads`],
+    }
+  );
+
+  return runner();
+}
 
 export async function getSignedPatchUrl(slug: string): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
   const supabase = await createClient();
@@ -387,6 +562,7 @@ export async function rollbackToVersion(slug: string, patchId: number): Promise<
 
   if (unpubErr) return { ok: false, error: unpubErr.message };
 
+  revalidateTag(`hack:${slug}:metadata`);
   revalidatePath(`/hack/${slug}/versions`);
   revalidatePath(`/hack/${slug}`);
   return { ok: true };
@@ -428,6 +604,7 @@ export async function updatePatchChangelog(slug: string, patchId: number, change
 
   if (updateErr) return { ok: false, error: updateErr.message };
 
+  revalidateTag(`hack:${slug}:metadata`);
   revalidatePath(`/hack/${slug}/versions`);
   revalidatePath(`/hack/${slug}/changelog`);
   return { ok: true };
@@ -491,6 +668,7 @@ export async function updatePatchVersion(slug: string, patchId: number, version:
 
   if (updateErr) return { ok: false, error: updateErr.message };
 
+  revalidateTag(`hack:${slug}:metadata`);
   revalidatePath(`/hack/${slug}/versions`);
   revalidatePath(`/hack/${slug}`);
   return { ok: true };
@@ -555,6 +733,7 @@ export async function publishPatchVersion(slug: string, patchId: number): Promis
     if (updateHackErr) return { ok: false, error: updateHackErr.message };
   }
 
+  revalidateTag(`hack:${slug}:metadata`);
   revalidatePath(`/hack/${slug}/versions`);
   revalidatePath(`/hack/${slug}`);
   return { ok: true, willBecomeCurrent };
@@ -639,6 +818,7 @@ export async function confirmReuploadPatchVersion(
 
   if (updateErr) return { ok: false, error: updateErr.message };
 
+  revalidateTag(`hack:${slug}:metadata`);
   revalidatePath(`/hack/${slug}/versions`);
   return { ok: true };
 }

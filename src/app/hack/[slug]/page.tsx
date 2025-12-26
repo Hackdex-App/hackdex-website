@@ -19,17 +19,16 @@ import serialize from "serialize-javascript";
 import { headers } from "next/headers";
 import { MenuItem } from "@headlessui/react";
 import { FaCircleCheck } from "react-icons/fa6";
-import { sortOrderedTags, getCoverUrls } from "@/utils/format";
 import { RiArchiveStackFill } from "react-icons/ri";
 import { isInformationalArchiveHack, isDownloadableArchiveHack, isArchiveHack, checkEditPermission } from "@/utils/hack";
 import Avatar from "@/components/Account/Avatar";
 import CollapsibleCard from "@/components/Primitives/CollapsibleCard";
+import { getHackMetadata, getHackDownloads } from "@/app/hack/[slug]/actions";
 
 interface HackDetailProps {
   params: Promise<{ slug: string }>;
 }
 
-export const revalidate = 3600; // 1 hour
 
 export async function generateStaticParams() {
   const supabase = await createServiceClient();
@@ -47,19 +46,10 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: HackDetailProps): Promise<Metadata> {
   const { slug } = await params;
-  const supabase = await createClient();
-  const { data: hack } = await supabase
-    .from("hacks")
-    .select("title,summary,approved,base_rom,box_art,created_by,created_at,updated_at,original_author,current_patch,permission_from,is_archive")
-    .eq("slug", slug)
-    .maybeSingle();
-  if (!hack) return { title: "Hack not found" };
+  const metadata = await getHackMetadata(slug);
+  if (!metadata) return { title: "Hack not found" };
 
-  const { data: profile } = await supabase
-  .from("profiles")
-  .select("username")
-  .eq("id", hack.created_by as string)
-  .maybeSingle();
+  const { hack, profile } = metadata;
   const author = hack.original_author ? hack.original_author : (profile?.username ? `@${profile.username}` : undefined);
 
   if (!hack.approved) return {
@@ -117,64 +107,18 @@ export async function generateMetadata({ params }: HackDetailProps): Promise<Met
 
 export default async function HackDetail({ params }: HackDetailProps) {
   const { slug } = await params;
-  const supabase = await createClient();
-  const { data: hack, error } = await supabase
-    .from("hacks")
-    .select("slug,title,summary,description,base_rom,created_at,updated_at,downloads,current_patch,box_art,social_links,created_by,approved,original_author,permission_from,language,is_archive")
-    .eq("slug", slug)
-    .maybeSingle();
-  if (error || !hack) return notFound();
+  const [metadata, downloads] = await Promise.all([
+    getHackMetadata(slug),
+    getHackDownloads(slug),
+  ]);
+  
+  if (!metadata) return notFound();
+  
+  const { hack, images, tags, profile, otherHacks, patch } = metadata;
   const baseRom = baseRoms.find((r) => r.id === hack.base_rom);
-
-  let images: string[] = [];
-  const { data: covers } = await supabase
-    .from("hack_covers")
-    .select("url, position")
-    .eq("hack_slug", slug)
-    .order("position", { ascending: true });
-  if (covers && covers.length > 0) {
-    images = getCoverUrls(covers.map(c => c.url));
-  }
-
-  const { data: tagRows } = await supabase
-    .from("hack_tags")
-    .select("order,tags(name)")
-    .eq("hack_slug", slug);
-
-  const tags = sortOrderedTags(
-    (tagRows || [])
-      .map((r) => ({
-        name: r.tags.name,
-        order: r.order,
-      }))
-  ).map((t) => t.name);
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("username,avatar_url")
-    .eq("id", hack.created_by as string)
-    .maybeSingle();
   const author = hack.original_author ? hack.original_author : (profile?.username ? `@${profile.username}` : "Unknown");
 
-  // Get other approved hacks by the same author (non-archive hacks only)
-  let otherHacks: {
-    slug: string;
-    title: string;
-    summary: string;
-  }[] = [];
-  if (!hack.is_archive) {
-    const { data: otherHacksData } = await supabase
-      .from("hacks")
-      .select("slug,title,summary")
-      .eq("created_by", hack.created_by)
-      .eq("approved", true)
-      .eq("is_archive", false)
-      .neq("slug", hack.slug)
-      .order("downloads", { ascending: false })
-      .limit(10);
-    otherHacks = otherHacksData ?? [];
-  }
-
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -201,28 +145,13 @@ export default async function HackDetail({ params }: HackDetailProps) {
     return notFound();
   }
 
-  // Get patch info, but don't sign URL yet (happens on user interaction)
-  let patchFilename: string | null = null;
-  let patchVersion = isArchive ? "Archive" : "";
-  let patchId: number | null = null;
-  let lastUpdated: string | null = null;
-  let patchCreatedAt: string | null = null;
-  let patchChangelog: string | null = null;
-  if (hack.current_patch != null) {
-    const { data: patch } = await supabase
-      .from("patches")
-      .select("id,bucket,filename,version,created_at,changelog")
-      .eq("id", hack.current_patch as number)
-      .maybeSingle();
-    if (patch) {
-      patchFilename = patch.filename;
-      patchVersion = patch.version || "";
-      patchId = patch.id;
-      lastUpdated = new Date(patch.created_at).toLocaleDateString();
-      patchCreatedAt = patch.created_at;
-      patchChangelog = patch.changelog;
-    }
-  }
+  // Extract patch info from cached metadata
+  const patchFilename = patch?.filename || null;
+  const patchVersion = isArchive ? "Archive" : (patch?.version || "");
+  const patchId = patch?.id || null;
+  const lastUpdated = patch ? new Date(patch.created_at).toLocaleDateString() : null;
+  const patchCreatedAt = patch?.created_at || null;
+  const patchChangelog = patch?.changelog || null;
 
   // Build canonical URL, sameAs, dates, and JSON-LD
   const hdrs = await headers();
@@ -235,7 +164,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
   const authorName = hack.original_author || profile?.username || "Unknown";
 
   const sameAs: string[] = [];
-  const social = (hack.social_links as unknown) as { discord?: string; twitter?: string; pokecommunity?: string } | null;
+  const social = hack.social_links as { discord?: string; twitter?: string; pokecommunity?: string; github?: string } | null;
   if (social?.discord) sameAs.push(social.discord);
   if (social?.twitter) sameAs.push(social.twitter);
   if (social?.pokecommunity) sameAs.push(social.pokecommunity);
@@ -365,7 +294,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
               </span>
               {!isArchive && (
                 <div className="inline-flex ml-auto md:hidden">
-                  <DownloadsBadge slug={hack.slug} initialCount={hack.downloads} />
+                  <DownloadsBadge slug={hack.slug} initialCount={downloads ?? 0} />
                 </div>
               )}
             </div>
@@ -396,7 +325,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
             <div className="flex items-center justify-end gap-2 self-end md:self-auto lg:min-w-[260px]">
               {!isArchive && (
                 <div className="hidden md:inline-flex mr-2">
-                  <DownloadsBadge slug={hack.slug} initialCount={hack.downloads} />
+                  <DownloadsBadge slug={hack.slug} initialCount={downloads ?? 0} />
                 </div>
               )}
               <HackShareButton title={hack.title} url={pageUrl} author={hack.original_author || profile?.username || null} />
@@ -482,25 +411,25 @@ export default async function HackDetail({ params }: HackDetailProps) {
               <li>Base ROM: {baseRom?.name || "Unknown"}</li>
               <li>Created: {new Date(hack.created_at).toLocaleDateString()}</li>
               {lastUpdated && <li>Last updated: {lastUpdated}</li>}
-              {hack.social_links && (
+              {social && (
                 <li className="flex flex-wrap items-center justify-center gap-4 mt-4">
-                  {((hack.social_links as unknown) as { discord?: string })?.discord && (
-                    <a className="underline underline-offset-2 hover:text-foreground/90 hover:scale-110 transition-transform duration-300" href={((hack.social_links as unknown) as { discord?: string }).discord!} target="_blank" rel="noreferrer">
+                  {social.discord && (
+                    <a className="underline underline-offset-2 hover:text-foreground/90 hover:scale-110 transition-transform duration-300" href={social.discord} target="_blank" rel="noreferrer">
                       <FaDiscord size={32} />
                     </a>
                   )}
-                  {((hack.social_links as unknown) as { twitter?: string })?.twitter && (
-                    <a className="underline underline-offset-2 hover:text-foreground/90 hover:scale-110 transition-transform duration-300" href={((hack.social_links as unknown) as { twitter?: string }).twitter!} target="_blank" rel="noreferrer">
+                  {social.twitter && (
+                    <a className="underline underline-offset-2 hover:text-foreground/90 hover:scale-110 transition-transform duration-300" href={social.twitter} target="_blank" rel="noreferrer">
                       <FaTwitter size={32} />
                     </a>
                   )}
-                  {((hack.social_links as unknown) as { pokecommunity?: string })?.pokecommunity && (
-                    <a className="underline underline-offset-2 hover:text-foreground/90 hover:scale-110 transition-transform duration-300" href={((hack.social_links as unknown) as { pokecommunity?: string }).pokecommunity!} target="_blank" rel="noreferrer">
+                  {social.pokecommunity && (
+                    <a className="underline underline-offset-2 hover:text-foreground/90 hover:scale-110 transition-transform duration-300" href={social.pokecommunity} target="_blank" rel="noreferrer">
                       <PokeCommunityIcon width={32} height={32} color="currentColor" />
                     </a>
                   )}
-                  {((hack.social_links as unknown) as { github?: string })?.github && (
-                    <a className="underline underline-offset-2 hover:text-foreground/90 hover:scale-110 transition-transform duration-300" href={((hack.social_links as unknown) as { github?: string }).github!} target="_blank" rel="noreferrer">
+                  {social.github && (
+                    <a className="underline underline-offset-2 hover:text-foreground/90 hover:scale-110 transition-transform duration-300" href={social.github} target="_blank" rel="noreferrer">
                       <FaGithub size={32} />
                     </a>
                   )}
