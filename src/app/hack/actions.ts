@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/utils/supabase/server";
+import { createClient, createServiceClient } from "@/utils/supabase/server";
 import type { TablesInsert } from "@/types/db";
 import { getMinioClient, PATCHES_BUCKET, COVERS_BUCKET } from "@/utils/minio/server";
 import { revalidatePath, revalidateTag } from "next/cache";
@@ -273,7 +273,7 @@ export async function presignCoverUpload(args: { slug: string; objectKey: string
 }
 
 
-export async function approveHack(slug: string) {
+export async function approveHack(slug: string, verified?: boolean) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -284,14 +284,27 @@ export async function approveHack(slug: string) {
   const { data: isAdmin } = await supabase.rpc("is_admin");
   if (!isAdmin) return { ok: false, error: "Forbidden" } as const;
 
+  const serviceClient = await createServiceClient();
+
   // Check if hack exists
-  const { data: hack, error: hErr } = await supabase
+  const { data: hack, error: hErr } = await serviceClient
     .from("hacks")
     .select("slug, approved, title, created_by")
     .eq("slug", slug)
     .maybeSingle();
   if (hErr) return { ok: false, error: hErr.message } as const;
   if (!hack) return { ok: false, error: "Hack not found" } as const;
+
+  if (verified === true) {
+    const { error: updateErr } = await serviceClient
+      .from("profiles")
+      .update({ verified: true })
+      .eq("id", hack.created_by);
+    if (updateErr) {
+      // No need to return an error here
+      console.error(updateErr);
+    }
+  }
 
   // If already approved, return success
   if (hack.approved) {
@@ -300,7 +313,7 @@ export async function approveHack(slug: string) {
   }
 
   // Approve the hack
-  const { error: updateErr } = await supabase
+  const { error: updateErr } = await serviceClient
     .from("hacks")
     .update({
       approved: true,
@@ -312,7 +325,7 @@ export async function approveHack(slug: string) {
   if (updateErr) return { ok: false, error: updateErr.message } as const;
 
   if (process.env.DISCORD_WEBHOOK_HACKDEX_HACKS_URL) {
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', hack.created_by).single();
+    const { data: profile } = await serviceClient.from('profiles').select('*').eq('id', hack.created_by).single();
     const displayName = profile?.username ? `@${profile.username}` : user.id;
     const embed: APIEmbed = {
       title: `:tada: ${hack.title} :tada:`,

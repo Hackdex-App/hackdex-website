@@ -298,7 +298,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
                 </div>
               )}
             </div>
-            <div className={`mt-1 flex items-center gap-2 ${!hack.original_author ? "h-[28px]" : ""}`}>
+            <div className={`mt-1 flex items-center ${!hack.original_author ? "h-[28px]" : ""}`}>
               {!hack.original_author ? (
                 <>
                   <Avatar
@@ -306,7 +306,15 @@ export default async function HackDetail({ params }: HackDetailProps) {
                     url={profile?.avatar_url ?? null}
                     size={28}
                   />
-                  <p className="text-[16px] md:text-[18px] text-foreground/70">{author}</p>
+                  <p className="text-[16px] md:text-[18px] text-foreground/70 ml-2">{author}</p>
+                  {isAdmin && profile?.verified && (
+                    <div className="relative flex items-center group">
+                      <FaCircleCheck className="text-foreground/70 ml-1" size={16} />
+                      <div className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 hidden -translate-x-1/2 whitespace-nowrap rounded bg-black px-2 py-1 text-xs text-white opacity-0 group-hover:block group-hover:opacity-100">
+                        Creator is verified
+                      </div>
+                    </div>
+                  )}
                 </>
               ) : (
                 <p className="text-[16px] md:text-[18px] text-foreground/70">By {author}</p>

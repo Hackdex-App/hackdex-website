@@ -6,6 +6,7 @@ import DashboardClient from "@/components/Dashboard/DashboardClient";
 import ArchiverManagement from "@/components/Dashboard/ArchiverManagement";
 import { getDownloadsSeriesAll } from "./actions";
 import type { HackRow } from "@/components/Dashboard/DashboardClient";
+import { FaCircleCheck } from "react-icons/fa6";
 
 export default async function DashboardPage() {
   const supa = await createClient();
@@ -18,7 +19,8 @@ export default async function DashboardPage() {
     created_by: string;
     creator_username: string | null;
     creator_full_name: string | null;
-    creator_email: string | null
+    creator_email: string | null;
+    creator_verified: boolean;
   })[] = [];
   if (isAdmin) {
     const { data: pendingHacksData } = await supa
@@ -32,14 +34,16 @@ export default async function DashboardPage() {
       const creatorIds = [...new Set(pendingHacksData.map(h => h.created_by as string))];
       const { data: profiles } = await supa
         .from("profiles")
-        .select("id,username,full_name")
+        .select("id,username,full_name,verified")
         .in("id", creatorIds);
 
       const usernameById = new Map<string, string | null>();
       const fullNameById = new Map<string, string | null>();
+      const verifiedById = new Map<string, boolean>();
       (profiles || []).forEach((p) => {
         usernameById.set(p.id, p.username);
         fullNameById.set(p.id, p.full_name);
+        verifiedById.set(p.id, p.verified);
       });
 
       // Fetch creator emails using service client (admin API)
@@ -62,6 +66,7 @@ export default async function DashboardPage() {
         creator_username: usernameById.get(h.created_by as string) || null,
         creator_full_name: fullNameById.get(h.created_by as string) || null,
         creator_email: emailById.get(h.created_by as string) || null,
+        creator_verified: verifiedById.get(h.created_by as string) || false,
       }));
     }
   }
@@ -164,7 +169,17 @@ export default async function DashboardPage() {
                       </div>
                       <div className="col-span-4 flex flex-col min-w-0">
                         {h.creator_full_name && <div className="text-xs text-amber-900/70 dark:text-amber-200/70">{h.creator_full_name}</div>}
-                        <div className="text-amber-900/90 dark:text-amber-200/90">{creator}</div>
+                        <div className="text-amber-900/90 dark:text-amber-200/90">
+                          {creator}
+                          {h.creator_verified && (
+                            <div className="group/verified relative inline-flex items-center group ml-1">
+                              <FaCircleCheck className="text-amber-950/90 dark:text-amber-100/90" size={12} />
+                              <div className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 hidden -translate-x-1/2 whitespace-nowrap rounded bg-black px-2 py-1 text-xs text-white opacity-0 group-hover/verified:block group-hover/verified:opacity-100">
+                                Creator is verified
+                              </div>
+                            </div>
+                          )}
+                        </div>
                         {h.creator_email && (
                           <div className="text-xs text-amber-900/60 dark:text-amber-200/60 truncate mt-0.5">{h.creator_email}</div>
                         )}

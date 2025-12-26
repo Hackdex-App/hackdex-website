@@ -25,11 +25,19 @@ export default async function ApprovePage({ params }: ApprovePageProps) {
   // Fetch hack data
   const { data: hack, error } = await supabase
     .from("hacks")
-    .select("title, approved, approved_at, approved_by")
+    .select("title, approved, approved_at, approved_by, created_by")
     .eq("slug", slug)
     .maybeSingle();
 
   if (error || !hack) return notFound();
+
+  const { data: creatorProfile, error: creatorProfileError } = await supabase
+    .from("profiles")
+    .select("verified, username")
+    .eq("id", hack.created_by as string)
+    .maybeSingle();
+
+  if (creatorProfileError || !creatorProfile) return notFound();
 
   // If already approved, fetch approver's username
   let approverUsername: string | null = null;
@@ -54,9 +62,10 @@ export default async function ApprovePage({ params }: ApprovePageProps) {
     second: "2-digit"
   }) : null;
 
-  async function handleApprove() {
+  async function handleApprove(formData: FormData) {
     "use server";
-    await approveHack(slug);
+    const verified = creatorProfile?.verified ? undefined : formData.get("verified") === "on";
+    await approveHack(slug, verified);
   }
 
   return (
@@ -94,15 +103,28 @@ export default async function ApprovePage({ params }: ApprovePageProps) {
             <p className="text-foreground/75 mb-6">
               By approving this hack, it will become visible to the public.
             </p>
-            <form action={handleApprove} className="flex gap-3 justify-center md:justify-start">
-              <Button type="submit" variant="primary">
-                Approve
-              </Button>
-              <Link href={`/hack/${slug}`}>
-                <Button type="button" variant="secondary">
-                  Cancel
+            <form action={handleApprove} className="flex flex-col gap-3 justify-center md:justify-start">
+              {/* Checkbox to verify the hack creator */}
+              <div className="flex items-center gap-2">
+                {creatorProfile.verified ? (
+                  <p className="text-foreground/75"><span className="font-semibold">@{creatorProfile.username}</span> is already verified.</p>
+                ) : (
+                  <>
+                    <input type="checkbox" name="verified" id="verified" />
+                    <label htmlFor="verified">I have verified that the account that submitted this hack is the original creator.</label>
+                  </>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button type="submit" variant="primary">
+                  Approve
                 </Button>
-              </Link>
+                <Link href={`/hack/${slug}`}>
+                  <Button type="button" variant="secondary">
+                    Cancel
+                  </Button>
+                </Link>
+              </div>
             </form>
           </div>
         )}

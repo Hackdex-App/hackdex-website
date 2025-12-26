@@ -34,6 +34,7 @@ export interface HackMetadata {
   profile: {
     username: string | null;
     avatar_url: string | null;
+    verified: boolean;
   } | null;
   otherHacks: {
     slug: string;
@@ -90,7 +91,7 @@ export async function getHackMetadata(slug: string): Promise<HackMetadata | null
       // Fetch profile
       const { data: profile } = await supabase
         .from("profiles")
-        .select("username,avatar_url")
+        .select("username,avatar_url,verified")
         .eq("id", hack.created_by as string)
         .maybeSingle();
 
@@ -145,6 +146,7 @@ export async function getHackMetadata(slug: string): Promise<HackMetadata | null
         profile: profile ? {
           username: profile.username,
           avatar_url: profile.avatar_url,
+          verified: profile.verified,
         } : null,
         otherHacks,
         patch,
