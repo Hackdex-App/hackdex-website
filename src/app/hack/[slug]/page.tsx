@@ -20,6 +20,7 @@ import { headers } from "next/headers";
 import { MenuItem } from "@headlessui/react";
 import { FaCircleCheck } from "react-icons/fa6";
 import { RiArchiveStackFill } from "react-icons/ri";
+import { TbProgressCheck } from "react-icons/tb";
 import { isInformationalArchiveHack, isDownloadableArchiveHack, isArchiveHack, checkEditPermission } from "@/utils/hack";
 import Avatar from "@/components/Account/Avatar";
 import CollapsibleCard from "@/components/Primitives/CollapsibleCard";
@@ -320,7 +321,13 @@ export default async function HackDetail({ params }: HackDetailProps) {
                 <p className="text-[16px] md:text-[18px] text-foreground/70">By {author}</p>
               )}
             </div>
-            <p className={`${!isArchive ? "mt-4" : "mt-2"} text-sm text-foreground/75`}>{hack.summary}</p>
+            {hack.completion_status && hack.completion_status !== "Complete" && (
+              <p className="w-fit rounded-full bg-[var(--surface-2)] mt-4 px-2 py-0.5 font-bold text-foreground/85 ring-1 ring-[var(--border)]">
+                <TbProgressCheck className="inline-block align-middle mr-1 text-foreground/85" size={18} />
+                {hack.completion_status}
+              </p>
+            )}
+            <p className={`${!isArchive && (!hack.completion_status || hack.completion_status === "Complete") ? "mt-4" : "mt-2"} text-sm text-foreground/75`}>{hack.summary}</p>
           </div>
           <div className="w-full mt-2 flex flex-col justify-between gap-6 md:flex-row md:items-end">
             <div className="flex flex-wrap gap-2">

@@ -12,6 +12,7 @@ import { usePathname } from "next/navigation";
 import { FaRegImages } from "react-icons/fa6";
 import { ImDownload } from "react-icons/im";
 import { RiArchiveStackFill } from "react-icons/ri";
+import type { Database } from "@/types/db";
 
 export interface HackCardAttributes {
   slug: string;
@@ -25,6 +26,7 @@ export interface HackCardAttributes {
   summary?: string;
   description?: string;
   is_archive: boolean;
+  completion_status?: Database["public"]["Enums"]["Completion Status"] | null;
 };
 
 export default function HackCard({ hack, clickable = true, className = "" }: { hack: HackCardAttributes; clickable?: boolean; className?: string }) {
@@ -63,7 +65,7 @@ export default function HackCard({ hack, clickable = true, className = "" }: { h
     setIsClicked(false);
   }, []);
 
-  const cardClass = `rounded-[12px] overflow-hidden h-full ${
+  const cardClass = `rounded-[12px] overflow-hidden h-full flex flex-col ${
     clickable ? `transition-transform duration-300 hover:-translate-y-0.5 hover:shadow-xl ${isClicked ? "anim-float" : ""}` : ""
   } ring-1 ${ready ? "ring-emerald-400/50 bg-emerald-500/10" : "card ring-[var(--border)]"}`;
   const gradientBgClass = `bg-gradient-to-b ${ready ? 'from-emerald-300/5 to-emerald-400/30 dark:from-emerald-950/10 dark:to-emerald-600/40' : 'from-black/30 to-black/10 dark:from-black/80 dark:to-black/40'}`;
@@ -181,7 +183,7 @@ export default function HackCard({ hack, clickable = true, className = "" }: { h
             </div>
           )}
         </div>
-        <div className="p-4">
+        <div className="p-4 flex flex-col flex-1 min-h-0">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 w-full">
               <div className={`flex items-center gap-2 ${isArchive ? "justify-between" : "justify-start"}`}>
@@ -207,7 +209,10 @@ export default function HackCard({ hack, clickable = true, className = "" }: { h
               return text.length > 120 ? text.slice(0, 120).trimEnd() + "…" : text;
             })()}
           </p>
-          <div className="mt-3 text-xs text-foreground/60">Base: {baseName ?? "Unknown"}</div>
+          <div className="flex justify-between items-end mt-auto pt-3 text-xs text-foreground/60">
+            <p>Base: {baseName ?? "Unknown"}</p>
+            {hack.completion_status && hack.completion_status !== "Complete" && <p className="font-bold text-sm">{hack.completion_status}</p>}
+          </div>
         </div>
       </div>
   );

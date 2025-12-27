@@ -102,6 +102,7 @@ export default function HackSubmitForm({
   const [platform, setPlatform] = React.useState<"GB" | "GBC" | "GBA" | "NDS" | "">(() => (initialDraftRef.current?.platform as any) || "");
   const [version, setVersion] = React.useState(() => initialDraftRef.current?.version || "");
   const [language, setLanguage] = React.useState(() => initialDraftRef.current?.language || "");
+  const [completionStatus, setCompletionStatus] = React.useState<"Complete" | "Demo" | "Alpha" | "Beta" | "">(() => (initialDraftRef.current?.completionStatus as any) || "");
   const [boxArt, setBoxArt] = React.useState(() => initialDraftRef.current?.boxArt || "");
   const [discord, setDiscord] = React.useState(() => initialDraftRef.current?.discord || "");
   const [twitter, setTwitter] = React.useState(() => initialDraftRef.current?.twitter || "");
@@ -285,7 +286,7 @@ export default function HackSubmitForm({
           const data = JSON.parse(raw);
           if (data && typeof data === "object") {
             const isEmpty =
-              !title && !summary && !description && !baseRom && !platform && !version && !language && !boxArt && !discord && !twitter && !pokecommunity && !github && (!tags || tags.length === 0) && !originalAuthor;
+              !title && !summary && !description && !baseRom && !platform && !version && !language && !completionStatus && !boxArt && !discord && !twitter && !pokecommunity && !github && (!tags || tags.length === 0) && !originalAuthor;
             if (isEmpty) {
               let applied = false;
               if (typeof data.title === "string") setTitle(data.title);
@@ -302,6 +303,8 @@ export default function HackSubmitForm({
               if (typeof data.version === "string") applied = applied || !!data.version;
               if (typeof data.language === "string") setLanguage(data.language);
               if (typeof data.language === "string") applied = applied || !!data.language;
+              if (["Complete","Demo","Alpha","Beta",""].includes(data.completionStatus)) setCompletionStatus(data.completionStatus);
+              if (["Complete","Demo","Alpha","Beta",""].includes(data.completionStatus)) applied = applied || !!data.completionStatus;
               if (typeof data.boxArt === "string") setBoxArt(data.boxArt);
               if (typeof data.boxArt === "string") applied = applied || !!data.boxArt;
               if (typeof data.discord === "string") setDiscord(data.discord);
@@ -342,7 +345,7 @@ export default function HackSubmitForm({
     if (!d || typeof d !== "object") return;
     // Don't count originalAuthor if customCreator is provided
     const hasAny = Boolean(
-      d.title || d.summary || d.description || d.baseRom || d.platform || d.version || d.language || d.boxArt || d.discord || d.twitter || d.pokecommunity || d.github || (Array.isArray(d.tags) && d.tags.length > 0) || (!customCreator && d.originalAuthor)
+      d.title || d.summary || d.description || d.baseRom || d.platform || d.version || d.language || d.completionStatus || d.boxArt || d.discord || d.twitter || d.pokecommunity || d.github || (Array.isArray(d.tags) && d.tags.length > 0) || (!customCreator && d.originalAuthor)
     );
     if (hasAny) { hydratedFromDraftRef.current = true; setRestoredDraft(true); }
   }, [dummy, draftKey, customCreator]);
@@ -359,6 +362,7 @@ export default function HackSubmitForm({
           platform,
           version,
           language,
+          completionStatus,
           boxArt,
           discord,
           twitter,
@@ -391,6 +395,7 @@ export default function HackSubmitForm({
     platform,
     version,
     language,
+    completionStatus,
     boxArt,
     discord,
     twitter,
@@ -413,7 +418,7 @@ export default function HackSubmitForm({
 
   const allSocialValid = [discord, twitter, pokecommunity, github].every((s) => !s || urlLike(s));
 
-  const step1Valid = !!title.trim() && !!platform && !!baseRom.trim() && !!language.trim() && (isArchive ? !!originalAuthor.trim() : true);
+  const step1Valid = !!title.trim() && !!platform && !!baseRom.trim() && !!language.trim() && !!completionStatus.trim() && (isArchive ? !!originalAuthor.trim() : true);
   const step2Valid = (isArchive ? true : !!version.trim()) && !!summary.trim() && !summaryTooLong && !!description.trim() && tags.length > 0;
   const step3Valid = (newCoverFiles.length > 0) && !overLimit && coverErrors.length === 0 && (!boxArt.trim() || urlLike(boxArt)) && allSocialValid;
   const isValid = step1Valid && step2Valid && step3Valid && (isArchive ? true : !!patchFile);
@@ -428,6 +433,7 @@ export default function HackSubmitForm({
       fd.set('description', description);
       fd.set('base_rom', baseRom);
       fd.set('language', language);
+      fd.set('completion_status', completionStatus);
       fd.set('version', version);
       if (boxArt) fd.set('box_art', boxArt);
       if (discord) fd.set('discord', discord);
@@ -692,6 +698,7 @@ export default function HackSubmitForm({
                   setPlatform("");
                   setVersion("");
                   setLanguage("");
+                  setCompletionStatus("");
                   setBoxArt("");
                   setDiscord("");
                   setTwitter("");
@@ -794,6 +801,23 @@ export default function HackSubmitForm({
                     />
                   ) : (
                     <div role="textbox" aria-disabled className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none">{language}</div>
+                  )}
+                </div>
+
+                <div className="grid gap-2">
+                  <label className="text-sm text-foreground/80">Completion Status <span className="text-red-500">*</span></label>
+                  {!isDummy ? (
+                    <Select
+                      value={completionStatus}
+                      onChange={(value) => setCompletionStatus(value as any)}
+                      placeholder="Select completion status"
+                      options={['Complete','Demo','Alpha','Beta'].map(s => ({
+                        value: s,
+                        label: s,
+                      }))}
+                    />
+                  ) : (
+                    <div role="textbox" aria-disabled className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none">{completionStatus || "Select completion status"}</div>
                   )}
                 </div>
 

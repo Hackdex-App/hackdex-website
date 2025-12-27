@@ -16,6 +16,7 @@ import {
   MdChevronLeft,
   MdChevronRight,
 } from "react-icons/md";
+import { TbProgressCheck } from "react-icons/tb";
 import { IoEllipsisHorizontal } from "react-icons/io5";
 import { BsSdCardFill } from "react-icons/bs";
 import { CATEGORY_ICONS } from "@/components/Icons/tagCategories";
@@ -56,6 +57,7 @@ export default function DiscoverBrowser({ initialSort = "trending" }: DiscoverBr
   const [query, setQuery] = React.useState("");
   const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
   const [selectedBaseRoms, setSelectedBaseRoms] = React.useState<string[]>([]);
+  const [selectedCompletionStatuses, setSelectedCompletionStatuses] = React.useState<string[]>([]);
   const [sort, setSort] = React.useState<DiscoverSortOption>(initialSort ?? "trending");
   const [hacks, setHacks] = React.useState<HackCardAttributes[]>([]);
   const [tagGroups, setTagGroups] = React.useState<Record<string, string[]>>({});
@@ -83,7 +85,7 @@ export default function DiscoverBrowser({ initialSort = "trending" }: DiscoverBr
   React.useEffect(() => {
     // Reset to first page when filters or sort change
     setCurrentPage(1);
-  }, [query, selectedTags, selectedBaseRoms, onlyReady, sort]);
+  }, [query, selectedTags, selectedBaseRoms, selectedCompletionStatuses, onlyReady, sort]);
 
   React.useEffect(() => {
     const run = async () => {
@@ -125,12 +127,23 @@ export default function DiscoverBrowser({ initialSort = "trending" }: DiscoverBr
     if (selectedBaseRoms.length > 0) {
       out = out.filter((h) => h.baseRomId && selectedBaseRoms.includes(h.baseRomId));
     }
+    // OR filter across completion statuses: hack's completion_status must be in selectedCompletionStatuses
+    // If "Complete" is selected, also include hacks with null completion_status
+    if (selectedCompletionStatuses.length > 0) {
+      out = out.filter((h) => {
+        if (!h.completion_status) {
+          // Include null completion_status if "Complete" is selected
+          return selectedCompletionStatuses.includes("Complete");
+        }
+        return selectedCompletionStatuses.includes(h.completion_status);
+      });
+    }
     // Filter to hacks whose base ROM is ready (linked with permission or cached)
     if (onlyReady) {
       out = out.filter((h) => !h.is_archive && h.baseRomId && readyBaseRomIds.has(h.baseRomId));
     }
     return out;
-  }, [hacks, query, selectedTags, selectedBaseRoms, onlyReady, readyBaseRomIds]);
+  }, [hacks, query, selectedTags, selectedBaseRoms, selectedCompletionStatuses, onlyReady, readyBaseRomIds]);
 
   const totalPages = React.useMemo(
     () => Math.max(1, Math.ceil(filtered.length / HACKS_PER_PAGE)),
@@ -308,6 +321,13 @@ export default function DiscoverBrowser({ initialSort = "trending" }: DiscoverBr
             if (vals.length > 0) setOnlyReady(false);
           }}
         />
+        <MultiSelectDropdown
+          icon={TbProgressCheck}
+          label="Completion"
+          options={['Complete','Demo','Alpha','Beta'].map((s) => ({ id: s, name: s }))}
+          values={selectedCompletionStatuses}
+          onChange={setSelectedCompletionStatuses}
+        />
         {loadingTags ? (
           <>
             {[
@@ -353,11 +373,12 @@ export default function DiscoverBrowser({ initialSort = "trending" }: DiscoverBr
             )}
           </>
         )}
-        {(selectedTags.length > 0 || selectedBaseRoms.length > 0 || onlyReady) && (
+        {(selectedTags.length > 0 || selectedBaseRoms.length > 0 || selectedCompletionStatuses.length > 0 || onlyReady) && (
           <button
             onClick={() => {
               clearTags();
               clearBaseRoms();
+              setSelectedCompletionStatuses([]);
               setOnlyReady(false);
             }}
             className="ml-2 rounded-full px-3 py-1 text-sm ring-1 ring-inset transition-colors bg-[var(--surface-2)] text-foreground/80 ring-[var(--border)] hover:bg-black/5 dark:hover:bg-white/10"
@@ -384,7 +405,7 @@ export default function DiscoverBrowser({ initialSort = "trending" }: DiscoverBr
             ) : (
               <>No results</>
             )}
-            {(selectedTags.length > 0 || selectedBaseRoms.length > 0) && (
+            {(selectedTags.length > 0 || selectedBaseRoms.length > 0 || selectedCompletionStatuses.length > 0) && (
               <>
                 {" "}with the selected filters
               </>
@@ -399,11 +420,12 @@ export default function DiscoverBrowser({ initialSort = "trending" }: DiscoverBr
                 Clear search
               </button>
             )}
-            {(selectedTags.length > 0 || selectedBaseRoms.length > 0 || onlyReady) && (
+            {(selectedTags.length > 0 || selectedBaseRoms.length > 0 || selectedCompletionStatuses.length > 0 || onlyReady) && (
               <button
                 onClick={() => {
                   clearTags();
                   clearBaseRoms();
+                  setSelectedCompletionStatuses([]);
                   setOnlyReady(false);
                 }}
                 className="rounded-full px-3 py-1 text-sm ring-1 ring-inset transition-colors bg-[var(--surface-2)] text-foreground/80 ring-[var(--border)] hover:bg-black/5 dark:hover:bg-white/10"

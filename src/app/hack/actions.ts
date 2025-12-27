@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient, createServiceClient } from "@/utils/supabase/server";
-import type { TablesInsert } from "@/types/db";
+import type { TablesInsert, Database } from "@/types/db";
 import { getMinioClient, PATCHES_BUCKET, COVERS_BUCKET } from "@/utils/minio/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
@@ -16,6 +16,7 @@ export async function updateHack(args: {
   description?: string;
   base_rom?: string;
   language?: string;
+  completion_status?: Database["public"]["Enums"]["Completion Status"] | null;
   version?: string;
   box_art?: string | null;
   social_links?: {
@@ -51,6 +52,12 @@ export async function updateHack(args: {
   if (args.description !== undefined) updatePayload.description = args.description;
   if (args.base_rom !== undefined) updatePayload.base_rom = args.base_rom;
   if (args.language !== undefined) updatePayload.language = args.language;
+  if (args.completion_status !== undefined) {
+    if (args.completion_status === null) {
+      return { ok: false, error: "Completion status is required" } as const;
+    }
+    updatePayload.completion_status = args.completion_status;
+  }
   if (args.version !== undefined) updatePayload.version = args.version;
   if (args.box_art !== undefined) updatePayload.box_art = args.box_art;
   if (args.social_links !== undefined) updatePayload.social_links = args.social_links;

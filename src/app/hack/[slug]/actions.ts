@@ -9,6 +9,7 @@ import { validateEmail } from "@/utils/auth";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { unstable_cache as cache } from "next/cache";
 import { sortOrderedTags, getCoverUrls } from "@/utils/format";
+import { Database } from "@/types/db";
 
 export interface HackMetadata {
   hack: {
@@ -28,6 +29,7 @@ export interface HackMetadata {
     permission_from: string | null;
     language: string | null;
     is_archive: boolean;
+    completion_status: Database["public"]["Enums"]["Completion Status"] | null;
   };
   images: string[];
   tags: string[];
@@ -54,13 +56,13 @@ export async function getHackMetadata(slug: string): Promise<HackMetadata | null
   const runner = cache(
     async () => {
       const supabase = await createServiceClient();
-      
+
       const { data: hack, error } = await supabase
         .from("hacks")
-        .select("slug,title,summary,description,base_rom,created_at,updated_at,current_patch,box_art,social_links,created_by,approved,original_author,permission_from,language,is_archive")
+        .select("slug,title,summary,description,base_rom,created_at,updated_at,current_patch,box_art,social_links,created_by,approved,original_author,permission_from,language,is_archive,completion_status")
         .eq("slug", slug)
         .maybeSingle();
-      
+
       if (error || !hack) return null;
 
       // Fetch covers

@@ -34,7 +34,7 @@ export async function getDiscoverData(sort: DiscoverSortOption): Promise<Discove
         // Build base query for hacks (public/anon view: only approved hacks)
         let query = supabase
           .from("hacks")
-          .select("slug,title,summary,description,base_rom,downloads,created_by,updated_at,current_patch,original_author,approved_at,is_archive")
+          .select("slug,title,summary,description,base_rom,downloads,created_by,updated_at,current_patch,original_author,approved_at,is_archive,completion_status")
           .eq("approved", true);
 
       // Apply sorting based on sort type
@@ -256,6 +256,7 @@ export async function getDiscoverData(sort: DiscoverSortOption): Promise<Discove
         summary: r.summary,
         description: r.description,
         is_archive: r.is_archive,
+        completion_status: r.completion_status,
       }));
 
       // Sort by current patch published_at for "updated" sort

@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
-import type { TablesInsert } from "@/types/db";
+import type { TablesInsert, Database } from "@/types/db";
 import { getMinioClient, PATCHES_BUCKET } from "@/utils/minio/server";
 import { sendDiscordMessageEmbed } from "@/utils/discord";
 import { APIEmbed } from "discord-api-types/v10";
@@ -40,6 +40,7 @@ export async function prepareSubmission(formData: FormData) {
   const description = (formData.get("description") as string)?.trim();
   const base_rom = (formData.get("base_rom") as string)?.trim();
   const language = (formData.get("language") as string)?.trim();
+  const completion_status = (formData.get("completion_status") as string)?.trim() || null;
   const version = (formData.get("version") as string)?.trim();
   const box_art = (formData.get("box_art") as string)?.trim() || null;
   const discord = (formData.get("discord") as string)?.trim();
@@ -52,7 +53,7 @@ export async function prepareSubmission(formData: FormData) {
   const is_archive = formData.get("is_archive") === "true";
 
   // For archives, version is not required; for regular hacks, it is
-  if (!title || !summary || !description || !base_rom || !language || (!is_archive && !version)) {
+  if (!title || !summary || !description || !base_rom || !language || !completion_status || (!is_archive && !version)) {
     return { ok: false, error: "Missing required fields" } as const;
   }
 
@@ -81,6 +82,7 @@ export async function prepareSubmission(formData: FormData) {
     description,
     base_rom,
     language,
+    completion_status: completion_status as Database["public"]["Enums"]["Completion Status"],
     version: version || "Archive",
     created_by: user.id,
     downloads: 0,

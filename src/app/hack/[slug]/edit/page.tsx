@@ -20,7 +20,7 @@ export default async function EditHackPage({ params }: EditPageProps) {
 
   const { data: hack } = await supabase
     .from("hacks")
-    .select("slug,title,summary,description,base_rom,language,box_art,social_links,created_by,current_patch,original_author,permission_from,is_archive")
+    .select("slug,title,summary,description,base_rom,language,completion_status,box_art,social_links,created_by,current_patch,original_author,permission_from,is_archive")
     .eq("slug", slug)
     .maybeSingle();
   if (!hack) return notFound();
@@ -74,6 +74,7 @@ export default async function EditHackPage({ params }: EditPageProps) {
     description: hack.description,
     base_rom: hack.base_rom,
     language: hack.language,
+    completion_status: hack.completion_status,
     version: isArchive ? "Archive" : (version || "Pre-release"),
     box_art: hack.box_art,
     social_links: (hack.social_links as unknown) as {

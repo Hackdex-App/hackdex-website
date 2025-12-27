@@ -11,6 +11,7 @@ import { createClient } from "@/utils/supabase/client";
 import { updateHack, saveHackCovers, presignCoverUpload } from "@/app/hack/actions";
 import SortableCovers from "@/components/Hack/SortableCovers";
 import Select from "@/components/Primitives/Select";
+import type { Database } from "@/types/db";
 
 interface HackEditFormProps {
   slug: string;
@@ -20,6 +21,7 @@ interface HackEditFormProps {
     description: string;
     base_rom: string;
     language: string;
+    completion_status: Database["public"]["Enums"]["Completion Status"] | null;
     version: string;
     box_art: string | null;
     social_links: {
@@ -43,6 +45,7 @@ export default function HackEditForm({ slug, initial }: HackEditFormProps) {
   const [showMdPreview, setShowMdPreview] = React.useState(false);
   const [baseRom, setBaseRom] = React.useState(initial.base_rom);
   const [language, setLanguage] = React.useState(initial.language);
+  const [completionStatus, setCompletionStatus] = React.useState<Database["public"]["Enums"]["Completion Status"] | null>(initial.completion_status);
   const [version, setVersion] = React.useState(initial.version);
   const [boxArt, setBoxArt] = React.useState(initial.box_art || "");
   const [discord, setDiscord] = React.useState(initial.social_links?.discord || "");
@@ -57,6 +60,7 @@ export default function HackEditForm({ slug, initial }: HackEditFormProps) {
     summary: initial.summary,
     description: initial.description,
     language: initial.language,
+    completionStatus: initial.completion_status,
     boxArt: initial.box_art || "",
     tags: initial.tags || [],
     discord: initial.social_links?.discord || "",
@@ -116,12 +120,13 @@ export default function HackEditForm({ slug, initial }: HackEditFormProps) {
   const summaryChanged = summary !== baseline.summary;
   const descriptionChanged = description !== baseline.description;
   const languageChanged = language !== baseline.language;
+  const completionStatusChanged = completionStatus !== baseline.completionStatus;
   const boxArtChanged = boxArt !== baseline.boxArt;
   const discordChanged = discord !== baseline.discord;
   const twitterChanged = twitter !== baseline.twitter;
   const pokeChanged = pokecommunity !== baseline.pokecommunity;
   const githubChanged = github !== baseline.github;
-  const contentChanged = titleChanged || summaryChanged || descriptionChanged || languageChanged || boxArtChanged || tagsChanged || discordChanged || twitterChanged || pokeChanged || githubChanged;
+  const contentChanged = titleChanged || summaryChanged || descriptionChanged || languageChanged || completionStatusChanged || boxArtChanged || tagsChanged || discordChanged || twitterChanged || pokeChanged || githubChanged;
 
   const newItemsCount = coverItems.filter((i) => i.type === "new").length;
   const currentExistingKeys = coverItems.filter((i): i is { type: "existing"; key: string; url: string } => i.type === "existing").map((i) => i.key);
@@ -169,6 +174,7 @@ export default function HackEditForm({ slug, initial }: HackEditFormProps) {
       if (summaryChanged) updateArgs.summary = summary.trim();
       if (descriptionChanged) updateArgs.description = description.trim();
       if (languageChanged) updateArgs.language = language;
+      if (completionStatusChanged) updateArgs.completion_status = completionStatus;
       if (boxArtChanged) updateArgs.box_art = boxArt ? boxArt.trim() : null;
       if (tagsChanged) updateArgs.tags = tags.slice();
       if (discordChanged || twitterChanged || pokeChanged || githubChanged) updateArgs.social_links = social; // may be null to clear
@@ -181,6 +187,7 @@ export default function HackEditForm({ slug, initial }: HackEditFormProps) {
         summary,
         description,
         language,
+        completionStatus,
         boxArt,
         tags: tags.slice(),
         discord,
@@ -229,7 +236,7 @@ export default function HackEditForm({ slug, initial }: HackEditFormProps) {
 
   const summaryLimit = 120;
   const summaryTooLong = summary.length > summaryLimit;
-  const contentHasErrors = summaryTooLong || (!!boxArt && !urlLike(boxArt));
+  const contentHasErrors = summaryTooLong || (!!boxArt && !urlLike(boxArt)) || !completionStatus;
 
   return (
     <div className="mt-6 flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -246,6 +253,7 @@ export default function HackEditForm({ slug, initial }: HackEditFormProps) {
                     setSummary(baseline.summary);
                     setDescription(baseline.description);
                     setLanguage(baseline.language);
+                    setCompletionStatus(baseline.completionStatus);
                     setBoxArt(baseline.boxArt);
                     setTags(baseline.tags.slice());
                     setDiscord(baseline.discord);
@@ -263,6 +271,21 @@ export default function HackEditForm({ slug, initial }: HackEditFormProps) {
               </button>
             </div>
           </div>
+          {!completionStatus && (
+            <div className="mt-4 rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-100">
+              <div className="flex items-start gap-2">
+                <div className="flex items-center justify-center w-5 h-5 shrink-0 mt-0.5">
+                  <div className="inline-block h-2 w-2 rounded-full bg-amber-400" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <p className="font-semibold">Missing Completion Status</p>
+                  <p className="text-xs text-amber-800 dark:text-amber-200">
+                    This is a new required field. Please select a completion status in the Details section to save your changes.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           <div className="mt-4 grid gap-4">
             <div className="grid gap-2">
               <div className="flex items-center justify-between">
@@ -423,6 +446,35 @@ export default function HackEditForm({ slug, initial }: HackEditFormProps) {
                   label: l,
                 }))}
               />
+            </div>
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between">
+                <label className={`text-sm ${!completionStatus ? 'text-red-500 font-semibold' : 'text-foreground/80'}`}>
+                  Completion Status <span className="text-red-500">*</span>
+                  {!completionStatus && <span className="ml-2 text-xs font-normal text-red-500/80">(Required)</span>}
+                </label>
+                {completionStatusChanged && (
+                  <div className="ml-auto flex items-center gap-2 text-[11px] text-foreground/70">
+                    <span>Modified</span>
+                    <button type="button" onClick={() => setCompletionStatus(baseline.completionStatus)} className="inline-flex items-center underline underline-offset-2 text-[11px] cursor-pointer">Revert</button>
+                  </div>
+                )}
+              </div>
+              <Select
+                value={completionStatus || ""}
+                onChange={(value) => setCompletionStatus(value as Database["public"]["Enums"]["Completion Status"] | null)}
+                placeholder="Select completion status"
+                className={!completionStatus ? 'ring-2 ring-red-500/60 bg-red-500/10 dark:ring-red-400/60 dark:bg-red-950/20' : completionStatusChanged ? 'ring-[var(--ring)]' : ''}
+                options={['Complete','Demo','Alpha','Beta'].map(s => ({
+                  value: s,
+                  label: s,
+                }))}
+              />
+              {!completionStatus && (
+                <p className="text-xs text-red-500/80 dark:text-red-400/80">
+                  This is a new required field. Please select a completion status to save your changes.
+                </p>
+              )}
             </div>
             <div className="grid gap-2">
               <label className="text-sm text-foreground/80">Current version</label>
