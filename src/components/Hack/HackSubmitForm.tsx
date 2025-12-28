@@ -10,9 +10,7 @@ import { presignCoverUpload } from "@/app/hack/actions";
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeSlug from "rehype-slug";
+import Markdown from "@/components/Markdown/Markdown";
 import { RxDragHandleDots2 } from "react-icons/rx";
 import { FaDiscord, FaTwitter, FaGithub } from "react-icons/fa6";
 import PokeCommunityIcon from "@/components/Icons/PokeCommunityIcon";
@@ -900,7 +898,7 @@ export default function HackSubmitForm({
                   </div>
                   {isDummy ? (
                     <div className="prose max-w-none h-36 rounded-md bg-[var(--surface-2)] px-3 py-2 ring-1 ring-inset ring-[var(--border)] text-foreground/60 select-none">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSlug]}>{description || "Write a longer markdown description here."}</ReactMarkdown>
+                      <Markdown headingLevelOffset={1}>{description || "Write a longer markdown description here."}</Markdown>
                     </div>
                   ) : !showMdPreview ? (
                     <textarea
@@ -912,7 +910,7 @@ export default function HackSubmitForm({
                     />
                   ) : (
                     <div className={`prose max-w-none rounded-md bg-[var(--surface-2)] min-h-[14rem] px-3 py-2 ring-1 ring-inset ring-[var(--border)] ${description ? "" : "text-foreground/60 text-sm"}`}>
-                      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSlug]}>{description || "Nothing to preview yet."}</ReactMarkdown>
+                      <Markdown headingLevelOffset={1}>{description || "Nothing to preview yet."}</Markdown>
                     </div>
                   )}
                 </div>

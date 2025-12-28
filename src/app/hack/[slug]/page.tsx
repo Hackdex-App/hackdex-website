@@ -4,9 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import Gallery from "@/components/Hack/Gallery";
 import HackActions from "@/components/Hack/HackActions";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeSlug from "rehype-slug";
+import Markdown from "@/components/Markdown/Markdown";
 import Image from "next/image";
 import { FaDiscord, FaTwitter, FaGithub, FaTriangleExclamation, FaArrowUpRightFromSquare } from "react-icons/fa6";
 import PokeCommunityIcon from "@/components/Icons/PokeCommunityIcon";
@@ -376,20 +374,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
             >
               {patchChangelog && patchChangelog.trim().length > 0 ? (
                 <div className="prose prose-sm max-w-none text-foreground/80">
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    rehypePlugins={[rehypeSlug]}
-                    components={{
-                      h1: 'h2',
-                      h2: 'h3',
-                      h3: 'h4',
-                      h4: 'h5',
-                      h5: 'h6',
-                      h6: 'h6',
-                    }}
-                  >
-                    {patchChangelog}
-                  </ReactMarkdown>
+                  <Markdown headingLevelOffset={1}>{patchChangelog}</Markdown>
                 </div>
               ) : (
                 <p className="italic text-foreground/60">No changelog provided</p>
@@ -400,20 +385,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
           <div className="card-simple p-5">
             <h2 className="text-2xl font-semibold tracking-tight">About this hack</h2>
             <div className="prose prose-sm mt-3 max-w-none text-foreground/80">
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                rehypePlugins={[rehypeSlug]}
-                components={{
-                  h1: 'h2',
-                  h2: 'h3',
-                  h3: 'h4',
-                  h4: 'h5',
-                  h5: 'h6',
-                  h6: 'h6',
-                }}
-              >
-                {hack.description}
-              </ReactMarkdown>
+              <Markdown headingLevelOffset={1}>{hack.description}</Markdown>
             </div>
           </div>
         </div>

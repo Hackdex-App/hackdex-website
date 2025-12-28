@@ -1,8 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeSlug from "rehype-slug";
+import Markdown from "@/components/Markdown/Markdown";
 import Link from "next/link";
 import { FaChevronLeft } from "react-icons/fa6";
 
@@ -79,20 +77,7 @@ export default async function ChangelogPage({ params }: ChangelogPageProps) {
                 </div>
               </div>
               <div className="prose prose-sm max-w-none text-foreground/80">
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[rehypeSlug]}
-                  components={{
-                    h1: 'h2',
-                    h2: 'h3',
-                    h3: 'h4',
-                    h4: 'h5',
-                    h5: 'h6',
-                    h6: 'h6',
-                  }}
-                >
-                  {patch.changelog || ""}
-                </ReactMarkdown>
+                <Markdown headingLevelOffset={1}>{patch.changelog || ""}</Markdown>
               </div>
             </div>
           ))}

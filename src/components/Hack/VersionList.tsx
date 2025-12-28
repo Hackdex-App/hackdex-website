@@ -1,9 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeSlug from "rehype-slug";
+import Markdown from "@/components/Markdown/Markdown";
 import { FaChevronDown, FaChevronUp, FaStar, FaDownload, FaTrash, FaRotateLeft, FaUpload, FaCheck, FaPlus } from "react-icons/fa6";
 import { FiEdit2, FiEdit, FiX } from "react-icons/fi";
 import VersionActions from "@/components/Hack/VersionActions";
@@ -262,20 +260,7 @@ export default function VersionList({ patches, currentPatchId, canEdit, hackSlug
                         />
                       ) : (
                         <div className="prose prose-sm max-w-none text-foreground/80">
-                          <ReactMarkdown
-                            remarkPlugins={[remarkGfm]}
-                            rehypePlugins={[rehypeSlug]}
-                            components={{
-                              h1: 'h2',
-                              h2: 'h3',
-                              h3: 'h4',
-                              h4: 'h5',
-                              h5: 'h6',
-                              h6: 'h6',
-                            }}
-                          >
-                            {patch.changelog || ""}
-                          </ReactMarkdown>
+                          <Markdown headingLevelOffset={1}>{patch.changelog || ""}</Markdown>
                         </div>
                       )}
                     </div>

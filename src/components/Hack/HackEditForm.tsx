@@ -1,9 +1,7 @@
 "use client";
 
 import React from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeSlug from "rehype-slug";
+import Markdown from "@/components/Markdown/Markdown";
 import TagSelector from "@/components/Submit/TagSelector";
 import { baseRoms } from "@/data/baseRoms";
 import Image from "next/image";
@@ -346,7 +344,7 @@ export default function HackEditForm({ slug, initial }: HackEditFormProps) {
                 />
               ) : (
                 <div className={`prose max-w-none rounded-md min-h-[14rem] px-3 py-2 ring-1 ring-inset ${descriptionChanged ? 'ring-[var(--ring)] bg-[var(--surface-2)]' : 'bg-[var(--surface-2)] ring-[var(--border)]'} ${description ? "" : "text-foreground/60 text-sm"}`}>
-                  <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSlug]}>{description || "Nothing to preview yet."}</ReactMarkdown>
+                  <Markdown headingLevelOffset={1}>{description || "Nothing to preview yet."}</Markdown>
                 </div>
               )}
             </div>
