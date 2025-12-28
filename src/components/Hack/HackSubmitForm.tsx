@@ -774,6 +774,7 @@ export default function HackSubmitForm({
                   <label className="text-sm text-foreground/80">Base ROM <span className="text-red-500">*</span></label>
                   {!isDummy ? (
                     <Select
+                      enableFilter
                       value={baseRom}
                       onChange={setBaseRom}
                       disabled={!platform}
