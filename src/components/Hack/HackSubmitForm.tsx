@@ -20,7 +20,7 @@ import { useAuthContext } from "@/contexts/AuthContext";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
 import TagSelector from "@/components/Submit/TagSelector";
 import BinFile from "rom-patcher-js/rom-patcher-js/modules/BinFile.js";
-import Select from "@/components/Primitives/Select";
+import Select, { SelectOption, SelectDivider } from "@/components/Primitives/Select";
 import BPS from "rom-patcher-js/rom-patcher-js/modules/RomPatcher.format.bps.js";
 import { sha1Hex } from "@/utils/hash";
 import { platformAccept, setDraftCovers, getDraftCovers, deleteDraftCovers } from "@/utils/idb";
@@ -644,6 +644,25 @@ export default function HackSubmitForm({
 
   const hasBaseRom = !!baseRom.trim();
 
+  // Before each group of base ROMs of the same category, add a divider with the category name
+  const baseRomOptions = React.useMemo<(SelectOption | SelectDivider)[]>(() => {
+    let currentCategory = "";
+    const options: (SelectOption | SelectDivider)[] = [];
+    for (const rom of baseRoms) {
+      if (!platform || rom.platform !== platform) continue;
+      if (rom.category && rom.category !== currentCategory) {
+        currentCategory = rom.category;
+        options.push({ type: "divider", label: currentCategory });
+      }
+      options.push({
+        value: rom.id,
+        label: `${rom.name.replace('Pokémon ', '')} (${rom.region})`,
+        description: rom.sha1,
+      });
+    }
+    return options;
+  }, [platform]);
+
   return (
     <div className="flex flex-col gap-8 lg:flex-row w-full">
       <div className="flex-1">
@@ -779,10 +798,7 @@ export default function HackSubmitForm({
                       onChange={setBaseRom}
                       disabled={!platform}
                       placeholder={platform ? "Select base rom" : "Select platform first"}
-                      options={baseRoms.filter(r => !platform || r.platform === platform).map(({ id, name, region }) => ({
-                        value: id,
-                        label: `${name.replace('Pokémon ', '')} (${region})`,
-                      }))}
+                      options={baseRomOptions}
                     />
                   ) : (
                     <div className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none">{baseRoms.find(r=>r.id===baseRom)?.name || baseRom}</div>
