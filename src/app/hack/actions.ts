@@ -320,7 +320,7 @@ export async function approveHack(slug: string, verified?: boolean) {
   }
 
   // Approve the hack
-  const { error: updateErr } = await serviceClient
+  const { error: updateErr } = await supabase
     .from("hacks")
     .update({
       approved: true,
