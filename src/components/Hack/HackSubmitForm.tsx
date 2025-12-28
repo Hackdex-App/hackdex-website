@@ -479,7 +479,7 @@ export default function HackSubmitForm({
         if (patchFile) {
           console.log('[HackSubmitForm] Uploading patch...');
           await fetch(presigned.presignedUrl, { method: 'PUT', body: patchFile, headers: { 'Content-Type': 'application/octet-stream' } });
-          const finalized = await confirmPatchUpload({ slug: prepared.slug, objectKey: presigned.objectKey!, version, firstUpload: true });
+          const finalized = await confirmPatchUpload({ slug: prepared.slug, objectKey: presigned.objectKey!, version, firstUpload: true, publishAutomatically: true });
           if (!finalized.ok) throw new Error(finalized.error || 'Failed to finalize');
           try {
             if (draftKey) {
