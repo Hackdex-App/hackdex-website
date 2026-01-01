@@ -22,6 +22,7 @@ import { TbProgressCheck } from "react-icons/tb";
 import { isInformationalArchiveHack, isDownloadableArchiveHack, isArchiveHack, checkEditPermission } from "@/utils/hack";
 import Avatar from "@/components/Account/Avatar";
 import CollapsibleCard from "@/components/Primitives/CollapsibleCard";
+import CollapsibleTags from "@/components/Hack/CollapsibleTags";
 import { getHackMetadata, getHackDownloads } from "@/app/hack/[slug]/actions";
 
 interface HackDetailProps {
@@ -327,14 +328,8 @@ export default async function HackDetail({ params }: HackDetailProps) {
             )}
             <p className={`${!isArchive && (!hack.completion_status || hack.completion_status === "Complete") ? "mt-4" : "mt-2"} text-sm text-foreground/75`}>{hack.summary}</p>
           </div>
-          <div className="w-full mt-2 flex flex-col justify-between gap-6 md:flex-row md:items-end">
-            <div className="flex flex-wrap gap-2">
-              {tags.map((t) => (
-                <span key={t} className="rounded-full bg-[var(--surface-2)] px-2.5 py-1 text-xs ring-1 ring-[var(--border)]">
-                  {t}
-                </span>
-              ))}
-            </div>
+          <div className="w-full mt-2 flex flex-col justify-between gap-2 md:gap-6 md:flex-row md:items-end">
+            <CollapsibleTags tags={tags} />
             <div className="flex items-center justify-end gap-2 self-end md:self-auto lg:min-w-[260px]">
               {!isArchive && (
                 <div className="hidden md:inline-flex mr-2">
