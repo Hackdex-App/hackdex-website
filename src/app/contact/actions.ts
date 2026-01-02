@@ -1,6 +1,8 @@
 "use server";
 
 import nodemailer from "nodemailer";
+import { APIEmbed } from "discord-api-types/v10";
+import { sendDiscordMessageEmbed } from "@/utils/discord";
 
 export interface ContactActionState {
   error: string | null;
@@ -101,6 +103,25 @@ export async function sendContact(prev: ContactActionState, formData: FormData):
       subject: `[#${ticketId}] Support request confirmation`,
       text: confirmationMessage,
     });
+
+    // Send Discord notification
+    if (process.env.DISCORD_WEBHOOK_ADMIN_REPORTS_URL) {
+      const embed: APIEmbed = {
+        title: `📧 ${topicLabels[topic]}`,
+        description: message.length > 4096 ? message.substring(0, 4093) + "..." : message,
+        color: topic === "security" ? 0xff0000 : topic === "bug" ? 0xffa500 : 0x3498db,
+        fields: [
+          ...(name ? [{ name: "Name", value: name, inline: true }] : []),
+          { name: "Email", value: email, inline: true },
+          ...(contextUrl ? [{ name: "Related URL", value: contextUrl, inline: false }] : []),
+        ],
+        footer: {
+          text: `Ticket #${ticketId}`,
+        },
+        timestamp: new Date().toISOString(),
+      };
+      await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_ADMIN_REPORTS_URL, [embed]);
+    }
 
     return { error: null, success: `Your message was sent. Ticket #${ticketId}.` };
   } catch (err: unknown) {

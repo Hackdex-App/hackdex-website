@@ -368,9 +368,9 @@ export async function submitHackReport(data: {
   }
 
   // Send Discord webhook
-  if (process.env.DISCORD_WEBHOOK_ADMIN_URL) {
+  if (process.env.DISCORD_WEBHOOK_ADMIN_REPORTS_URL) {
     try {
-      await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_ADMIN_URL, [
+      await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_ADMIN_REPORTS_URL, [
         {
           title: "Hack Report",
           description: `A new report has been submitted for [${hack.title}](${hackUrl})`,
