@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
-import { canEditAsCreator } from "@/utils/hack";
+import { canEditAsCreator, canEditAsAdmin } from "@/utils/hack";
 import VersionList from "@/components/Hack/VersionList";
 import CollapsibleCard from "@/components/Primitives/CollapsibleCard";
 import Link from "next/link";
@@ -24,8 +24,8 @@ export default async function VersionsPage({ params }: VersionsPageProps) {
 
   if (!hack) return notFound();
 
-  // Check if user can edit (creator only for version management)
-  const canEdit = user ? canEditAsCreator(hack, user.id) : false;
+  // Check if user can edit (creator or admin for version management)
+  const canEdit = user ? (canEditAsCreator(hack, user.id) || await canEditAsAdmin(hack, user.id, supabase)) : false;
 
   // Fetch all published, non-archived patches
   const { data: patches } = await supabase

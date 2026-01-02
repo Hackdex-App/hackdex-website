@@ -2,7 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { notFound, redirect } from "next/navigation";
 import HackStatsClient from "@/components/Hack/Stats/HackStatsClient";
 import { getDownloadsSeriesAll, getHackInsights } from "@/app/dashboard/actions";
-import { isArchiveHack, canEditAsAdminOrArchiver } from "@/utils/hack";
+import { isArchiveHack, canEditAsArchiver } from "@/utils/hack";
 
 export default async function HackStatsPage({ params: { slug } }: { params: { slug: string } }) {
   const supa = await createClient();
@@ -20,7 +20,7 @@ export default async function HackStatsPage({ params: { slug } }: { params: { sl
   let isOwner = hack.created_by === user.id;
   if (!isOwner) {
     const isArchive = isArchiveHack(hack);
-    const isEditableByArchiver = await canEditAsAdminOrArchiver(hack, user.id, supa);
+    const isEditableByArchiver = await canEditAsArchiver(hack, user.id, supa);
     if (!isOwner && !isArchive && !isEditableByArchiver) notFound();
   }
 

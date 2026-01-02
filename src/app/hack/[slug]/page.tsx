@@ -125,7 +125,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
   } = await supabase.auth.getUser();
   const {
     canEdit,
-    canEditAsAdminOrArchiver,
+    canEditAsArchiver,
     isInformationalArchive,
     isDownloadableArchive,
     isArchive,
@@ -142,7 +142,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
     }
   }
 
-  if (isArchive && !isAdmin && !canEditAsAdminOrArchiver) {
+  if (isArchive && !isAdmin && !canEditAsArchiver) {
     return notFound();
   }
 

@@ -2,7 +2,7 @@
 
 import { unstable_cache as cache } from "next/cache";
 import { createClient, createServiceClient } from "@/utils/supabase/server";
-import { canEditAsCreator, canEditAsAdminOrArchiver } from "@/utils/hack";
+import { canEditAsCreator, canEditAsArchiver } from "@/utils/hack";
 import { checkUserRoles } from "@/utils/user";
 
 interface SeriesDataset {
@@ -77,8 +77,9 @@ export const getDownloadsSeriesAll = async ({ days = 30 }: { days?: number }): P
       // Skip if already owned
       if (canEditAsCreator(hack, user.id)) continue;
 
-      // Check if user can edit as archiver (function already checks if it's an archive)
-      if (await canEditAsAdminOrArchiver(hack, user.id, supa, { roles: { isAdmin, isArchiver } })) {
+      // Check if user can edit as archiver (function already checks if it's an archive and includes admins)
+      // Pass both isAdmin and isArchiver since checkUserRoles distinguishes them, but admins should be included
+      if (await canEditAsArchiver(hack, user.id, supa, { roles: { isAdmin, isArchiver } })) {
         accessibleArchiveSlugs.push(hack.slug);
       }
     }
@@ -179,8 +180,8 @@ export const getHackInsights = async ({ slug }: { slug: string }): Promise<HackI
     const { data: admin } = await supa.rpc("is_admin");
     if (admin) {
       // Admin can access any hack
-    } else if (await canEditAsAdminOrArchiver(hack, user.id, supa)) {
-      // Archiver can access archive hacks (function already checks if it's an archive)
+    } else if (await canEditAsArchiver(hack, user.id, supa)) {
+      // Archiver can access archive hacks (function already checks if it's an archive and includes admins)
     } else {
       throw new Error("Forbidden");
     }

@@ -1,5 +1,4 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { checkUserRoles } from "@/utils/user";
 
 type HackWithArchiveFields = {
   is_archive: boolean;
@@ -38,34 +37,35 @@ export function canEditAsCreator(hack: HackWithArchiveFields, userId: string): b
 }
 
 /**
- * Check if a user can edit a hack as admin or archiver (for archive hacks only)
+ * Check if a user can edit a hack as admin (works for any hack, archive or not)
  * Requires a Supabase client to check RPC functions
  */
-export async function canEditAsAdminOrArchiver(
+export async function canEditAsAdmin(
   hack: HackWithArchiveFields,
   userId: string,
   supabase: SupabaseClient<any>,
   options?: {
     roles?: {
       isAdmin: boolean;
-      isArchiver: boolean;
     }
   },
 ): Promise<boolean> {
-  if (!isArchiveHack(hack) || canEditAsCreator(hack, userId)) {
+  // Optimization: check creator first (no DB call)
+  if (canEditAsCreator(hack, userId)) {
     return false;
   }
 
   if (options?.roles) {
-    return options.roles.isAdmin || options.roles.isArchiver;
+    return options.roles.isAdmin;
   }
 
-  const { isAdmin, isArchiver } = await checkUserRoles(supabase);
-  return isAdmin || isArchiver;
+  const { data: isAdmin } = await supabase.rpc("is_admin");
+  return isAdmin ?? false;
 }
 
 /**
- * Check if a user can edit a hack as archiver (for downloadable archives only)
+ * Check if a user can edit a hack as archiver (for archive hacks only)
+ * Uses the SQL is_archiver() RPC which includes admins
  * Requires a Supabase client to check RPC functions
  */
 export async function canEditAsArchiver(
@@ -74,20 +74,29 @@ export async function canEditAsArchiver(
   supabase: SupabaseClient<any>,
   options?: {
     roles?: {
-      isArchiver: boolean;
+      isAdmin?: boolean;
+      isArchiver?: boolean;
     }
   },
 ): Promise<boolean> {
-  if (!isDownloadableArchiveHack(hack) || canEditAsCreator(hack, userId)) {
+  // Optimization: check creator first (no DB call)
+  if (canEditAsCreator(hack, userId)) {
+    return false;
+  }
+
+  // Only works for archive hacks
+  if (!isArchiveHack(hack)) {
     return false;
   }
 
   if (options?.roles) {
-    return options.roles.isArchiver;
+    // If roles are provided, check both admin and archiver (admins are considered archivers)
+    return (options.roles.isAdmin ?? false) || (options.roles.isArchiver ?? false);
   }
 
-  const { isArchiver } = await checkUserRoles(supabase);
-  return isArchiver;
+  // Use is_archiver() RPC directly (includes admins per SQL function)
+  const { data: isArchiver } = await supabase.rpc("is_archiver");
+  return isArchiver ?? false;
 }
 
 /**
@@ -101,25 +110,37 @@ export async function checkEditPermission(
 ): Promise<{
   canEdit: boolean;
   canEditAsCreator: boolean;
-  canEditAsAdminOrArchiver: boolean;
+  canEditAsAdmin: boolean;
+  canEditAsArchiver: boolean;
   isInformationalArchive: boolean;
   isDownloadableArchive: boolean;
   isArchive: boolean;
 }> {
+  // Optimization: check creator first (no DB call)
   const canEditAsCreatorValue = canEditAsCreator(hack, userId);
   const isInformationalArchiveValue = isInformationalArchiveHack(hack);
   const isDownloadableArchiveValue = isDownloadableArchiveHack(hack);
   const isArchiveValue = isArchiveHack(hack);
 
-  let canEditAsAdminOrArchiverValue = false;
-  if (isArchiveValue && !canEditAsCreatorValue) {
-    canEditAsAdminOrArchiverValue = await canEditAsAdminOrArchiver(hack, userId, supabase);
+  let canEditAsAdminValue = false;
+  let canEditAsArchiverValue = false;
+
+  // Only check admin/archiver if not creator
+  if (!canEditAsCreatorValue) {
+    // Check admin (works for any hack)
+    canEditAsAdminValue = await canEditAsAdmin(hack, userId, supabase);
+    
+    // Check archiver (only for archive hacks, and only if not admin)
+    if (isArchiveValue && !canEditAsAdminValue) {
+      canEditAsArchiverValue = await canEditAsArchiver(hack, userId, supabase);
+    }
   }
 
   return {
-    canEdit: canEditAsCreatorValue || canEditAsAdminOrArchiverValue,
+    canEdit: canEditAsCreatorValue || canEditAsAdminValue || canEditAsArchiverValue,
     canEditAsCreator: canEditAsCreatorValue,
-    canEditAsAdminOrArchiver: canEditAsAdminOrArchiverValue,
+    canEditAsAdmin: canEditAsAdminValue,
+    canEditAsArchiver: canEditAsArchiverValue,
     isInformationalArchive: isInformationalArchiveValue,
     isDownloadableArchive: isDownloadableArchiveValue,
     isArchive: isArchiveValue,
@@ -137,11 +158,13 @@ export async function checkPatchEditPermission(
 ): Promise<{
   canEdit: boolean;
   canEditAsCreator: boolean;
+  canEditAsAdmin: boolean;
   canEditAsArchiver: boolean;
   isInformationalArchive: boolean;
   isDownloadableArchive: boolean;
   error?: string;
 }> {
+  // Optimization: check creator first (no DB call)
   const canEditAsCreatorValue = canEditAsCreator(hack, userId);
   const isInformationalArchiveValue = isInformationalArchiveHack(hack);
   const isDownloadableArchiveValue = isDownloadableArchiveHack(hack);
@@ -151,6 +174,7 @@ export async function checkPatchEditPermission(
     return {
       canEdit: false,
       canEditAsCreator: canEditAsCreatorValue,
+      canEditAsAdmin: false,
       canEditAsArchiver: false,
       isInformationalArchive: isInformationalArchiveValue,
       isDownloadableArchive: isDownloadableArchiveValue,
@@ -158,14 +182,24 @@ export async function checkPatchEditPermission(
     };
   }
 
+  let canEditAsAdminValue = false;
   let canEditAsArchiverValue = false;
-  if (isDownloadableArchiveValue && !canEditAsCreatorValue) {
-    canEditAsArchiverValue = await canEditAsArchiver(hack, userId, supabase);
+
+  // Only check admin/archiver if not creator
+  if (!canEditAsCreatorValue) {
+    // Check admin (works for any hack)
+    canEditAsAdminValue = await canEditAsAdmin(hack, userId, supabase);
+    
+    // Check archiver (only for downloadable archives, and only if not admin)
+    if (isDownloadableArchiveValue && !canEditAsAdminValue) {
+      canEditAsArchiverValue = await canEditAsArchiver(hack, userId, supabase);
+    }
   }
 
   return {
-    canEdit: canEditAsCreatorValue || canEditAsArchiverValue,
+    canEdit: canEditAsCreatorValue || canEditAsAdminValue || canEditAsArchiverValue,
     canEditAsCreator: canEditAsCreatorValue,
+    canEditAsAdmin: canEditAsAdminValue,
     canEditAsArchiver: canEditAsArchiverValue,
     isInformationalArchive: isInformationalArchiveValue,
     isDownloadableArchive: isDownloadableArchiveValue,

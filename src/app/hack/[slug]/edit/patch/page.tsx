@@ -3,7 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import HackPatchForm from "@/components/Hack/HackPatchForm";
 import Link from "next/link";
 import { FaChevronLeft } from "react-icons/fa6";
-import { isInformationalArchiveHack, isDownloadableArchiveHack, canEditAsCreator, canEditAsArchiver } from "@/utils/hack";
+import { isInformationalArchiveHack, isDownloadableArchiveHack, canEditAsCreator, canEditAsAdmin, canEditAsArchiver } from "@/utils/hack";
 
 interface EditPatchPageProps {
   params: Promise<{ slug: string }>;
@@ -23,13 +23,29 @@ export default async function EditPatchPage({ params }: EditPatchPageProps) {
     .eq("slug", slug)
     .maybeSingle();
   if (!hack) return notFound();
-  if (!canEditAsCreator(hack, user!.id)) {
+  
+  // Check permissions: creator first (optimization), then admin, then archiver
+  const isCreator = canEditAsCreator(hack, user!.id);
+  if (!isCreator) {
     const isInformationalArchive = isInformationalArchiveHack(hack);
     const isDownloadableArchive = isDownloadableArchiveHack(hack);
-    const isEditableByArchiver = await canEditAsArchiver(hack, user!.id, supabase);
-
+    
+    // Informational archives cannot have patches
     if (isInformationalArchive) redirect(`/hack/${slug}`);
-    if (isDownloadableArchive && !isEditableByArchiver) redirect(`/hack/${slug}`);
+    
+    // Check admin (works for any hack)
+    const isAdmin = await canEditAsAdmin(hack, user!.id, supabase);
+    if (isAdmin) {
+      // Admin can edit patches for any hack except informational archives
+      // (already checked above)
+    } else if (isDownloadableArchive) {
+      // Check archiver (only for downloadable archives)
+      const isEditableByArchiver = await canEditAsArchiver(hack, user!.id, supabase);
+      if (!isEditableByArchiver) redirect(`/hack/${slug}`);
+    } else {
+      // Not creator, not admin, not downloadable archive
+      redirect(`/hack/${slug}`);
+    }
   }
 
   const { data: patchRows } = await supabase

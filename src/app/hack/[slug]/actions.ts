@@ -2,7 +2,7 @@
 
 import { createClient, createServiceClient } from "@/utils/supabase/server";
 import { getMinioClient, PATCHES_BUCKET } from "@/utils/minio/server";
-import { isInformationalArchiveHack, canEditAsCreator } from "@/utils/hack";
+import { isInformationalArchiveHack, canEditAsCreator, canEditAsAdmin } from "@/utils/hack";
 import { sendDiscordMessageEmbed } from "@/utils/discord";
 import { headers } from "next/headers";
 import { validateEmail } from "@/utils/auth";
@@ -450,7 +450,13 @@ export async function archivePatchVersion(slug: string, patchId: number): Promis
     .maybeSingle();
   if (hErr || !hack) return { ok: false, error: "Hack not found" };
 
+  // Check permissions: creator first (optimization), then admin
   if (!canEditAsCreator(hack, user.id)) {
+    return { ok: false, error: "Forbidden" };
+  }
+
+  const editableAsAdmin = await canEditAsAdmin(hack, user.id, supabase);
+  if (!editableAsAdmin) {
     return { ok: false, error: "Forbidden" };
   }
 
@@ -495,7 +501,13 @@ export async function restorePatchVersion(slug: string, patchId: number): Promis
     .maybeSingle();
   if (hErr || !hack) return { ok: false, error: "Hack not found" };
 
+  // Check permissions: creator first (optimization), then admin
   if (!canEditAsCreator(hack, user.id)) {
+    return { ok: false, error: "Forbidden" };
+  }
+
+  const editableAsAdmin = await canEditAsAdmin(hack, user.id, supabase);
+  if (!editableAsAdmin) {
     return { ok: false, error: "Forbidden" };
   }
 
@@ -535,7 +547,13 @@ export async function rollbackToVersion(slug: string, patchId: number): Promise<
     .maybeSingle();
   if (hErr || !hack) return { ok: false, error: "Hack not found" };
 
+  // Check permissions: creator first (optimization), then admin
   if (!canEditAsCreator(hack, user.id)) {
+    return { ok: false, error: "Forbidden" };
+  }
+
+  const editableAsAdmin = await canEditAsAdmin(hack, user.id, supabase);
+  if (!editableAsAdmin) {
     return { ok: false, error: "Forbidden" };
   }
 
@@ -585,7 +603,13 @@ export async function updatePatchChangelog(slug: string, patchId: number, change
     .maybeSingle();
   if (hErr || !hack) return { ok: false, error: "Hack not found" };
 
+  // Check permissions: creator first (optimization), then admin
   if (!canEditAsCreator(hack, user.id)) {
+    return { ok: false, error: "Forbidden" };
+  }
+
+  const editableAsAdmin = await canEditAsAdmin(hack, user.id, supabase);
+  if (!editableAsAdmin) {
     return { ok: false, error: "Forbidden" };
   }
 
@@ -627,7 +651,13 @@ export async function updatePatchVersion(slug: string, patchId: number, version:
     .maybeSingle();
   if (hErr || !hack) return { ok: false, error: "Hack not found" };
 
+  // Check permissions: creator first (optimization), then admin
   if (!canEditAsCreator(hack, user.id)) {
+    return { ok: false, error: "Forbidden" };
+  }
+
+  const editableAsAdmin = await canEditAsAdmin(hack, user.id, supabase);
+  if (!editableAsAdmin) {
     return { ok: false, error: "Forbidden" };
   }
 
@@ -691,7 +721,13 @@ export async function publishPatchVersion(slug: string, patchId: number): Promis
     .maybeSingle();
   if (hErr || !hack) return { ok: false, error: "Hack not found" };
 
+  // Check permissions: creator first (optimization), then admin
   if (!canEditAsCreator(hack, user.id)) {
+    return { ok: false, error: "Forbidden" };
+  }
+
+  const editableAsAdmin = await canEditAsAdmin(hack, user.id, supabase);
+  if (!editableAsAdmin) {
     return { ok: false, error: "Forbidden" };
   }
 
@@ -760,7 +796,13 @@ export async function reuploadPatchVersion(
     .maybeSingle();
   if (hErr || !hack) return { ok: false, error: "Hack not found" };
 
+  // Check permissions: creator first (optimization), then admin
   if (!canEditAsCreator(hack, user.id)) {
+    return { ok: false, error: "Forbidden" };
+  }
+
+  const editableAsAdmin = await canEditAsAdmin(hack, user.id, supabase);
+  if (!editableAsAdmin) {
     return { ok: false, error: "Forbidden" };
   }
 
@@ -799,7 +841,13 @@ export async function confirmReuploadPatchVersion(
     .maybeSingle();
   if (hErr || !hack) return { ok: false, error: "Hack not found" };
 
+  // Check permissions: creator first (optimization), then admin
   if (!canEditAsCreator(hack, user.id)) {
+    return { ok: false, error: "Forbidden" };
+  }
+
+  const editableAsAdmin = await canEditAsAdmin(hack, user.id, supabase);
+  if (!editableAsAdmin) {
     return { ok: false, error: "Forbidden" };
   }
 
