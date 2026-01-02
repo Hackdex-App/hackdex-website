@@ -127,7 +127,6 @@ html { scroll-padding-top: var(--anchor-offset); }
   background: radial-gradient(60% 60% at 20% 20%, rgba(244,63,94,0.20), transparent 60%),
               radial-gradient(50% 50% at 80% 10%, rgba(249,115,22,0.18), transparent 60%),
               radial-gradient(40% 40% at 50% 80%, rgba(245,158,11,0.18), transparent 60%);
-  filter: blur(60px);
   opacity: 0.7;
   pointer-events: none;
 }
