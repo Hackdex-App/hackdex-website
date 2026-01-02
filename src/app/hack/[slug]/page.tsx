@@ -7,6 +7,7 @@ import HackActions from "@/components/Hack/HackActions";
 import Markdown from "@/components/Markdown/Markdown";
 import Image from "next/image";
 import { FaDiscord, FaTwitter, FaGithub, FaTriangleExclamation, FaArrowUpRightFromSquare } from "react-icons/fa6";
+import { FiAlertTriangle } from "react-icons/fi";
 import PokeCommunityIcon from "@/components/Icons/PokeCommunityIcon";
 import { createClient, createServiceClient } from "@/utils/supabase/server";
 import HackOptionsMenu from "@/components/Hack/HackOptionsMenu";
@@ -152,6 +153,8 @@ export default async function HackDetail({ params }: HackDetailProps) {
   const lastUpdated = patch ? new Date(patch.created_at).toLocaleDateString() : null;
   const patchCreatedAt = patch?.created_at || null;
   const patchChangelog = patch?.changelog || null;
+  const hasMissingPatch = !hack.approved && patchId === null;
+  const hasMissingScreenshots = !hack.approved && images.length === 0;
 
   // Build canonical URL, sameAs, dates, and JSON-LD
   const hdrs = await headers();
@@ -215,7 +218,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serialize(jsonLd, { isJSON: true }) }}
       />
-      {!isInformationalArchive && (
+      {!isInformationalArchive && !hasMissingPatch && (
         <HackActions
           title={hack.title}
           version={patchVersion || "Pre-release"}
@@ -249,39 +252,113 @@ export default async function HackDetail({ params }: HackDetailProps) {
       )}
 
       {!hack.approved && (
-        isAdmin ? (
-          <div className="mx-6 mt-6 rounded-lg border-2 border-yellow-500/60 bg-yellow-50 dark:bg-yellow-900/20 p-4 md:pl-6">
-            <div className="flex items-center gap-4 md:gap-6">
-              <div className="flex-shrink-0">
-                <FaTriangleExclamation className="text-yellow-600 dark:text-yellow-400" size={24} />
+        <>
+          {hasMissingPatch && (
+            isAdmin ? (
+              <div className="mx-6 mt-6 rounded-lg border-2 border-yellow-500/60 bg-yellow-50 dark:bg-yellow-900/20 p-4 md:pl-6">
+                <div className="flex items-center gap-4 md:gap-6">
+                  <div className="flex-shrink-0">
+                    <FaTriangleExclamation className="text-yellow-600 dark:text-yellow-400" size={24} />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-yellow-900 dark:text-yellow-100 mb-2">
+                      This hack is missing a patch file.
+                    </h3>
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                      A patch file must be uploaded before this hack can be approved. Please try to ask the creator to upload a patch file.
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-yellow-900 dark:text-yellow-100 mb-2">
-                  You are viewing this unpublished hack as an admin.
-                </h3>
-                <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                  This hack is pending approval. Please review the contents of this hack before making a decision. Then choose Approve from the dropdown options.
-                </p>
+            ) : (
+              <div className="mx-6 mt-6 rounded-lg border-2 border-yellow-500/60 bg-yellow-50 dark:bg-yellow-900/20 p-4 md:pl-6">
+                <div className="flex items-center gap-4 md:gap-6">
+                  <div className="flex-shrink-0">
+                    <FaTriangleExclamation className="text-yellow-600 dark:text-yellow-400" size={24} />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-yellow-900 dark:text-yellow-100 mb-2">
+                      Your hack is missing a patch file.
+                    </h3>
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                      You need to upload a patch file before an admin can approve your hack. Use the options menu to upload a patch file.
+                    </p>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        ) : (
-          <div className="mx-6 mt-6 rounded-lg border-2 border-yellow-500/60 bg-yellow-50 dark:bg-yellow-900/20 p-4 md:pl-6">
-            <div className="flex items-center gap-4 md:gap-6">
-              <div className="flex-shrink-0">
-                <FaTriangleExclamation className="text-yellow-600 dark:text-yellow-400" size={24} />
+            )
+          )}
+          {hasMissingScreenshots && (
+            isAdmin ? (
+              <div className="mx-6 mt-6 rounded-lg border-2 border-yellow-500/60 bg-yellow-50 dark:bg-yellow-900/20 p-4 md:pl-6">
+                <div className="flex items-center gap-4 md:gap-6">
+                  <div className="flex-shrink-0">
+                    <FaTriangleExclamation className="text-yellow-600 dark:text-yellow-400" size={24} />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-yellow-900 dark:text-yellow-100 mb-2">
+                      This hack is missing screenshots.
+                    </h3>
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                      Screenshots should be uploaded before this hack can be approved. Please try to ask the creator to add screenshots.
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-yellow-900 dark:text-yellow-100 mb-2">
-                  This hack is pending approval.
-                </h3>
-                <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                  Your hack is currently under review and will be visible to all users once approved by an admin.
-                </p>
+            ) : (
+              <div className="mx-6 mt-6 rounded-lg border-2 border-yellow-500/60 bg-yellow-50 dark:bg-yellow-900/20 p-4 md:pl-6">
+                <div className="flex items-center gap-4 md:gap-6">
+                  <div className="flex-shrink-0">
+                    <FaTriangleExclamation className="text-yellow-600 dark:text-yellow-400" size={24} />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-yellow-900 dark:text-yellow-100 mb-2">
+                      Your hack is missing screenshots.
+                    </h3>
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                      You should add screenshots before an admin can approve your hack. Use the options menu to add screenshots.
+                    </p>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        )
+            )
+          )}
+          {!hasMissingPatch && !hasMissingScreenshots && (
+            isAdmin ? (
+              <div className="mx-6 mt-6 rounded-lg border-2 border-yellow-500/60 bg-yellow-50 dark:bg-yellow-900/20 p-4 md:pl-6">
+                <div className="flex items-center gap-4 md:gap-6">
+                  <div className="flex-shrink-0">
+                    <FaTriangleExclamation className="text-yellow-600 dark:text-yellow-400" size={24} />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-yellow-900 dark:text-yellow-100 mb-2">
+                      You are viewing this unpublished hack as an admin.
+                    </h3>
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                      This hack is pending approval. Please review the contents of this hack before making a decision. Then choose Approve from the dropdown options.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="mx-6 mt-6 rounded-lg border-2 border-yellow-500/60 bg-yellow-50 dark:bg-yellow-900/20 p-4 md:pl-6">
+                <div className="flex items-center gap-4 md:gap-6">
+                  <div className="flex-shrink-0">
+                    <FaTriangleExclamation className="text-yellow-600 dark:text-yellow-400" size={24} />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-yellow-900 dark:text-yellow-100 mb-2">
+                      Your hack is pending approval.
+                    </h3>
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                      Your hack is currently under review and will be visible to all users once approved by an admin.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )
+          )}
+        </>
       )}
 
       <div className="pt-8 md:pt-10 px-6">
@@ -289,9 +366,16 @@ export default async function HackDetail({ params }: HackDetailProps) {
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{hack.title}</h1>
-              <span className="rounded-full bg-[var(--surface-2)] px-3 py-1 text-xs font-medium text-foreground/85 ring-1 ring-[var(--border)]">
-                {patchVersion || "Pre-release"}
-              </span>
+              {hasMissingPatch ? (
+                <div className="inline-flex items-center gap-1 rounded-full bg-amber-600/20 dark:bg-amber-600/40 px-2 py-0.5 text-xs font-medium text-amber-900/90 dark:text-amber-200/90">
+                  <FiAlertTriangle className="h-3 w-3 text-amber-900/90 dark:text-amber-200/90" />
+                  <span>Missing Patch</span>
+                </div>
+              ) : (
+                <span className="rounded-full bg-[var(--surface-2)] px-3 py-1 text-xs font-medium text-foreground/85 ring-1 ring-[var(--border)]">
+                  {patchVersion || "Pre-release"}
+                </span>
+              )}
               {!isArchive && (
                 <div className="inline-flex ml-auto md:hidden">
                   <DownloadsBadge slug={hack.slug} initialCount={downloads ?? 0} />
