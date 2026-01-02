@@ -17,5 +17,5 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
 
   revalidateTag(`hack:${slug}:metadata`);
   revalidateTag(`hack:${slug}:downloads`);
-  return NextResponse.json({ message: "Cache refreshed" });
+  return NextResponse.redirect(new URL(`/hack/${slug}`, req.url));
 }
