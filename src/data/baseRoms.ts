@@ -39,6 +39,7 @@ export const baseRoms: BaseRom[] = [
   // GBC
   { id: "poke_gold", name: "Pokémon Gold", platform: "GBC", region: "USA, Europe", crc32: "6bde3c3e", sha1: "d8b8a3600a465308c9953dfa04f0081c05bdcb94" },
   { id: "poke_silver", name: "Pokémon Silver", platform: "GBC", region: "USA, Europe", crc32: "8ad48636", sha1: "49b163f7e57702bc939d642a18f591de55d92dae" },
+  { id: "poke_crystal", name: "Pokémon Crystal", platform: "GBC", region: "USA", crc32: "ee6f5188", sha1: "f4cd194bdee0d04ca4eac29e09b8e4e9d818c133" },
   { id: "poke_crystal_rev1", name: "Pokémon Crystal (Rev 1)", platform: "GBC", region: "USA, Europe", crc32: "3358e30a", sha1: "f2f52230b536214ef7c9924f483392993e226cfb" },
 
   // GB
