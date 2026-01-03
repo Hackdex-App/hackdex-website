@@ -452,12 +452,10 @@ export async function archivePatchVersion(slug: string, patchId: number): Promis
 
   // Check permissions: creator first (optimization), then admin
   if (!canEditAsCreator(hack, user.id)) {
-    return { ok: false, error: "Forbidden" };
-  }
-
-  const editableAsAdmin = await canEditAsAdmin(hack, user.id, supabase);
-  if (!editableAsAdmin) {
-    return { ok: false, error: "Forbidden" };
+    const editableAsAdmin = await canEditAsAdmin(hack, user.id, supabase);
+    if (!editableAsAdmin) {
+      return { ok: false, error: "Forbidden" };
+    }
   }
 
   // Cannot archive current_patch
@@ -503,12 +501,10 @@ export async function restorePatchVersion(slug: string, patchId: number): Promis
 
   // Check permissions: creator first (optimization), then admin
   if (!canEditAsCreator(hack, user.id)) {
-    return { ok: false, error: "Forbidden" };
-  }
-
-  const editableAsAdmin = await canEditAsAdmin(hack, user.id, supabase);
-  if (!editableAsAdmin) {
-    return { ok: false, error: "Forbidden" };
+    const editableAsAdmin = await canEditAsAdmin(hack, user.id, supabase);
+    if (!editableAsAdmin) {
+      return { ok: false, error: "Forbidden" };
+    }
   }
 
   // Verify patch belongs to this hack
@@ -549,12 +545,10 @@ export async function rollbackToVersion(slug: string, patchId: number): Promise<
 
   // Check permissions: creator first (optimization), then admin
   if (!canEditAsCreator(hack, user.id)) {
-    return { ok: false, error: "Forbidden" };
-  }
-
-  const editableAsAdmin = await canEditAsAdmin(hack, user.id, supabase);
-  if (!editableAsAdmin) {
-    return { ok: false, error: "Forbidden" };
+    const editableAsAdmin = await canEditAsAdmin(hack, user.id, supabase);
+    if (!editableAsAdmin) {
+      return { ok: false, error: "Forbidden" };
+    }
   }
 
   // Verify patch belongs to this hack and get its created_at
@@ -605,12 +599,10 @@ export async function updatePatchChangelog(slug: string, patchId: number, change
 
   // Check permissions: creator first (optimization), then admin
   if (!canEditAsCreator(hack, user.id)) {
-    return { ok: false, error: "Forbidden" };
-  }
-
-  const editableAsAdmin = await canEditAsAdmin(hack, user.id, supabase);
-  if (!editableAsAdmin) {
-    return { ok: false, error: "Forbidden" };
+    const editableAsAdmin = await canEditAsAdmin(hack, user.id, supabase);
+    if (!editableAsAdmin) {
+      return { ok: false, error: "Forbidden" };
+    }
   }
 
   // Verify patch belongs to this hack
@@ -653,12 +645,10 @@ export async function updatePatchVersion(slug: string, patchId: number, version:
 
   // Check permissions: creator first (optimization), then admin
   if (!canEditAsCreator(hack, user.id)) {
-    return { ok: false, error: "Forbidden" };
-  }
-
-  const editableAsAdmin = await canEditAsAdmin(hack, user.id, supabase);
-  if (!editableAsAdmin) {
-    return { ok: false, error: "Forbidden" };
+    const editableAsAdmin = await canEditAsAdmin(hack, user.id, supabase);
+    if (!editableAsAdmin) {
+      return { ok: false, error: "Forbidden" };
+    }
   }
 
   // Verify patch belongs to this hack
@@ -723,12 +713,10 @@ export async function publishPatchVersion(slug: string, patchId: number): Promis
 
   // Check permissions: creator first (optimization), then admin
   if (!canEditAsCreator(hack, user.id)) {
-    return { ok: false, error: "Forbidden" };
-  }
-
-  const editableAsAdmin = await canEditAsAdmin(hack, user.id, supabase);
-  if (!editableAsAdmin) {
-    return { ok: false, error: "Forbidden" };
+    const editableAsAdmin = await canEditAsAdmin(hack, user.id, supabase);
+    if (!editableAsAdmin) {
+      return { ok: false, error: "Forbidden" };
+    }
   }
 
   // Verify patch belongs to this hack and get its created_at
@@ -798,12 +786,10 @@ export async function reuploadPatchVersion(
 
   // Check permissions: creator first (optimization), then admin
   if (!canEditAsCreator(hack, user.id)) {
-    return { ok: false, error: "Forbidden" };
-  }
-
-  const editableAsAdmin = await canEditAsAdmin(hack, user.id, supabase);
-  if (!editableAsAdmin) {
-    return { ok: false, error: "Forbidden" };
+    const editableAsAdmin = await canEditAsAdmin(hack, user.id, supabase);
+    if (!editableAsAdmin) {
+      return { ok: false, error: "Forbidden" };
+    }
   }
 
   // Verify patch belongs to this hack
@@ -843,12 +829,10 @@ export async function confirmReuploadPatchVersion(
 
   // Check permissions: creator first (optimization), then admin
   if (!canEditAsCreator(hack, user.id)) {
-    return { ok: false, error: "Forbidden" };
-  }
-
-  const editableAsAdmin = await canEditAsAdmin(hack, user.id, supabase);
-  if (!editableAsAdmin) {
-    return { ok: false, error: "Forbidden" };
+    const editableAsAdmin = await canEditAsAdmin(hack, user.id, supabase);
+    if (!editableAsAdmin) {
+      return { ok: false, error: "Forbidden" };
+    }
   }
 
   // Verify patch belongs to this hack
