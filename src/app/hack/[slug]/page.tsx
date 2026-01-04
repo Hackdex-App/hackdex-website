@@ -20,7 +20,7 @@ import { MenuItem } from "@headlessui/react";
 import { FaCircleCheck } from "react-icons/fa6";
 import { RiArchiveStackFill } from "react-icons/ri";
 import { TbProgressCheck } from "react-icons/tb";
-import { isInformationalArchiveHack, isDownloadableArchiveHack, isArchiveHack, checkEditPermission } from "@/utils/hack";
+import { isArchiveHack, checkEditPermission, checkPatchEditPermission } from "@/utils/hack";
 import Avatar from "@/components/Account/Avatar";
 import CollapsibleCard from "@/components/Primitives/CollapsibleCard";
 import CollapsibleTags from "@/components/Hack/CollapsibleTags";
@@ -130,10 +130,12 @@ export default async function HackDetail({ params }: HackDetailProps) {
     isDownloadableArchive,
     isArchive,
   } = await checkEditPermission(hack, user?.id as string, supabase);
-  const canUploadPatch = canEdit && !isInformationalArchive;
+  const {
+    canEdit: canUploadPatch,
+  } = await checkPatchEditPermission(hack, user?.id as string, supabase);
 
   let isAdmin = false;
-  if ((!hack.approved && !canEdit) || isArchive) {
+  if (!hack.approved || isArchive) {
     const { data: admin } = await supabase.rpc("is_admin");
     if (admin) {
       isAdmin = true;
@@ -421,7 +423,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
                 </div>
               )}
               <HackShareButton title={hack.title} url={pageUrl} author={hack.original_author || profile?.username || null} />
-              <HackOptionsMenu slug={hack.slug} canEdit={canEdit || isAdmin} canUploadPatch={canUploadPatch || isAdmin}>
+              <HackOptionsMenu slug={hack.slug} canEdit={canEdit} canUploadPatch={canUploadPatch}>
                 {isAdmin && !hack.approved && (
                   <MenuItem
                     as="a"
