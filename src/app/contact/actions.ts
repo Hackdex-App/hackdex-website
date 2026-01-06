@@ -79,7 +79,7 @@ export async function sendContact(prev: ContactActionState, formData: FormData):
 
     await transporter.sendMail({
       from: `Hackdex <${noreply}>`,
-      to: process.env.EMAIL_ADMIN!,
+      to: process.env.EMAIL_CONTACT!,
       replyTo: email,
       subject,
       text: body,
