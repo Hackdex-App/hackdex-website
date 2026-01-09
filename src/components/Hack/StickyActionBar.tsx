@@ -79,7 +79,7 @@ export default function StickyActionBar({
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 md:sticky md:top-18 md:z-30 flex flex-col gap-2 pb-safe">
       <div className="mx-auto w-full lg:max-w-screen-lg flex flex-col md:flex-row md:items-center md:justify-between md:gap-4 rounded-t-xl md:rounded-md border border-[var(--border)] bg-[var(--surface-2)]/80 px-4 py-3 pb-[env(safe-area-inset-bottom)] md:pb-3 shadow-[0_-6px_24px_rgba(0,0,0,0.2)] md:shadow-none backdrop-blur supports-[backdrop-filter]:bg-[color-mix(in_oklab,var(--background)_90%,transparent)] md:supports-[backdrop-filter]:bg-[color-mix(in_oklab,var(--background)_70%,transparent)]">
-        <div className="min-w-0">
+        <div className="md:w-fit md:max-w-[40%] lg:max-w-[45%]">
           <div className="flex items-center gap-2">
             <div className="truncate text-xl font-bold md:text-sm md:font-medium">{title}</div>
             {version && (
@@ -88,14 +88,14 @@ export default function StickyActionBar({
           </div>
           <div className="truncate text-sm md:text-xs text-foreground/60">By {author}</div>
         </div>
-        <div className="flex w-full md:w-auto flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-2 mb-4 md:mb-0">
+        <div className="flex w-full md:w-auto flex-col md:flex-row items-stretch md:items-center gap-2 mb-4 md:mb-0">
           {!termsAgreed || status === "downloading" ? (
             !romReady ? (
-              <p className="rounded-full mx-auto md:mx-0 px-2 py-0.5 text-xs text-center md:text-left">
+              <p className="rounded-full mx-auto md:mx-0 px-2 py-0.5 text-xs text-center md:text-right md:text-balance">
                 To download the patch file, you must select a <span className="font-bold">clean ROM</span> for the patcher to use.
               </p>
             ) : (
-              <p className="rounded-full mx-auto md:mx-0 px-2 py-0.5 text-xs text-center md:text-left">
+              <p className="rounded-full mx-auto md:mx-0 px-2 py-0.5 text-xs text-center md:text-right md:text-balance">
                 By downloading this patch, you agree to the <Link href="/terms" target="_blank" className="underline">Terms of Service</Link>.
               </p>
             )
@@ -111,7 +111,7 @@ export default function StickyActionBar({
             </span>
           )}
           {!romReady && !isLinked && (
-            <label className="inline-flex items-center gap-2 text-xs text-foreground/80">
+            <label className="min-w-max inline-flex items-center gap-2 text-xs text-foreground/80">
               <input ref={uploadInputRef} type="file" accept={platformAccept(baseRomPlatform)} onChange={onUploadChange} className="hidden" />
               <button
                 type="button"
