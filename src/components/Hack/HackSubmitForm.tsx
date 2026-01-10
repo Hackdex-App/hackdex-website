@@ -3,6 +3,7 @@
 import React from "react";
 import Image from "next/image";
 import { baseRoms } from "@/data/baseRoms";
+import { getScreenshotTutorial } from "@/data/screenshotTutorials";
 import HackCard from "@/components/HackCard";
 import { createClient } from "@/utils/supabase/client";
 import { prepareSubmission, presignPatchAndSaveCovers, confirmPatchUpload, saveHackCovers } from "@/app/submit/actions";
@@ -13,6 +14,7 @@ import { CSS } from "@dnd-kit/utilities";
 import Markdown from "@/components/Markdown/Markdown";
 import { RxDragHandleDots2 } from "react-icons/rx";
 import { FaDiscord, FaTwitter, FaGithub } from "react-icons/fa6";
+import { FiExternalLink } from "react-icons/fi";
 import PokeCommunityIcon from "@/components/Icons/PokeCommunityIcon";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
@@ -137,6 +139,7 @@ export default function HackSubmitForm({
   const baseRomEntry = React.useMemo(() => baseRoms.find((r) => r.id === baseRom) || null, [baseRom]);
   const baseRomName = baseRomEntry?.name || "";
   const baseRomPlatform = baseRomEntry?.platform;
+  const tutorialInfo = React.useMemo(() => getScreenshotTutorial(baseRomPlatform), [baseRomPlatform]);
   const { isLinked, hasPermission, hasCached, importUploadedBlob, ensurePermission, getFileBlob, supported } = useBaseRoms();
 
   const baseRomReady = baseRom && (hasPermission(baseRom) || hasCached(baseRom));
@@ -922,7 +925,21 @@ export default function HackSubmitForm({
                 <div className="grid gap-2">
                   <label className="text-sm text-foreground/80">Screenshots <span className="text-red-500">*</span></label>
                   {allowedSizes.length > 0 && (
-                    <p className="text-xs text-foreground/60">Upload screenshots of your game. Allowed sizes: {allowedSizes.map((s) => `${s.w}x${s.h}`).join(", ")}.</p>
+                    <p className="text-xs text-foreground/60">Upload screenshots of your game. Allowed sizes: <span className="font-bold">{allowedSizes.map((s) => `${s.w}x${s.h}`).join(", ")}</span>.</p>
+                  )}
+                  {tutorialInfo && (
+                    <p className="text-xs text-foreground/60">
+                      Need help taking screenshots? Watch our{" "}
+                      <a
+                        href={tutorialInfo.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 underline underline-offset-2 hover:text-foreground/80 transition-colors"
+                      >
+                        {tutorialInfo.emulatorName} tutorial
+                        <FiExternalLink className="h-3 w-3" />
+                      </a>
+                    </p>
                   )}
                   <div className="space-y-3">
                     {!isDummy ? (

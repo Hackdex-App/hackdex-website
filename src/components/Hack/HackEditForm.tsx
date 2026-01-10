@@ -4,12 +4,14 @@ import React from "react";
 import Markdown from "@/components/Markdown/Markdown";
 import TagSelector from "@/components/Submit/TagSelector";
 import { baseRoms } from "@/data/baseRoms";
+import { getScreenshotTutorial } from "@/data/screenshotTutorials";
 import Image from "next/image";
 import { createClient } from "@/utils/supabase/client";
 import { updateHack, saveHackCovers, presignCoverUpload } from "@/app/hack/actions";
 import SortableCovers from "@/components/Hack/SortableCovers";
 import Select from "@/components/Primitives/Select";
 import type { Database } from "@/types/db";
+import { FiExternalLink } from "react-icons/fi";
 
 interface HackEditFormProps {
   slug: string;
@@ -109,6 +111,7 @@ export default function HackEditForm({ slug, initial }: HackEditFormProps) {
 
   const platformEntry = React.useMemo(() => baseRoms.find(r => r.id === baseRom), [baseRom]);
   const allowedSizes = platformEntry ? getAllowedSizesForPlatform(platformEntry.platform) : [];
+  const tutorialInfo = React.useMemo(() => getScreenshotTutorial(platformEntry?.platform), [platformEntry]);
   const overLimit = coverItems.length > MAX_COVERS;
 
   // Change detection helpers
@@ -383,6 +386,20 @@ export default function HackEditForm({ slug, initial }: HackEditFormProps) {
           <div className="mt-4 grid gap-4">
             {allowedSizes.length > 0 && (
               <p className="text-xs text-foreground/60">Allowed sizes: {allowedSizes.map((s) => `${s.w}x${s.h}`).join(", ")}</p>
+            )}
+            {tutorialInfo && (
+              <p className="text-xs text-foreground/60">
+                Need help taking screenshots? Watch our{" "}
+                <a
+                  href={tutorialInfo.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 underline underline-offset-2 hover:text-foreground/80 transition-colors"
+                >
+                  {tutorialInfo.emulatorName} tutorial
+                  <FiExternalLink className="h-3 w-3" />
+                </a>
+              </p>
             )}
             <input
               type="file"
