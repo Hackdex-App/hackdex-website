@@ -1,0 +1,61 @@
+name: Add Base Rom
+description: >-
+  Use this form if the base rom for the romhack you want to upload is missing.
+  Note: If you are requesting a DS game, make sure the provided hashes are for the
+  **decrypted** rom.
+title: '[Base Rom]: '
+body:
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      description: The game console this game was made for.
+      options:
+        - GB
+        - GBC
+        - GBA
+        - NDS
+    validations:
+      required: true
+  - type: input
+    id: name
+    attributes:
+      label: Name
+      description: The full title of the game this base rom is for
+      placeholder: 'e.g. Pokémon Mystery Dungeon: Red Rescue Team'
+    validations:
+      required: true
+  - type: dropdown
+    id: region
+    attributes:
+      label: Region
+      description: The region(s) associated with the specific rom
+      multiple: true
+      options:
+        - USA
+        - Europe
+        - Australia
+        - Japan
+        - Other
+  - type: input
+    id: region_other
+    attributes:
+      label: Other Region(s)
+      description: If "Other" was selected above.
+      placeholder: e.g. Germany, Korea
+  - type: input
+    id: crc32
+    attributes:
+      label: CRC32
+      description: >-
+        The verified crc32 hash of the required base rom. Can be found at
+        https://datomatic.no-intro.org/index.php
+      placeholder: e.g. dd0ac86c
+  - type: input
+    id: sha1
+    attributes:
+      label: SHA-1
+      description: >-
+        The verified sha-1 hash of the required base rom. Can be found at
+        https://datomatic.no-intro.org/index.php
+      placeholder: e.g. 9f4cfc5b5f4859d17169a485462e977c7aac2b89

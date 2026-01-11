@@ -803,6 +803,18 @@ export default function HackSubmitForm({
                   ) : (
                     <div className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none">{baseRoms.find(r=>r.id===baseRom)?.name || baseRom}</div>
                   )}
+                  <p className="text-xs text-foreground/60">
+                    Missing a base ROM?{" "}
+                    <a
+                      href="https://github.com/Hackdex-App/hackdex-website/issues/new?template=add-base-rom.yml"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline underline-offset-2 hover:text-foreground/80 transition-colors"
+                    >
+                      Request it on GitHub
+                      <FiExternalLink className="inline-block h-3 w-3 ml-1" />
+                    </a>
+                  </p>
                 </div>
 
                 <div className="grid gap-2">
