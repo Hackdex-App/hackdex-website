@@ -44,6 +44,7 @@ export const baseRoms: BaseRom[] = [
   { id: "poke_silver",            name: "Pokémon Silver",                                   platform: "GBC",  category: "GSC",              region: "USA, Europe",      crc32: "8ad48636",  sha1: "49b163f7e57702bc939d642a18f591de55d92dae" },
   { id: "poke_crystal",           name: "Pokémon Crystal",                                  platform: "GBC",  category: "GSC",              region: "USA",              crc32: "ee6f5188",  sha1: "f4cd194bdee0d04ca4eac29e09b8e4e9d818c133" },
   { id: "poke_crystal_rev1",      name: "Pokémon Crystal (Rev 1)",                          platform: "GBC",  category: "GSC",              region: "USA, Europe",      crc32: "3358e30a",  sha1: "f2f52230b536214ef7c9924f483392993e226cfb" },
+  { id: "poke_tcg",               name: "Pokémon Trading Card Game",                        platform: "GBC",  category: "Spin-off",         region: "USA",              crc32: "81069d53",  sha1: "0f8670a583255cff3e5b7ca71b5d7454d928fc48" },
 
   // GB
   { id: "poke_red",               name: "Pokémon Red",                                      platform: "GB",   category: "RBY",              region: "USA, Europe",      crc32: "9f7fdd53",  sha1: "ea9bcae617fdf159b045185467ae58b2e4a48b9a" },
