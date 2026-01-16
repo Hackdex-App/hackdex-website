@@ -30,6 +30,7 @@ export interface HackMetadata {
     language: string | null;
     is_archive: boolean;
     completion_status: Database["public"]["Enums"]["Completion Status"] | null;
+    verification_contact_info: string | null;
   };
   images: string[];
   tags: string[];
@@ -59,11 +60,16 @@ export async function getHackMetadata(slug: string): Promise<HackMetadata | null
 
       const { data: hack, error } = await supabase
         .from("hacks")
-        .select("slug,title,summary,description,base_rom,created_at,updated_at,current_patch,box_art,social_links,created_by,approved,original_author,permission_from,language,is_archive,completion_status")
+        .select("slug,title,summary,description,base_rom,created_at,updated_at,current_patch,box_art,social_links,created_by,approved,original_author,permission_from,language,is_archive,completion_status,verification_contact_info")
         .eq("slug", slug)
         .maybeSingle();
 
       if (error || !hack) return null;
+
+      // Security: Don't return verification_contact_info if hack is approved
+      if (hack.approved) {
+        hack.verification_contact_info = null;
+      }
 
       // Fetch covers
       let images: string[] = [];

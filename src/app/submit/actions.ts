@@ -50,6 +50,7 @@ export async function prepareSubmission(formData: FormData) {
   const tags = (formData.get("tags") as string)?.split(",").map((t) => t.trim()).filter(Boolean) || [];
   const original_author = (formData.get("original_author") as string)?.trim() || null;
   const permission_from = (formData.get("permission_from") as string)?.trim() || null;
+  const verification_contact_info = (formData.get("verification_contact_info") as string)?.trim() || null;
   const is_archive = formData.get("is_archive") === "true";
 
   // For archives, version is not required; for regular hacks, it is
@@ -93,6 +94,7 @@ export async function prepareSubmission(formData: FormData) {
     patch_url: "",
     original_author: original_author || null,
     permission_from: permission_from || null,
+    verification_contact_info: verification_contact_info || null,
     current_patch: null, // Archives don't have patches
   } as HackInsert;
 

@@ -7,7 +7,7 @@ import HackActions from "@/components/Hack/HackActions";
 import Markdown from "@/components/Markdown/Markdown";
 import Image from "next/image";
 import { FaDiscord, FaTwitter, FaGithub, FaTriangleExclamation, FaArrowUpRightFromSquare } from "react-icons/fa6";
-import { FiAlertTriangle } from "react-icons/fi";
+import { FiAlertTriangle, FiInfo } from "react-icons/fi";
 import PokeCommunityIcon from "@/components/Icons/PokeCommunityIcon";
 import { createClient, createServiceClient } from "@/utils/supabase/server";
 import HackOptionsMenu from "@/components/Hack/HackOptionsMenu";
@@ -359,6 +359,23 @@ export default async function HackDetail({ params }: HackDetailProps) {
                 </div>
               </div>
             )
+          )}
+          {isAdmin && hack.verification_contact_info && (
+            <div className="mx-6 mt-6 rounded-lg border-2 border-blue-500/60 bg-blue-50 dark:bg-blue-900/20 p-4 md:pl-6">
+              <div className="flex items-center gap-4 md:gap-6">
+                <div className="flex-shrink-0">
+                  <FiInfo className="text-blue-600 dark:text-blue-400" size={24} />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                    Verification Contact Information
+                  </h3>
+                  <div className="text-sm text-blue-800 dark:text-blue-200 whitespace-pre-line">
+                    {hack.verification_contact_info}
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
         </>
       )}

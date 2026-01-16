@@ -161,6 +161,7 @@ export type Database = {
           summary: string
           title: string
           updated_at: string | null
+          verification_contact_info: string | null
           version: string
         }
         Insert: {
@@ -195,6 +196,7 @@ export type Database = {
           summary: string
           title: string
           updated_at?: string | null
+          verification_contact_info?: string | null
           version: string
         }
         Update: {
@@ -229,6 +231,7 @@ export type Database = {
           summary?: string
           title?: string
           updated_at?: string | null
+          verification_contact_info?: string | null
           version?: string
         }
         Relationships: [

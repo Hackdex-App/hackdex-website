@@ -108,6 +108,7 @@ export default function HackSubmitForm({
   const [twitter, setTwitter] = React.useState(() => initialDraftRef.current?.twitter || "");
   const [pokecommunity, setPokecommunity] = React.useState(() => initialDraftRef.current?.pokecommunity || "");
   const [github, setGithub] = React.useState(() => initialDraftRef.current?.github || "");
+  const [verificationContactInfo, setVerificationContactInfo] = React.useState(() => initialDraftRef.current?.verificationContactInfo || "");
   const [tags, setTags] = React.useState<string[]>(() => (Array.isArray(initialDraftRef.current?.tags) ? initialDraftRef.current.tags : []));
   const [showMdPreview, setShowMdPreview] = React.useState<boolean>(() => !!initialDraftRef.current?.showMdPreview);
   const [originalAuthor, setOriginalAuthor] = React.useState<string>(() => {
@@ -287,7 +288,7 @@ export default function HackSubmitForm({
           const data = JSON.parse(raw);
           if (data && typeof data === "object") {
             const isEmpty =
-              !title && !summary && !description && !baseRom && !platform && !version && !language && !completionStatus && !boxArt && !discord && !twitter && !pokecommunity && !github && (!tags || tags.length === 0) && !originalAuthor;
+              !title && !summary && !description && !baseRom && !platform && !version && !language && !completionStatus && !boxArt && !discord && !twitter && !pokecommunity && !github && !verificationContactInfo && (!tags || tags.length === 0) && !originalAuthor;
             if (isEmpty) {
               let applied = false;
               if (typeof data.title === "string") setTitle(data.title);
@@ -316,6 +317,8 @@ export default function HackSubmitForm({
               if (typeof data.pokecommunity === "string") applied = applied || !!data.pokecommunity;
               if (typeof data.github === "string") setGithub(data.github);
               if (typeof data.github === "string") applied = applied || !!data.github;
+              if (typeof data.verificationContactInfo === "string") setVerificationContactInfo(data.verificationContactInfo);
+              if (typeof data.verificationContactInfo === "string") applied = applied || !!data.verificationContactInfo;
               if (Array.isArray(data.tags)) setTags(data.tags.filter((t: any) => typeof t === "string"));
               if (Array.isArray(data.tags)) applied = applied || data.tags.length > 0;
               // Only load originalAuthor from draft if customCreator is not provided
@@ -346,7 +349,7 @@ export default function HackSubmitForm({
     if (!d || typeof d !== "object") return;
     // Don't count originalAuthor if customCreator is provided
     const hasAny = Boolean(
-      d.title || d.summary || d.description || d.baseRom || d.platform || d.version || d.language || d.completionStatus || d.boxArt || d.discord || d.twitter || d.pokecommunity || d.github || (Array.isArray(d.tags) && d.tags.length > 0) || (!customCreator && d.originalAuthor)
+      d.title || d.summary || d.description || d.baseRom || d.platform || d.version || d.language || d.completionStatus || d.boxArt || d.discord || d.twitter || d.pokecommunity || d.github || d.verificationContactInfo || (Array.isArray(d.tags) && d.tags.length > 0) || (!customCreator && d.originalAuthor)
     );
     if (hasAny) { hydratedFromDraftRef.current = true; setRestoredDraft(true); }
   }, [dummy, draftKey, customCreator]);
@@ -369,6 +372,7 @@ export default function HackSubmitForm({
           twitter,
           pokecommunity,
           github,
+          verificationContactInfo,
           tags,
           step,
           showMdPreview,
@@ -402,6 +406,7 @@ export default function HackSubmitForm({
     twitter,
     pokecommunity,
     github,
+    verificationContactInfo,
     tags,
     originalAuthor,
     customCreator,
@@ -441,6 +446,7 @@ export default function HackSubmitForm({
       if (twitter) fd.set('twitter', twitter);
       if (pokecommunity) fd.set('pokecommunity', pokecommunity);
       if (github) fd.set('github', github);
+      if (verificationContactInfo) fd.set('verification_contact_info', verificationContactInfo);
       if (tags.length) fd.set('tags', tags.join(','));
       if (isArchive) {
         fd.set('is_archive', 'true');
@@ -724,6 +730,7 @@ export default function HackSubmitForm({
                   setTwitter("");
                   setPokecommunity("");
                   setGithub("");
+                  setVerificationContactInfo("");
                   setTags([]);
                   setNewCoverFiles([]);
                   setCoverErrors([]);
@@ -1146,6 +1153,36 @@ export default function HackSubmitForm({
                     )}
                   </div>
                 </div>
+
+                {!profile?.verified && (
+                  <div className="grid gap-2">
+                    <label className="text-sm text-foreground/80">Verification Contact Information <span className="text-foreground/60">(Recommended)</span></label>
+                    <p className="text-xs text-foreground/60">
+                      Help us verify your account by providing contact information from a platform where your message/post history can be verified (e.g., Discord, PokéCommunity). This information will only be visible to admins during the approval process.
+                    </p>
+                    {!isDummy ? (
+                      <textarea
+                        value={verificationContactInfo}
+                        onChange={(e) => setVerificationContactInfo(e.target.value)}
+                        placeholder={`Discord username: @example
+I am active in the following servers:
+Team Aqua's Hideout, RH Hideout, pret
+
+Here is an invite to my development server:
+https://discord.gg/example`}
+                        rows={6}
+                        className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] resize-y"
+                      />
+                    ) : (
+                      <div className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm ring-1 ring-inset ring-[var(--border)] text-foreground/60 select-none min-h-[6rem]">
+                        Discord: @example<br />
+                        I am active in the following servers: Team Aqua's Hideout, pret, and PokéDev School<br />
+                        Here is an invite to my development server: https://discord.gg/example_server_invite
+                      </div>
+                    )}
+                    <p className="text-xs text-foreground/60">Optional but recommended for faster account verification. Please be detailed.</p>
+                  </div>
+                )}
               </>
             )}
 
