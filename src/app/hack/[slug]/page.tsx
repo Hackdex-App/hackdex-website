@@ -134,18 +134,19 @@ export default async function HackDetail({ params }: HackDetailProps) {
     canEdit: canUploadPatch,
   } = await checkPatchEditPermission(hack, user?.id as string, supabase);
 
+  // isAdmin always needs to be checked for archive hacks
   let isAdmin = false;
   if (!hack.approved || isArchive) {
     const { data: admin } = await supabase.rpc("is_admin");
     if (admin) {
       isAdmin = true;
-    } else if (!isArchive) {
-      return notFound();
+    } else if (!hack.approved) {
+      if (isArchive && !canEditAsArchiver) {
+        return notFound();
+      } else if (!canEdit) {
+        return notFound();
+      }
     }
-  }
-
-  if (isArchive && !isAdmin && !canEditAsArchiver) {
-    return notFound();
   }
 
   // Extract patch info from cached metadata
