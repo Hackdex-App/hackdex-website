@@ -4,7 +4,12 @@ import HackStatsClient from "@/components/Hack/Stats/HackStatsClient";
 import { getDownloadsSeriesAll, getHackInsights } from "@/app/dashboard/actions";
 import { checkEditPermission } from "@/utils/hack";
 
-export default async function HackStatsPage({ params: { slug } }: { params: { slug: string } }) {
+interface HackStatsPageProps {
+  params: Promise<{ slug: string }>;
+}
+
+export default async function HackStatsPage({ params }: HackStatsPageProps) {
+  const { slug } = await params;
   const supa = await createClient();
   const { data: userResp } = await supa.auth.getUser();
   const user = userResp.user;
