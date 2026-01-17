@@ -229,7 +229,7 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
 
   const { data: hack, error: hErr } = await supabase
     .from("hacks")
-    .select("slug, created_by, title, current_patch, original_author, permission_from, is_archive, approved")
+    .select("slug, created_by, title, current_patch, original_author, permission_from, is_archive, approved, verification_contact_info")
     .eq("slug", args.slug)
     .maybeSingle();
   if (hErr) return { ok: false, error: hErr.message } as const;
@@ -307,7 +307,9 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
 
     const embed: APIEmbed = args.firstUpload ? {
       title: `:tada: ${hack.title}`,
-      description: `A new hack by **${displayName}** is pending approval by an admin.` + (uploadedByDifferentUser ? ` (Uploaded by ${user.id})` : ''),
+      description: `A new hack by **${displayName}** is pending approval by an admin.`
+        + (uploadedByDifferentUser ? ` (Uploaded by ${user.id})` : '')
+        + (hack.verification_contact_info ? `\n\n**Verification contact info:**\n${hack.verification_contact_info}` : ''),
       color: 0x40f56a,
       url: `${process.env.NEXT_PUBLIC_SITE_URL}/hack/${args.slug}`,
       footer: {
