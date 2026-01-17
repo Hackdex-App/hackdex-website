@@ -47,7 +47,7 @@ function buildUtcDateLabels(days: number, endExclusiveUtc: Date): string[] {
   return labels;
 }
 
-export const getDownloadsSeriesAll = async ({ days = 30 }: { days?: number }): Promise<DownloadsSeriesAll> => {
+export const getDownloadsSeriesAll = async ({ days = 30, userId }: { days?: number, userId?: string }): Promise<DownloadsSeriesAll> => {
   const { startISO, endISO, ttl, dayStamp, startOfTodayUtc } = getUtcBounds(days);
 
   // Resolve user and accessible slugs OUTSIDE cache (cookies not allowed in cache)
@@ -61,7 +61,7 @@ export const getDownloadsSeriesAll = async ({ days = 30 }: { days?: number }): P
     .from("hacks")
     .select("slug,created_by,current_patch,original_author,permission_from,is_archive")
     .is("is_archive", false)
-    .eq("created_by", user.id);
+    .eq("created_by", userId ?? user.id);
   const ownedSlugs = (ownedHacks ?? []).map((h) => h.slug);
 
   // Get archive hacks that user can edit as archiver
@@ -122,24 +122,45 @@ export const getDownloadsSeriesAll = async ({ days = 30 }: { days?: number }): P
       slugs.forEach((s) => (countsBySlug[s] = new Array(labels.length).fill(0)));
 
       if (patchIds.length > 0) {
-        const { error: dlError, data: dlRows } = await svc
-          .from("patch_downloads")
-          .select("created_at,patch")
-          .in("patch", patchIds)
-          .gte("created_at", startISO)
-          .lt("created_at", endISO);
-        if (dlError) throw dlError;
+        // Fetch patch downloads in batches to avoid 1000 row limit
+        const BATCH_SIZE = 1000;
+        let offset = 0;
+        let hasMore = true;
 
-        (dlRows ?? []).forEach((row: any) => {
-          const pid = row.patch as number | null;
-          if (!pid) return;
-          const slug = patchIdToSlug.get(pid);
-          if (!slug) return;
-          const day = new Date(row.created_at).toISOString().slice(0, 10);
-          const idx = dateIndex.get(day);
-          if (idx == null) return;
-          countsBySlug[slug][idx] += 1;
-        });
+        while (hasMore) {
+          const { error: dlError, data: dlRows } = await svc
+            .from("patch_downloads")
+            .select("created_at,patch")
+            .in("patch", patchIds)
+            .gte("created_at", startISO)
+            .lt("created_at", endISO)
+            .range(offset, offset + BATCH_SIZE - 1)
+            .order("created_at", { ascending: true });
+
+          if (dlError) throw dlError;
+
+          if (!dlRows || dlRows.length === 0) {
+            hasMore = false;
+          } else {
+            (dlRows ?? []).forEach((row: any) => {
+              const pid = row.patch as number | null;
+              if (!pid) return;
+              const slug = patchIdToSlug.get(pid);
+              if (!slug) return;
+              const day = new Date(row.created_at).toISOString().slice(0, 10);
+              const idx = dateIndex.get(day);
+              if (idx == null) return;
+              countsBySlug[slug][idx] += 1;
+            });
+
+            // If we got fewer rows than the batch size, we've reached the end
+            if (dlRows.length < BATCH_SIZE) {
+              hasMore = false;
+            } else {
+              offset += BATCH_SIZE;
+            }
+          }
+        }
       }
 
       const datasets: SeriesDataset[] = slugs.map((slug) => ({ slug, counts: countsBySlug[slug] || new Array(labels.length).fill(0) }));
@@ -151,7 +172,7 @@ export const getDownloadsSeriesAll = async ({ days = 30 }: { days?: number }): P
       } satisfies DownloadsSeriesAll;
     },
     [
-      `downloads-series-all:${user.id}:${dayStamp}`,
+      `downloads-series-all:${userId ?? user.id}:${dayStamp}`,
     ],
     { revalidate: ttl }
   );
@@ -223,29 +244,50 @@ export const getHackInsights = async ({ slug }: { slug: string }): Promise<HackI
         } satisfies HackInsights;
       }
 
-      const { error: dlError, data: dlRows } = await svc
-        .from("patch_downloads")
-        .select("patch,device_id")
-        .in("patch", patchIds)
-        .lt("created_at", endISO);
-      if (dlError) throw dlError;
+      // Fetch patch downloads in batches to avoid 1000 row limit
+      const BATCH_SIZE = 1000;
+      let offset = 0;
+      let hasMore = true;
 
       const byPatchCount = new Map<number, number>();
       const allDevices = new Set<string>();
       const latestDevices = new Set<string>();
 
-      (dlRows ?? []).forEach((r: any) => {
-        const pid = r.patch as number | null;
-        const dev = r.device_id as string | null;
-        if (pid == null) return;
-        byPatchCount.set(pid, (byPatchCount.get(pid) ?? 0) + 1);
-        if (dev) allDevices.add(dev);
-        if (latestPatchId != null && pid === latestPatchId && dev) latestDevices.add(dev);
-      });
+      while (hasMore) {
+        const { error: dlError, data: dlRows } = await svc
+          .from("patch_downloads")
+          .select("patch,device_id")
+          .in("patch", patchIds)
+          .lt("created_at", endISO)
+          .range(offset, offset + BATCH_SIZE - 1)
+          .order("created_at", { ascending: true });
+
+        if (dlError) throw dlError;
+
+        if (!dlRows || dlRows.length === 0) {
+          hasMore = false;
+        } else {
+          (dlRows ?? []).forEach((r: any) => {
+            const pid = r.patch as number | null;
+            const dev = r.device_id as string | null;
+            if (pid == null) return;
+            byPatchCount.set(pid, (byPatchCount.get(pid) ?? 0) + 1);
+            if (dev) allDevices.add(dev);
+            if (latestPatchId != null && pid === latestPatchId && dev) latestDevices.add(dev);
+          });
+
+          // If we got fewer rows than the batch size, we've reached the end
+          if (dlRows.length < BATCH_SIZE) {
+            hasMore = false;
+          } else {
+            offset += BATCH_SIZE;
+          }
+        }
+      }
 
       const versionCounts = (patches ?? [])
-        .map((p) => ({ version: p.version, downloads: byPatchCount.get(p.id) ?? 0 }))
-        .sort((a, b) => b.downloads - a.downloads);
+        .map((p) => ({ version: p.version, downloads: byPatchCount.get(p.id) ?? 0, patchId: p.id }))
+        .sort((a, b) => a.patchId - b.patchId);
 
       const totalUniqueDevices = allDevices.size;
       const latestUniqueDevices = latestDevices.size;

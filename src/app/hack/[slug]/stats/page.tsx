@@ -27,7 +27,7 @@ export default async function HackStatsPage({ params }: HackStatsPageProps) {
     redirect(`/hack/${slug}`);
   }
 
-  const allSeries = await getDownloadsSeriesAll({ days: 30 });
+  const allSeries = await getDownloadsSeriesAll({ days: 30, userId: hack.created_by });
   const series = {
     labels: allSeries.labels,
     datasets: allSeries.datasets.filter((d) => d.slug === slug),
