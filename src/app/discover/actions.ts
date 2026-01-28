@@ -328,7 +328,7 @@ export async function getDiscoverData(sort: DiscoverSortOption): Promise<Discove
       } satisfies DiscoverDataResult;
      },
      [`discover-data:${sort}:${dayStamp}`], // Cache key
-     { revalidate: TIME_TO_LIVE } // Cache duration
+     { revalidate: TIME_TO_LIVE, tags: ["discover"] } // Cache duration
    );
 
    return runner();
