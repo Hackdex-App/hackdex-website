@@ -62,7 +62,7 @@ export const baseRoms: BaseRom[] = [
   { id: "poke_white",             name: "Pokémon White",                                    platform: "NDS",  category: "BW",               region: "USA, Europe",      crc32: "b552501c",  sha1: "bc696a0dfb448c7b3a8a206f0f8214411a039208" },
   { id: "poke_black_2",           name: "Pokémon Black 2",                                  platform: "NDS",  category: "B2W2",             region: "USA, Europe",      crc32: "d4427fd1",  sha1: "e51e6dfb8678a3d19dcd2a10691b96a569ca0abb" },
   { id: "poke_white_2",           name: "Pokémon White 2",                                  platform: "NDS",  category: "B2W2",             region: "USA, Europe",      crc32: "777eb04f",  sha1: "b5d7490be7b415b8f1e672a53e978a9cc667e56a" },
-  { id: "poke_md_eos",            name: "Pokémon Mystery Dungeon: Explorers of Sky",        platform: "NDS",  category: "Spin-off",         region: "USA",              crc32: "61293484",  sha1: "7488d070841d424530479784346390938563487b" },
+  { id: "poke_md_eos",            name: "Pokémon Mystery Dungeon: Explorers of Sky",        platform: "NDS",  category: "Spin-off",         region: "USA",              crc32: "22dde080",  sha1: "5fa96ca8d8dd6405d6cd2bad73ed68bc73a9d152" },
   { id: "poke_conquest",          name: "Pokémon Conquest",                                 platform: "NDS",  category: "Spin-off",         region: "USA, Australia",   crc32: "a0166347",  sha1: "308e1609929dd78dbbff4f531a2cd17f873a3778" },
 ];
 
