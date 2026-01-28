@@ -109,7 +109,7 @@ export async function getHackMetadata(slug: string): Promise<HackMetadata | null
         title: string;
         summary: string;
       }[] = [];
-      if (!hack.is_archive) {
+      if (!hack.is_archive && !hack.original_author) {
         const { data: otherHacksData } = await supabase
           .from("hacks")
           .select("slug,title,summary")
