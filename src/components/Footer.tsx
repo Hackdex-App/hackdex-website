@@ -6,7 +6,7 @@ export default function Footer() {
       <div className="mx-auto max-w-screen-2xl px-6 py-8 text-sm text-foreground/70">
         <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
           <div>
-            <p>© 2025 Hackdex</p>
+            <p>© 2026 Hackdex</p>
             <p className="mt-2 max-w-2xl text-xs text-foreground/60">
               Pokémon, Nintendo, Game Boy, Game Boy Color, Game Boy Advance, and Nintendo DS are
               trademarks of their respective owners. Hackdex is an independent fan project and is not
