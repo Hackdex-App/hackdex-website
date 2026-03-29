@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import type { CatalogTagRow } from "@/types/catalogTag";
 import HackSubmitForm from "@/components/Hack/HackSubmitForm";
 import HackEditForm from "@/components/Hack/HackEditForm";
 
@@ -12,12 +13,14 @@ interface HackFormCreateProps {
   isArchive?: boolean;
   permissionFrom?: string;
   customCreator?: string;
+  catalogTags: CatalogTagRow[];
 }
 
 interface HackFormEditProps {
   mode: "edit";
   slug: string;
   initial: React.ComponentProps<typeof HackEditForm>["initial"];
+  catalogTags: CatalogTagRow[];
 }
 
 export type HackFormProps = HackFormCreateProps | HackFormEditProps;
@@ -29,9 +32,10 @@ export default function HackForm(props: HackFormProps) {
       isArchive={props.isArchive}
       permissionFrom={props.permissionFrom}
       customCreator={props.customCreator}
+      catalogTags={props.catalogTags}
     />;
   }
-  return <HackEditForm slug={props.slug} initial={props.initial} />;
+  return <HackEditForm slug={props.slug} initial={props.initial} catalogTags={props.catalogTags} />;
 }
 
 

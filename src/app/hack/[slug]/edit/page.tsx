@@ -5,6 +5,7 @@ import { FaChevronLeft, FaChevronRight, FaPlus } from "react-icons/fa6";
 import Link from "next/link";
 import { sortOrderedTags, getCoverUrls } from "@/utils/format";
 import { checkEditPermission } from "@/utils/hack";
+import { getCachedTagsWithUsage } from "@/data/tags";
 
 interface EditPageProps {
   params: Promise<{ slug: string }>;
@@ -12,6 +13,7 @@ interface EditPageProps {
 
 export default async function EditHackPage({ params }: EditPageProps) {
   const { slug } = await params;
+  const catalogTags = await getCachedTagsWithUsage();
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
@@ -119,7 +121,7 @@ export default async function EditHackPage({ params }: EditPageProps) {
         </div>
       </div>
       <div className="mt-4 lg:mt-8">
-        <HackForm mode="edit" slug={slug} initial={initial} />
+        <HackForm mode="edit" slug={slug} initial={initial} catalogTags={catalogTags} />
       </div>
     </div>
   );

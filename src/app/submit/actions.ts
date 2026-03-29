@@ -7,6 +7,7 @@ import { sendDiscordMessageEmbed } from "@/utils/discord";
 import { APIEmbed } from "discord-api-types/v10";
 import { slugify } from "@/utils/format";
 import { checkEditPermission, checkPatchEditPermission } from "@/utils/hack";
+import { getCachedTagsWithUsage, resolveTagIdsInOrder } from "@/data/tags";
 
 type HackInsert = TablesInsert<"hacks">;
 
@@ -103,15 +104,12 @@ export async function prepareSubmission(formData: FormData) {
     return { ok: false, error: insertErr.message } as const;
   }
 
-  // Tags: restrict to existing only
+  // Tags: restrict to existing only (order follows form submission)
   if (tags.length > 0) {
-    const { data: existingTags, error: tagErr } = await supabase
-      .from("tags")
-      .select("id, name")
-      .in("name", tags);
-    if (tagErr) return { ok: false, error: tagErr.message } as const;
-    if (existingTags && existingTags.length > 0) {
-      const hackTags = existingTags.map((t, i) => ({ hack_slug: slug, tag_id: t.id, order: i + 1 }));
+    const catalog = await getCachedTagsWithUsage();
+    const resolved = resolveTagIdsInOrder(tags, catalog);
+    if (resolved.length > 0) {
+      const hackTags = resolved.map((t, i) => ({ hack_slug: slug, tag_id: t.id, order: i + 1 }));
       const { error: htErr } = await supabase.from("hack_tags").insert(hackTags);
       if (htErr) return { ok: false, error: htErr.message } as const;
     }

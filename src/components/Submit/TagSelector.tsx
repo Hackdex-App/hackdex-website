@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import type { CatalogTagRow } from "@/types/catalogTag";
 import { createClient } from "@/utils/supabase/client";
 import { MdTune } from "react-icons/md";
 import { CATEGORY_ICONS, getCategoryIcon } from "@/components/Icons/tagCategories";
@@ -19,16 +20,13 @@ import {
 import { SortableContext, arrayMove, useSortable, rectSortingStrategy } from "@dnd-kit/sortable";
 import { RxDragHandleDots2 } from "react-icons/rx";
 
-type TagRow = {
-  id: number;
-  name: string;
-  category: string | null;
-  popularity: number;
-};
+type TagRow = CatalogTagRow;
 
 export interface TagSelectorProps {
   value: string[];
   onChange: (next: string[]) => void;
+  /** When set, skips client Supabase fetch (use server-cached catalog). */
+  catalogTags?: CatalogTagRow[];
 }
 
 type CategoryIconType = React.ComponentType<React.SVGProps<SVGSVGElement>> | null;
@@ -114,11 +112,11 @@ function SortableSelectedTag({
   );
 }
 
-export default function TagSelector({ value, onChange }: TagSelectorProps) {
+export default function TagSelector({ value, onChange, catalogTags }: TagSelectorProps) {
   const supabase = createClient();
   const [query, setQuery] = React.useState("");
-  const [allTags, setAllTags] = React.useState<TagRow[]>([]);
-  const [loading, setLoading] = React.useState(false);
+  const [allTags, setAllTags] = React.useState<TagRow[]>(() => catalogTags ?? []);
+  const [loading, setLoading] = React.useState(() => catalogTags === undefined);
   const [activeCategory, _setActiveCategory] = React.useState<string | "advanced" | null>(null);
   const searchInputRef = React.useRef<HTMLInputElement | null>(null);
   const categoryRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
@@ -143,6 +141,8 @@ export default function TagSelector({ value, onChange }: TagSelectorProps) {
   }, []);
 
   React.useEffect(() => {
+    if (catalogTags !== undefined) return;
+    let cancelled = false;
     (async () => {
       try {
         setLoading(true);
@@ -156,12 +156,15 @@ export default function TagSelector({ value, onChange }: TagSelectorProps) {
           popularity: t.usage?.[0]?.count || 0,
         }));
         rows.sort((a, b) => (b.popularity - a.popularity) || a.name.localeCompare(b.name));
-        setAllTags(rows);
+        if (!cancelled) setAllTags(rows);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
-  }, [supabase]);
+    return () => {
+      cancelled = true;
+    };
+  }, [catalogTags, supabase]);
 
   const grouped = React.useMemo(() => {
     const map = new Map<string, TagRow[]>();
