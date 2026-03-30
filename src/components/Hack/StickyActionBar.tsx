@@ -21,6 +21,7 @@ interface StickyActionBarProps {
   supported: boolean;
   onUploadChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   termsAgreed: boolean;
+  progressBarHeight?: number;
 }
 
 export default function StickyActionBar({
@@ -39,6 +40,7 @@ export default function StickyActionBar({
   supported,
   onUploadChange,
   termsAgreed,
+  progressBarHeight = 0,
 }: StickyActionBarProps) {
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
@@ -77,7 +79,12 @@ export default function StickyActionBar({
   }, [status]);
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 md:sticky md:top-18 md:z-30 flex flex-col gap-2 pb-safe">
+    <div
+      className="fixed inset-x-0 z-40 md:sticky md:top-18 md:z-30 flex flex-col gap-2 pb-safe transition-all duration-300 ease-out"
+      style={{
+        bottom: `${progressBarHeight - 8}px`,
+      }}
+    >
       <div className="mx-auto w-full lg:max-w-screen-lg flex flex-col md:flex-row md:items-center md:justify-between md:gap-4 rounded-t-xl md:rounded-md border border-[var(--border)] bg-[var(--surface-2)]/80 px-4 py-3 pb-[env(safe-area-inset-bottom)] md:pb-3 shadow-[0_-6px_24px_rgba(0,0,0,0.2)] md:shadow-none backdrop-blur supports-[backdrop-filter]:bg-[color-mix(in_oklab,var(--background)_90%,transparent)] md:supports-[backdrop-filter]:bg-[color-mix(in_oklab,var(--background)_70%,transparent)]">
         <div className="md:w-fit md:max-w-[40%] lg:max-w-[45%]">
           <div className="flex items-center gap-2">
@@ -142,7 +149,7 @@ export default function StickyActionBar({
             onClick={onPatch}
             data-ready={romReady}
             disabled={!mounted || !romReady || (status !== "ready" && status !== "done" && status !== "idle") || !patchAgainReady}
-            className={`shine-wrap btn-premium data-[ready=false]:hidden! h-11 md:h-9 w-full md:min-w-46 ${!termsAgreed || status === 'downloading' ? "md:w-32" : "md:w-auto"} text-base md:text-sm font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 ${romReady && status !== 'downloading' && status !== 'ready' && termsAgreed ? "mt-6 md:mt-0" : ""}`}
+            className={`shine-wrap btn-premium data-[ready=false]:hidden! h-11 md:h-9 w-full md:min-w-46 ${!termsAgreed || status === "downloading" ? "md:w-32" : "md:w-auto"} text-base md:text-sm font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 ${romReady && status !== "downloading" && status !== "ready" && termsAgreed ? "mt-6 md:mt-0" : ""}`}
           >
             <span>{
               status === "patching" ? "Patching…" :
