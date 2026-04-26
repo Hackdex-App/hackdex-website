@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { getMinioClient, PATCHES_BUCKET } from "@/utils/minio/server";
+import { buildPatchDownloadUrl } from "@/utils/patches/patch-download-url";
 import { createClient } from "@/utils/supabase/server";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -43,6 +44,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     .maybeSingle();
   if (error || !patch) {
     return new Response("Not found", { status: 404 });
+  }
+
+  const workerUrl = buildPatchDownloadUrl(patch.filename);
+  if (workerUrl) {
+    return Response.redirect(workerUrl, 302);
   }
 
   const client = getMinioClient();

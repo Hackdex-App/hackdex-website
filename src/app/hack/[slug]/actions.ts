@@ -2,6 +2,7 @@
 
 import { createClient, createServiceClient } from "@/utils/supabase/server";
 import { getMinioClient, PATCHES_BUCKET } from "@/utils/minio/server";
+import { buildPatchDownloadUrl } from "@/utils/patches/patch-download-url";
 import { isInformationalArchiveHack, canEditAsCreator, canEditAsAdmin } from "@/utils/hack";
 import { sendDiscordMessageEmbed } from "@/utils/discord";
 import { headers } from "next/headers";
@@ -245,8 +246,11 @@ export async function getSignedPatchUrl(slug: string): Promise<{ ok: true; url: 
     return { ok: false, error: "Patch not found" };
   }
 
-  // Sign the URL server-side
   try {
+    const workerUrl = buildPatchDownloadUrl(patch.filename);
+    if (workerUrl) {
+      return { ok: true, url: workerUrl };
+    }
     const client = getMinioClient();
     const bucket = patch.bucket || PATCHES_BUCKET;
     const signedUrl = await client.presignedGetObject(bucket, patch.filename, 60 * 5);
@@ -433,6 +437,10 @@ export async function getPatchDownloadUrl(patchId: number): Promise<{ ok: true; 
   }
 
   try {
+    const workerUrl = buildPatchDownloadUrl(patch.filename);
+    if (workerUrl) {
+      return { ok: true, url: workerUrl };
+    }
     const client = getMinioClient();
     const bucket = patch.bucket || PATCHES_BUCKET;
     const signedUrl = await client.presignedGetObject(bucket, patch.filename, 60 * 5);
