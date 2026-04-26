@@ -146,6 +146,7 @@ const HackActions: React.FC<HackActionsProps> = ({
     } catch (e: any) {
       setError(e?.message || "Failed to fetch patch URL");
       setStatus("idle");
+      setTermsAgreed(false);
     }
   }
 
