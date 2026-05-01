@@ -5,7 +5,8 @@ import Markdown from "@/components/Markdown/Markdown";
 import { FaChevronDown, FaChevronUp, FaStar, FaDownload, FaTrash, FaRotateLeft, FaUpload, FaCheck, FaPlus } from "react-icons/fa6";
 import { FiEdit2, FiEdit, FiX } from "react-icons/fi";
 import VersionActions from "@/components/Hack/VersionActions";
-import { updatePatchChangelog, updatePatchVersion } from "@/app/hack/[slug]/actions";
+import type { PatchesDownloadPermission } from "@/components/Hack/DownloadPermissionSettings";
+import { updatePatchChangelog, updatePatchVersion, getPatchDownloadUrl } from "@/app/hack/[slug]/actions";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 
@@ -19,15 +20,68 @@ interface Patch {
   archived: boolean;
 }
 
+function shouldShowPublicPatchDownload(
+  permission: PatchesDownloadPermission,
+  patch: Patch,
+  isCurrent: boolean,
+): boolean {
+  if (permission === "None") return false;
+  if (!patch.published || patch.archived) return false;
+  if (permission === "All") return true;
+  if (permission === "Current") return isCurrent;
+  return false;
+}
+
+function PublicPatchDownloadButton({ patchId }: { patchId: number }) {
+  const [loading, setLoading] = useState(false);
+
+  const handleClick = async () => {
+    setLoading(true);
+    try {
+      const result = await getPatchDownloadUrl(patchId);
+      if (result.ok) {
+        window.open(result.url, "_blank");
+      } else {
+        alert(result.error || "Failed to generate download URL");
+      }
+    } catch {
+      alert("Failed to download patch");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={loading}
+      className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-3)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
+      title="Download patch file"
+    >
+      <FaDownload size={12} aria-hidden />
+      {loading ? "Opening…" : "Download Patch"}
+    </button>
+  );
+}
+
 interface VersionListProps {
   patches: Patch[];
   currentPatchId: number | null;
   canEdit: boolean;
   hackSlug: string;
   baseRom: string;
+  patchesDownloadPermission: PatchesDownloadPermission;
 }
 
-export default function VersionList({ patches, currentPatchId, canEdit, hackSlug, baseRom }: VersionListProps) {
+export default function VersionList({
+  patches,
+  currentPatchId,
+  canEdit,
+  hackSlug,
+  baseRom,
+  patchesDownloadPermission,
+}: VersionListProps) {
   // Initialize with first patch's changelog expanded if it exists
   const getInitialExpanded = () => {
     if (patches.length > 0) {
@@ -115,6 +169,83 @@ export default function VersionList({ patches, currentPatchId, canEdit, hackSlug
         const isEditing = editingChangelog === patch.id;
         const currentPatch = allPatches.find(p => p.id === currentPatchId);
         const currentPatchCreatedAt = currentPatch?.created_at || null;
+        const showPublicPatchDownload =
+          !canEdit &&
+          shouldShowPublicPatchDownload(patchesDownloadPermission, patch, isCurrent);
+
+        const titleBar = (
+          <div
+            className={`flex flex-wrap items-center gap-2 ${showPublicPatchDownload ? "" : "mb-1.5 sm:mb-2"}`}
+          >
+            {editingVersion === patch.id ? (
+              <VersionEditor
+                patchId={patch.id}
+                initialVersion={patch.version}
+                hackSlug={hackSlug}
+                onSave={() => {
+                  setEditingVersion(null);
+                  router.refresh();
+                }}
+                onCancel={() => setEditingVersion(null)}
+              />
+            ) : (
+              <>
+                <h3 className="text-base sm:text-lg font-semibold">{patch.version}</h3>
+                {canEdit && (
+                  <button
+                    onClick={() => setEditingVersion(patch.id)}
+                    className="inline-flex items-center justify-center rounded-md p-1.5 text-foreground/60 hover:text-foreground hover:bg-[var(--surface-2)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--accent)] touch-manipulation"
+                    title="Edit version"
+                    aria-label="Edit version"
+                  >
+                    <FiEdit size={14} />
+                  </button>
+                )}
+              </>
+            )}
+            {isCurrent && editingVersion !== patch.id && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                <FaStar size={10} />
+                Current
+              </span>
+            )}
+            {!patch.published && (
+              <span className="inline-flex items-center rounded-full bg-amber-500/20 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+                Unpublished
+              </span>
+            )}
+            {patch.archived && (
+              <span className="inline-flex items-center rounded-full bg-gray-500/20 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-400">
+                Archived
+              </span>
+            )}
+          </div>
+        );
+
+        const datesBlock = (
+          <div className="text-xs sm:text-sm text-foreground/60 mt-4 sm:mt-0">
+            <p>
+              Created: {new Date(patch.created_at).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </p>
+            {patch.updated_at && patch.updated_at !== patch.created_at && (
+              <p>
+                Updated: {new Date(patch.updated_at).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </p>
+            )}
+          </div>
+        );
 
         return (
           <div
@@ -122,96 +253,42 @@ export default function VersionList({ patches, currentPatchId, canEdit, hackSlug
             className={`card p-4 sm:p-5 ${isCurrent ? "ring-2 ring-emerald-500/50" : ""}`}
           >
             <div className="space-y-3 sm:space-y-4">
-              <div className="flex items-start justify-between gap-3 sm:gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 mb-1.5 sm:mb-2">
-                    {editingVersion === patch.id ? (
-                      <VersionEditor
-                        patchId={patch.id}
-                        initialVersion={patch.version}
+              {showPublicPatchDownload ? (
+                <div className="space-y-2">
+                  <div className="flex items-start justify-between gap-3 sm:gap-4">
+                    <div className="flex-1 min-w-0">{titleBar}</div>
+                    <div className="shrink-0">
+                      <PublicPatchDownloadButton patchId={patch.id} />
+                    </div>
+                  </div>
+                  {datesBlock}
+                </div>
+              ) : (
+                <div className="flex items-start justify-between gap-3 sm:gap-4">
+                  <div className="flex-1 min-w-0">
+                    {titleBar}
+                    {datesBlock}
+                  </div>
+                  <div className="shrink-0">
+                    {canEdit && (
+                      <VersionActions
+                        patch={patch}
+                        isCurrent={isCurrent}
                         hackSlug={hackSlug}
-                        onSave={() => {
-                          setEditingVersion(null);
+                        baseRom={baseRom}
+                        currentPatchCreatedAt={currentPatchCreatedAt}
+                        onActionComplete={() => {
                           router.refresh();
+                          setEditingChangelog(null);
+                          setEditingVersion(null);
+                          // Clear archived patches to force refetch if checkbox is toggled
+                          setArchivedPatches([]);
                         }}
-                        onCancel={() => setEditingVersion(null)}
                       />
-                    ) : (
-                      <>
-                        <h3 className="text-base sm:text-lg font-semibold">{patch.version}</h3>
-                        {canEdit && (
-                          <button
-                            onClick={() => setEditingVersion(patch.id)}
-                            className="inline-flex items-center justify-center rounded-md p-1.5 text-foreground/60 hover:text-foreground hover:bg-[var(--surface-2)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--accent)] touch-manipulation"
-                            title="Edit version"
-                            aria-label="Edit version"
-                          >
-                            <FiEdit size={14} />
-                          </button>
-                        )}
-                      </>
-                    )}
-                    {isCurrent && editingVersion !== patch.id && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                        <FaStar size={10} />
-                        Current
-                      </span>
-                    )}
-                    {!patch.published && (
-                      <span className="inline-flex items-center rounded-full bg-amber-500/20 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
-                        Unpublished
-                      </span>
-                    )}
-                    {patch.archived && (
-                      <span className="inline-flex items-center rounded-full bg-gray-500/20 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-400">
-                        Archived
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-xs sm:text-sm text-foreground/60">
-                    <p>
-                      Created: {new Date(patch.created_at).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </p>
-                    {patch.updated_at && patch.updated_at !== patch.created_at && (
-                      <p>
-                        Updated: {new Date(patch.updated_at).toLocaleDateString("en-US", {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
                     )}
                   </div>
                 </div>
-
-                <div className="shrink-0">
-                  {canEdit && (
-                    <VersionActions
-                      patch={patch}
-                      isCurrent={isCurrent}
-                      hackSlug={hackSlug}
-                      baseRom={baseRom}
-                      currentPatchCreatedAt={currentPatchCreatedAt}
-                      onActionComplete={() => {
-                        router.refresh();
-                        setEditingChangelog(null);
-                        setEditingVersion(null);
-                        // Clear archived patches to force refetch if checkbox is toggled
-                        // This ensures restored/archived patches don't show duplicates
-                        setArchivedPatches([]);
-                      }}
-                    />
-                  )}
-                </div>
-              </div>
+              )}
 
               {hasChangelog ? (
                 <div className="border-t border-[var(--border)] pt-2">
