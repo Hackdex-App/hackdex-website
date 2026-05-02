@@ -6,7 +6,7 @@ import { FaChevronDown, FaChevronUp, FaStar, FaDownload, FaTrash, FaRotateLeft, 
 import { FiEdit2, FiEdit, FiX } from "react-icons/fi";
 import VersionActions from "@/components/Hack/VersionActions";
 import type { PatchesDownloadPermission } from "@/components/Hack/DownloadPermissionSettings";
-import { updatePatchChangelog, updatePatchVersion, getPatchDownloadUrl } from "@/app/hack/[slug]/actions";
+import { updatePatchChangelog, updatePatchVersion, getPatchDownloadUrl, updatePatchDownloadCount } from "@/app/hack/[slug]/actions";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 
@@ -41,6 +41,24 @@ function PublicPatchDownloadButton({ patchId }: { patchId: number }) {
       const result = await getPatchDownloadUrl(patchId);
       if (result.ok) {
         window.open(result.url, "_blank");
+        // Best-effort log download for counting
+        try {
+          const key = "deviceId";
+          let deviceId = localStorage.getItem(key);
+          if (!deviceId) {
+            deviceId = crypto.randomUUID();
+            localStorage.setItem(key, deviceId);
+          }
+          setTimeout(async () => {
+            const deviceIdObscured = deviceId.split("-");
+            const countResult = await updatePatchDownloadCount(patchId, deviceIdObscured);
+            if (!countResult.ok) {
+              console.error(countResult.error);
+            }
+          }, 50);
+        } catch (e) {
+          console.error(e);
+        }
       } else {
         alert(result.error || "Failed to generate download URL");
       }
