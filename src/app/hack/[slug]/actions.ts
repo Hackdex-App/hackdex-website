@@ -2,6 +2,7 @@
 
 import { createClient, createServiceClient } from "@/utils/supabase/server";
 import { getMinioClient, PATCHES_BUCKET } from "@/utils/minio/server";
+import { buildPatchDownloadUrl } from "@/utils/patches/patch-download-url";
 import { isInformationalArchiveHack, canEditAsCreator, canEditAsAdmin } from "@/utils/hack";
 import { sendDiscordMessageEmbed } from "@/utils/discord";
 import { headers } from "next/headers";
@@ -9,7 +10,11 @@ import { validateEmail } from "@/utils/auth";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { unstable_cache as cache } from "next/cache";
 import { sortOrderedTags, getCoverUrls } from "@/utils/format";
-import { Database } from "@/types/db";
+import { Database, Constants } from "@/types/db";
+
+const PATCHES_DOWNLOAD_PERMISSION_VALUES = Constants.public.Enums[
+  "Patches Download Permission"
+] as readonly Database["public"]["Enums"]["Patches Download Permission"][];
 
 export interface HackMetadata {
   hack: {
@@ -245,8 +250,11 @@ export async function getSignedPatchUrl(slug: string): Promise<{ ok: true; url: 
     return { ok: false, error: "Patch not found" };
   }
 
-  // Sign the URL server-side
   try {
+    const workerUrl = buildPatchDownloadUrl(patch.filename);
+    if (workerUrl) {
+      return { ok: true, url: workerUrl };
+    }
     const client = getMinioClient();
     const bucket = patch.bucket || PATCHES_BUCKET;
     const signedUrl = await client.presignedGetObject(bucket, patch.filename, 60 * 5);
@@ -411,28 +419,51 @@ export async function getPatchDownloadUrl(patchId: number): Promise<{ ok: true; 
     return { ok: false, error: "Patch not found" };
   }
 
-  // Only allow downloading published, non-archived patches (or if user is creator)
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!patch.published || patch.archived) {
-    if (!user) {
-      return { ok: false, error: "Unauthorized" };
-    }
-    // Check if user is creator
-    if (!patch.parent_hack) {
-      return { ok: false, error: "Unauthorized" };
-    }
-    const { data: hack } = await supabase
-      .from("hacks")
-      .select("created_by")
-      .eq("slug", patch.parent_hack)
-      .maybeSingle();
+  if (!patch.parent_hack) {
+    return { ok: false, error: "Patch not found" };
+  }
 
-    if (!hack || hack.created_by !== user.id) {
+  const { data: hack, error: hackError } = await supabase
+    .from("hacks")
+    .select("slug, created_by, original_author, is_archive, current_patch, patches_download_permission")
+    .eq("slug", patch.parent_hack)
+    .maybeSingle();
+
+  if (hackError || !hack) {
+    return { ok: false, error: "Hack not found" };
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const isEditor =
+    !!user &&
+    (canEditAsCreator(hack, user.id) || (await canEditAsAdmin(hack, user.id, supabase)));
+
+  // Only allow downloading published, non-archived patches (unless user can edit)
+  if (!patch.published || patch.archived) {
+    if (!isEditor) {
       return { ok: false, error: "Unauthorized" };
     }
+  } else if (!isEditor) {
+    const permission = hack.patches_download_permission;
+    if (permission === "None") {
+      return { ok: false, error: "Unauthorized" };
+    }
+    if (permission === "Current") {
+      if (hack.current_patch == null || patch.id !== hack.current_patch) {
+        return { ok: false, error: "Unauthorized" };
+      }
+    }
+    // "All": published + non-archived already satisfied
   }
 
   try {
+    const workerUrl = buildPatchDownloadUrl(patch.filename);
+    if (workerUrl) {
+      return { ok: true, url: workerUrl };
+    }
     const client = getMinioClient();
     const bucket = patch.bucket || PATCHES_BUCKET;
     const signedUrl = await client.presignedGetObject(bucket, patch.filename, 60 * 5);
@@ -441,6 +472,46 @@ export async function getPatchDownloadUrl(patchId: number): Promise<{ ok: true; 
     console.error("Error signing patch URL:", error);
     return { ok: false, error: "Failed to generate download URL" };
   }
+}
+
+export async function updatePatchesDownloadPermission(
+  slug: string,
+  permission: Database["public"]["Enums"]["Patches Download Permission"],
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!PATCHES_DOWNLOAD_PERMISSION_VALUES.includes(permission)) {
+    return { ok: false, error: "Invalid permission" };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Unauthorized" };
+
+  const { data: hack, error: hErr } = await supabase
+    .from("hacks")
+    .select("slug, created_by, current_patch, original_author, is_archive")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (hErr || !hack) return { ok: false, error: "Hack not found" };
+
+  if (!canEditAsCreator(hack, user.id)) {
+    const editableAsAdmin = await canEditAsAdmin(hack, user.id, supabase);
+    if (!editableAsAdmin) {
+      return { ok: false, error: "Forbidden" };
+    }
+  }
+
+  const serviceClient = await createServiceClient();
+  const { error: updateErr } = await serviceClient
+    .from("hacks")
+    .update({ patches_download_permission: permission })
+    .eq("slug", slug);
+
+  if (updateErr) return { ok: false, error: updateErr.message };
+
+  revalidatePath(`/hack/${slug}/versions`);
+  return { ok: true };
 }
 
 export async function archivePatchVersion(slug: string, patchId: number): Promise<{ ok: true } | { ok: false; error: string }> {

@@ -1,4 +1,5 @@
 import SubmitPageClient from "@/components/Submit/SubmitPageClient";
+import { getCachedTagsWithUsage } from "@/data/tags";
 import { createClient } from "@/utils/supabase/server";
 import SubmitAuthOverlay from "@/components/Submit/SubmitAuthOverlay";
 import { Metadata } from "next";
@@ -11,6 +12,7 @@ export const metadata: Metadata = {
 };
 
 export default async function SubmitPage() {
+  const catalogTags = await getCachedTagsWithUsage();
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   let needsInitialSetup = false;
@@ -46,7 +48,7 @@ export default async function SubmitPage() {
         </div>
       </div>
       <div className="mt-8">
-        <SubmitPageClient canCreateArchive={canCreateArchive} dummy={!user || needsInitialSetup} />
+        <SubmitPageClient canCreateArchive={canCreateArchive} dummy={!user || needsInitialSetup} catalogTags={catalogTags} />
       </div>
       {!user ? (
         <SubmitAuthOverlay

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { canEditAsCreator, canEditAsAdmin } from "@/utils/hack";
 import VersionList from "@/components/Hack/VersionList";
+import DownloadPermissionSettings from "@/components/Hack/DownloadPermissionSettings";
 import CollapsibleCard from "@/components/Primitives/CollapsibleCard";
 import Link from "next/link";
 import { FaChevronLeft, FaPlus, FaStar } from "react-icons/fa6";
@@ -18,7 +19,7 @@ export default async function VersionsPage({ params }: VersionsPageProps) {
   // Fetch hack
   const { data: hack } = await supabase
     .from("hacks")
-    .select("slug, title, created_by, current_patch, original_author, permission_from, base_rom, is_archive")
+    .select("slug, title, created_by, current_patch, original_author, permission_from, base_rom, is_archive, patches_download_permission")
     .eq("slug", slug)
     .maybeSingle();
 
@@ -88,6 +89,13 @@ export default async function VersionsPage({ params }: VersionsPageProps) {
         </div>
       </div>
 
+      {canEdit && (
+        <DownloadPermissionSettings
+          hackSlug={slug}
+          initialPermission={hack.patches_download_permission}
+        />
+      )}
+
       <CollapsibleCard
         title="Version Status Guide"
         className="mb-6 bg-[var(--surface-1)] border border-[var(--border)]/50 rounded-lg"
@@ -132,6 +140,7 @@ export default async function VersionsPage({ params }: VersionsPageProps) {
         canEdit={canEdit}
         hackSlug={slug}
         baseRom={hack.base_rom}
+        patchesDownloadPermission={hack.patches_download_permission}
       />
     </div>
   );

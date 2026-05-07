@@ -2,6 +2,7 @@
 
 import { unstable_cache as cache } from "next/cache";
 import { createServiceClient } from "@/utils/supabase/server";
+import { getCachedTagsWithUsage, buildTagFilterGroups } from "@/data/tags";
 import { sortOrderedTags, OrderedTag, getCoverUrls } from "@/utils/format";
 import { HackCardAttributes } from "@/components/HackCard";
 import type { DiscoverSortOption } from "@/types/discover";
@@ -228,11 +229,8 @@ export async function getDiscoverData(sort: DiscoverSortOption): Promise<Discove
         }
       });
 
-      // Fetch all tags with category to build UI groups
-      const { data: allTagRows, error: allTagsError } = await supabase
-        .from("tags")
-        .select("name,category");
-      if (allTagsError) throw allTagsError;
+      const catalogTags = await getCachedTagsWithUsage();
+      const { tagGroups: groups, ungroupedTags: ungrouped } = buildTagFilterGroups(catalogTags);
 
       // Fetch profiles for author names
       const { data: profiles, error: profilesError } = await supabase
@@ -297,28 +295,6 @@ export async function getDiscoverData(sort: DiscoverSortOption): Promise<Discove
 
           return scoreB - scoreA; // Descending order
         });
-      }
-
-      // Build tag groups
-      const groups: Record<string, string[]> = {};
-      const ungrouped: string[] = [];
-      const unique = new Set<string>();
-      if (allTagRows) {
-        for (const row of allTagRows as any[]) {
-          const name: string = row.name;
-          if (unique.has(name)) continue;
-          unique.add(name);
-          const category: string | null = row.category ?? null;
-          if (category) {
-            if (!groups[category]) groups[category] = [];
-            groups[category].push(name);
-          } else {
-            ungrouped.push(name);
-          }
-        }
-        // Sort for stable UI
-        Object.keys(groups).forEach((k) => groups[k].sort((a, b) => a.localeCompare(b)));
-        ungrouped.sort((a, b) => a.localeCompare(b));
       }
 
       return {

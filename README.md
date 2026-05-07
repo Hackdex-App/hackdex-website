@@ -7,6 +7,8 @@
 [![S3 Compatible](https://img.shields.io/badge/Patch_Storage-S3-orange?logo=amazons3&logoColor=white)](https://aws.amazon.com/s3/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE.md)
 
+> **Disclaimer**: A good chunk of this code was initially written with AI assistance using Cursor. Since then, a lot of new changes have been hand-written, and moving forward, I am pledging to not use AI in any future contributions to this project.
+
 ## What is Hackdex?
 
 Hackdex is a community hub for discovering and sharing Pokémon romhack patches. Players link their own legally obtained base roms once, then easily patch locally in the browser and download the patched rom. Hackdex only stores patches, screenshots, and metadata—never any roms—so distribution stays practical without any of the legal pitfalls. Creators get a consistent place to publish, version, and present their projects.

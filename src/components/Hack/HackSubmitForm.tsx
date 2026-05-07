@@ -25,6 +25,7 @@ import BPS from "rom-patcher-js/rom-patcher-js/modules/RomPatcher.format.bps.js"
 import { sha1Hex } from "@/utils/hash";
 import { platformAccept, setDraftCovers, getDraftCovers, deleteDraftCovers } from "@/utils/idb";
 import { slugify, sortOrderedTags } from "@/utils/format";
+import type { CatalogTagRow } from "@/types/catalogTag";
 
 function SortableCoverItem({ id, index, url, filename, onRemove }: { id: string; index: number; url: string; filename: string; onRemove: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
@@ -66,6 +67,7 @@ interface HackSubmitFormProps {
   isArchive?: boolean;
   permissionFrom?: string;
   customCreator?: string;
+  catalogTags: CatalogTagRow[];
 }
 
 export default function HackSubmitForm({
@@ -73,6 +75,7 @@ export default function HackSubmitForm({
   isArchive = false,
   permissionFrom = undefined,
   customCreator = undefined,
+  catalogTags,
 }: HackSubmitFormProps) {
   const MAX_COVERS = 10;
   const { profile, user } = useAuthContext();
@@ -899,7 +902,7 @@ export default function HackSubmitForm({
 
                 <div className="grid gap-2">
                   <label className="text-sm text-foreground/80">Tags <span className="text-red-500">*</span></label>
-                  <TagSelector value={tags} onChange={setTags} />
+                  <TagSelector value={tags} onChange={setTags} catalogTags={catalogTags} />
                 </div>
 
                 <div className="grid gap-1">

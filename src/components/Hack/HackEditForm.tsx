@@ -11,10 +11,12 @@ import { updateHack, saveHackCovers, presignCoverUpload } from "@/app/hack/actio
 import SortableCovers from "@/components/Hack/SortableCovers";
 import Select from "@/components/Primitives/Select";
 import type { Database } from "@/types/db";
+import type { CatalogTagRow } from "@/types/catalogTag";
 import { FiExternalLink } from "react-icons/fi";
 
 interface HackEditFormProps {
   slug: string;
+  catalogTags: CatalogTagRow[];
   initial: {
     title: string;
     summary: string;
@@ -36,7 +38,7 @@ interface HackEditFormProps {
   };
 }
 
-export default function HackEditForm({ slug, initial }: HackEditFormProps) {
+export default function HackEditForm({ slug, initial, catalogTags }: HackEditFormProps) {
   const supabase = createClient();
   const MAX_COVERS = 10;
   const [title, setTitle] = React.useState(initial.title);
@@ -363,7 +365,7 @@ export default function HackEditForm({ slug, initial }: HackEditFormProps) {
                 )}
               </div>
               <div className={`rounded-md ring-1 ring-inset ${tagsChanged ? 'ring-[var(--ring)] bg-[var(--surface-2)]' : 'ring-transparent'} p-1`}>
-                <TagSelector value={tags} onChange={setTags} />
+                <TagSelector value={tags} onChange={setTags} catalogTags={catalogTags} />
               </div>
             </div>
           </div>

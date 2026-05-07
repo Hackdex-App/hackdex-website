@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 import { APIEmbed } from "discord-api-types/v10";
 import { sendDiscordMessageEmbed } from "@/utils/discord";
 import { checkEditPermission, checkPatchEditPermission } from "@/utils/hack";
+import { getCachedTagsWithUsage, resolveTagIdsInOrder } from "@/data/tags";
 
 export async function updateHack(args: {
   slug: string;
@@ -71,19 +72,9 @@ export async function updateHack(args: {
   }
 
   if (args.tags) {
-    // Resolve desired tag IDs from names and upsert links with explicit ordering
-    const { data: existingTags, error: tagErr } = await supabase
-      .from("tags")
-      .select("id, name")
-      .in("name", args.tags);
-    if (tagErr) return { ok: false, error: tagErr.message } as const;
-
-    const byName = new Map((existingTags || []).map((t: any) => [t.name as string, t.id as number]));
-
-    // Desired IDs in the exact order provided by the caller
-    const desiredIds = args.tags
-      .map((name) => byName.get(name))
-      .filter((id): id is number => typeof id === "number");
+    const catalog = await getCachedTagsWithUsage();
+    const resolved = resolveTagIdsInOrder(args.tags, catalog);
+    const desiredIds = resolved.map((t) => t.id);
 
     const { data: currentLinks, error: curErr } = await supabase
       .from("hack_tags")
