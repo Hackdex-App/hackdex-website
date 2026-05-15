@@ -48,12 +48,15 @@ export const baseRoms: BaseRom[] = [
 
   // GB
   { id: "poke_red",               name: "Pokémon Red",                                      platform: "GB",   category: "RBY",              region: "USA, Europe",      crc32: "9f7fdd53",  sha1: "ea9bcae617fdf159b045185467ae58b2e4a48b9a" },
+  { id: "poke_red_france",        name: "Pokémon Rouge (FR)",                               platform: "GB",   category: "RBY",              region: "France",           crc32: "337fce11",  sha1: "47a7622fa30e6402a3891fe65b3a930bf9bd7aec" },
   { id: "poke_blue",              name: "Pokémon Blue",                                     platform: "GB",   category: "RBY",              region: "USA, Europe",      crc32: "d6da8a1a",  sha1: "d7037c83e1ae5b39bde3c30787637ba1d4c48ce2" },
+  { id: "poke_blue_france",       name: "Pokémon Bleu (FR)",                                platform: "GB",   category: "RBY",              region: "France",           crc32: "50e2fc1d",  sha1: "47faa910d0e073c600665bf9c83b6bd17babdf8a" },
   { id: "poke_yellow",            name: "Pokémon Yellow",                                   platform: "GB",   category: "RBY",              region: "USA, Europe",      crc32: "7d527d62",  sha1: "cc7d03262ebfaf2f06772c1a480c7d9d5f4a38e1" },
 
   // NDS
   { id: "poke_platinum_rev0",     name: "Pokémon Platinum (Rev 0)",                         platform: "NDS",  category: "DPPt",             region: "USA",              crc32: "9253921d",  sha1: "ce81046eda7d232513069519cb2085349896dec7" },
   { id: "poke_platinum",          name: "Pokémon Platinum (Rev 1)",                         platform: "NDS",  category: "DPPt",             region: "USA",              crc32: "69d628e8",  sha1: "0862EC35B24DE5C7E2DCB88C9EEA0873110D755C" },
+  { id: "poke_platinum_germany",  name: "Pokémon Platin (DE)",                              platform: "NDS",  category: "DPPt",             region: "Germany",          crc32: "37e9d9e5",  sha1: "d40f19ac24d67c721a4ab25e1c013154443d75b4" },
   { id: "poke_diamond_rev5",      name: "Pokémon Diamond",                                  platform: "NDS",  category: "DPPt",             region: "USA",              crc32: "84427823",  sha1: "a46233d8b79a69ea87aa295a0efad5237d02841e" },
   { id: "poke_pearl_rev5",        name: "Pokémon Pearl",                                    platform: "NDS",  category: "DPPt",             region: "USA",              crc32: "e2d87ebf",  sha1: "99083bf15ec7c6b81b4ba241ee10abd9e80999ac" },
   { id: "poke_heartgold",         name: "Pokémon HeartGold",                                platform: "NDS",  category: "HGSS",             region: "USA",              crc32: "c180a0e9",  sha1: "4FCDED0E2713DC03929845DE631D0932EA2B5A37" },
