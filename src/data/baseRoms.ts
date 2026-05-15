@@ -50,7 +50,7 @@ export const baseRoms: BaseRom[] = [
   { id: "poke_red",               name: "Pokémon Red",                                      platform: "GB",   category: "RBY",              region: "USA, Europe",      crc32: "9f7fdd53",  sha1: "ea9bcae617fdf159b045185467ae58b2e4a48b9a" },
   { id: "poke_red_france",        name: "Pokémon Rouge (FR)",                               platform: "GB",   category: "RBY",              region: "France",           crc32: "337fce11",  sha1: "47a7622fa30e6402a3891fe65b3a930bf9bd7aec" },
   { id: "poke_blue",              name: "Pokémon Blue",                                     platform: "GB",   category: "RBY",              region: "USA, Europe",      crc32: "d6da8a1a",  sha1: "d7037c83e1ae5b39bde3c30787637ba1d4c48ce2" },
-  { id: "poke_blue_france",       name: "Pokémon Bleu (FR)",                                platform: "GB",   category: "RBY",              region: "France",           crc32: "50e2fc1d",  sha1: "47faa910d0e073c600665bf9c83b6bd17babdf8a" },
+  { id: "poke_blue_france",       name: "Pokémon Bleue (FR)",                                platform: "GB",   category: "RBY",              region: "France",           crc32: "50e2fc1d",  sha1: "47faa910d0e073c600665bf9c83b6bd17babdf8a" },
   { id: "poke_yellow",            name: "Pokémon Yellow",                                   platform: "GB",   category: "RBY",              region: "USA, Europe",      crc32: "7d527d62",  sha1: "cc7d03262ebfaf2f06772c1a480c7d9d5f4a38e1" },
 
   // NDS
