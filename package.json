@@ -21,6 +21,7 @@
     "@vercel/edge-config": "^1.4.3",
     "chart.js": "^4.5.1",
     "embla-carousel-react": "8.6.0",
+    "js-sha1": "^0.7.0",
     "mdast-util-to-hast": "^13.2.1",
     "minio": "^8.0.6",
     "next": "^15.5.8",

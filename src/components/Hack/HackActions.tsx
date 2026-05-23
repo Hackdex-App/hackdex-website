@@ -2,12 +2,19 @@
 
 import React from "react";
 import StickyActionBar from "@/components/Hack/StickyActionBar";
+import BaseRomErrorModal, { type BaseRomErrorModalState } from "@/components/Hack/BaseRomErrorModal";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
 import { baseRoms } from "@/data/baseRoms";
 import BinFile from "rom-patcher-js/rom-patcher-js/modules/BinFile.js";
 import BPS from "rom-patcher-js/rom-patcher-js/modules/RomPatcher.format.bps.js";
 import type { DownloadEventDetail } from "@/types/util";
 import { getSignedPatchUrl, updatePatchDownloadCount } from "@/app/hack/[slug]/actions";
+import { sha1Hex } from "@/utils/hash";
+import {
+  formatRequiredRomExtension,
+  isArchiveFile,
+  isAnyRomExtension,
+} from "@/utils/romFile";
 
 interface HackActionsProps {
   title: string;
@@ -37,7 +44,12 @@ const HackActions: React.FC<HackActionsProps> = ({
   const [patchBlob, setPatchBlob] = React.useState<Blob | null>(null);
   const [patchUrl, setPatchUrl] = React.useState<string | null>(null);
   const [termsAgreed, setTermsAgreed] = React.useState(false);
+  const [romErrorModal, setRomErrorModal] = React.useState<BaseRomErrorModalState | null>(null);
   const baseRomName = React.useMemo(() => baseRoms.find(r => r.id === baseRomId)?.name || null, [baseRomId]);
+  const effectivePlatform = React.useMemo(
+    () => platform ?? baseRoms.find(r => r.id === baseRomId)?.platform,
+    [platform, baseRomId],
+  );
 
   // Basic client-side bot detection
   React.useEffect(() => {
@@ -95,23 +107,74 @@ const HackActions: React.FC<HackActionsProps> = ({
 
   async function onSelectFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0] ?? null;
-    setFile(f);
-    if (f) {
-      const id = await importUploadedBlob(f);
-      if (!id) {
-        setError("That ROM doesn't match any supported base ROM.");
-        setStatus("idle");
-        e.target.value = "";
-        return;
-      }
-      if (id !== baseRomId) {
-        setError(`This ROM matches "${id}", but this hack requires "${baseRomName}".`);
-        setStatus("idle");
-        e.target.value = "";
-        return;
-      }
-      setStatus("ready");
+    setFile(null);
+    if (!f) return;
+
+    const requiredRomName = baseRomName ?? "this hack's base ROM";
+    const requiredExtensionPhrase = effectivePlatform
+      ? formatRequiredRomExtension(effectivePlatform)
+      : "a ROM file";
+
+    const resetInput = () => {
+      e.target.value = "";
+      setStatus("idle");
+    };
+
+    if (isArchiveFile(f.name)) {
+      setRomErrorModal({
+        kind: "archive",
+        fileName: f.name,
+        requiredExtensionPhrase,
+        requiredRomName,
+      });
+      resetInput();
+      return;
     }
+
+    if (!isAnyRomExtension(f.name)) {
+      setRomErrorModal({
+        kind: "unrecognized",
+        fileName: f.name,
+        requiredExtensionPhrase,
+        requiredRomName,
+      });
+      resetInput();
+      return;
+    }
+
+    const selectedHash = await sha1Hex(f);
+    const match = baseRoms.find((r) => r.sha1.toLowerCase() === selectedHash.toLowerCase());
+    const requiredHash = baseRoms.find((r) => r.id === baseRomId)?.sha1.toLowerCase() ?? "";
+
+    if (!match) {
+      setRomErrorModal({
+        kind: "hash_mismatch",
+        fileName: f.name,
+        selectedHash,
+        requiredHash,
+        requiredRomName,
+      });
+      resetInput();
+      return;
+    }
+
+    if (match.id !== baseRomId) {
+      await importUploadedBlob(f);
+      setRomErrorModal({
+        kind: "hash_mismatch",
+        fileName: f.name,
+        selectedHash,
+        requiredHash,
+        requiredRomName,
+        matchedRomName: match.name,
+      });
+      resetInput();
+      return;
+    }
+
+    await importUploadedBlob(f);
+    setFile(f);
+    setStatus("ready");
   }
 
   async function onAgreeToTerms() {
@@ -244,23 +307,31 @@ const HackActions: React.FC<HackActionsProps> = ({
   }
 
   return (
-    <StickyActionBar
-      title={title}
-      version={version}
-      author={author}
-      filename={patchFilename}
-      baseRomName={baseRomName}
-      baseRomPlatform={platform}
-      onPatch={onPatch}
-      status={status}
-      error={error}
-      isLinked={isLinked(baseRomId)}
-      romReady={hasPermission(baseRomId) || hasCached(baseRomId)}
-      onClickLink={() => (isLinked(baseRomId) ? ensurePermission(baseRomId, true) : linkRom(baseRomId))}
-      supported={supported}
-      onUploadChange={onSelectFile}
-      termsAgreed={termsAgreed}
-    />
+    <>
+      <StickyActionBar
+        title={title}
+        version={version}
+        author={author}
+        filename={patchFilename}
+        baseRomName={baseRomName}
+        baseRomPlatform={platform}
+        onPatch={onPatch}
+        status={status}
+        error={error}
+        isLinked={isLinked(baseRomId)}
+        romReady={hasPermission(baseRomId) || hasCached(baseRomId)}
+        onClickLink={() => (isLinked(baseRomId) ? ensurePermission(baseRomId, true) : linkRom(baseRomId))}
+        supported={supported}
+        onUploadChange={onSelectFile}
+        termsAgreed={termsAgreed}
+      />
+      {romErrorModal && (
+        <BaseRomErrorModal
+          state={romErrorModal}
+          onClose={() => setRomErrorModal(null)}
+        />
+      )}
+    </>
   );
 };
 
