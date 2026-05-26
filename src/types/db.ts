@@ -66,6 +66,42 @@ export type Database = {
           },
         ]
       }
+      hack_patcher_patches: {
+        Row: {
+          created_at: string
+          hack_slug: string
+          patch_id: number
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          hack_slug: string
+          patch_id: number
+          sort_order: number
+        }
+        Update: {
+          created_at?: string
+          hack_slug?: string
+          patch_id?: number
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hack_patcher_patches_hack_slug_fkey"
+            columns: ["hack_slug"]
+            isOneToOne: false
+            referencedRelation: "hacks"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "hack_patcher_patches_patch_id_fkey"
+            columns: ["patch_id"]
+            isOneToOne: false
+            referencedRelation: "patches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hack_tags: {
         Row: {
           hack_slug: string
