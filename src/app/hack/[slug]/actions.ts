@@ -43,6 +43,7 @@ export interface HackMetadata {
     username: string | null;
     avatar_url: string | null;
     verified: boolean;
+    email: string | null;
   } | null;
   otherHacks: {
     slug: string;
@@ -104,9 +105,16 @@ export async function getHackMetadata(slug: string): Promise<HackMetadata | null
       // Fetch profile
       const { data: profile } = await supabase
         .from("profiles")
-        .select("username,avatar_url,verified")
+        .select("id,username,avatar_url,verified")
         .eq("id", hack.created_by as string)
         .maybeSingle();
+
+      // Meant to only be available to admins (gated in server-side page rendering)
+      let userEmail: string | null = null;
+      if (profile) {
+        const { data: userData } = await supabase.auth.admin.getUserById(profile.id);
+        userEmail = userData?.user?.email || null;
+      }
 
       // Get other approved hacks by the same author (non-archive hacks only)
       let otherHacks: {
@@ -160,6 +168,7 @@ export async function getHackMetadata(slug: string): Promise<HackMetadata | null
           username: profile.username,
           avatar_url: profile.avatar_url,
           verified: profile.verified,
+          email: userEmail,
         } : null,
         otherHacks,
         patch,

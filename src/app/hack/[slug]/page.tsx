@@ -7,7 +7,7 @@ import HackActions from "@/components/Hack/HackActions";
 import Markdown from "@/components/Markdown/Markdown";
 import Image from "next/image";
 import { FaDiscord, FaTwitter, FaGithub, FaTriangleExclamation, FaArrowUpRightFromSquare } from "react-icons/fa6";
-import { FiAlertTriangle, FiInfo } from "react-icons/fi";
+import { FiAlertTriangle, FiInfo, FiMail } from "react-icons/fi";
 import PokeCommunityIcon from "@/components/Icons/PokeCommunityIcon";
 import { createClient, createServiceClient } from "@/utils/supabase/server";
 import HackOptionsMenu from "@/components/Hack/HackOptionsMenu";
@@ -134,18 +134,15 @@ export default async function HackDetail({ params }: HackDetailProps) {
     canEdit: canUploadPatch,
   } = await checkPatchEditPermission(hack, user?.id as string, supabase);
 
-  // isAdmin always needs to be checked for archive hacks
   let isAdmin = false;
-  if (!hack.approved || isArchive) {
-    const { data: admin } = await supabase.rpc("is_admin");
-    if (admin) {
-      isAdmin = true;
-    } else if (!hack.approved) {
-      if (isArchive && !canEditAsArchiver) {
-        return notFound();
-      } else if (!canEdit) {
-        return notFound();
-      }
+  const { data: admin } = await supabase.rpc("is_admin");
+  if (admin) {
+    isAdmin = true;
+  } else if (!hack.approved || isArchive) {
+    if (isArchive && !canEditAsArchiver) {
+      return notFound();
+    } else if (!canEdit) {
+      return notFound();
     }
   }
 
@@ -450,6 +447,16 @@ export default async function HackDetail({ params }: HackDetailProps) {
                   >
                     <FaCircleCheck className="mr-2 inline-block align-middle mb-0.5 text-green-500" size={12} />
                     Approve
+                  </MenuItem>
+                )}
+                {isAdmin && profile?.email && (
+                  <MenuItem
+                    as="a"
+                    href={`mailto:${profile.email}`}
+                    className="block w-full px-3 py-2 text-left text-sm text-foreground/80 font-medium data-focus:bg-black/5 dark:data-focus:bg-white/10"
+                  >
+                    <FiMail className="mr-2 inline-block align-middle mb-0.5 text-foreground/80" size={12} />
+                    Contact creator
                   </MenuItem>
                 )}
               </HackOptionsMenu>

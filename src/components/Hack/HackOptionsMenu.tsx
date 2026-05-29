@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { FiMoreVertical, FiEdit2, FiBarChart2 } from "react-icons/fi";
 import { TbVersions } from "react-icons/tb";
 import { Menu, MenuButton, MenuItem, MenuItems, MenuSeparator } from "@headlessui/react";
@@ -20,6 +20,10 @@ export default function HackOptionsMenu({
   children,
 }: HackOptionsMenuProps) {
   const [showReportModal, setShowReportModal] = useState(false);
+
+  const hasRenderableChildren = useMemo(() => {
+    return React.Children.toArray(children).some(Boolean);
+  }, [children]);
 
   return (
     <>
@@ -91,7 +95,7 @@ export default function HackOptionsMenu({
               Manage versions
             </MenuItem>
           )}
-          {children && <>
+          {hasRenderableChildren && <>
             <MenuSeparator className="my-1 h-px bg-[var(--border)]" />
             {children}
           </>}
