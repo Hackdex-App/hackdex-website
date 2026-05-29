@@ -33,6 +33,7 @@
     "react-icons": "^5.5.0",
     "react-markdown": "^10",
     "rehype-slug": "^6.0.0",
+    "remark-custom-header-id": "^1.0.0",
     "remark-gfm": "4.0.0",
     "rom-patcher-js": "github:Hackdex-App/RomPatcher.js",
     "schema-dts": "^1.1.5",

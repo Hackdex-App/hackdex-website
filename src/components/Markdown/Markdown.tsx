@@ -2,6 +2,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSlug from "rehype-slug";
 import remarkSpoiler from "@/utils/markdown/remark-spoiler";
+import remarkCustomHeaderId from 'remark-custom-header-id';
+import { FiExternalLink } from "react-icons/fi";
 import Spoiler from "./Spoiler";
 
 interface MarkdownProps {
@@ -25,7 +27,7 @@ export default function Markdown({
 
   return (
     <ReactMarkdown
-      remarkPlugins={[remarkGfm, remarkSpoiler]}
+      remarkPlugins={[remarkGfm, remarkSpoiler, remarkCustomHeaderId]}
       rehypePlugins={[rehypeSlug]}
       components={{
         ...headingComponents,
@@ -40,6 +42,14 @@ export default function Markdown({
           }
           // Default span rendering
           return <span className={className} {...props}>{children}</span>;
+        },
+        a: ({ node, children, className, ...props }: any) => {
+          // Add an external link icon if the link is external
+          if (props.href && !props.href.startsWith("/") && !props.href.startsWith("#") && !props.href.startsWith("https://www.hackdex.app")) {
+            return <a className={className} {...props} target="_blank">{children}<FiExternalLink className="w-4 h-3 inline-block -translate-y-1.5" /></a>;
+          }
+          // Default anchor rendering
+          return <a className={className} {...props}>{children}</a>;
         },
       }}
     >
