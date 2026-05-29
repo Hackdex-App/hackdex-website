@@ -45,6 +45,7 @@ const HackActions: React.FC<HackActionsProps> = ({
   const [patchUrl, setPatchUrl] = React.useState<string | null>(null);
   const [termsAgreed, setTermsAgreed] = React.useState(false);
   const [romErrorModal, setRomErrorModal] = React.useState<BaseRomErrorModalState | null>(null);
+  const [isVerifyingRom, setIsVerifyingRom] = React.useState(false);
   const baseRomName = React.useMemo(() => baseRoms.find(r => r.id === baseRomId)?.name || null, [baseRomId]);
   const effectivePlatform = React.useMemo(
     () => platform ?? baseRoms.find(r => r.id === baseRomId)?.platform,
@@ -142,39 +143,44 @@ const HackActions: React.FC<HackActionsProps> = ({
       return;
     }
 
-    const selectedHash = await sha1Hex(f);
-    const match = baseRoms.find((r) => r.sha1.toLowerCase() === selectedHash.toLowerCase());
-    const requiredHash = baseRoms.find((r) => r.id === baseRomId)?.sha1.toLowerCase() ?? "";
+    setIsVerifyingRom(true);
+    try {
+      const selectedHash = await sha1Hex(f);
+      const match = baseRoms.find((r) => r.sha1.toLowerCase() === selectedHash.toLowerCase());
+      const requiredHash = baseRoms.find((r) => r.id === baseRomId)?.sha1.toLowerCase() ?? "";
 
-    if (!match) {
-      setRomErrorModal({
-        kind: "hash_mismatch",
-        fileName: f.name,
-        selectedHash,
-        requiredHash,
-        requiredRomName,
-      });
-      resetInput();
-      return;
-    }
+      if (!match) {
+        setRomErrorModal({
+          kind: "hash_mismatch",
+          fileName: f.name,
+          selectedHash,
+          requiredHash,
+          requiredRomName,
+        });
+        resetInput();
+        return;
+      }
 
-    if (match.id !== baseRomId) {
+      if (match.id !== baseRomId) {
+        await importUploadedBlob(f);
+        setRomErrorModal({
+          kind: "hash_mismatch",
+          fileName: f.name,
+          selectedHash,
+          requiredHash,
+          requiredRomName,
+          matchedRomName: match.name,
+        });
+        resetInput();
+        return;
+      }
+
       await importUploadedBlob(f);
-      setRomErrorModal({
-        kind: "hash_mismatch",
-        fileName: f.name,
-        selectedHash,
-        requiredHash,
-        requiredRomName,
-        matchedRomName: match.name,
-      });
-      resetInput();
-      return;
+      setFile(f);
+      setStatus("ready");
+    } finally {
+      setIsVerifyingRom(false);
     }
-
-    await importUploadedBlob(f);
-    setFile(f);
-    setStatus("ready");
   }
 
   async function onAgreeToTerms() {
@@ -324,6 +330,7 @@ const HackActions: React.FC<HackActionsProps> = ({
         supported={supported}
         onUploadChange={onSelectFile}
         termsAgreed={termsAgreed}
+        isVerifyingRom={isVerifyingRom}
       />
       {romErrorModal && (
         <BaseRomErrorModal

@@ -21,6 +21,7 @@ interface StickyActionBarProps {
   supported: boolean;
   onUploadChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   termsAgreed: boolean;
+  isVerifyingRom?: boolean;
 }
 
 export default function StickyActionBar({
@@ -39,6 +40,7 @@ export default function StickyActionBar({
   supported,
   onUploadChange,
   termsAgreed,
+  isVerifyingRom = false,
 }: StickyActionBarProps) {
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
@@ -112,13 +114,23 @@ export default function StickyActionBar({
           )}
           {!romReady && !isLinked && (
             <label className="min-w-max inline-flex items-center gap-2 text-xs text-foreground/80">
-              <input ref={uploadInputRef} type="file" accept={platformAccept(baseRomPlatform)} onChange={onUploadChange} className="hidden" />
+              <input
+                ref={uploadInputRef}
+                type="file"
+                accept={platformAccept(baseRomPlatform)}
+                onChange={onUploadChange}
+                disabled={isVerifyingRom}
+                className="hidden"
+              />
               <button
                 type="button"
                 onClick={() => uploadInputRef.current?.click()}
+                disabled={isVerifyingRom}
                 className="shine-wrap btn-premium h-11 md:h-9 w-5/6 mx-auto md:w-auto md:mx-0 md:min-w-34 text-base md:text-sm font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70"
               >
-                {baseRomName ? (
+                {isVerifyingRom ? (
+                  <span>Verifying…</span>
+                ) : baseRomName ? (
                   <span>Select <span className="font-bold">{baseRomName}</span> ROM</span>
                 ) : baseRomPlatform ? (
                   <span>Select <span className="font-bold">{baseRomPlatform}</span> ROM</span>
