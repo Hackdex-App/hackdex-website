@@ -70,6 +70,11 @@ These emulators are considered to be the most accurate to the original hardware 
 ### How do I submit my romhack to Hackdex?
 Navigate to the Submit page on Hackdex. You'll need to create an account before you can submit your hack. The submission process is designed to be straightforward while ensuring proper attribution to creators.
 
+### Can I submit a hack that I didn't create? {#submit-not-own-hack}
+No. Hackdex is a platform for creators to share their own hacks. If you did not create the hack, you should reach out to the original creator to see if they are interested in submitting it themselves.
+
+Only the original creator or a member of their team can submit the hack to Hackdex. We will do our due diligence to contact the creators to verify any submissions before approval.
+
 ### Why do I need an account to submit?
 Account creation is required for submissions to preserve author control and attribution. This ensures your work is properly credited and you maintain control over your hack's listing. This also allows you to update your hack after submission.
 

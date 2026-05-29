@@ -1,6 +1,7 @@
 "use client";
 
 import React, { Fragment } from "react";
+import Link from "next/link";
 import HackCard from "@/components/HackCard";
 import { baseRoms } from "@/data/baseRoms";
 import { Listbox, ListboxButton, ListboxOption, ListboxOptions, Transition } from "@headlessui/react";
@@ -434,6 +435,7 @@ export default function DiscoverBrowser({ initialSort = "trending" }: DiscoverBr
               </button>
             )}
           </div>
+          <p className="mt-4 text-sm text-foreground/60 text-center">Can't find the hack you want? Try asking the dev to <Link href="/faq#creators" className="text-[var(--accent)] hover:underline">submit it to Hackdex</Link>.</p>
         </div>
       ) : (
         <>
