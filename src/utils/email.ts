@@ -1,5 +1,13 @@
 import nodemailer from "nodemailer";
 
+const sanitizeEmailSubject = (subject: string) => {
+  return subject
+    .replace(/[\x00-\x1f\x7f]/g, "") // Remove control characters
+    .replace(/\s+/g, " ") // Replace whitespace with spaces
+    .replace(/<[^>]*>/g, "") // Remove HTML tags
+    .trim(); // Remove leading and trailing whitespace
+};
+
 export const createMailTransporter = () => {
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST!,
@@ -33,12 +41,13 @@ interface SendTransactionalEmailWithText extends SendTransactionalEmailBase {
 export const sendTransactionalEmail = async (args: SendTransactionalEmailWithHtml | SendTransactionalEmailWithText) => {
   const noreply = process.env.EMAIL_NOREPLY!;
   const transporter = createMailTransporter();
+  const sanitizedSubject = sanitizeEmailSubject(args.subject);
 
   await transporter.sendMail({
     from: `Hackdex <${noreply}>`,
     to: args.to,
     replyTo: args.replyTo,
-    subject: args.subject,
+    subject: sanitizedSubject,
     html: "html" in args ? args.html : undefined,
     text: "text" in args ? args.text : undefined,
   });
