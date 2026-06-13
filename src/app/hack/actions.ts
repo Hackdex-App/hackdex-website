@@ -336,7 +336,7 @@ export async function approveHack(slug: string, verified?: boolean) {
       });
       await sendTransactionalEmail({
         to: creatorEmail,
-        subject: `Your hack "${hack.title}" has been approved`,
+        subject: `"${hack.title}" has been approved`,
         html,
       });
     }
