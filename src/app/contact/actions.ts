@@ -87,6 +87,7 @@ export async function sendContact(prev: ContactActionState, formData: FormData):
 
     await sendTransactionalEmail({
       to: email,
+      replyTo: email,
       subject: `[#${ticketId}] Support request confirmation`,
       text: confirmationMessage,
     });

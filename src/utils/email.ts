@@ -18,6 +18,7 @@ export const createMailTransporter = () => {
 interface SendTransactionalEmailBase {
   to: string;
   subject: string;
+  replyTo?: string;
 }
 
 interface SendTransactionalEmailWithHtml extends SendTransactionalEmailBase {
@@ -36,6 +37,7 @@ export const sendTransactionalEmail = async (args: SendTransactionalEmailWithHtm
   await transporter.sendMail({
     from: `Hackdex <${noreply}>`,
     to: args.to,
+    replyTo: args.replyTo,
     subject: args.subject,
     html: "html" in args ? args.html : undefined,
     text: "text" in args ? args.text : undefined,
