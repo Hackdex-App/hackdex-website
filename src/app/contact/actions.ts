@@ -69,6 +69,7 @@ export async function sendContact(prev: ContactActionState, formData: FormData):
 
     await sendTransactionalEmail({
       to: process.env.EMAIL_CONTACT!,
+      replyTo: email,
       subject,
       text: body,
     });
@@ -87,7 +88,6 @@ export async function sendContact(prev: ContactActionState, formData: FormData):
 
     await sendTransactionalEmail({
       to: email,
-      replyTo: email,
       subject: `[#${ticketId}] Support request confirmation`,
       text: confirmationMessage,
     });
