@@ -1,0 +1,7 @@
+<mj-section background-color="#fafafa">
+  <mj-column>
+
+    <mj-image width="64px" src="https://www.hackdex.app/logo.png" alt="Hackdex Logo" href="https://hackdex.app" />
+
+  </mj-column>
+</mj-section>

@@ -1,0 +1,35 @@
+<mjml>
+  <mj-head>
+    <mj-include path="../partials/head.mjml" />
+    <mj-preview>Your hack is now live on Hackdex!</mj-preview>
+  </mj-head>
+  <mj-body background-color="#f3f4f6">
+    <mj-include path="../partials/header.mjml" />
+    <mj-section background-color="#ffffff">
+      <mj-column>
+
+        <mj-text font-size="24px" font-weight="700" color="#171717" padding-bottom="12px">
+          Congratulations, Your Hack is Live!
+        </mj-text>
+
+        <mj-text font-size="16px" line-height="24px" color="#374151" padding-bottom="16px">
+          Hello,
+          <br /><br />
+          We're excited to let you know that your hack <strong>{{title}}</strong> has been approved and is now live on <strong>Hackdex</strong>.
+          Make sure to share it on social media and with your friends to help increase visibility!
+        </mj-text>
+
+        <mj-button href="https://hackdex.app/hack/{{slug}}" padding="10px 25px">
+          <strong>View on Hackdex</strong>
+        </mj-button>
+
+        <mj-text font-size="16px" line-height="24px" color="#374151" padding-bottom="16px">
+          You can track the downloads of your hack on your <a href="https://hackdex.app/dashboard">dashboard</a>.
+        </mj-text>
+
+      </mj-column>
+    </mj-section>
+    <mj-include path="../partials/sign-off.mjml" />
+    <mj-include path="../partials/footer.mjml" />
+  </mj-body>
+</mjml>

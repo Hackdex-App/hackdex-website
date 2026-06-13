@@ -1,8 +1,8 @@
 "use server";
 
-import nodemailer from "nodemailer";
 import { APIEmbed } from "discord-api-types/v10";
 import { sendDiscordMessageEmbed } from "@/utils/discord";
+import { createMailTransporter, sendTransactionalEmail } from "@/utils/email";
 
 export interface ContactActionState {
   error: string | null;
@@ -47,16 +47,6 @@ export async function sendContact(prev: ContactActionState, formData: FormData):
       return { error: "Email is required." };
     }
 
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST!,
-      port: Number(process.env.SMTP_PORT!),
-      requireTLS: true,
-      auth: {
-        user: process.env.SMTP_USER!,
-        pass: process.env.SMTP_PASS!,
-      },
-    });
-
     const ticketId = generateTicketId();
     const noreply = process.env.EMAIL_NOREPLY!;
 
@@ -77,8 +67,7 @@ export async function sendContact(prev: ContactActionState, formData: FormData):
       .filter(Boolean)
       .join("\n");
 
-    await transporter.sendMail({
-      from: `Hackdex <${noreply}>`,
+    await sendTransactionalEmail({
       to: process.env.EMAIL_CONTACT!,
       replyTo: email,
       subject,
@@ -97,8 +86,7 @@ export async function sendContact(prev: ContactActionState, formData: FormData):
       .filter(Boolean)
       .join("\n");
 
-    await transporter.sendMail({
-      from: `Hackdex <${noreply}>`,
+    await sendTransactionalEmail({
       to: email,
       subject: `[#${ticketId}] Support request confirmation`,
       text: confirmationMessage,

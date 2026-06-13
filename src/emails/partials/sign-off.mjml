@@ -1,0 +1,14 @@
+<mj-section background-color="#fafafa">
+  <mj-column>
+
+    <mj-text font-size="16px" line-height="24px" color="#374151" padding-bottom="16px">
+      If you have any questions or need further assistance, feel free to reach out through our <a href="https://hackdex.app/contact">contact form</a>.
+    </mj-text>
+
+    <mj-text font-size="16px" line-height="24px" color="#374151">
+      Best regards,<br />
+      The Hackdex Team
+    </mj-text>
+
+  </mj-column>
+</mj-section>

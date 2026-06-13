@@ -9,6 +9,8 @@ import { APIEmbed } from "discord-api-types/v10";
 import { sendDiscordMessageEmbed } from "@/utils/discord";
 import { checkEditPermission, checkPatchEditPermission } from "@/utils/hack";
 import { getCachedTagsWithUsage, resolveTagIdsInOrder } from "@/data/tags";
+import { sendTransactionalEmail } from "@/utils/email";
+import { renderEmail } from "@/emails/render";
 
 export async function updateHack(args: {
   slug: string;
@@ -321,6 +323,26 @@ export async function approveHack(slug: string, verified?: boolean) {
     .eq("slug", slug);
 
   if (updateErr) return { ok: false, error: updateErr.message } as const;
+
+  try {
+    const { data: creatorData, error: creatorError } = await serviceClient.auth.admin.getUserById(hack.created_by);
+    const creatorEmail = creatorData?.user?.email;
+    if (creatorError || !creatorEmail) {
+      console.error("[HackApprove] Failed to get creator email:", creatorError || "No email found");
+    } else {
+      const html = await renderEmail("hack-approved", {
+        title: hack.title,
+        slug,
+      });
+      await sendTransactionalEmail({
+        to: creatorEmail,
+        subject: `"${hack.title}" has been approved`,
+        html,
+      });
+    }
+  } catch (error) {
+    console.error("[HackApprove] Failed to send email to creator:", error);
+  }
 
   if (process.env.DISCORD_WEBHOOK_HACKDEX_HACKS_URL) {
     const { data: profile } = await serviceClient.from('profiles').select('*').eq('id', hack.created_by).single();
