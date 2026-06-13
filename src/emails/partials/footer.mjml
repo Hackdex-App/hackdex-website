@@ -1,0 +1,9 @@
+<mj-section background-color="#ffffff" border-top="1px solid rgba(0,0,0,0.12)">
+  <mj-column>
+
+    <mj-text font-size="14px" color="#9ca3af" align="center" padding-top="16px">
+      © 2026 Hackdex. All rights reserved. Please do not reply to this message.
+    </mj-text>
+
+  </mj-column>
+</mj-section>
