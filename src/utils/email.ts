@@ -1,4 +1,7 @@
 import nodemailer from "nodemailer";
+import type Transporter from "nodemailer/lib/mailer";
+
+let transporter: Transporter | null = null;
 
 const sanitizeEmailSubject = (subject: string) => {
   return subject
@@ -9,15 +12,18 @@ const sanitizeEmailSubject = (subject: string) => {
 };
 
 export const createMailTransporter = () => {
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST!,
-    port: Number(process.env.SMTP_PORT!),
-    requireTLS: true,
-    auth: {
-      user: process.env.SMTP_USER!,
-      pass: process.env.SMTP_PASS!,
-    },
-  });
+  if (!transporter) {
+    transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST!,
+      port: Number(process.env.SMTP_PORT!),
+      requireTLS: true,
+      auth: {
+        user: process.env.SMTP_USER!,
+        pass: process.env.SMTP_PASS!,
+      },
+    });
+  }
+  return transporter;
 };
 
 // At least one of html or text must be provided
