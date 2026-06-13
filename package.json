@@ -7,6 +7,8 @@
     "build": "next build --turbopack",
     "start": "next start",
     "db:pull": "supabase db pull && supabase migration up && supabase gen types --local > src/types/db.ts",
+    "db:reset": "supabase db reset && npm run seed:storage",
+    "seed:storage": "node --env-file=.env.local --env-file=.env.development.local scripts/seed-storage.mjs",
     "discord:register": "node scripts/register-discord-commands.mjs",
     "postinstall": "patch-package"
   },

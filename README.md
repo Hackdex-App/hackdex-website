@@ -117,6 +117,42 @@ Typical flow:
 - Set the `PATCHES_BUCKET` environment variable to the name of your patches bucket (e.g., `patches`)
 - Set the `NEXT_PUBLIC_HACK_COVERS_DOMAIN` environment variable to the public URL of your covers bucket (e.g., `http://localhost:9000/covers`)
 
+### Seed data
+
+After Supabase and MinIO are running, reset the database and upload dev fixtures:
+
+```
+npm run db:reset
+```
+
+This runs `supabase db reset` (migrations + [`supabase/seed.sql`](supabase/seed.sql)) and uploads the example BPS patch to MinIO via [`scripts/seed-storage.mjs`](scripts/seed-storage.mjs).
+
+You can also run the steps separately:
+
+```
+supabase db reset      # Postgres seed only
+npm run seed:storage   # upload public/patches/example_patch.bps → MinIO
+```
+
+**Dev login accounts** (password `Password1` for all):
+
+| Email | Username | Role |
+|-------|----------|------|
+| `admin@hackdex.local` | `admin` | Admin (`claims_admin`) |
+| `creator@hackdex.local` | `creator` | Regular creator |
+| `creator2@hackdex.local` | `creator2` | Owns the pending hack |
+
+**Seeded hacks:**
+
+| Slug | Status | Purpose |
+|------|--------|---------|
+| `seed-emerald-demo` | Approved | Discover, download, in-browser patch (uses `poke_emerald`) |
+| `seed-pending-demo` | Pending | Admin dashboard approval flow |
+
+To test in-browser patching on `seed-emerald-demo`, link a local **Pokémon Emerald** ROM (CRC32 `1f1c08fb`). The patch file is [`public/patches/example_patch.bps`](public/patches/example_patch.bps), uploaded to MinIO as `seed-emerald-demo-1.0.bps`.
+
+**Note:** `seed:storage` requires `S3_*` and `PATCHES_BUCKET` in `.env.local` or `.env.development.local`. If `PATCH_TOKEN_SECRET` and `PATCHES_DOWNLOAD_BASE_URL` are set, patch downloads route through the Cloudflare Worker instead of MinIO — unset those for local MinIO testing.
+
 ### Install & run
 
 ```
