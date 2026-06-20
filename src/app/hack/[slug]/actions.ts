@@ -1003,23 +1003,30 @@ export async function updatePatcherSelectablePatches(
 
   // Dedupe patch ids
   const uniquePatchIds = [...new Set(patchIds)];
-  if (uniquePatchIds.length === 0 && hack.current_patch === null) return { ok: false, error: "No patch ids provided" };
 
-  // Verify patches belong to this hack
-  const { data: patches, error: pErr } = await supabase
-    .from("patches")
-    .select("id, parent_hack, published, archived")
-    .in("id", uniquePatchIds)
-    .eq("parent_hack", slug);
-  if (pErr || patches.length !== uniquePatchIds.length) return { ok: false, error: "One or more patches do not belong to this hack" };
+  if (uniquePatchIds.length > 0) {
+    // Verify patches belong to this hack
+    const { data: patches, error: pErr } = await supabase
+      .from("patches")
+      .select("id, parent_hack, published, archived")
+      .in("id", uniquePatchIds)
+      .eq("parent_hack", slug);
+    if (pErr || patches.length !== uniquePatchIds.length) return { ok: false, error: "One or more patches do not belong to this hack" };
 
-  // Verify patches are published
-  const publishedPatches = patches.filter((patch) => patch.published);
-  if (publishedPatches.length !== uniquePatchIds.length) return { ok: false, error: "One or more patches are not published" };
+    // Verify patches are not archived
+    const archivedPatches = patches.filter((patch) => patch.archived);
+    if (archivedPatches.length > 0) return { ok: false, error: "One or more patches are archived" };
 
-  // Verify patches are not archived
-  const archivedPatches = patches.filter((patch) => patch.archived);
-  if (archivedPatches.length > 0) return { ok: false, error: "One or more patches are archived" };
+    const unpublishedPatchIds = patches.filter((patch) => !patch.published).map((patch) => patch.id);
+    if (unpublishedPatchIds.length > 0) {
+      const serviceClient = await createServiceClient();
+      const { error: publishErr } = await serviceClient
+        .from("patches")
+        .update({ published: true, published_at: new Date().toISOString() })
+        .in("id", unpublishedPatchIds);
+      if (publishErr) return { ok: false, error: publishErr.message };
+    }
+  }
 
   // Replace patcher patches
   const { error: replaceErr } = await supabase.rpc("replace_hack_patcher_patches", {
