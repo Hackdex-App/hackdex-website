@@ -582,6 +582,20 @@ export async function archivePatchVersion(slug: string, patchId: number): Promis
     return { ok: false, error: "Patch not found" };
   }
 
+  const { data: customRows, error: customErr } = await supabase
+    .from("hack_patcher_patches")
+    .select("patch_id")
+    .eq("hack_slug", slug);
+  if (customErr) return { ok: false, error: customErr.message };
+
+  const isInCustomList = (customRows || []).some((row) => row.patch_id === patchId);
+  if (isInCustomList && (customRows?.length || 0) <= 2) {
+    return {
+      ok: false,
+      error: "This is one of the last 2 versions in the Custom patcher list. Switch to Latest published patch or add another Custom version before archiving it.",
+    };
+  }
+
   // Archive the patch
   const serviceClient = await createServiceClient();
   const { error: updateErr } = await serviceClient
@@ -591,6 +605,17 @@ export async function archivePatchVersion(slug: string, patchId: number): Promis
 
   if (updateErr) return { ok: false, error: updateErr.message };
 
+  if (isInCustomList) {
+    const { error: deleteErr } = await serviceClient
+      .from("hack_patcher_patches")
+      .delete()
+      .eq("hack_slug", slug)
+      .eq("patch_id", patchId);
+    if (deleteErr) return { ok: false, error: deleteErr.message };
+  }
+
+  revalidateTag(`hack:${slug}:metadata`);
+  revalidatePath(`/hack/${slug}`);
   revalidatePath(`/hack/${slug}/versions`);
   return { ok: true };
 }

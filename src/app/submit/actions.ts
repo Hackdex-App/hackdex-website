@@ -251,6 +251,17 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
   if (vErr) return { ok: false, error: vErr.message } as const;
   if (existing) return { ok: false, error: "That version already exists for this hack." } as const;
 
+  let shouldPublishAutomatically = !!args.publishAutomatically;
+  if (shouldPublishAutomatically) {
+    const { data: customPatcherRows, error: customPatcherErr } = await supabase
+      .from("hack_patcher_patches")
+      .select("patch_id")
+      .eq("hack_slug", args.slug)
+      .limit(1);
+    if (customPatcherErr) return { ok: false, error: customPatcherErr.message } as const;
+    shouldPublishAutomatically = (customPatcherRows || []).length === 0;
+  }
+
   // Create patch row
   const patchInsert: any = {
     bucket: PATCHES_BUCKET,
@@ -260,7 +271,7 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
   };
 
   // Set published status based on publishAutomatically flag
-  if (args.publishAutomatically) {
+  if (shouldPublishAutomatically) {
     patchInsert.published = true;
     patchInsert.published_at = new Date().toISOString();
   } else {
@@ -275,7 +286,7 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
   if (pErr) return { ok: false, error: pErr.message } as const;
 
   // Only update current_patch if publishAutomatically is true
-  if (args.publishAutomatically) {
+  if (shouldPublishAutomatically) {
     // Check if this patch is newer than current_patch
     let shouldUpdateCurrentPatch = true;
     if (hack.current_patch) {
