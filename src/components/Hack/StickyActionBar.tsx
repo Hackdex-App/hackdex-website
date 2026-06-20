@@ -2,12 +2,16 @@
 
 import React from "react";
 import Link from "next/link";
+import { FiChevronDown, FiX } from "react-icons/fi";
 import { platformAccept } from "@/utils/idb";
 import type { Platform } from "@/data/baseRoms";
 
 interface StickyActionBarProps {
   title: string;
   version?: string;
+  selectablePatches?: { id: number; version: string }[];
+  selectedPatchId?: number | null;
+  onVersionChange?: (patchId: number) => void;
   author: string;
   filename: string | null;
   baseRomName?: string | null;
@@ -27,6 +31,9 @@ interface StickyActionBarProps {
 export default function StickyActionBar({
   title,
   version,
+  selectablePatches = [],
+  selectedPatchId,
+  onVersionChange,
   author,
   filename,
   baseRomName,
@@ -48,6 +55,8 @@ export default function StickyActionBar({
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [showError, setShowError] = React.useState(false);
   const [patchAgainReady, setPatchAgainReady] = React.useState(true);
+  const [versionPickerOpen, setVersionPickerOpen] = React.useState(false);
+  const hasVersionPicker = selectablePatches.length > 1 && !!onVersionChange;
 
   // Keep error mounted to allow fade-out when error becomes null
   React.useEffect(() => {
@@ -78,19 +87,54 @@ export default function StickyActionBar({
     }
   }, [status]);
 
+  const handleVersionSelect = (patchId: number, closeAfterSelect: boolean) => {
+    onVersionChange?.(patchId);
+    if (closeAfterSelect) {
+      setVersionPickerOpen(false);
+    }
+  };
+
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 md:sticky md:top-18 md:z-30 flex flex-col gap-2 pb-safe">
       <div className="mx-auto w-full lg:max-w-screen-lg flex flex-col md:flex-row md:items-center md:justify-between md:gap-4 rounded-t-xl md:rounded-md border border-[var(--border)] bg-[var(--surface-2)]/80 px-4 py-3 pb-[env(safe-area-inset-bottom)] md:pb-3 shadow-[0_-6px_24px_rgba(0,0,0,0.2)] md:shadow-none backdrop-blur supports-[backdrop-filter]:bg-[color-mix(in_oklab,var(--background)_90%,transparent)] md:supports-[backdrop-filter]:bg-[color-mix(in_oklab,var(--background)_70%,transparent)]">
         <div className="md:w-fit md:max-w-[40%] lg:max-w-[45%]">
           <div className="flex items-center gap-2">
             <div className="truncate text-xl font-bold md:text-sm md:font-medium">{title}</div>
-            {version && (
+            {hasVersionPicker ? (
+              <button
+                type="button"
+                aria-label="Patch version"
+                aria-haspopup="dialog"
+                aria-expanded={versionPickerOpen}
+                onClick={() => setVersionPickerOpen((open) => !open)}
+                className="shrink-0 max-w-44 ml-auto md:ml-0 inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1 text-[11px] font-semibold text-foreground/90 shadow-sm focus:outline-none md:hover:bg-[var(--surface-3)] md:focus:ring-2 md:focus:ring-[var(--accent)]"
+              >
+                <span className="truncate">{version}</span>
+                {versionPickerOpen ? (
+                  <FiX size={13} className="shrink-0 text-foreground/65" aria-hidden />
+                ) : (
+                  <FiChevronDown size={13} className="shrink-0 text-foreground/65" aria-hidden />
+                )}
+              </button>
+            ) : version && (
               <span className="shrink-0 rounded-full bg-[var(--surface-2)] ml-auto md:ml-0 px-2 py-0.5 text-[11px] font-medium text-foreground/85 ring-1 ring-[var(--border)]">{version}</span>
             )}
           </div>
           <div className="truncate text-sm md:text-xs text-foreground/60">By {author}</div>
         </div>
-        <div className="flex w-full md:w-auto flex-col md:flex-row items-stretch md:items-center gap-2 mb-4 md:mb-0">
+        {hasVersionPicker && versionPickerOpen && (
+          <div className="md:hidden mt-3 mb-4 animate-in fade-in slide-in-from-bottom-2 duration-200">
+            <div className="mb-2">
+              <div className="text-xs font-semibold uppercase tracking-wide text-foreground/55">Select version</div>
+            </div>
+            <VersionRadioList
+              patches={selectablePatches}
+              selectedPatchId={selectedPatchId}
+              onSelect={(patchId) => handleVersionSelect(patchId, true)}
+            />
+          </div>
+        )}
+        <div className={`${hasVersionPicker && versionPickerOpen ? "hidden md:flex" : "flex"} w-full md:w-auto flex-col md:flex-row items-stretch md:items-center gap-2 mb-4 md:mb-0`}>
           {!termsAgreed || status === "downloading" ? (
             !romReady ? (
               <p className="rounded-full mx-auto md:mx-0 px-2 py-0.5 text-xs text-center md:text-right md:text-balance">
@@ -166,6 +210,35 @@ export default function StickyActionBar({
           </button>
         </div>
       </div>
+      {hasVersionPicker && versionPickerOpen && (
+        <div className="fixed left-0 right-0 top-0 bottom-0 z-[100] hidden md:flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/50 dark:bg-black/60 backdrop-blur-sm"
+            onClick={() => setVersionPickerOpen(false)}
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Select which version to download"
+            className="relative z-[101] card backdrop-blur-lg dark:!bg-black/70 p-6 max-w-md w-full rounded-lg"
+          >
+            <button
+              type="button"
+              onClick={() => setVersionPickerOpen(false)}
+              aria-label="Close modal"
+              className="absolute top-4 right-4 p-1.5 rounded-md text-foreground/60 hover:text-foreground hover:bg-[var(--surface-2)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+            >
+              ×
+            </button>
+            <h2 className="text-xl font-semibold mb-4 pr-8">Select which version to download</h2>
+            <VersionRadioList
+              patches={selectablePatches}
+              selectedPatchId={selectedPatchId}
+              onSelect={(patchId) => handleVersionSelect(patchId, false)}
+            />
+          </div>
+        </div>
+      )}
       {errorMessage !== null && (
         <div
           className={`absolute inset-x-0 md:left-1/2 md:-translate-x-1/2 md:mt-4 mb-2 md:mx-auto flex flex-col w-full md:w-auto lg:max-w-screen-lg rounded-md border border-[var(--border)] bg-[var(--surface-2)]/80 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-[color-mix(in_oklab,var(--background)_70%,transparent)] text-sm text-red-400 transition-all duration-300 ${showError ? "opacity-100 -translate-y-full md:translate-y-full" : "opacity-0 translate-y-0 md:-translate-y-1/2 pointer-events-none"}`}
@@ -176,6 +249,52 @@ export default function StickyActionBar({
           <p className="text-xs">If the issue persists, try clearing your browser cache or using a different browser.</p>
         </div>
       )}
+    </div>
+  );
+}
+
+function VersionRadioList({
+  patches,
+  selectedPatchId,
+  onSelect,
+}: {
+  patches: { id: number; version: string }[];
+  selectedPatchId?: number | null;
+  onSelect: (patchId: number) => void;
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Patch version"
+      className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-2)]"
+    >
+      {patches.map((patch, index) => {
+        const selected = selectedPatchId === patch.id;
+        return (
+          <button
+            key={patch.id}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            onClick={() => onSelect(patch.id)}
+            className={`flex w-full items-center justify-between gap-3 px-3 py-3 text-left text-sm transition-colors md:py-2.5 ${
+              selected
+                ? "bg-[var(--accent)]/10 text-foreground"
+                : "text-foreground/75 hover:bg-[var(--surface-3)]"
+            } ${index > 0 ? "border-t border-[var(--border)]" : ""}`}
+          >
+            <span className="font-medium">{patch.version}</span>
+            <span
+              className={`h-3.5 w-3.5 rounded-full border-2 flex items-center justify-center ${
+                selected ? "border-[var(--accent)]" : "border-[var(--border)]"
+              }`}
+              aria-hidden
+            >
+              {selected && <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />}
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }

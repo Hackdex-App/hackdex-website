@@ -15,6 +15,7 @@ import {
   isArchiveFile,
   isAnyRomExtension,
 } from "@/utils/romFile";
+import type { SelectablePatch } from "@/types/patcher";
 
 interface HackActionsProps {
   title: string;
@@ -25,6 +26,10 @@ interface HackActionsProps {
   patchFilename: string | null;
   patchId?: number;
   hackSlug: string;
+  patcherSelector: {
+    selectablePatches: SelectablePatch[];
+    defaultPatchId: number | null;
+  };
 }
 
 const HackActions: React.FC<HackActionsProps> = ({
@@ -36,6 +41,7 @@ const HackActions: React.FC<HackActionsProps> = ({
   patchFilename,
   patchId,
   hackSlug,
+  patcherSelector,
 }) => {
   const { isLinked, hasPermission, hasCached, importUploadedBlob, ensurePermission, linkRom, getFileBlob, supported } = useBaseRoms();
   const [file, setFile] = React.useState<File | null>(null);
@@ -46,11 +52,36 @@ const HackActions: React.FC<HackActionsProps> = ({
   const [termsAgreed, setTermsAgreed] = React.useState(false);
   const [romErrorModal, setRomErrorModal] = React.useState<BaseRomErrorModalState | null>(null);
   const [isVerifyingRom, setIsVerifyingRom] = React.useState(false);
+  const [selectedPatchId, setSelectedPatchId] = React.useState<number | null>(patcherSelector.defaultPatchId);
   const baseRomName = React.useMemo(() => baseRoms.find(r => r.id === baseRomId)?.name || null, [baseRomId]);
   const effectivePlatform = React.useMemo(
     () => platform ?? baseRoms.find(r => r.id === baseRomId)?.platform,
     [platform, baseRomId],
   );
+  const selectedPatch = React.useMemo(
+    () => patcherSelector.selectablePatches.find((patch) => patch.id === selectedPatchId)
+      ?? patcherSelector.selectablePatches[0]
+      ?? null,
+    [patcherSelector.selectablePatches, selectedPatchId],
+  );
+  const selectedVersion = selectedPatch?.version ?? version;
+
+  React.useEffect(() => {
+    setSelectedPatchId(patcherSelector.defaultPatchId);
+  }, [patcherSelector.defaultPatchId]);
+
+  function resetPatchSession() {
+    setTermsAgreed(false);
+    setPatchUrl(null);
+    setPatchBlob(null);
+    setStatus("idle");
+  }
+
+  function onVersionChange(nextPatchId: number) {
+    if (nextPatchId === selectedPatchId) return;
+    setSelectedPatchId(nextPatchId);
+    resetPatchSession();
+  }
 
   // Basic client-side bot detection
   React.useEffect(() => {
@@ -189,7 +220,10 @@ const HackActions: React.FC<HackActionsProps> = ({
       setStatus("downloading");
 
       // Fetch signed URL from server
-      const result = await getSignedPatchUrl(hackSlug);
+      const result = await getSignedPatchUrl(
+        hackSlug,
+        selectedPatch ? { patchId: selectedPatch.id } : undefined,
+      );
       if (!result.ok) {
         setError(result.error);
         setStatus("idle");
@@ -276,7 +310,7 @@ const HackActions: React.FC<HackActionsProps> = ({
 
       // Name output and download
       const outExt = platform ? platform.toLowerCase() : 'bin';
-      const outputName = `${title} (${version}).${outExt}`;
+      const outputName = `${title} (${selectedVersion}).${outExt}`;
       patchedRom.fileName = outputName;
       patchedRom.save();
 
@@ -284,7 +318,8 @@ const HackActions: React.FC<HackActionsProps> = ({
 
       // Best-effort log applied event for counting and animate badge
       try {
-        if (patchId != null) {
+        const countPatchId = selectedPatch?.id ?? patchId;
+        if (countPatchId != null) {
           const key = "deviceId";
           let deviceId = localStorage.getItem(key);
           if (!deviceId) {
@@ -294,7 +329,7 @@ const HackActions: React.FC<HackActionsProps> = ({
           // Defer count update to avoid Safari cancelling the request
           setTimeout(async () => {
             const deviceIdObscured = deviceId.split("-");
-            const result = await updatePatchDownloadCount(patchId, deviceIdObscured);
+            const result = await updatePatchDownloadCount(countPatchId, deviceIdObscured);
             if (!result.ok) {
               console.error(result.error);
             } else if (result.didIncrease) {
@@ -316,7 +351,10 @@ const HackActions: React.FC<HackActionsProps> = ({
     <>
       <StickyActionBar
         title={title}
-        version={version}
+        version={selectedVersion}
+        selectablePatches={patcherSelector.selectablePatches}
+        selectedPatchId={selectedPatch?.id ?? selectedPatchId}
+        onVersionChange={onVersionChange}
         author={author}
         filename={patchFilename}
         baseRomName={baseRomName}

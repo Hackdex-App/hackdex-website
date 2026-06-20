@@ -228,6 +228,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
           patchFilename={patchFilename}
           patchId={patchId ?? undefined}
           hackSlug={hack.slug}
+          patcherSelector={metadata.patcherSelector}
         />
       )}
 
