@@ -90,6 +90,11 @@ interface VersionListProps {
   hackSlug: string;
   baseRom: string;
   patchesDownloadPermission: PatchesDownloadPermission;
+  patcherSelectionMode?: boolean;
+  draftPatchIds?: number[];
+  savedPatchIds?: number[];
+  isCustomPatcherActive?: boolean;
+  onTogglePatcherPatch?: (patchId: number) => void;
 }
 
 export default function VersionList({
@@ -99,6 +104,11 @@ export default function VersionList({
   hackSlug,
   baseRom,
   patchesDownloadPermission,
+  patcherSelectionMode = false,
+  draftPatchIds = [],
+  savedPatchIds = [],
+  isCustomPatcherActive = false,
+  onTogglePatcherPatch,
 }: VersionListProps) {
   // Initialize with first patch's changelog expanded if it exists
   const getInitialExpanded = () => {
@@ -157,6 +167,8 @@ export default function VersionList({
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       )
     : patches;
+  const draftPatchIdSet = new Set(draftPatchIds);
+  const savedPatchIdSet = new Set(savedPatchIds);
 
   if (patches.length === 0 && (!showArchived || archivedPatches.length === 0)) {
     return (
@@ -182,6 +194,8 @@ export default function VersionList({
 
       {allPatches.map((patch) => {
         const isCurrent = currentPatchId === patch.id;
+        const isPatchable = isCustomPatcherActive && savedPatchIdSet.has(patch.id);
+        const isDefaultPatcherPatch = isCustomPatcherActive && savedPatchIds[0] === patch.id;
         const hasChangelog = patch.changelog && patch.changelog.trim().length > 0;
         const isExpanded = expandedChangelogs.has(patch.id);
         const isEditing = editingChangelog === patch.id;
@@ -190,6 +204,10 @@ export default function VersionList({
         const showPublicPatchDownload =
           !canEdit &&
           shouldShowPublicPatchDownload(patchesDownloadPermission, patch, isCurrent);
+        const isHighlighted = isCustomPatcherActive ? isPatchable : isCurrent;
+        const selectedForPatcher = draftPatchIdSet.has(patch.id);
+        const patcherSelectionIndex = draftPatchIds.indexOf(patch.id);
+        const canSelectForPatcher = !patch.archived;
 
         const titleBar = (
           <div
@@ -221,10 +239,22 @@ export default function VersionList({
                 )}
               </>
             )}
-            {isCurrent && editingVersion !== patch.id && (
+            {!isCustomPatcherActive && isCurrent && editingVersion !== patch.id && (
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
                 <FaStar size={10} />
                 Current
+              </span>
+            )}
+            {isCustomPatcherActive && isDefaultPatcherPatch && editingVersion !== patch.id && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                <FaStar size={10} />
+                Default
+              </span>
+            )}
+            {isCustomPatcherActive && isPatchable && !isDefaultPatcherPatch && editingVersion !== patch.id && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                <FaStar size={10} />
+                Patchable
               </span>
             )}
             {!patch.published && (
@@ -265,10 +295,80 @@ export default function VersionList({
           </div>
         );
 
+        if (patcherSelectionMode) {
+          const minimalBody = (
+            <>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                    <h3 className="text-base sm:text-lg font-semibold">{patch.version}</h3>
+                    {isCurrent && !isCustomPatcherActive && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                        <FaStar size={10} />
+                        Current
+                      </span>
+                    )}
+                    {!patch.published && (
+                      <span className="inline-flex items-center rounded-full bg-amber-500/20 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+                        Unpublished
+                      </span>
+                    )}
+                    {patch.archived && (
+                      <span className="inline-flex items-center rounded-full bg-gray-500/20 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-400">
+                        Archived
+                      </span>
+                    )}
+                  </div>
+                  {datesBlock}
+                </div>
+                <span
+                  className={`mt-1 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold ${
+                    selectedForPatcher
+                      ? "border-emerald-500/70 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                      : canSelectForPatcher
+                        ? "border-[var(--border)] text-foreground/35"
+                        : "border-[var(--border)] text-foreground/25"
+                  }`}
+                  aria-hidden
+                >
+                  {selectedForPatcher ? patcherSelectionIndex + 1 : ""}
+                </span>
+              </div>
+            </>
+          );
+
+          if (!canSelectForPatcher) {
+            return (
+              <div
+                key={patch.id}
+                className="card p-4 sm:p-5 border border-[var(--border)] opacity-65 cursor-not-allowed"
+              >
+                {minimalBody}
+              </div>
+            );
+          }
+
+          return (
+            <button
+              type="button"
+              key={patch.id}
+              onClick={() => onTogglePatcherPatch?.(patch.id)}
+              aria-pressed={selectedForPatcher}
+              className={`card block p-4 sm:p-5 cursor-pointer transition-colors border ${
+                selectedForPatcher
+                  ? "ring-2 ring-emerald-500/50 border-emerald-500/50"
+                  : "border-[var(--border)] hover:border-[var(--accent)]/60"
+              } w-full text-left`}
+            >
+              {minimalBody}
+            </button>
+          );
+        }
+
         return (
           <div
             key={patch.id}
-            className={`card p-4 sm:p-5 ${isCurrent ? "ring-2 ring-emerald-500/50" : ""}`}
+            className={`card p-4 sm:p-5 ${isHighlighted ? "ring-2 ring-emerald-500/50" : ""}`}
           >
             <div className="space-y-3 sm:space-y-4">
               {showPublicPatchDownload ? (
@@ -295,6 +395,9 @@ export default function VersionList({
                         hackSlug={hackSlug}
                         baseRom={baseRom}
                         currentPatchCreatedAt={currentPatchCreatedAt}
+                        isCustomPatcherActive={isCustomPatcherActive}
+                        isInCustomPatcherList={savedPatchIdSet.has(patch.id)}
+                        customPatcherPatchCount={savedPatchIds.length}
                         onActionComplete={() => {
                           router.refresh();
                           setEditingChangelog(null);

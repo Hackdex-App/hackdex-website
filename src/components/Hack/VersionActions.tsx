@@ -41,6 +41,9 @@ interface VersionActionsProps {
   hackSlug: string;
   baseRom: string;
   currentPatchCreatedAt: string | null;
+  isCustomPatcherActive?: boolean;
+  isInCustomPatcherList?: boolean;
+  customPatcherPatchCount?: number;
   onActionComplete: () => void;
 }
 
@@ -50,6 +53,9 @@ export default function VersionActions({
   hackSlug,
   baseRom,
   currentPatchCreatedAt,
+  isCustomPatcherActive = false,
+  isInCustomPatcherList = false,
+  customPatcherPatchCount = 0,
   onActionComplete,
 }: VersionActionsProps) {
   const { isLinked, hasPermission, hasCached, importUploadedBlob, ensurePermission, getFileBlob, supported } = useBaseRoms();
@@ -83,7 +89,8 @@ export default function VersionActions({
     : false;
 
   // Don't show Rollback if the patch is unpublished and newer than the current version
-  const shouldShowRollback = !isCurrent && !(!patch.published && isNewerThanCurrent);
+  const shouldShowRollback = !isCustomPatcherActive && !isCurrent && !(!patch.published && isNewerThanCurrent);
+  const archiveWouldRemoveLastCustomPatch = isInCustomPatcherList && customPatcherPatchCount <= 2;
 
   useEffect(() => {
     if (showDeleteModal || showRestoreModal || showRollbackModal || showPublishModal || showReuploadModal) {
@@ -579,17 +586,32 @@ export default function VersionActions({
           title="Archive Version"
           onClose={() => !actionLoading && setShowDeleteModal(false)}
         >
-          <p className="text-foreground/80 mb-4">
-            Are you sure you want to archive version <strong>{patch.version}</strong>? This will hide it from public view, but it can be restored later.
-          </p>
+          {archiveWouldRemoveLastCustomPatch ? (
+            <p className="text-foreground/80 mb-4">
+              Version <strong>{patch.version}</strong> is one of the last 2 versions in the <strong>Custom</strong> patcher list. Switch to <strong>Latest published patch</strong> or add another Custom version before archiving it.
+            </p>
+          ) : (
+            <>
+              <p className="text-foreground/80 mb-4">
+                Are you sure you want to archive version <strong>{patch.version}</strong>? This will hide it from public view, but it can be restored later.
+              </p>
+              {isInCustomPatcherList && (
+                <p className="text-sm text-foreground/60 mb-4">
+                  This version will also be removed from the Custom patcher list.
+                </p>
+              )}
+            </>
+          )}
           <div className="flex gap-2">
-            <button
-              onClick={handleDelete}
-              disabled={actionLoading}
-              className="flex-1 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {actionLoading ? "Archiving..." : "Archive"}
-            </button>
+            {!archiveWouldRemoveLastCustomPatch && (
+              <button
+                onClick={handleDelete}
+                disabled={actionLoading}
+                className="flex-1 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {actionLoading ? "Archiving..." : "Archive"}
+              </button>
+            )}
             <button
               onClick={() => setShowDeleteModal(false)}
               disabled={actionLoading}
@@ -639,7 +661,9 @@ export default function VersionActions({
             Publish version <strong>{patch.version}</strong>? This will make it viewable to the public along with its changelog.
           </p>
           <p className="text-sm text-foreground/60 mb-4">
-            If this version is newer than the current patch, it will become the primary download used for all users.
+            {isCustomPatcherActive
+              ? "This will not add the version to the Custom patcher list. Add it through Patcher Version Settings if you want it available in the homepage downloader."
+              : "If this version is newer than the current patch, it will become the primary download used for all users."}
           </p>
           <div className="flex gap-2">
             <button
