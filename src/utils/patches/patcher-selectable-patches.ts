@@ -28,6 +28,7 @@ export async function getPatcherSelectablePatches(
     version: patch.version,
     created_at: patch.created_at,
   }));
+  const hasSavedRows = selectablePatches.length > 0;
   if (selectablePatches.length === 0 && currentPatchId !== null) {
     const { data: currentPatch, error: currentPatchError } = await supabase
       .from("patches")
@@ -46,9 +47,11 @@ export async function getPatcherSelectablePatches(
       selectablePatches = [currentPatch];
     }
   }
-  const defaultPatchId = (currentPatchId !== null && selectablePatches.some((patch) => patch.id === currentPatchId))
-    ? currentPatchId
-    : selectablePatches[0]?.id ?? null;
+  const defaultPatchId = hasSavedRows
+    ? selectablePatches[0]?.id ?? null
+    : (currentPatchId !== null && selectablePatches.some((patch) => patch.id === currentPatchId))
+      ? currentPatchId
+      : selectablePatches[0]?.id ?? null;
 
   return {
     savedPatchIds,
