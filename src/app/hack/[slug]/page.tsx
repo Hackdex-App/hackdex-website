@@ -115,7 +115,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
   
   if (!metadata) return notFound();
   
-  const { hack, images, tags, profile, otherHacks, patch } = metadata;
+  const { hack, images, tags, profile, otherHacks, patch, displayVersion } = metadata;
   const baseRom = baseRoms.find((r) => r.id === hack.base_rom);
   const author = hack.original_author ? hack.original_author : (profile?.username ? `@${profile.username}` : "Unknown");
 
@@ -148,7 +148,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
 
   // Extract patch info from cached metadata
   const patchFilename = patch?.filename || null;
-  const patchVersion = isArchive ? "Archive" : (patch?.version || "");
+  const patchVersion = displayVersion;
   const patchId = patch?.id || null;
   const lastUpdated = patch ? new Date(patch.created_at).toLocaleDateString() : null;
   const patchCreatedAt = patch?.created_at || null;

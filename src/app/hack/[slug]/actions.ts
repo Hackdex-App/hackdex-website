@@ -12,6 +12,7 @@ import { unstable_cache as cache } from "next/cache";
 import { sortOrderedTags, getCoverUrls } from "@/utils/format";
 import { Database, Constants } from "@/types/db";
 import { getPatcherSelectablePatches } from "@/utils/patches/patcher-selectable-patches";
+import { CUSTOM_VERSION_NAME_MAX_LENGTH, resolveHackDisplayVersion } from "@/utils/patches/hack-display-version";
 import type { SelectablePatch } from "@/types/patcher";
 
 const PATCHES_DOWNLOAD_PERMISSION_VALUES = Constants.public.Enums[
@@ -39,6 +40,7 @@ export interface HackMetadata {
     completion_status: Database["public"]["Enums"]["Completion Status"] | null;
     verification_contact_info: string | null;
   };
+  displayVersion: string;
   images: string[];
   tags: string[];
   profile: {
@@ -72,7 +74,7 @@ export async function getHackMetadata(slug: string): Promise<HackMetadata | null
 
       const { data: hack, error } = await supabase
         .from("hacks")
-        .select("slug,title,summary,description,base_rom,created_at,updated_at,current_patch,box_art,social_links,created_by,approved,original_author,permission_from,language,is_archive,completion_status,verification_contact_info")
+        .select("slug,title,summary,description,base_rom,created_at,updated_at,current_patch,custom_version_name,box_art,social_links,created_by,approved,original_author,permission_from,language,is_archive,completion_status,verification_contact_info")
         .eq("slug", slug)
         .maybeSingle();
 
@@ -166,10 +168,18 @@ export async function getHackMetadata(slug: string): Promise<HackMetadata | null
         }
       }
 
-      const { selectablePatches, defaultPatchId } = await getPatcherSelectablePatches(supabase, slug, hack.current_patch);
+      const { savedPatchIds, selectablePatches, defaultPatchId } = await getPatcherSelectablePatches(supabase, slug, hack.current_patch);
+      const displayVersion = resolveHackDisplayVersion({
+        isArchive: hack.is_archive,
+        isCustomPatcherActive: savedPatchIds.length > 0,
+        customVersionName: hack.custom_version_name,
+        customDefaultPatchVersion: selectablePatches[0]?.version,
+        currentPatchVersion: patch?.version,
+      });
 
       return {
         hack,
+        displayVersion,
         images,
         tags,
         profile: profile ? {
@@ -1005,6 +1015,7 @@ export async function confirmReuploadPatchVersion(
 export async function updatePatcherSelectablePatches(
   slug: string,
   patchIds: number[],
+  customVersionName?: string | null,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -1028,6 +1039,16 @@ export async function updatePatcherSelectablePatches(
 
   // Dedupe patch ids
   const uniquePatchIds = [...new Set(patchIds)];
+  const trimmedCustomVersionName = customVersionName?.trim() || null;
+
+  if (uniquePatchIds.length > 0) {
+    if (!trimmedCustomVersionName) {
+      return { ok: false, error: "Custom version name is required." };
+    }
+    if (trimmedCustomVersionName.length > CUSTOM_VERSION_NAME_MAX_LENGTH) {
+      return { ok: false, error: "Custom version name must be 12 characters or fewer." };
+    }
+  }
 
   if (uniquePatchIds.length > 0) {
     // Verify patches belong to this hack
@@ -1059,6 +1080,12 @@ export async function updatePatcherSelectablePatches(
     p_patch_ids: uniquePatchIds,
   });
   if (replaceErr) return { ok: false, error: replaceErr.message };
+
+  const { error: nameErr } = await supabase
+    .from("hacks")
+    .update({ custom_version_name: uniquePatchIds.length > 0 ? trimmedCustomVersionName : null })
+    .eq("slug", slug);
+  if (nameErr) return { ok: false, error: nameErr.message };
 
   revalidateTag(`hack:${slug}:metadata`);
   revalidatePath(`/hack/${slug}`);

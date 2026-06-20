@@ -177,6 +177,7 @@ export type Database = {
           created_at: string
           created_by: string
           current_patch: number | null
+          custom_version_name: string | null
           description: string
           downloads: number
           estimated_release: string | null
@@ -213,6 +214,7 @@ export type Database = {
           created_at?: string
           created_by: string
           current_patch?: number | null
+          custom_version_name?: string | null
           description: string
           downloads?: number
           estimated_release?: string | null
@@ -249,6 +251,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           current_patch?: number | null
+          custom_version_name?: string | null
           description?: string
           downloads?: number
           estimated_release?: string | null

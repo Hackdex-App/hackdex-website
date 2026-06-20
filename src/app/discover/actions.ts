@@ -7,6 +7,7 @@ import { sortOrderedTags, OrderedTag, getCoverUrls } from "@/utils/format";
 import { fetchInChunks } from "@/utils/array";
 import { HackCardAttributes } from "@/components/HackCard";
 import type { DiscoverSortOption } from "@/types/discover";
+import { resolveHackDisplayVersion } from "@/utils/patches/hack-display-version";
 
 const TRENDING_WINDOW_DAYS = 3;
 const TIME_TO_LIVE = 600; // 10 minutes
@@ -37,7 +38,7 @@ export async function getDiscoverData(sort: DiscoverSortOption): Promise<Discove
         // Build base query for hacks (public/anon view: only approved hacks)
         let query = supabase
           .from("hacks")
-          .select("slug,title,summary,description,base_rom,downloads,created_by,updated_at,current_patch,original_author,approved_at,is_archive,completion_status")
+          .select("slug,title,summary,description,base_rom,downloads,created_by,updated_at,current_patch,custom_version_name,original_author,approved_at,is_archive,completion_status")
           .eq("approved", true);
 
       // Apply sorting based on sort type
@@ -168,6 +169,24 @@ export async function getDiscoverData(sort: DiscoverSortOption): Promise<Discove
         });
       }
 
+      const customDefaultVersionsBySlug = new Map<string, string>();
+      const customPatcherSlugs = new Set<string>();
+      if (slugs.length > 0) {
+        const { data: customPatchRows, error: customPatchRowsError } = await supabase
+          .from("hack_patcher_patches")
+          .select("hack_slug, sort_order, patches!inner(version)")
+          .in("hack_slug", slugs)
+          .order("sort_order", { ascending: true });
+        if (customPatchRowsError) throw customPatchRowsError;
+
+        (customPatchRows || []).forEach((row: any) => {
+          customPatcherSlugs.add(row.hack_slug);
+          if (customDefaultVersionsBySlug.has(row.hack_slug)) return;
+          const patch = Array.isArray(row.patches) ? row.patches[0] : row.patches;
+          if (patch?.version) customDefaultVersionsBySlug.set(row.hack_slug, patch.version);
+        });
+      }
+
       // Calculate trending scores if needed
       let trendingScores: Map<string, number> | null = null;
       if (sort === "trending") {
@@ -232,14 +251,21 @@ export async function getDiscoverData(sort: DiscoverSortOption): Promise<Discove
       const mappedVersions = new Map<string, string>();
       const publishedAtBySlug = new Map<string, string | null>();
       (rows || []).forEach((r: any) => {
-        if (typeof r.current_patch === "number") {
-          const version = versionsByPatchId.get(r.current_patch) || "Pre-release";
-          mappedVersions.set(r.slug, version);
+        const currentPatchVersion = typeof r.current_patch === "number"
+          ? versionsByPatchId.get(r.current_patch) || "Pre-release"
+          : "";
+        mappedVersions.set(r.slug, resolveHackDisplayVersion({
+          isArchive: r.is_archive,
+          isCustomPatcherActive: customPatcherSlugs.has(r.slug),
+          customVersionName: r.custom_version_name,
+          customDefaultPatchVersion: customDefaultVersionsBySlug.get(r.slug),
+          currentPatchVersion,
+        }));
 
+        if (typeof r.current_patch === "number") {
           const publishedAt = publishedAtByPatchId.get(r.current_patch) ?? null;
           publishedAtBySlug.set(r.slug, publishedAt);
         } else {
-          mappedVersions.set(r.slug, r.is_archive ? "Archive" : "Pre-release");
           publishedAtBySlug.set(r.slug, null);
         }
       });

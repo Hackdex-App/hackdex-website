@@ -3,6 +3,7 @@
 import React from "react";
 import { FaCode } from "react-icons/fa";
 import CollapsibleCard from "@/components/Primitives/CollapsibleCard";
+import { CUSTOM_VERSION_NAME_MAX_LENGTH } from "@/utils/patches/hack-display-version";
 
 type PatcherOption = "latest" | "custom";
 
@@ -12,6 +13,9 @@ interface PatcherVersionSettingsProps {
   latestVersionLabels: string[];
   liveVersionLabels: string[];
   draftVersionLabels: string[];
+  publishedCustomVersionName: string;
+  customVersionName: string;
+  suggestedCustomVersionName: string | null;
   customSelectionCount: number;
   selectionMode: boolean;
   hasUnsavedChanges: boolean;
@@ -23,6 +27,8 @@ interface PatcherVersionSettingsProps {
   onChooseOption: (option: PatcherOption) => void;
   onEnterSelectionMode: () => void;
   onClearSelections: () => void;
+  onCustomVersionNameChange: (name: string) => void;
+  onApplySuggestedCustomVersionName: () => void;
   onCancel: () => void;
   onPublish: () => void;
 }
@@ -42,6 +48,9 @@ export default function PatcherVersionSettings({
   latestVersionLabels,
   liveVersionLabels,
   draftVersionLabels,
+  publishedCustomVersionName,
+  customVersionName,
+  suggestedCustomVersionName,
   customSelectionCount,
   selectionMode,
   hasUnsavedChanges,
@@ -53,10 +62,25 @@ export default function PatcherVersionSettings({
   onChooseOption,
   onEnterSelectionMode,
   onClearSelections,
+  onCustomVersionNameChange,
+  onApplySuggestedCustomVersionName,
   onCancel,
   onPublish,
 }: PatcherVersionSettingsProps) {
   const isSwitchingFromLatestToCustom = publishedOption === "latest" && draftOption === "custom";
+  const liveCustomVersionName = publishedCustomVersionName.trim();
+  const showCustomVersionNameHint = draftOption === "custom" && selectionMode && publishDisabled && customVersionName.trim().length === 0;
+  const showSuggestedNameButton = suggestedCustomVersionName !== null && customVersionName.trim() !== suggestedCustomVersionName;
+  const customOptionDetail = publishedOption === "custom" && liveCustomVersionName
+    ? (
+      <>
+        <strong>{liveCustomVersionName}:</strong> {versionSummary(liveVersionLabels, "No custom versions are published.")}
+      </>
+    )
+    : versionSummary(liveVersionLabels, "No custom versions are published.");
+  const liveOptionLabel = publishedOption === "custom" && liveCustomVersionName
+    ? `${optionLabel(publishedOption)} (${liveCustomVersionName})`
+    : optionLabel(publishedOption);
   const summaryStatus = (() => {
     if (hasUnsavedChanges && draftOption !== publishedOption) {
       return { prefix: " · Draft: ", label: optionLabel(draftOption) };
@@ -72,7 +96,7 @@ export default function PatcherVersionSettings({
   const summary = (
     <>
       <span className="text-foreground/45">Live: </span>
-      <span className="text-foreground/80 font-medium">{optionLabel(publishedOption)}</span>
+      <span className="text-foreground/80 font-medium">{liveOptionLabel}</span>
       {summaryStatus && (
         <>
           <span className="text-foreground/40">{summaryStatus.prefix}</span>
@@ -110,7 +134,7 @@ export default function PatcherVersionSettings({
             saved={publishedOption === "custom"}
             label="Custom"
             description="Choose specific non-archived versions for the downloader. Great for multiple variants of the same version, like builds with different features or optional changes."
-            detail={versionSummary(liveVersionLabels, "No custom versions are published.")}
+            detail={customOptionDetail}
             onSelect={onChooseOption}
           />
         </div>
@@ -122,6 +146,33 @@ export default function PatcherVersionSettings({
                 ? versionSummary(draftVersionLabels, "No versions selected.")
                 : "No versions selected. Choose at least one version to publish Custom."}
             </div>
+            <label htmlFor="custom-version-name" className="mt-3 block font-medium text-foreground/80">
+              Public version name
+            </label>
+            <input
+              id="custom-version-name"
+              type="text"
+              value={customVersionName}
+              onChange={(event) => onCustomVersionNameChange(event.target.value)}
+              maxLength={CUSTOM_VERSION_NAME_MAX_LENGTH}
+              className="mt-1 block h-9 w-full rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 text-sm text-foreground outline-none transition-colors placeholder:text-foreground/35 focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20"
+              placeholder="e.g. 2.1.2"
+            />
+            <p className="mt-1 text-foreground/55">
+              Shown on the hack page and discover cards. Max {CUSTOM_VERSION_NAME_MAX_LENGTH} characters.
+            </p>
+            {showCustomVersionNameHint && (
+              <p className="mt-1 text-red-400">Custom version name is required.</p>
+            )}
+            {showSuggestedNameButton && (
+              <button
+                type="button"
+                onClick={onApplySuggestedCustomVersionName}
+                className="mt-2 inline-flex items-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1.5 text-xs font-semibold text-foreground/80 transition-colors hover:bg-[var(--surface-3)]"
+              >
+                Use &quot;{suggestedCustomVersionName}&quot;
+              </button>
+            )}
           </div>
         )}
         <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -226,7 +277,7 @@ function OptionCard({
   saved: boolean;
   label: string;
   description: string;
-  detail: string;
+  detail: React.ReactNode;
   onSelect: (option: PatcherOption) => void;
 }) {
   return (

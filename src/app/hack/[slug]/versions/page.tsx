@@ -21,7 +21,7 @@ export default async function VersionsPage({ params }: VersionsPageProps) {
   // Fetch hack
   const { data: hack } = await supabase
     .from("hacks")
-    .select("slug, title, created_by, current_patch, original_author, permission_from, base_rom, is_archive, patches_download_permission")
+    .select("slug, title, created_by, current_patch, custom_version_name, original_author, permission_from, base_rom, is_archive, patches_download_permission")
     .eq("slug", slug)
     .maybeSingle();
 
@@ -98,6 +98,7 @@ export default async function VersionsPage({ params }: VersionsPageProps) {
           hackSlug={slug}
           currentPatchId={hack.current_patch}
           initialSavedPatchIds={patcherSelection?.savedPatchIds ?? []}
+          initialCustomVersionName={hack.custom_version_name}
           patches={allPatches}
           baseRom={hack.base_rom}
           patchesDownloadPermission={hack.patches_download_permission}

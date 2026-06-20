@@ -6,6 +6,7 @@ import { FiX } from "react-icons/fi";
 import { updatePatcherSelectablePatches } from "@/app/hack/[slug]/actions";
 import PatcherVersionSettings from "@/components/Hack/PatcherVersionSettings";
 import VersionList from "@/components/Hack/VersionList";
+import { CUSTOM_VERSION_NAME_MAX_LENGTH, suggestCustomVersionName } from "@/utils/patches/hack-display-version";
 import type { PatchesDownloadPermission } from "@/components/Hack/DownloadPermissionSettings";
 
 type PatcherOption = "latest" | "custom";
@@ -24,6 +25,7 @@ interface PatcherVersionManagerProps {
   hackSlug: string;
   currentPatchId: number | null;
   initialSavedPatchIds: number[];
+  initialCustomVersionName: string | null;
   patches: Patch[];
   baseRom: string;
   patchesDownloadPermission: PatchesDownloadPermission;
@@ -39,10 +41,19 @@ function optionFromSavedIds(savedPatchIds: number[]): PatcherOption {
   return savedPatchIds.length > 0 ? "custom" : "latest";
 }
 
+function initialCustomName(name: string | null, savedPatchIds: number[], patches: Patch[]) {
+  const trimmedName = name?.trim();
+  if (trimmedName) return trimmedName.slice(0, CUSTOM_VERSION_NAME_MAX_LENGTH);
+  if (savedPatchIds.length === 0) return "";
+  const firstSavedPatch = patches.find((patch) => patch.id === savedPatchIds[0]);
+  return (firstSavedPatch?.version || "").slice(0, CUSTOM_VERSION_NAME_MAX_LENGTH);
+}
+
 export default function PatcherVersionManager({
   hackSlug,
   currentPatchId,
   initialSavedPatchIds,
+  initialCustomVersionName,
   patches,
   baseRom,
   patchesDownloadPermission,
@@ -54,6 +65,8 @@ export default function PatcherVersionManager({
   const [draftOption, setDraftOption] = useState<PatcherOption>(() => optionFromSavedIds(initialSavedPatchIds));
   const [savedPatchIds, setSavedPatchIds] = useState<number[]>(initialSavedPatchIds);
   const [draftPatchIds, setDraftPatchIds] = useState<number[]>(initialSavedPatchIds);
+  const [savedCustomVersionName, setSavedCustomVersionName] = useState(() => initialCustomName(initialCustomVersionName, initialSavedPatchIds, patches));
+  const [draftCustomVersionName, setDraftCustomVersionName] = useState(() => initialCustomName(initialCustomVersionName, initialSavedPatchIds, patches));
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,15 +79,19 @@ export default function PatcherVersionManager({
   }>({});
 
   const initialSavedKey = initialSavedPatchIds.join(",");
+  const initialCustomVersionNameKey = initialCustomVersionName ?? "";
 
   useEffect(() => {
     const nextOption = optionFromSavedIds(initialSavedPatchIds);
+    const nextCustomVersionName = initialCustomName(initialCustomVersionName, initialSavedPatchIds, patches);
     setPublishedOption(nextOption);
     setDraftOption(nextOption);
     setSavedPatchIds(initialSavedPatchIds);
     setDraftPatchIds(initialSavedPatchIds);
+    setSavedCustomVersionName(nextCustomVersionName);
+    setDraftCustomVersionName(nextCustomVersionName);
     setSelectionMode(false);
-  }, [initialSavedKey, initialSavedPatchIds]);
+  }, [initialSavedKey, initialSavedPatchIds, initialCustomVersionNameKey, initialCustomVersionName, patches]);
 
   function clearSavedFeedbackTimers() {
     const t = savedTimersRef.current;
@@ -139,10 +156,17 @@ export default function PatcherVersionManager({
       .filter((patch) => !patch.published && !patch.archived)
       .map((patch) => patch.version)
     : [];
+  const suggestedCustomVersionName = useMemo(
+    () => suggestCustomVersionName(draftVersionLabels),
+    [draftVersionLabels],
+  );
 
   const hasUnsavedChanges = draftOption !== publishedOption
-    || (draftOption === "custom" && !sameOrderedIds(draftPatchIds, savedPatchIds));
-  const publishDisabled = saving || !hasUnsavedChanges || (draftOption === "custom" && draftPatchIds.length === 0);
+    || (draftOption === "custom" && !sameOrderedIds(draftPatchIds, savedPatchIds))
+    || (draftOption === "custom" && draftCustomVersionName.trim() !== savedCustomVersionName);
+  const publishDisabled = saving
+    || !hasUnsavedChanges
+    || (draftOption === "custom" && (draftPatchIds.length === 0 || !draftCustomVersionName.trim()));
 
   function enterCustomSelectionMode() {
     setDraftOption("custom");
@@ -183,6 +207,7 @@ export default function PatcherVersionManager({
   function cancelDraft() {
     setDraftOption(publishedOption);
     setDraftPatchIds(savedPatchIds);
+    setDraftCustomVersionName(savedCustomVersionName);
     setSelectionMode(false);
     setError(null);
     setPublishError(null);
@@ -198,12 +223,18 @@ export default function PatcherVersionManager({
     setShowPublishModal(true);
   }
 
+  function applySuggestedCustomVersionName() {
+    if (!suggestedCustomVersionName) return;
+    setDraftCustomVersionName(suggestedCustomVersionName);
+  }
+
   async function confirmPublish() {
     const idsToSave = draftOption === "custom" ? draftPatchIds : [];
+    const customNameToSave = draftOption === "custom" ? draftCustomVersionName.trim() : null;
     setSaving(true);
     setPublishError(null);
     try {
-      const result = await updatePatcherSelectablePatches(hackSlug, idsToSave);
+      const result = await updatePatcherSelectablePatches(hackSlug, idsToSave, customNameToSave);
       if (!result.ok) {
         setPublishError(result.error || "Failed to publish changes");
         return;
@@ -211,6 +242,8 @@ export default function PatcherVersionManager({
 
       setSavedPatchIds(idsToSave);
       setDraftPatchIds(idsToSave);
+      setSavedCustomVersionName(customNameToSave || "");
+      setDraftCustomVersionName(customNameToSave || "");
       setPublishedOption(draftOption);
       setSelectionMode(false);
       setShowPublishModal(false);
@@ -242,6 +275,9 @@ export default function PatcherVersionManager({
         latestVersionLabels={latestVersionLabels}
         liveVersionLabels={liveVersionLabels}
         draftVersionLabels={draftVersionLabels}
+        publishedCustomVersionName={savedCustomVersionName}
+        customVersionName={draftCustomVersionName}
+        suggestedCustomVersionName={suggestedCustomVersionName}
         customSelectionCount={draftPatchIds.length}
         selectionMode={selectionMode}
         hasUnsavedChanges={hasUnsavedChanges}
@@ -253,6 +289,8 @@ export default function PatcherVersionManager({
         onChooseOption={chooseOption}
         onEnterSelectionMode={enterCustomSelectionMode}
         onClearSelections={clearSelections}
+        onCustomVersionNameChange={setDraftCustomVersionName}
+        onApplySuggestedCustomVersionName={applySuggestedCustomVersionName}
         onCancel={cancelDraft}
         onPublish={openPublishModal}
       />
@@ -294,6 +332,11 @@ export default function PatcherVersionManager({
             </ul>
           ) : (
             <p className="mb-4 text-sm text-foreground/60">No current patch is set.</p>
+          )}
+          {draftOption === "custom" && (
+            <p className="mb-4 text-sm text-foreground/70">
+              Public version name: <strong className="text-foreground">{draftCustomVersionName.trim()}</strong>
+            </p>
           )}
           {selectedUnpublishedVersionLabels.length > 0 && (
             <p className="mb-4 text-sm text-amber-600 dark:text-amber-400">
