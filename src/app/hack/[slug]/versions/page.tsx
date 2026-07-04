@@ -106,6 +106,7 @@ export default async function VersionsPage({ params }: VersionsPageProps) {
           <DownloadPermissionSettings
             hackSlug={slug}
             initialPermission={hack.patches_download_permission}
+            isCustomPatcherActive={isCustomPatcherActive}
           />
           <VersionStatusGuide canEdit={canEdit} isCustomPatcherActive={isCustomPatcherActive} />
         </PatcherVersionManager>

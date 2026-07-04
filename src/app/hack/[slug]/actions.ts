@@ -492,10 +492,16 @@ export async function getPatchDownloadUrl(patchId: number): Promise<{ ok: true; 
       return { ok: false, error: "Unauthorized" };
     }
     if (permission === "Current") {
-      const { selectablePatches } = await getPatcherSelectablePatches(supabase, hack.slug, hack.current_patch);
-      const allowedPatchIds = new Set(selectablePatches.map((patch) => patch.id));
-      if (hack.current_patch == null && !allowedPatchIds.has(patch.id)) {
-        return { ok: false, error: "Unauthorized" };
+      const { savedPatchIds, selectablePatches } = await getPatcherSelectablePatches(supabase, hack.slug, hack.current_patch);
+      if (savedPatchIds.length === 0) { // Latest Patcher Mode is active
+        if (hack.current_patch == null || patch.id !== hack.current_patch) {
+          return { ok: false, error: "Unauthorized" };
+        }
+      } else { // Custom Patcher Mode is active
+        const allowedPatchIds = new Set(selectablePatches.map((p) => p.id));
+        if (!allowedPatchIds.has(patch.id)) {
+          return { ok: false, error: "Unauthorized" };
+        }
       }
     }
     // "All": published + non-archived already satisfied

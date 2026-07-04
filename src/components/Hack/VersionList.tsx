@@ -24,11 +24,15 @@ function shouldShowPublicPatchDownload(
   permission: PatchesDownloadPermission,
   patch: Patch,
   isCurrent: boolean,
+  isPatchable: boolean,
+  isCustomPatcherActive: boolean,
 ): boolean {
   if (permission === "None") return false;
   if (!patch.published || patch.archived) return false;
   if (permission === "All") return true;
-  if (permission === "Current") return isCurrent;
+  if (permission === "Current") {
+    return isCustomPatcherActive ? isPatchable : isCurrent;
+  }
   return false;
 }
 
@@ -203,7 +207,13 @@ export default function VersionList({
         const currentPatchCreatedAt = currentPatch?.created_at || null;
         const showPublicPatchDownload =
           !canEdit &&
-          shouldShowPublicPatchDownload(patchesDownloadPermission, patch, isCurrent);
+          shouldShowPublicPatchDownload(
+            patchesDownloadPermission,
+            patch,
+            isCurrent,
+            isPatchable,
+            isCustomPatcherActive,
+          );
         const isHighlighted = isCustomPatcherActive ? isPatchable : isCurrent;
         const selectedForPatcher = draftPatchIdSet.has(patch.id);
         const patcherSelectionIndex = draftPatchIds.indexOf(patch.id);
