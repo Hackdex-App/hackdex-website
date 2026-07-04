@@ -1,5 +1,7 @@
 "use client";
 
+import { buildDiscoverSearchParams, DISCOVER_DEFAULT_STATE } from "@/app/discover/search-params";
+import Link from "next/link";
 import { useState, useRef, useLayoutEffect, useEffect, useCallback } from "react";
 import { FaChevronDown } from "react-icons/fa6";
 
@@ -66,12 +68,17 @@ export default function CollapsibleTags({ tags }: CollapsibleTagsProps) {
             className="flex flex-wrap gap-2"
           >
             {tags.map((t) => (
-              <span
+              <Link
                 key={t}
-                className="rounded-full bg-[var(--surface-2)] px-2.5 py-1 text-xs ring-1 ring-[var(--border)]"
+                href={`/discover?${buildDiscoverSearchParams({
+                  ...DISCOVER_DEFAULT_STATE,
+                  tags: [t],
+                }).toString()}`}
+                aria-label={`View hacks tagged ${t}`}
+                className="rounded-full bg-(--surface-2) px-2.5 py-1 text-xs ring-1 ring-(--border) transition-colors md:cursor-pointer md:hover:bg-(--surface-3)"
               >
                 {t}
-              </span>
+              </Link>
             ))}
           </div>
         </div>
