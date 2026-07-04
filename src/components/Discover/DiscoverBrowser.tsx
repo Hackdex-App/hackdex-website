@@ -2,11 +2,13 @@
 
 import React, { Fragment } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 import HackCard from "@/components/HackCard";
 import { baseRoms } from "@/data/baseRoms";
 import { Listbox, ListboxButton, ListboxOption, ListboxOptions, Transition } from "@headlessui/react";
 import { useFloating, offset, flip, shift, size, autoUpdate } from "@floating-ui/react";
 import { IconType } from "react-icons";
+import { FaLink, FaShare } from "react-icons/fa6";
 import {
   MdTune,
   MdWhatshot,
@@ -25,6 +27,7 @@ import { useBaseRoms } from "@/contexts/BaseRomContext";
 import { HackCardAttributes } from "@/components/HackCard";
 import { getDiscoverData } from "@/app/discover/actions";
 import {
+  buildDiscoverSearchParams,
   DISCOVER_COMPLETION_STATUSES,
   discoverUrlStatesEqual,
   validateDiscoverTags,
@@ -286,6 +289,22 @@ export default function DiscoverBrowser({ initialState }: DiscoverBrowserProps) 
     return SortIcon ? <SortIcon className="h-5 w-5 text-foreground/80" aria-hidden="true" /> : null;
   }, [sort]);
 
+  const copyDiscoverLink = React.useCallback(async () => {
+    if (typeof window === "undefined") return;
+
+    const params = buildDiscoverSearchParams({ ...currentUrlState, onlyReady: false }).toString();
+    const url = `${window.location.origin}${window.location.pathname}${params ? `?${params}` : ""}`;
+
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success(params ? "Filtered Discover link copied" : "Discover link copied", {
+        icon: <FaLink className="h-4 w-4" />,
+      });
+    } catch {
+      toast.error("Unable to copy Discover link");
+    }
+  }, [currentUrlState]);
+
   return (
     <div className="max-w-[1200px] mx-auto">
       <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
@@ -303,23 +322,34 @@ export default function DiscoverBrowser({ initialState }: DiscoverBrowserProps) 
             className="h-11 w-full rounded-md bg-[var(--surface-2)] px-3 text-sm text-foreground placeholder:text-foreground/60 ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
           />
         </div>
-        <div className="flex h-11 w-full items-center gap-1.5 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] sm:inline-flex sm:w-auto">
-          {sortIcon}
-          <div className="relative flex-1 sm:flex-none">
-            <Select
-              value={sort}
-              onChange={(value) => {
-                const nextSort = value as DiscoverSortOption;
-                setSort(nextSort);
-                setCurrentPage(1);
-                syncUrlWith({ sort: nextSort, page: 1 });
-              }}
-              options={SORT_OPTIONS}
-              // this css gets a little janky, but it gets the job done
-              className="flex h-11 w-full items-center rounded-none bg-transparent px-0 pl-1 pr-8 text-left sm:w-fit !ring-0 focus:ring-0"
-              dropdownClassName="-left-[2.313rem] top-[44px] !min-w-0 !max-w-none !w-[calc(100%_+_3.125rem)] sm:left-auto sm:right-[-12px] sm:!w-max"
-            />
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          <div className="flex h-11 flex-1 items-center gap-1.5 rounded-md bg-(--surface-2) px-3 text-sm ring-1 ring-inset ring-(--border) sm:inline-flex sm:flex-none">
+            {sortIcon}
+            <div className="relative flex-1 sm:flex-none">
+              <Select
+                value={sort}
+                onChange={(value) => {
+                  const nextSort = value as DiscoverSortOption;
+                  setSort(nextSort);
+                  setCurrentPage(1);
+                  syncUrlWith({ sort: nextSort, page: 1 });
+                }}
+                options={SORT_OPTIONS}
+                // this css gets a little janky, but it gets the job done
+                className="flex h-11 w-full items-center rounded-none bg-transparent px-0 pl-1 pr-8 text-left sm:w-fit !ring-0 focus:ring-0"
+                dropdownClassName="-left-[2.313rem] top-[44px] !min-w-0 !max-w-none !w-[calc(100%_+_3.125rem)] sm:left-auto sm:right-[-12px] sm:!w-max"
+              />
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={copyDiscoverLink}
+            aria-label="Copy link to current Discover filters"
+            title="Copy link to these filters"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-(--surface-2) text-foreground/80 ring-1 ring-inset ring-(--border) transition-colors hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--ring) dark:hover:bg-white/10"
+          >
+            <FaShare className="h-5 w-5" aria-hidden="true" />
+          </button>
         </div>
       </div>
 
