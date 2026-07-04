@@ -597,7 +597,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
                 using our built-in patcher.
               </p>
               <p className="mt-2">
-                By pressing the "Patch Now" button, your browser will apply the downloaded <span className="font-semibold">{hack.title}</span> .bps patch file to your legally-obtained <span className="font-semibold">{baseRom?.name}</span> ROM. The patched ROM will then be automatically downloaded.
+                By pressing "Agree and Patch", your browser will download and apply the <span className="font-semibold">{hack.title}</span> .bps patch file to your legally-obtained <span className="font-semibold">{baseRom?.name}</span> ROM. The patched ROM will then be automatically downloaded.
               </p>
               <p className="mt-2">
                 No pre-patched ROMs or base ROMs are hosted or distributed on this site. All patching is done locally on your device.

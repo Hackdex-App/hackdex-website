@@ -154,7 +154,7 @@ function VersionStatusGuide({
           <p className="text-foreground/70">
             {canEdit ?
               <>The version used by the <strong>Latest published patch</strong> option. This is the default downloader version when <strong>Custom</strong> patcher versions are not active.</> :
-              "This is the version you will download when pressing \"Patch Now\" on the hack page."
+              "This is the version you will download when using the patch button on the hack page."
             }
           </p>
         </div>
@@ -178,8 +178,8 @@ function VersionStatusGuide({
           </span>
           <p className="text-foreground/70">
             {canEdit ?
-              "Additional Custom versions available to choose from before pressing \"Patch Now\" on the hack page." :
-              "This version can be selected before pressing \"Patch Now\" on the hack page."
+              "Additional Custom versions available to choose from before using the patch button on the hack page." :
+              "This version can be selected before using the patch button on the hack page."
             }
           </p>
         </div>

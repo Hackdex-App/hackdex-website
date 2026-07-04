@@ -138,11 +138,11 @@ export default function StickyActionBar({
           {!termsAgreed || status === "downloading" ? (
             !romReady ? (
               <p className="rounded-full mx-auto md:mx-0 px-2 py-0.5 text-xs text-center md:text-right md:text-balance">
-                To download the patch file, you must select a <span className="font-bold">clean ROM</span> for the patcher to use.
+                To patch this hack, you must select a <span className="font-bold">clean ROM</span> for the patcher to use.
               </p>
             ) : (
               <p className="rounded-full mx-auto md:mx-0 px-2 py-0.5 text-xs text-center md:text-right md:text-balance">
-                By downloading this patch, you agree to the <Link href="/terms" target="_blank" className="underline">Terms of Service</Link>.
+                By patching, you agree to the <Link href="/terms" target="_blank" className="underline">Terms of Service</Link>.
               </p>
             )
           ) : (
@@ -205,7 +205,7 @@ export default function StickyActionBar({
               status === "downloading" ? "Downloading…" :
               status === "done" ? (
                 patchAgainReady ? "Patch Again" : "Patched"
-              ) : termsAgreed ? "Patch Now" : "Agree and Download"
+              ) : termsAgreed ? "Retry Patching" : "Agree and Patch"
             }</span>
           </button>
         </div>
