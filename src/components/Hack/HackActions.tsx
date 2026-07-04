@@ -66,6 +66,10 @@ const HackActions: React.FC<HackActionsProps> = ({
   );
   const selectedVersion = selectedPatch?.version ?? version;
 
+  function isRomReadyForPatch() {
+    return !!file || hasCached(baseRomId) || (isLinked(baseRomId) && hasPermission(baseRomId));
+  }
+
   React.useEffect(() => {
     setSelectedPatchId(patcherSelector.defaultPatchId);
   }, [patcherSelector.defaultPatchId]);
@@ -124,7 +128,7 @@ const HackActions: React.FC<HackActionsProps> = ({
   // When patch URL is fetched and terms are agreed, automatically proceed with patching if ROM is ready
   React.useEffect(() => {
     if (termsAgreed && patchUrl && patchBlob && status === "idle") {
-      const romReady = !!file || (isLinked(baseRomId) && (hasPermission(baseRomId) || hasCached(baseRomId)));
+      const romReady = isRomReadyForPatch();
       if (romReady) {
         const timeoutId = setTimeout(() => {
           onPatch();
@@ -234,7 +238,7 @@ const HackActions: React.FC<HackActionsProps> = ({
       const blob = await res.blob();
       setPatchBlob(blob);
 
-      const romReady = !!file || (isLinked(baseRomId) && (hasPermission(baseRomId) || hasCached(baseRomId)));
+      const romReady = isRomReadyForPatch();
       if (!romReady) {
         setStatus("idle");
       }
@@ -261,7 +265,7 @@ const HackActions: React.FC<HackActionsProps> = ({
         url = downloaded.url;
         blob = downloaded.blob;
 
-        const romReady = !!file || (isLinked(baseRomId) && (hasPermission(baseRomId) || hasCached(baseRomId)));
+        const romReady = isRomReadyForPatch();
         if (!romReady) return;
       }
 
