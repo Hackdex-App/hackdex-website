@@ -7,6 +7,7 @@ import { baseRoms } from "@/data/baseRoms";
 
 type ContextValue = {
   supported: boolean;
+  loading: boolean;
   linked: Record<string, any>;
   statuses: Record<string, "granted" | "prompt" | "denied" | "error">;
   cached: Record<string, boolean>;
@@ -35,6 +36,7 @@ export function BaseRomProvider({ children }: { children: React.ReactNode }) {
   const [statuses, setStatuses] = React.useState<Record<string, "granted" | "prompt" | "denied" | "error">>({});
   const [cached, setCached] = React.useState<Record<string, boolean>>({});
   const [totalCachedBytes, setTotalCachedBytes] = React.useState(0);
+  const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
     (async () => {
@@ -70,6 +72,8 @@ export function BaseRomProvider({ children }: { children: React.ReactNode }) {
         setTotalCachedBytes(total);
       } catch (e) {
         // noop
+      } finally {
+        setLoading(false);
       }
     })();
   }, []);
@@ -288,6 +292,7 @@ export function BaseRomProvider({ children }: { children: React.ReactNode }) {
 
   const value: ContextValue = {
     supported,
+    loading,
     linked,
     statuses,
     cached,

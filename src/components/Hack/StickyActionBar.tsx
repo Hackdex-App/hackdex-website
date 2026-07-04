@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { FiChevronDown, FiX } from "react-icons/fi";
 import { platformAccept } from "@/utils/idb";
+import { useBaseRoms } from "@/contexts/BaseRomContext";
 import type { Platform } from "@/data/baseRoms";
 
 interface StickyActionBarProps {
@@ -51,6 +52,7 @@ export default function StickyActionBar({
 }: StickyActionBarProps) {
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
+  const { loading: baseRomsLoading } = useBaseRoms();
   const uploadInputRef = React.useRef<HTMLInputElement | null>(null);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [showError, setShowError] = React.useState(false);
@@ -136,7 +138,11 @@ export default function StickyActionBar({
         )}
         <div className={`${hasVersionPicker && versionPickerOpen ? "hidden md:flex" : "flex"} w-full md:w-auto flex-col md:flex-row items-stretch md:items-center gap-2 mb-4 md:mb-0`}>
           {!termsAgreed || status === "downloading" ? (
-            !romReady ? (
+            baseRomsLoading ? (
+              <p className="rounded-full mx-auto md:mx-0 px-2 py-6 md:py-0.5 text-base text-center md:text-right md:mr-1 md:text-balance font-bold">
+                Loading base ROMs…
+              </p>
+            ) : !romReady ? (
               <p className="rounded-full mx-auto md:mx-0 px-2 py-0.5 text-xs text-center md:text-right md:text-balance">
                 To patch this hack, you must select a <span className="font-bold">clean ROM</span> for the patcher to use.
               </p>
@@ -156,7 +162,7 @@ export default function StickyActionBar({
               {romReady ? (filename ?? ".bps file ready") : isLinked ? "Permission needed" : "Base ROM needed"}
             </span>
           )}
-          {!romReady && !isLinked && (
+          {!baseRomsLoading && !romReady && !isLinked && (
             <label className="min-w-max inline-flex items-center gap-2 text-xs text-foreground/80">
               <input
                 ref={uploadInputRef}
@@ -184,7 +190,7 @@ export default function StickyActionBar({
               </button>
             </label>
           )}
-          {!romReady && isLinked && (
+          {!baseRomsLoading && !romReady && isLinked && (
             <button
               type="button"
               onClick={onClickLink}
