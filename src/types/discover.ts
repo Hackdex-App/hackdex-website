@@ -1,3 +1,3 @@
-export type DiscoverSortOption = "trending" | "popular" | "new" | "updated" | "alphabetical";
+export type DiscoverSortOption = "trending" | "popular" | "new" | "updated" | "alpha";
 
 

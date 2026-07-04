@@ -23,17 +23,23 @@ import { BsSdCardFill } from "react-icons/bs";
 import { CATEGORY_ICONS } from "@/components/Icons/tagCategories";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
 import { HackCardAttributes } from "@/components/HackCard";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { getDiscoverData } from "@/app/discover/actions";
+import {
+  DISCOVER_COMPLETION_STATUSES,
+  discoverUrlStatesEqual,
+  validateDiscoverTags,
+  type DiscoverUrlState,
+} from "@/app/discover/search-params";
 import type { DiscoverSortOption } from "@/types/discover";
 import Select, { SelectOption } from "@/components/Primitives/Select";
+import { useDiscoverUrlState } from "./useDiscoverUrlState";
 
 const SORT_ICON_MAP: Record<DiscoverSortOption, IconType> = {
   trending: MdWhatshot,
   popular: MdTrendingUp,
   new: MdNewReleases,
   updated: MdUpdate,
-  alphabetical: MdSortByAlpha,
+  alpha: MdSortByAlpha,
 };
 
 const SORT_OPTIONS: SelectOption[] = [
@@ -41,32 +47,28 @@ const SORT_OPTIONS: SelectOption[] = [
   { value: "popular", label: "Most popular", icon: MdTrendingUp },
   { value: "new", label: "Newest", icon: MdNewReleases },
   { value: "updated", label: "Recently updated", icon: MdUpdate },
-  { value: "alphabetical", label: "Alphabetical", icon: MdSortByAlpha },
+  { value: "alpha", label: "Alphabetical", icon: MdSortByAlpha },
 ];
 
 const HACKS_PER_PAGE = 9;
 
 interface DiscoverBrowserProps {
-  initialSort?: DiscoverSortOption;
+  initialState: DiscoverUrlState;
 }
 
-export default function DiscoverBrowser({ initialSort = "trending" }: DiscoverBrowserProps) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
-  const [query, setQuery] = React.useState("");
-  const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
-  const [selectedBaseRoms, setSelectedBaseRoms] = React.useState<string[]>([]);
-  const [selectedCompletionStatuses, setSelectedCompletionStatuses] = React.useState<string[]>([]);
-  const [sort, setSort] = React.useState<DiscoverSortOption>(initialSort ?? "trending");
+export default function DiscoverBrowser({ initialState }: DiscoverBrowserProps) {
+  const [query, setQuery] = React.useState(initialState.query);
+  const [selectedTags, setSelectedTags] = React.useState<string[]>(() => [...initialState.tags]);
+  const [selectedBaseRoms, setSelectedBaseRoms] = React.useState<string[]>(() => [...initialState.baseRoms]);
+  const [selectedCompletionStatuses, setSelectedCompletionStatuses] = React.useState<string[]>(() => [...initialState.completionStatuses]);
+  const [sort, setSort] = React.useState<DiscoverSortOption>(initialState.sort);
   const [hacks, setHacks] = React.useState<HackCardAttributes[]>([]);
   const [tagGroups, setTagGroups] = React.useState<Record<string, string[]>>({});
   const [ungroupedTags, setUngroupedTags] = React.useState<string[]>([]);
   const [loadingHacks, setLoadingHacks] = React.useState(true);
   const [loadingTags, setLoadingTags] = React.useState(true);
-  const [onlyReady, setOnlyReady] = React.useState(false);
-  const [currentPage, setCurrentPage] = React.useState(1);
+  const [onlyReady, setOnlyReady] = React.useState(initialState.onlyReady);
+  const [currentPage, setCurrentPage] = React.useState(initialState.page);
   const listRef = React.useRef<HTMLDivElement | null>(null);
 
   const { cached, statuses, countReady } = useBaseRoms();
@@ -83,10 +85,33 @@ export default function DiscoverBrowser({ initialSort = "trending" }: DiscoverBr
     return set;
   }, [cached, statuses]);
 
-  React.useEffect(() => {
-    // Reset to first page when filters or sort change
-    setCurrentPage(1);
-  }, [query, selectedTags, selectedBaseRoms, selectedCompletionStatuses, onlyReady, sort]);
+  const currentUrlState = React.useMemo<DiscoverUrlState>(
+    () => ({
+      query,
+      sort,
+      page: currentPage,
+      tags: selectedTags,
+      baseRoms: onlyReady ? [] : selectedBaseRoms,
+      completionStatuses: selectedCompletionStatuses,
+      onlyReady,
+    }),
+    [currentPage, onlyReady, query, selectedBaseRoms, selectedCompletionStatuses, selectedTags, sort]
+  );
+
+  const applyUrlState = React.useCallback((nextState: DiscoverUrlState) => {
+    setQuery(nextState.query);
+    setSelectedTags([...nextState.tags]);
+    setSelectedBaseRoms([...nextState.baseRoms]);
+    setSelectedCompletionStatuses([...nextState.completionStatuses]);
+    setSort(nextState.sort);
+    setOnlyReady(nextState.onlyReady);
+    setCurrentPage(nextState.page);
+  }, []);
+
+  const { syncUrl, syncUrlWith, scheduleSearchUrlSync } = useDiscoverUrlState({
+    currentState: currentUrlState,
+    onUrlStateChange: applyUrlState,
+  });
 
   React.useEffect(() => {
     const run = async () => {
@@ -109,6 +134,22 @@ export default function DiscoverBrowser({ initialSort = "trending" }: DiscoverBr
     };
     run();
   }, [sort]);
+
+  const validTagNames = React.useMemo(
+    () => new Set([...Object.values(tagGroups).flat(), ...ungroupedTags]),
+    [tagGroups, ungroupedTags]
+  );
+
+  React.useEffect(() => {
+    if (loadingTags || selectedTags.length === 0) return;
+
+    const nextState = validateDiscoverTags(currentUrlState, validTagNames);
+    if (discoverUrlStatesEqual(nextState, currentUrlState)) return;
+
+    setSelectedTags([...nextState.tags]);
+    setCurrentPage(1);
+    syncUrl({ ...nextState, page: 1 }, "replace");
+  }, [currentUrlState, loadingTags, selectedTags.length, syncUrl, validTagNames]);
 
   const filtered = React.useMemo(() => {
     let out = hacks;
@@ -153,10 +194,11 @@ export default function DiscoverBrowser({ initialSort = "trending" }: DiscoverBr
 
   React.useEffect(() => {
     // Clamp current page if the number of results shrinks
-    if (currentPage > totalPages) {
+    if (!loadingHacks && currentPage > totalPages) {
       setCurrentPage(totalPages);
+      syncUrlWith({ page: totalPages }, "replace");
     }
-  }, [currentPage, totalPages]);
+  }, [currentPage, loadingHacks, syncUrlWith, totalPages]);
 
   const paginationRange = React.useMemo(() => {
     const startIndex = (currentPage - 1) * HACKS_PER_PAGE;
@@ -182,17 +224,15 @@ export default function DiscoverBrowser({ initialSort = "trending" }: DiscoverBr
 
   const changePage = React.useCallback(
     (nextPage: number) => {
-      setCurrentPage((prev) => {
-        const clamped = Math.min(Math.max(1, nextPage), totalPages);
-        // Only scroll when the page actually changes
-        if (clamped !== prev) {
-          // Defer scroll until after React has applied the state update
-          setTimeout(scrollToListTopOnMobile, 0);
-        }
-        return clamped;
-      });
+      const clamped = Math.min(Math.max(1, nextPage), totalPages);
+      if (clamped === currentPage) return;
+
+      setCurrentPage(clamped);
+      syncUrlWith({ page: clamped });
+      // Defer scroll until after React has applied the state update
+      setTimeout(scrollToListTopOnMobile, 0);
     },
-    [scrollToListTopOnMobile, totalPages]
+    [currentPage, scrollToListTopOnMobile, syncUrlWith, totalPages]
   );
 
   const getPageNumbers = React.useCallback((current: number, total: number): (number | string)[] => {
@@ -232,20 +272,13 @@ export default function DiscoverBrowser({ initialSort = "trending" }: DiscoverBr
     return pages;
   }, []);
 
-  function toggleTag(name: string) {
-    setSelectedTags((prev) => (prev.includes(name) ? prev.filter((t) => t !== name) : [...prev, name]));
-  }
-
-  function clearTags() {
+  function clearFilters() {
+    setCurrentPage(1);
     setSelectedTags([]);
-  }
-
-  function toggleBaseRom(id: string) {
-    setSelectedBaseRoms((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]));
-  }
-
-  function clearBaseRoms() {
     setSelectedBaseRoms([]);
+    setSelectedCompletionStatuses([]);
+    setOnlyReady(false);
+    syncUrlWith({ tags: [], baseRoms: [], completionStatuses: [], onlyReady: false, page: 1 });
   }
 
   const sortIcon = React.useMemo(() => {
@@ -259,7 +292,13 @@ export default function DiscoverBrowser({ initialSort = "trending" }: DiscoverBr
         <div className="relative flex-1">
           <input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              const nextQuery = e.target.value;
+              const nextState = { ...currentUrlState, query: nextQuery, page: 1 };
+              setQuery(nextQuery);
+              setCurrentPage(1);
+              scheduleSearchUrlSync(nextState);
+            }}
             placeholder="Search by title, author, or keyword"
             className="h-11 w-full rounded-md bg-[var(--surface-2)] px-3 text-sm text-foreground placeholder:text-foreground/60 ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
           />
@@ -272,11 +311,8 @@ export default function DiscoverBrowser({ initialSort = "trending" }: DiscoverBr
               onChange={(value) => {
                 const nextSort = value as DiscoverSortOption;
                 setSort(nextSort);
-                const current = searchParams ? new URLSearchParams(searchParams.toString()) : new URLSearchParams();
-                current.set("sort", nextSort);
-                const queryString = current.toString();
-                const url = queryString ? `${pathname}?${queryString}` : pathname;
-                router.replace(url);
+                setCurrentPage(1);
+                syncUrlWith({ sort: nextSort, page: 1 });
               }}
               options={SORT_OPTIONS}
               // this css gets a little janky, but it gets the job done
@@ -294,11 +330,17 @@ export default function DiscoverBrowser({ initialSort = "trending" }: DiscoverBr
             type="button"
             aria-pressed={onlyReady}
             onClick={() =>
-              setOnlyReady((v) => {
-                const next = !v;
-                if (next) setSelectedBaseRoms([]);
-                return next;
-              })
+              {
+                const nextOnlyReady = !onlyReady;
+                setOnlyReady(nextOnlyReady);
+                if (nextOnlyReady) setSelectedBaseRoms([]);
+                setCurrentPage(1);
+                syncUrlWith({
+                  onlyReady: nextOnlyReady,
+                  baseRoms: nextOnlyReady ? [] : selectedBaseRoms,
+                  page: 1,
+                });
+              }
             }
             title="Show only hacks playable on your device (base ROM ready)"
             className={`flex items-center gap-2 rounded-full px-3 py-1 text-sm ring-1 ring-inset transition-colors ${
@@ -320,14 +362,20 @@ export default function DiscoverBrowser({ initialSort = "trending" }: DiscoverBr
           onChange={(vals) => {
             setSelectedBaseRoms(vals);
             if (vals.length > 0) setOnlyReady(false);
+            setCurrentPage(1);
+            syncUrlWith({ baseRoms: vals, onlyReady: vals.length > 0 ? false : onlyReady, page: 1 });
           }}
         />
         <MultiSelectDropdown
           icon={TbProgressCheck}
           label="Completion"
-          options={['Complete','Demo','Alpha','Beta'].map((s) => ({ id: s, name: s }))}
+          options={DISCOVER_COMPLETION_STATUSES.map((s) => ({ id: s, name: s }))}
           values={selectedCompletionStatuses}
-          onChange={setSelectedCompletionStatuses}
+          onChange={(vals) => {
+            setSelectedCompletionStatuses(vals);
+            setCurrentPage(1);
+            syncUrlWith({ completionStatuses: vals, page: 1 });
+          }}
         />
         {loadingTags ? (
           <>
@@ -350,10 +398,11 @@ export default function DiscoverBrowser({ initialSort = "trending" }: DiscoverBr
                   values={selectedTags.filter((t) => tagGroups[cat].includes(t))}
                   onChange={(vals) => {
                     // Replace selections for this category while keeping others
-                    setSelectedTags((prev) => {
-                      const others = prev.filter((t) => !tagGroups[cat].includes(t));
-                      return [...others, ...vals];
-                    });
+                    const others = selectedTags.filter((tag) => !tagGroups[cat].includes(tag));
+                    const nextTags = [...others, ...vals];
+                    setSelectedTags(nextTags);
+                    setCurrentPage(1);
+                    syncUrlWith({ tags: nextTags, page: 1 });
                   }}
                 />
               ))}
@@ -365,10 +414,11 @@ export default function DiscoverBrowser({ initialSort = "trending" }: DiscoverBr
                 options={ungroupedTags.map((t) => ({ id: t, name: t }))}
                 values={selectedTags.filter((t) => ungroupedTags.includes(t))}
                 onChange={(vals) => {
-                  setSelectedTags((prev) => {
-                    const others = prev.filter((t) => !ungroupedTags.includes(t));
-                    return [...others, ...vals];
-                  });
+                  const others = selectedTags.filter((tag) => !ungroupedTags.includes(tag));
+                  const nextTags = [...others, ...vals];
+                  setSelectedTags(nextTags);
+                  setCurrentPage(1);
+                  syncUrlWith({ tags: nextTags, page: 1 });
                 }}
               />
             )}
@@ -376,12 +426,7 @@ export default function DiscoverBrowser({ initialSort = "trending" }: DiscoverBr
         )}
         {(selectedTags.length > 0 || selectedBaseRoms.length > 0 || selectedCompletionStatuses.length > 0 || onlyReady) && (
           <button
-            onClick={() => {
-              clearTags();
-              clearBaseRoms();
-              setSelectedCompletionStatuses([]);
-              setOnlyReady(false);
-            }}
+            onClick={clearFilters}
             className="ml-2 rounded-full px-3 py-1 text-sm ring-1 ring-inset transition-colors bg-[var(--surface-2)] text-foreground/80 ring-[var(--border)] hover:bg-black/5 dark:hover:bg-white/10"
           >
             Clear filters
@@ -415,7 +460,11 @@ export default function DiscoverBrowser({ initialSort = "trending" }: DiscoverBr
           <div className="flex flex-wrap items-center justify-center gap-2">
             {query && (
               <button
-                onClick={() => setQuery("")}
+                onClick={() => {
+                  setQuery("");
+                  setCurrentPage(1);
+                  syncUrlWith({ query: "", page: 1 });
+                }}
                 className="rounded-full px-3 py-1 text-sm ring-1 ring-inset transition-colors bg-[var(--surface-2)] text-foreground/80 ring-[var(--border)] hover:bg-black/5 dark:hover:bg-white/10"
               >
                 Clear search
@@ -423,12 +472,7 @@ export default function DiscoverBrowser({ initialSort = "trending" }: DiscoverBr
             )}
             {(selectedTags.length > 0 || selectedBaseRoms.length > 0 || selectedCompletionStatuses.length > 0 || onlyReady) && (
               <button
-                onClick={() => {
-                  clearTags();
-                  clearBaseRoms();
-                  setSelectedCompletionStatuses([]);
-                  setOnlyReady(false);
-                }}
+                onClick={clearFilters}
                 className="rounded-full px-3 py-1 text-sm ring-1 ring-inset transition-colors bg-[var(--surface-2)] text-foreground/80 ring-[var(--border)] hover:bg-black/5 dark:hover:bg-white/10"
               >
                 Clear filters

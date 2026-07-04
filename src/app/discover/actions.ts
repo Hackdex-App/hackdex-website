@@ -53,7 +53,7 @@ export async function getDiscoverData(sort: DiscoverSortOption): Promise<Discove
           .order("is_archive", { ascending: true });
       } else if (sort === "updated") {
         // Will sort by current patch published_at in JS after fetching patches
-      } else if (sort === "alphabetical") {
+      } else if (sort === "alpha") {
         query = query.order("title", { ascending: true });
       } else {
         // "new" or default
