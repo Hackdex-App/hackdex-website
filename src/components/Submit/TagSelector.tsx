@@ -27,6 +27,7 @@ export interface TagSelectorProps {
   onChange: (next: string[]) => void;
   /** When set, skips client Supabase fetch (use server-cached catalog). */
   catalogTags?: CatalogTagRow[];
+  newTagsCutoff: Date | null;
 }
 
 type CategoryIconType = React.ComponentType<React.SVGProps<SVGSVGElement>> | null;
@@ -112,7 +113,7 @@ function SortableSelectedTag({
   );
 }
 
-export default function TagSelector({ value, onChange, catalogTags }: TagSelectorProps) {
+export default function TagSelector({ value, onChange, catalogTags, newTagsCutoff }: TagSelectorProps) {
   const supabase = createClient();
   const [query, setQuery] = React.useState("");
   const [allTags, setAllTags] = React.useState<TagRow[]>(() => catalogTags ?? []);
@@ -140,6 +141,16 @@ export default function TagSelector({ value, onChange, catalogTags }: TagSelecto
     setCategoriesPaneFocused(true);
   }, []);
 
+  const categoriesWithNewTags = React.useMemo(() => {
+    const categories = new Set<string>();
+    for (const t of allTags) {
+      if (t.category && t.created_at && newTagsCutoff && new Date(t.created_at) > newTagsCutoff) {
+        categories.add(t.category);
+      }
+    }
+    return Array.from(categories);
+  }, [allTags, newTagsCutoff]);
+
   React.useEffect(() => {
     if (catalogTags !== undefined) return;
     let cancelled = false;
@@ -154,8 +165,14 @@ export default function TagSelector({ value, onChange, catalogTags }: TagSelecto
           name: t.name,
           category: t.category ?? null,
           popularity: t.usage?.[0]?.count || 0,
+          created_at: t.created_at ?? null,
         }));
-        rows.sort((a, b) => (b.popularity - a.popularity) || a.name.localeCompare(b.name));
+        // Put new tags first, then sort by popularity and name
+        rows.sort((a, b) => {
+          if (a.created_at && b.created_at && new Date(a.created_at) > new Date(b.created_at)) return -1;
+          if (b.created_at && a.created_at && new Date(b.created_at) > new Date(a.created_at)) return 1;
+          return (b.popularity - a.popularity) || a.name.localeCompare(b.name);
+        });
         if (!cancelled) setAllTags(rows);
       } finally {
         if (!cancelled) setLoading(false);
@@ -431,7 +448,13 @@ export default function TagSelector({ value, onChange, catalogTags }: TagSelecto
                       : 'hover:bg-black/5 dark:hover:bg-white/10'
                   }`}
                 >
-                  <span className="truncate inline-flex items-center gap-2">{Icon ? <Icon className="h-4 w-4 opacity-80" /> : null}{cat}</span>
+                  <span className="truncate inline-flex items-center gap-2">
+                    {Icon ? <Icon className="h-4 w-4 opacity-80" /> : null}
+                    {cat}
+                    {newTagsCutoff && categoriesWithNewTags.includes(cat) && (
+                      <span className="ml-1 rounded-full bg-black/5 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-foreground/60 dark:bg-white/5">New</span>
+                    )}
+                  </span>
                 </div>
               );})}
               {filtered.advanced.length > 0 && (
@@ -499,6 +522,9 @@ export default function TagSelector({ value, onChange, catalogTags }: TagSelecto
                   className={`flex items-center justify-between rounded px-2 py-1.5 text-sm ${activeTagIndex === idx ? 'bg-black/5 dark:bg-white/10' : 'hover:bg-black/5 dark:hover:bg-white/10'}`}
                 >
                   <span className="truncate">{t.name}</span>
+                  {t.created_at && newTagsCutoff && new Date(t.created_at) > newTagsCutoff && (
+                    <span className="ml-auto mr-2 rounded-full bg-black/5 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-foreground/60 dark:bg-white/5">New</span>
+                  )}
                   <input type="checkbox" readOnly checked={value.includes(t.name)} className="h-4 w-4 accent-[var(--accent)]" />
                 </div>
               ))}

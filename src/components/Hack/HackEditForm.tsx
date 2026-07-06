@@ -36,9 +36,10 @@ interface HackEditFormProps {
     coverKeys: string[]; // storage keys for covers in order
     signedCoverUrls?: string[]; // optional signed URLs aligned to keys
   };
+  tagsUpdatedAt: Date;
 }
 
-export default function HackEditForm({ slug, initial, catalogTags }: HackEditFormProps) {
+export default function HackEditForm({ slug, initial, catalogTags, tagsUpdatedAt }: HackEditFormProps) {
   const supabase = createClient();
   const MAX_COVERS = 10;
   const [title, setTitle] = React.useState(initial.title);
@@ -365,7 +366,7 @@ export default function HackEditForm({ slug, initial, catalogTags }: HackEditFor
                 )}
               </div>
               <div className={`rounded-md ring-1 ring-inset ${tagsChanged ? 'ring-[var(--ring)] bg-[var(--surface-2)]' : 'ring-transparent'} p-1`}>
-                <TagSelector value={tags} onChange={setTags} catalogTags={catalogTags} />
+                <TagSelector value={tags} onChange={setTags} catalogTags={catalogTags} newTagsCutoff={tagsUpdatedAt} />
               </div>
             </div>
           </div>

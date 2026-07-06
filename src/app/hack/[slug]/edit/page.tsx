@@ -22,10 +22,12 @@ export default async function EditHackPage({ params }: EditPageProps) {
 
   const { data: hack } = await supabase
     .from("hacks")
-    .select("slug,title,summary,description,base_rom,language,completion_status,box_art,social_links,created_by,current_patch,original_author,permission_from,is_archive")
+    .select("slug,title,summary,description,base_rom,language,completion_status,box_art,social_links,created_by,current_patch,original_author,permission_from,is_archive,tags_updated_at")
     .eq("slug", slug)
     .maybeSingle();
   if (!hack) return notFound();
+
+  const tagsUpdatedAt = new Date(hack.tags_updated_at);
 
   // Check if user can edit: either they're the creator, or they're admin/archiver editing an Archive hack
   const permission = await checkEditPermission(hack, user!.id, supabase);
@@ -121,7 +123,7 @@ export default async function EditHackPage({ params }: EditPageProps) {
         </div>
       </div>
       <div className="mt-4 lg:mt-8">
-        <HackForm mode="edit" slug={slug} initial={initial} catalogTags={catalogTags} />
+        <HackForm mode="edit" slug={slug} initial={initial} catalogTags={catalogTags} tagsUpdatedAt={tagsUpdatedAt} />
       </div>
     </div>
   );

@@ -111,6 +111,15 @@ export async function updateHack(args: {
         .upsert(rows, { onConflict: "hack_slug,tag_id" });
       if (upErr) return { ok: false, error: upErr.message } as const;
     }
+
+    // Update tags_updated_at if anything was added, removed, or changed
+    if (desiredIds.length > 0 || toRemove.length > 0) {
+      const { error: upErr } = await supabase
+        .from("hacks")
+        .update({ tags_updated_at: new Date().toISOString() })
+        .eq("slug", args.slug);
+      if (upErr) return { ok: false, error: upErr.message } as const;
+    }
   }
 
   revalidateTag(`hack:${args.slug}:metadata`);

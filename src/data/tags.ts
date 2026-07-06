@@ -15,6 +15,7 @@ function mapAndSortTagRows(data: unknown): CatalogTagRow[] {
     name: t.name as string,
     category: (t.category ?? null) as string | null,
     popularity: t.usage?.[0]?.count || 0,
+    created_at: t.created_at as string | null,
   }));
   rows.sort((a, b) => (b.popularity - a.popularity) || a.name.localeCompare(b.name));
   return rows;
@@ -26,11 +27,11 @@ export async function getCachedTagsWithUsage(): Promise<CatalogTagRow[]> {
       const supabase = await createServiceClient();
       const { data, error } = await supabase
         .from("tags")
-        .select("id,name,category,usage: hack_tags (count)");
+        .select("id,name,category,created_at,usage: hack_tags (count)");
       if (error) throw error;
       return mapAndSortTagRows(data);
     },
-    ["tags-catalog-v1"],
+    ["tags-catalog-v2"],
     { revalidate: TAGS_CATALOG_REVALIDATE_SECONDS, tags: [TAGS_CATALOG_CACHE_TAG] }
   );
   return runner();
