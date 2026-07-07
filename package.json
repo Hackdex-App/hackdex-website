@@ -39,6 +39,7 @@
     "rom-patcher-js": "github:Hackdex-App/RomPatcher.js",
     "schema-dts": "^1.1.5",
     "serialize-javascript": "^7.0.0",
+    "sonner": "^2.0.7",
     "unist-util-visit": "^5.0.0",
     "uuid": "^13.0.0"
   },

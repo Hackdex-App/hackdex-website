@@ -8,6 +8,7 @@ import MobileFooterSpacer from "@/components/MobileFooterSpacer";
 import { BaseRomProvider } from "@/contexts/BaseRomContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import NoticeBanner from "@/components/NoticeBanner";
+import AppToaster from "@/components/AppToaster";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -50,6 +51,7 @@ export default function RootLayout({
             <MobileFooterSpacer />
           </BaseRomProvider>
         </AuthProvider>
+        <AppToaster />
         <Analytics />
       </body>
     </html>

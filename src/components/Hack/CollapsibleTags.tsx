@@ -1,5 +1,7 @@
 "use client";
 
+import { buildDiscoverSearchParams, DISCOVER_DEFAULT_STATE } from "@/app/discover/search-params";
+import Link from "next/link";
 import { useState, useRef, useLayoutEffect, useEffect, useCallback } from "react";
 import { FaChevronDown } from "react-icons/fa6";
 
@@ -7,9 +9,9 @@ interface CollapsibleTagsProps {
   tags: string[];
 }
 
-// Tag height: ~28px (px-2.5 py-1 text-xs), gap: 8px
-// Max height: 2.5 × 28px + 2 × 8px = 86px (rounded to 88px for safety)
-const MAX_HEIGHT = 72;
+// Tag height: ~24px (16px height + 8px y-padding), gap: 8px
+// Max height: 1.25 × 24px + 2 × 8px = 46px - 4px (for aesthetic padding)
+const MAX_HEIGHT = 42;
 
 export default function CollapsibleTags({ tags }: CollapsibleTagsProps) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -19,7 +21,7 @@ export default function CollapsibleTags({ tags }: CollapsibleTagsProps) {
 
   const checkIfExpansionNeeded = useCallback(() => {
     if (!contentRef.current) return;
-    const height = contentRef.current.scrollHeight;
+    const height = contentRef.current.scrollHeight + 16; // Add 16px for padding
     setNaturalHeight(height);
     setNeedsExpansion(height > MAX_HEIGHT);
   }, []);
@@ -40,7 +42,7 @@ export default function CollapsibleTags({ tags }: CollapsibleTagsProps) {
   if (tags.length === 0) return null;
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col w-full">
       <div
         className="grid transition-all duration-300 ease-in-out"
         style={
@@ -60,18 +62,23 @@ export default function CollapsibleTags({ tags }: CollapsibleTagsProps) {
               }
         }
       >
-        <div className="overflow-hidden">
+        <div className="overflow-hidden p-0.5">
           <div
             ref={contentRef}
             className="flex flex-wrap gap-2"
           >
             {tags.map((t) => (
-              <span
+              <Link
                 key={t}
-                className="rounded-full bg-[var(--surface-2)] px-2.5 py-1 text-xs ring-1 ring-[var(--border)]"
+                href={`/discover?${buildDiscoverSearchParams({
+                  ...DISCOVER_DEFAULT_STATE,
+                  tags: [t],
+                }).toString()}`}
+                aria-label={`View hacks tagged ${t}`}
+                className="rounded-full bg-(--surface-2) px-2.5 py-1 text-xs ring-1 ring-(--border) transition-colors md:cursor-pointer md:hover:bg-(--surface-3)"
               >
                 {t}
-              </span>
+              </Link>
             ))}
           </div>
         </div>

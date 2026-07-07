@@ -1,6 +1,6 @@
 import DiscoverBrowser from "@/components/Discover/DiscoverBrowser";
 import type { Metadata } from "next";
-import type { DiscoverSortOption } from "@/types/discover";
+import { parseDiscoverSearchParams } from "./search-params";
 
 export const metadata: Metadata = {
   description: "Find and download Pokémon romhacks for Game Boy, Game Boy Color, Game Boy Advance, and Nintendo DS.",
@@ -15,12 +15,7 @@ interface DiscoverPageProps {
 
 export default async function DiscoverPage(props: DiscoverPageProps) {
   const searchParams = await props.searchParams;
-  const sortParam = searchParams.sort;
-  const validSorts: DiscoverSortOption[] = ["trending", "popular", "new", "updated", "alphabetical"];
-  const sort: DiscoverSortOption =
-    typeof sortParam === "string" && (validSorts as string[]).includes(sortParam)
-      ? (sortParam as DiscoverSortOption)
-      : "trending"; // Default to trending if no sort param is provided
+  const initialState = parseDiscoverSearchParams(searchParams);
 
   return (
     <div className="mx-auto max-w-screen-2xl px-6 py-10">
@@ -33,7 +28,7 @@ export default async function DiscoverPage(props: DiscoverPageProps) {
         </div>
       </div>
       <div className="mt-6">
-        <DiscoverBrowser initialSort={sort} />
+        <DiscoverBrowser initialState={initialState} />
       </div>
     </div>
   );
