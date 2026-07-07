@@ -233,9 +233,12 @@ export async function getDiscoverData(sort: DiscoverSortOption): Promise<Discove
       const { tagGroups: groups, ungroupedTags: ungrouped } = buildTagFilterGroups(catalogTags);
 
       // Fetch profiles for author names
+      // TODO: Once creatorIds reaches 1000 in length, this query will need to be paginated.
+      const creatorIds = [...new Set(rows.map((r) => r.created_by))];
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
-        .select("id,username");
+        .select("id,username")
+        .in("id", creatorIds);
       if (profilesError) throw profilesError;
 
       const usernameById = new Map<string, string>();
