@@ -95,6 +95,7 @@ export function useDiscoverUrlState({ currentState, onUrlStateChange }: UseDisco
       onUrlStateChangeRef.current(nextState);
     };
 
+    applyUrlState();
     window.addEventListener("popstate", applyUrlState);
     return () => window.removeEventListener("popstate", applyUrlState);
   }, [clearSearchUrlTimeout]);
