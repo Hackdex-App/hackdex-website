@@ -4,11 +4,13 @@ import { unstable_cache as cache } from "next/cache";
 import { createServiceClient } from "@/utils/supabase/server";
 import { getCachedTagsWithUsage, buildTagFilterGroups } from "@/data/tags";
 import { sortOrderedTags, OrderedTag, getCoverUrls } from "@/utils/format";
+import { fetchInChunks } from "@/utils/array";
 import { HackCardAttributes } from "@/components/HackCard";
 import type { DiscoverSortOption } from "@/types/discover";
 
 const TRENDING_WINDOW_DAYS = 3;
 const TIME_TO_LIVE = 600; // 10 minutes
+const CHUNK_SIZE = 150;
 
  export interface DiscoverDataResult {
    hacks: HackCardAttributes[];
@@ -66,11 +68,14 @@ export async function getDiscoverData(sort: DiscoverSortOption): Promise<Discove
        const slugs = (rows || []).map((r) => r.slug);
 
        // Fetch covers
-       const { data: coverRows, error: coversError } = await supabase
-         .from("hack_covers")
-         .select("hack_slug,url,position")
-         .in("hack_slug", slugs)
-         .order("position", { ascending: true });
+       const { data: coverRows, error: coversError } = await fetchInChunks(slugs, CHUNK_SIZE, async (chunk) => {
+        const { data, error } = await supabase
+          .from("hack_covers")
+          .select("hack_slug,url,position")
+          .in("hack_slug", chunk)
+          .order("position", { ascending: true });
+        return { data, error };
+      });
       if (coversError) throw coversError;
 
       const coversBySlug = new Map<string, string[]>();
@@ -92,43 +97,47 @@ export async function getDiscoverData(sort: DiscoverSortOption): Promise<Discove
         });
       }
 
-       // Fetch tags - paginate to avoid 1000 row limit per query
-       const tagsBySlug = new Map<string, OrderedTag[]>();
-       const BATCH_SIZE = 1000;
-       let offset = 0;
-       let hasMore = true;
+       // Fetch tags - chunk slugs to avoid URI limits,
+       // paginate rows per chunk to avoid 1000 row limit per query
+       const ROW_BATCH_SIZE = 1000;
+       const { data: tagRows, error: tagsError } = await fetchInChunks(slugs, CHUNK_SIZE, async (slugChunk) => {
+         const rows: any[] = [];
+         let offset = 0;
+         let hasMore = true;
 
-       while (hasMore) {
-         const { data: tagRows, error: tagsError } = await supabase
-           .from("hack_tags")
-           .select("hack_slug,order,tags(name,category)")
-           .in("hack_slug", slugs)
-           .range(offset, offset + BATCH_SIZE - 1)
-           .order("hack_slug", { ascending: true });
+         while (hasMore) {
+           const { data, error } = await supabase
+             .from("hack_tags")
+             .select("hack_slug,order,tags(name,category)")
+             .in("hack_slug", slugChunk)
+             .range(offset, offset + ROW_BATCH_SIZE - 1)
+             .order("hack_slug", { ascending: true });
 
-         if (tagsError) throw tagsError;
+           if (error) return { data: null, error };
 
-         if (!tagRows || tagRows.length === 0) {
-           hasMore = false;
-         } else {
-           tagRows.forEach((r: any) => {
-             if (!r.tags?.name) return;
-             const arr = tagsBySlug.get(r.hack_slug) || [];
-             arr.push({
-               name: r.tags.name,
-               order: r.order,
-             });
-             tagsBySlug.set(r.hack_slug, arr);
-           });
-
-           // If we got fewer rows than the batch size, we've reached the end
-           if (tagRows.length < BATCH_SIZE) {
+           if (!data || data.length === 0) {
              hasMore = false;
            } else {
-             offset += BATCH_SIZE;
+             rows.push(...data);
+             hasMore = data.length === ROW_BATCH_SIZE;
+             if (hasMore) offset += ROW_BATCH_SIZE;
            }
          }
-       }
+
+         return { data: rows, error: null };
+       });
+       if (tagsError) throw tagsError;
+
+       const tagsBySlug = new Map<string, OrderedTag[]>();
+       (tagRows || []).forEach((r: any) => {
+         if (!r.tags?.name) return;
+         const arr = tagsBySlug.get(r.hack_slug) || [];
+         arr.push({
+           name: r.tags.name,
+           order: r.order,
+         });
+         tagsBySlug.set(r.hack_slug, arr);
+       });
 
       // Fetch patches for version mapping
       const patchIds = Array.from(
@@ -142,10 +151,13 @@ export async function getDiscoverData(sort: DiscoverSortOption): Promise<Discove
       const versionsByPatchId = new Map<number, string>();
       const publishedAtByPatchId = new Map<number, string | null>();
        if (patchIds.length > 0) {
-         const { data: patchRows, error: patchesError } = await supabase
+         const { data: patchRows, error: patchesError } = await fetchInChunks(patchIds, CHUNK_SIZE, async (chunk) => {
+          const { data, error } = await supabase
            .from("patches")
            .select("id,version,published_at")
-           .in("id", patchIds);
+           .in("id", chunk);
+          return { data, error };
+        });
         if (patchesError) throw patchesError;
 
         (patchRows || []).forEach((p: any) => {
@@ -160,10 +172,13 @@ export async function getDiscoverData(sort: DiscoverSortOption): Promise<Discove
       let trendingScores: Map<string, number> | null = null;
       if (sort === "trending") {
         // Get all patches for all hacks, grouped by slug
-        const { data: allPatches, error: allPatchesError } = await supabase
-          .from("patches")
-          .select("id,parent_hack")
-          .in("parent_hack", slugs);
+        const { data: allPatches, error: allPatchesError } = await fetchInChunks(slugs, CHUNK_SIZE, async (chunk) => {
+          const { data, error } = await supabase
+            .from("patches")
+            .select("id,parent_hack")
+            .in("parent_hack", chunk);
+          return { data, error };
+        });
         if (allPatchesError) throw allPatchesError;
 
         // Group patch IDs by parent_hack (slug)
@@ -233,12 +248,14 @@ export async function getDiscoverData(sort: DiscoverSortOption): Promise<Discove
       const { tagGroups: groups, ungroupedTags: ungrouped } = buildTagFilterGroups(catalogTags);
 
       // Fetch profiles for author names
-      // TODO: Once creatorIds reaches 1000 in length, this query will need to be paginated.
       const creatorIds = [...new Set(rows.map((r) => r.created_by))];
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("id,username")
-        .in("id", creatorIds);
+      const { data: profiles, error: profilesError } = await fetchInChunks(creatorIds, CHUNK_SIZE, async (chunk) => {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id,username")
+          .in("id", chunk);
+        return { data, error };
+      });
       if (profilesError) throw profilesError;
 
       const usernameById = new Map<string, string>();
