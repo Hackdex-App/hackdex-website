@@ -159,6 +159,7 @@ export type Database = {
           slug: string
           social_links: Json | null
           summary: string
+          tags_updated_at: string
           title: string
           updated_at: string | null
           verification_contact_info: string | null
@@ -194,6 +195,7 @@ export type Database = {
           slug: string
           social_links?: Json | null
           summary: string
+          tags_updated_at?: string
           title: string
           updated_at?: string | null
           verification_contact_info?: string | null
@@ -229,6 +231,7 @@ export type Database = {
           slug?: string
           social_links?: Json | null
           summary?: string
+          tags_updated_at?: string
           title?: string
           updated_at?: string | null
           verification_contact_info?: string | null
@@ -425,16 +428,19 @@ export type Database = {
       tags: {
         Row: {
           category: Database["public"]["Enums"]["Tag Categories"] | null
+          created_at: string | null
           id: number
           name: string
         }
         Insert: {
           category?: Database["public"]["Enums"]["Tag Categories"] | null
+          created_at?: string | null
           id?: number
           name: string
         }
         Update: {
           category?: Database["public"]["Enums"]["Tag Categories"] | null
+          created_at?: string | null
           id?: number
           name?: string
         }

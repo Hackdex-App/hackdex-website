@@ -111,6 +111,16 @@ export async function updateHack(args: {
         .upsert(rows, { onConflict: "hack_slug,tag_id" });
       if (upErr) return { ok: false, error: upErr.message } as const;
     }
+
+    // Update tags_updated_at if anything was added or removed (but not reordered)
+    const tagsUpdated = toRemove.length > 0 || desiredIds.some((id) => !currentIds.has(id));
+    if (tagsUpdated) {
+      const { error: upErr } = await supabase
+        .from("hacks")
+        .update({ tags_updated_at: new Date().toISOString() })
+        .eq("slug", args.slug);
+      if (upErr) return { ok: false, error: upErr.message } as const;
+    }
   }
 
   revalidateTag(`hack:${args.slug}:metadata`);

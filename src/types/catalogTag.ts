@@ -4,4 +4,5 @@ export type CatalogTagRow = {
   name: string;
   category: string | null;
   popularity: number;
+  created_at: string | null;
 };

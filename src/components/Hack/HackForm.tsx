@@ -21,6 +21,7 @@ interface HackFormEditProps {
   slug: string;
   initial: React.ComponentProps<typeof HackEditForm>["initial"];
   catalogTags: CatalogTagRow[];
+  tagsUpdatedAt: Date;
 }
 
 export type HackFormProps = HackFormCreateProps | HackFormEditProps;
@@ -35,7 +36,12 @@ export default function HackForm(props: HackFormProps) {
       catalogTags={props.catalogTags}
     />;
   }
-  return <HackEditForm slug={props.slug} initial={props.initial} catalogTags={props.catalogTags} />;
+  return <HackEditForm
+    slug={props.slug}
+    initial={props.initial}
+    catalogTags={props.catalogTags}
+    tagsUpdatedAt={props.tagsUpdatedAt}
+  />;
 }
 
 

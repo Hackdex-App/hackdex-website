@@ -902,7 +902,7 @@ export default function HackSubmitForm({
 
                 <div className="grid gap-2">
                   <label className="text-sm text-foreground/80">Tags <span className="text-red-500">*</span></label>
-                  <TagSelector value={tags} onChange={setTags} catalogTags={catalogTags} />
+                  <TagSelector value={tags} onChange={setTags} catalogTags={catalogTags} newTagsCutoff={null} />
                 </div>
 
                 <div className="grid gap-1">

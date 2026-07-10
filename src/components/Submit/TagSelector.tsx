@@ -27,6 +27,7 @@ export interface TagSelectorProps {
   onChange: (next: string[]) => void;
   /** When set, skips client Supabase fetch (use server-cached catalog). */
   catalogTags?: CatalogTagRow[];
+  newTagsCutoff: Date | null;
 }
 
 type CategoryIconType = React.ComponentType<React.SVGProps<SVGSVGElement>> | null;
@@ -112,7 +113,15 @@ function SortableSelectedTag({
   );
 }
 
-export default function TagSelector({ value, onChange, catalogTags }: TagSelectorProps) {
+function compareTags(a: TagRow, b: TagRow, newTagsCutoff: Date | null): number {
+  const aNew = !!(a.created_at && newTagsCutoff && new Date(a.created_at) > newTagsCutoff);
+  const bNew = !!(b.created_at && newTagsCutoff && new Date(b.created_at) > newTagsCutoff);
+  if (aNew && !bNew) return -1;
+  if (!aNew && bNew) return 1;
+  return (b.popularity - a.popularity) || a.name.localeCompare(b.name);
+}
+
+export default function TagSelector({ value, onChange, catalogTags, newTagsCutoff }: TagSelectorProps) {
   const supabase = createClient();
   const [query, setQuery] = React.useState("");
   const [allTags, setAllTags] = React.useState<TagRow[]>(() => catalogTags ?? []);
@@ -140,6 +149,16 @@ export default function TagSelector({ value, onChange, catalogTags }: TagSelecto
     setCategoriesPaneFocused(true);
   }, []);
 
+  const categoriesWithNewTags = React.useMemo(() => {
+    const categories = new Set<string>();
+    for (const t of allTags) {
+      if (t.category && t.created_at && newTagsCutoff && new Date(t.created_at) > newTagsCutoff) {
+        categories.add(t.category);
+      }
+    }
+    return Array.from(categories);
+  }, [allTags, newTagsCutoff]);
+
   React.useEffect(() => {
     if (catalogTags !== undefined) return;
     let cancelled = false;
@@ -148,14 +167,18 @@ export default function TagSelector({ value, onChange, catalogTags }: TagSelecto
         setLoading(true);
         const { data } = await supabase
           .from("tags")
-          .select("id,name,category,usage: hack_tags (count)");
+          .select("id,name,category,created_at,usage: hack_tags (count)");
         const rows: TagRow[] = (data || []).map((t: any) => ({
           id: t.id,
           name: t.name,
           category: t.category ?? null,
           popularity: t.usage?.[0]?.count || 0,
+          created_at: t.created_at ?? null,
         }));
-        rows.sort((a, b) => (b.popularity - a.popularity) || a.name.localeCompare(b.name));
+        // Put new tags first, then sort by popularity and name
+        rows.sort((a, b) => {
+          return compareTags(a, b, newTagsCutoff);
+        });
         if (!cancelled) setAllTags(rows);
       } finally {
         if (!cancelled) setLoading(false);
@@ -164,7 +187,7 @@ export default function TagSelector({ value, onChange, catalogTags }: TagSelecto
     return () => {
       cancelled = true;
     };
-  }, [catalogTags, supabase]);
+  }, [catalogTags, supabase, newTagsCutoff]);
 
   const grouped = React.useMemo(() => {
     const map = new Map<string, TagRow[]>();
@@ -178,11 +201,17 @@ export default function TagSelector({ value, onChange, catalogTags }: TagSelecto
         map.set(t.category, arr);
       }
     }
-    // sort tags inside categories
-    for (const [, arr] of map) arr.sort((a, b) => (b.popularity - a.popularity) || a.name.localeCompare(b.name));
-    advanced.sort((a, b) => (b.popularity - a.popularity) || a.name.localeCompare(b.name));
+    // Put new tags first, then sort by popularity and name
+    for (const [, arr] of map) {
+      arr.sort((a, b) => {
+        return compareTags(a, b, newTagsCutoff);
+      });
+    }
+    advanced.sort((a, b) => {
+      return compareTags(a, b, newTagsCutoff);
+    });
     return { categories: Array.from(map.keys()).sort((a, b) => a.localeCompare(b)), byCat: map, advanced };
-  }, [allTags]);
+  }, [allTags, newTagsCutoff]);
 
   // Filter categories and tags by query; hide categories with zero results. Keep selected tags visible.
   const filtered = React.useMemo(() => {
@@ -431,7 +460,13 @@ export default function TagSelector({ value, onChange, catalogTags }: TagSelecto
                       : 'hover:bg-black/5 dark:hover:bg-white/10'
                   }`}
                 >
-                  <span className="truncate inline-flex items-center gap-2">{Icon ? <Icon className="h-4 w-4 opacity-80" /> : null}{cat}</span>
+                  <span className="truncate inline-flex items-center gap-2">
+                    {Icon ? <Icon className="h-4 w-4 opacity-80" /> : null}
+                    {cat}
+                    {newTagsCutoff && categoriesWithNewTags.includes(cat) && (
+                      <span className="ml-1 rounded-full bg-black/5 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-foreground/60 dark:bg-white/5">New</span>
+                    )}
+                  </span>
                 </div>
               );})}
               {filtered.advanced.length > 0 && (
@@ -499,6 +534,9 @@ export default function TagSelector({ value, onChange, catalogTags }: TagSelecto
                   className={`flex items-center justify-between rounded px-2 py-1.5 text-sm ${activeTagIndex === idx ? 'bg-black/5 dark:bg-white/10' : 'hover:bg-black/5 dark:hover:bg-white/10'}`}
                 >
                   <span className="truncate">{t.name}</span>
+                  {t.created_at && newTagsCutoff && new Date(t.created_at) > newTagsCutoff && (
+                    <span className="ml-auto mr-2 rounded-full bg-black/5 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-foreground/60 dark:bg-white/5">New</span>
+                  )}
                   <input type="checkbox" readOnly checked={value.includes(t.name)} className="h-4 w-4 accent-[var(--accent)]" />
                 </div>
               ))}
