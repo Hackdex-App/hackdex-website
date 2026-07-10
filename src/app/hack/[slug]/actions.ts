@@ -282,11 +282,15 @@ export async function getSignedPatchUrl(
   // Fetch patch info
   const { data: patch, error: patchError } = await supabase
     .from("patches")
-    .select("id, bucket, filename")
+    .select("id, bucket, filename, parent_hack, published, archived")
     .eq("id", selectedPatchId)
     .maybeSingle();
 
   if (patchError || !patch) {
+    return { ok: false, error: "Patch not found" };
+  }
+
+  if (patch.parent_hack !== slug || !patch.published || patch.archived) {
     return { ok: false, error: "Patch not found" };
   }
 
