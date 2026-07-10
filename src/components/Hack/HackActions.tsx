@@ -65,6 +65,7 @@ const HackActions: React.FC<HackActionsProps> = ({
     [patcherSelector.selectablePatches, selectedPatchId],
   );
   const selectedVersion = selectedPatch?.version ?? version;
+  const selectedFilename = selectedPatch?.filename ?? patchFilename;
 
   function isRomReadyForPatch() {
     return !!file || hasCached(baseRomId) || (isLinked(baseRomId) && hasPermission(baseRomId));
@@ -351,7 +352,7 @@ const HackActions: React.FC<HackActionsProps> = ({
         selectedPatchId={selectedPatch?.id ?? selectedPatchId}
         onVersionChange={onVersionChange}
         author={author}
-        filename={patchFilename}
+        filename={selectedFilename}
         baseRomName={baseRomName}
         baseRomPlatform={platform}
         onPatch={onPatch}

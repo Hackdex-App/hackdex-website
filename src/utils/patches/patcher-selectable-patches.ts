@@ -9,7 +9,7 @@ export async function getPatcherSelectablePatches(
 ): Promise<PatcherPatchSelection> {
   const { data: rows, error } = await supabase
     .from("hack_patcher_patches")
-    .select("patch_id, sort_order, patches!inner(id, version, created_at, published, archived)")
+    .select("patch_id, sort_order, patches!inner(id, version, created_at, published, archived, filename)")
     .eq("hack_slug", slug)
     .eq("patches.published", true)
     .eq("patches.archived", false)
@@ -27,12 +27,13 @@ export async function getPatcherSelectablePatches(
     id: patch.id,
     version: patch.version,
     created_at: patch.created_at,
+    filename: patch.filename,
   }));
   const hasSavedRows = selectablePatches.length > 0;
   if (selectablePatches.length === 0 && currentPatchId !== null) {
     const { data: currentPatch, error: currentPatchError } = await supabase
       .from("patches")
-      .select("id, version, created_at, published, archived")
+      .select("id, version, created_at, published, archived, filename")
       .eq("id", currentPatchId)
       .maybeSingle();
     if (currentPatchError) {
