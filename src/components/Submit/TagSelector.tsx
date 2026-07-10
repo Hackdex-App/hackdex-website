@@ -113,6 +113,14 @@ function SortableSelectedTag({
   );
 }
 
+function compareTags(a: TagRow, b: TagRow, newTagsCutoff: Date | null): number {
+  const aNew = !!(a.created_at && newTagsCutoff && new Date(a.created_at) > newTagsCutoff);
+  const bNew = !!(b.created_at && newTagsCutoff && new Date(b.created_at) > newTagsCutoff);
+  if (aNew && !bNew) return -1;
+  if (!aNew && bNew) return 1;
+  return (b.popularity - a.popularity) || a.name.localeCompare(b.name);
+}
+
 export default function TagSelector({ value, onChange, catalogTags, newTagsCutoff }: TagSelectorProps) {
   const supabase = createClient();
   const [query, setQuery] = React.useState("");
@@ -159,7 +167,7 @@ export default function TagSelector({ value, onChange, catalogTags, newTagsCutof
         setLoading(true);
         const { data } = await supabase
           .from("tags")
-          .select("id,name,category,usage: hack_tags (count)");
+          .select("id,name,category,created_at,usage: hack_tags (count)");
         const rows: TagRow[] = (data || []).map((t: any) => ({
           id: t.id,
           name: t.name,
@@ -169,9 +177,7 @@ export default function TagSelector({ value, onChange, catalogTags, newTagsCutof
         }));
         // Put new tags first, then sort by popularity and name
         rows.sort((a, b) => {
-          if (a.created_at && b.created_at && new Date(a.created_at) > new Date(b.created_at)) return -1;
-          if (b.created_at && a.created_at && new Date(b.created_at) > new Date(a.created_at)) return 1;
-          return (b.popularity - a.popularity) || a.name.localeCompare(b.name);
+          return compareTags(a, b, newTagsCutoff);
         });
         if (!cancelled) setAllTags(rows);
       } finally {
@@ -181,7 +187,7 @@ export default function TagSelector({ value, onChange, catalogTags, newTagsCutof
     return () => {
       cancelled = true;
     };
-  }, [catalogTags, supabase]);
+  }, [catalogTags, supabase, newTagsCutoff]);
 
   const grouped = React.useMemo(() => {
     const map = new Map<string, TagRow[]>();
@@ -195,11 +201,17 @@ export default function TagSelector({ value, onChange, catalogTags, newTagsCutof
         map.set(t.category, arr);
       }
     }
-    // sort tags inside categories
-    for (const [, arr] of map) arr.sort((a, b) => (b.popularity - a.popularity) || a.name.localeCompare(b.name));
-    advanced.sort((a, b) => (b.popularity - a.popularity) || a.name.localeCompare(b.name));
+    // Put new tags first, then sort by popularity and name
+    for (const [, arr] of map) {
+      arr.sort((a, b) => {
+        return compareTags(a, b, newTagsCutoff);
+      });
+    }
+    advanced.sort((a, b) => {
+      return compareTags(a, b, newTagsCutoff);
+    });
     return { categories: Array.from(map.keys()).sort((a, b) => a.localeCompare(b)), byCat: map, advanced };
-  }, [allTags]);
+  }, [allTags, newTagsCutoff]);
 
   // Filter categories and tags by query; hide categories with zero results. Keep selected tags visible.
   const filtered = React.useMemo(() => {
