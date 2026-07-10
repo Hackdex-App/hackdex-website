@@ -1084,14 +1084,9 @@ export async function updatePatcherSelectablePatches(
   const { error: replaceErr } = await supabase.rpc("replace_hack_patcher_patches", {
     p_hack_slug: slug,
     p_patch_ids: uniquePatchIds,
+    p_custom_version_name: uniquePatchIds.length > 0 ? trimmedCustomVersionName : null,
   });
   if (replaceErr) return { ok: false, error: replaceErr.message };
-
-  const { error: nameErr } = await supabase
-    .from("hacks")
-    .update({ custom_version_name: uniquePatchIds.length > 0 ? trimmedCustomVersionName : null })
-    .eq("slug", slug);
-  if (nameErr) return { ok: false, error: nameErr.message };
 
   revalidateTag(`hack:${slug}:metadata`);
   revalidatePath(`/hack/${slug}`);
