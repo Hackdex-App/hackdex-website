@@ -149,7 +149,7 @@ export default async function Home() {
     <div>
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-grid opacity-30 pointer-events-none" />
-        <div className="mx-auto max-w-screen-2xl px-6 py-12 sm:py-20">
+        <div className="mx-auto max-w-screen-2xl px-6 pt-12 pb-8 sm:py-20">
           <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,34rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,42rem)]">
             <div>
               <MilestoneCelebration />
@@ -222,7 +222,7 @@ export default async function Home() {
             </p>
           </div>
         </div>
-        <div className="my-6 mx-auto flex flex-col items-center max-w-[320px] sm:mt-10">
+        <div className="mt-12 mb-4 mx-auto flex flex-col items-center max-w-[320px] sm:mt-16">
           <Link href="/faq" className="inline-flex items-center rounded-full elevate border border-black/10 bg-black/5 dark:border-white/10 dark:bg-white/5 px-4 py-1.5 text-sm text-foreground hover:bg-black/10 dark:hover:bg-white/10">
             <span className="font-medium">New to Hackdex?</span>
             <span className="ml-1 underline underline-offset-2">Read the FAQ</span>

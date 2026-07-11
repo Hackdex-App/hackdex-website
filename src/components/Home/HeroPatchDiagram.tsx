@@ -33,8 +33,8 @@ export default function HeroPatchDiagram() {
   const slots: (Pick | null)[] = picks.length === 3 ? picks : [null, null, null];
 
   return (
-    <div className="relative mx-auto w-full max-w-full" aria-hidden="true">
-      <div className="flex w-full flex-col items-center gap-0">
+    <div className="relative mx-auto w-full min-w-0 max-w-full mt-6 sm:mt-0" aria-hidden="true">
+      <div className="flex w-full min-w-0 flex-col items-center gap-0">
         {/* Base ROM card */}
         <div className="card relative z-10 w-full max-w-64 p-3">
           <div className="flex items-center gap-3">
@@ -52,7 +52,7 @@ export default function HeroPatchDiagram() {
         </div>
 
         {/* Connectors + cards share one shrink-wrapped width so they stay centered together */}
-        <div className="flex w-full max-w-md flex-col items-center md:w-fit md:max-w-none">
+        <div className="flex w-full min-w-0 max-w-md flex-col items-center md:w-fit md:max-w-none">
           <div className="relative h-14 w-full sm:h-[4.75rem]">
             <svg
               className="absolute inset-0 h-full w-full overflow-visible"
@@ -85,12 +85,12 @@ export default function HeroPatchDiagram() {
             </svg>
           </div>
 
-          <div className="relative z-10 flex w-full items-start gap-2 sm:gap-3 xl:gap-4">
+          <div className="relative z-10 flex w-full min-w-0 items-start gap-1.5 sm:gap-3 xl:gap-4">
             {slots.map((hack, index) => (
               <div
                 key={index}
                 data-ready={hack ? "true" : "false"}
-                className={`hero-hack-card card anim-float min-w-0 flex-1 p-2 sm:p-2.5 md:w-32 md:flex-none lg:w-36 xl:w-40 ${index === 1 ? "mt-3 sm:mt-5" : ""}`}
+                className={`hero-hack-card card anim-float min-w-0 flex-1 basis-0 p-1.5 sm:p-2.5 md:w-32 md:flex-none md:basis-auto lg:w-36 xl:w-40 ${index === 1 ? "mt-3 sm:mt-5" : ""}`}
                 style={{ animationDelay: hack?.delay ?? `${index * 0.6}s` }}
               >
                 <div className="relative aspect-[3/2] w-full overflow-hidden rounded-md bg-[var(--surface-2)]">
@@ -105,7 +105,7 @@ export default function HeroPatchDiagram() {
                     />
                   )}
                 </div>
-                <div data-ready={hack ? "true" : "false"} className="mt-1.5 truncate text-[11px] font-medium tracking-tight text-foreground/85 sm:mt-2 sm:text-xs opacity-0 data-[ready=true]:opacity-100 transition-opacity duration-500">
+                <div data-ready={hack ? "true" : "false"} className="mt-1.5 min-w-0 truncate text-[11px] font-medium tracking-tight text-foreground/85 sm:mt-2 sm:text-xs opacity-0 data-[ready=true]:opacity-100 transition-opacity duration-500">
                   {hack?.title ?? "\u00A0" /* non-breaking space */}
                 </div>
               </div>
