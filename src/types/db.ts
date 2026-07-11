@@ -503,7 +503,11 @@ export type Database = {
       is_archiver: { Args: never; Returns: boolean }
       is_claims_admin: { Args: never; Returns: boolean }
       replace_hack_patcher_patches: {
-        Args: { p_hack_slug: string; p_patch_ids: number[] }
+        Args: {
+          p_custom_version_name?: string
+          p_hack_slug: string
+          p_patch_ids: number[]
+        }
         Returns: undefined
       }
       set_claim: {

@@ -1049,7 +1049,7 @@ export async function updatePatcherSelectablePatches(
 
   // Dedupe patch ids
   const uniquePatchIds = [...new Set(patchIds)];
-  const trimmedCustomVersionName = customVersionName?.trim() || null;
+  const trimmedCustomVersionName = customVersionName?.trim() || undefined;
 
   if (uniquePatchIds.length > 0) {
     if (!trimmedCustomVersionName) {
@@ -1088,7 +1088,7 @@ export async function updatePatcherSelectablePatches(
   const { error: replaceErr } = await supabase.rpc("replace_hack_patcher_patches", {
     p_hack_slug: slug,
     p_patch_ids: uniquePatchIds,
-    p_custom_version_name: uniquePatchIds.length > 0 ? trimmedCustomVersionName : null,
+    p_custom_version_name: uniquePatchIds.length > 0 ? trimmedCustomVersionName : undefined,
   });
   if (replaceErr) return { ok: false, error: replaceErr.message };
 
