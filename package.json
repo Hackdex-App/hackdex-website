@@ -19,6 +19,7 @@
     "@types/serialize-javascript": "^5.0.4",
     "@vercel/analytics": "^1.6.1",
     "@vercel/edge-config": "^1.4.3",
+    "canvas-confetti": "^1.9.4",
     "chart.js": "^4.5.1",
     "embla-carousel-react": "8.6.0",
     "js-sha1": "^0.7.0",
@@ -46,6 +47,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@tailwindcss/typography": "^0.5.19",
+    "@types/canvas-confetti": "^1.9.0",
     "@types/mjml": "^5.0.0",
     "@types/mjml-core": "^5.0.0",
     "@types/node": "^20",

@@ -4,6 +4,9 @@ import { FaArrowRightLong } from "react-icons/fa6";
 import { createClient } from "@/utils/supabase/server";
 import HackCard from "@/components/HackCard";
 import Button from "@/components/Button";
+import MilestoneCelebration from "@/components/Home/MilestoneCelebration";
+import HeroPatchDiagram from "@/components/Home/HeroPatchDiagram";
+import HeroAuthCta from "@/components/Home/HeroAuthCta";
 import { sortOrderedTags, getCoverUrls } from "@/utils/format";
 import { HackCardAttributes } from "@/components/HackCard";
 import { resolveHackDisplayVersion } from "@/utils/patches/hack-display-version";
@@ -146,51 +149,77 @@ export default async function Home() {
     <div>
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-grid opacity-30 pointer-events-none" />
-        <div className="mx-auto max-w-screen-2xl px-6 py-10 sm:py-20">
-          <div className="max-w-2xl">
-            <h1 className="text-4xl font-bold tracking-tight sm:text-6xl">
-              <span className="gradient-text">Discover</span> and share Pokémon romhacks
-            </h1>
-            <p className="mt-4 text-[15px] text-foreground/80">
-              Find community-made hacks and patch in-browser with your own legally-obtained base ROMs for Game Boy, Game Boy Color, Game Boy Advance, and Nintendo DS.
-            </p>
-            <div className="mt-12 sm:mt-8 mx-auto flex flex-col items-start max-w-[320px] sm:flex-row sm:items-center sm:max-w-none gap-3">
-              <Link
-                href="/discover"
-                className="inline-flex h-14 w-full sm:h-12 sm:w-auto items-center justify-center rounded-md bg-[var(--accent)] px-5 text-base font-semibold sm:font-medium text-[var(--accent-foreground)] transition-colors hover:bg-[var(--accent-700)] elevate"
-              >
-                Explore hacks
-              </Link>
-              <Link
-                href="/submit"
-                className="inline-flex h-14 w-full sm:h-12 sm:w-auto items-center justify-center rounded-md border border-white/10 bg-white/10 px-5 text-base font-semibold sm:font-medium text-foreground transition-colors hover:bg-white/15 elevate"
-              >
-                Submit a patch
-              </Link>
-              <Link
-                href="/login"
-                className="inline-flex h-14 w-full sm:h-12 sm:w-auto items-center justify-center rounded-md sm:px-5 text-base font-medium text-foreground/90 hover:underline"
-              >
-                Already a creator? Log in
-              </Link>
+        <div className="mx-auto max-w-screen-2xl px-6 py-12 sm:py-20">
+          <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,34rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,42rem)]">
+            <div>
+              <MilestoneCelebration />
+              <h1 className="mt-5 text-4xl font-bold tracking-tight sm:text-6xl text-balance">
+                Bring your ROM once.
+                <br />
+                <span className="gradient-text">Play everything it unlocks.</span>
+              </h1>
+              <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-foreground/80">
+                Link your legally-obtained base ROM one time and Hackdex caches it on your
+                device. Patch any Pokémon ROM hack built for it, right in your browser,
+                without ever re-uploading. Your files never leave your device.
+              </p>
+              <div className="mt-8 mx-auto flex w-full max-w-[320px] flex-col items-start gap-3 sm:mx-0 sm:max-w-none sm:flex-row sm:items-center">
+                <Link
+                  href="/discover"
+                  className="inline-flex h-14 w-full sm:h-12 sm:w-auto items-center justify-center rounded-md bg-[var(--accent)] px-5 text-base font-semibold sm:font-medium text-[var(--accent-foreground)] transition-colors hover:bg-[var(--accent-700)] elevate"
+                >
+                  Explore hacks
+                </Link>
+                <Link
+                  href="/submit"
+                  className="inline-flex h-14 w-full sm:h-12 sm:w-auto items-center justify-center rounded-md border border-white/10 bg-white/10 px-5 text-base font-semibold sm:font-medium text-foreground transition-colors hover:bg-white/15 elevate"
+                >
+                  Submit a patch
+                </Link>
+                <HeroAuthCta />
+              </div>
+              <p className="mt-6 text-xs text-foreground/60">
+                Supports Game Boy, Game Boy Color, Game Boy Advance, and Nintendo DS.
+              </p>
             </div>
+            <HeroPatchDiagram />
           </div>
         </div>
       </section>
 
       <section className={`mx-auto max-w-screen-2xl px-6 ${hackData.length > 0 ? "pt-6 sm:pt-12" : "py-6 sm:py-12"}`}>
-        <div className="grid gap-6 sm:grid-cols-3">
-          <div className="card p-5">
-            <div className="text-[15px] font-semibold tracking-tight">Curated discovery</div>
-            <p className="mt-1 text-sm text-foreground/70">Browse popular and trending patches across generations.</p>
+        <h2 className="text-sm font-semibold uppercase tracking-widest text-foreground/60">How it works</h2>
+        <div className="relative mt-4 grid gap-8 sm:grid-cols-3 sm:gap-6">
+          <div
+            className="pointer-events-none absolute top-3.5 right-[calc(16.666%-0.875rem)] left-3.5 hidden h-px bg-[var(--border)] sm:block"
+            aria-hidden="true"
+          />
+          <div>
+            <span className="relative z-10 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--background)] text-[13px] font-semibold text-[var(--accent)] shadow-[0_0_0_8px_var(--background)] ring-2 ring-[var(--accent)]/30">
+              1
+            </span>
+            <div className="mt-3 text-[15px] font-semibold tracking-tight">Link your base ROM</div>
+            <p className="mt-1 max-w-xs text-sm text-foreground/70">
+              Point Hackdex at your legally-obtained ROM file. It&apos;s verified and matched automatically.
+            </p>
           </div>
-          <div className="card p-5">
-            <div className="text-[15px] font-semibold tracking-tight">Built-in patcher</div>
-            <p className="mt-1 text-sm text-foreground/70">Provide your base ROMs and patch in the browser.</p>
+          <div>
+            <span className="relative z-10 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--background)] text-[13px] font-semibold text-[var(--accent)] shadow-[0_0_0_8px_var(--background)] ring-2 ring-[var(--accent)]/30">
+              2
+            </span>
+            <div className="mt-3 text-[15px] font-semibold tracking-tight">It stays on your device</div>
+            <p className="mt-1 max-w-xs text-sm text-foreground/70">
+              Your ROM is cached locally in your browser, never uploaded, and ready whenever you come back.
+            </p>
           </div>
-          <div className="card p-5">
-            <div className="text-[15px] font-semibold tracking-tight">Submit your own</div>
-            <p className="mt-1 text-sm text-foreground/70">Join as a creator and submit your own rom hacks.</p>
+          <div>
+            <span className="relative z-10 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--background)] text-[13px] font-semibold text-[var(--accent)] shadow-[0_0_0_8px_var(--background)] ring-2 ring-[var(--accent)]/30">
+              3
+            </span>
+            <div className="mt-3 text-[15px] font-semibold tracking-tight">Patch hack after hack</div>
+            <p className="mt-1 max-w-xs text-sm text-foreground/70">
+              Pick any hack built for your ROM and patch it in your browser in seconds, with no re-uploading between hacks.
+            </p>
           </div>
         </div>
         <div className="my-6 mx-auto flex flex-col items-center max-w-[320px] sm:mt-10">
