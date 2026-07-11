@@ -6,6 +6,7 @@ import HackCard from "@/components/HackCard";
 import Button from "@/components/Button";
 import { sortOrderedTags, getCoverUrls } from "@/utils/format";
 import { HackCardAttributes } from "@/components/HackCard";
+import { resolveHackDisplayVersion } from "@/utils/patches/hack-display-version";
 
 export const metadata: Metadata = {
   alternates: {
@@ -22,7 +23,7 @@ export default async function Home() {
   // Fetch top 6 approved hacks ordered by downloads
   const { data: popularHacks } = await supabase
     .from("hacks")
-    .select("slug,title,summary,description,base_rom,downloads,created_by,current_patch,original_author,is_archive")
+    .select("slug,title,summary,description,base_rom,downloads,created_by,current_patch,custom_version_name,original_author,is_archive")
     .eq("approved", true)
     .not("current_patch", "is", null)
     .is("is_archive", false)
@@ -75,21 +76,47 @@ export default async function Home() {
     });
 
     // Fetch versions
-    let mappedVersions = new Map<string, string>();
-    await Promise.all(
-      popularHacks.map(async (r) => {
-        if (r.current_patch) {
-          const { data: currentPatch } = await supabase
-            .from("patches")
-            .select("version")
-            .eq("id", r.current_patch)
-            .maybeSingle();
-          mappedVersions.set(r.slug, currentPatch?.version || "Pre-release");
-        } else {
-          mappedVersions.set(r.slug, r.original_author ? "Archive" : "Pre-release");
-        }
-      })
-    );
+    const patchIds = popularHacks
+      .map((hack) => hack.current_patch)
+      .filter((id): id is number => typeof id === "number");
+    const versionsByPatchId = new Map<number, string>();
+    if (patchIds.length > 0) {
+      const { data: patchRows } = await supabase
+        .from("patches")
+        .select("id,version")
+        .in("id", patchIds);
+      (patchRows || []).forEach((patch) => {
+        versionsByPatchId.set(patch.id, patch.version || "Pre-release");
+      });
+    }
+
+    const customDefaultVersionsBySlug = new Map<string, string>();
+    const customPatcherSlugs = new Set<string>();
+    const { data: customPatchRows } = await supabase
+      .from("hack_patcher_patches")
+      .select("hack_slug, sort_order, patches!inner(version)")
+      .in("hack_slug", slugs)
+      .order("sort_order", { ascending: true });
+    (customPatchRows || []).forEach((row: any) => {
+      customPatcherSlugs.add(row.hack_slug);
+      if (customDefaultVersionsBySlug.has(row.hack_slug)) return;
+      const patch = Array.isArray(row.patches) ? row.patches[0] : row.patches;
+      if (patch?.version) customDefaultVersionsBySlug.set(row.hack_slug, patch.version);
+    });
+
+    const mappedVersions = new Map<string, string>();
+    popularHacks.forEach((hack) => {
+      const currentPatchVersion = typeof hack.current_patch === "number"
+        ? versionsByPatchId.get(hack.current_patch) || "Pre-release"
+        : "";
+      mappedVersions.set(hack.slug, resolveHackDisplayVersion({
+        isArchive: hack.is_archive,
+        isCustomPatcherActive: customPatcherSlugs.has(hack.slug),
+        customVersionName: hack.custom_version_name,
+        customDefaultPatchVersion: customDefaultVersionsBySlug.get(hack.slug),
+        currentPatchVersion,
+      }));
+    });
 
     // Fetch profiles
     const userIds = [...new Set(popularHacks.map((h) => h.created_by).filter(Boolean))];

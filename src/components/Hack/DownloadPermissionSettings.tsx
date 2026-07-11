@@ -8,27 +8,29 @@ import { FaUserGear } from "react-icons/fa6";
 
 export type PatchesDownloadPermission = Database["public"]["Enums"]["Patches Download Permission"];
 
+function patchDownloadOptionDescription(
+  value: PatchesDownloadPermission,
+  isCustomPatcherActive: boolean,
+): string {
+  switch (value) {
+    case "None":
+      return "Users can only download your hack through the built-in patcher.";
+    case "Current":
+      return isCustomPatcherActive
+        ? "Only patch versions in your Custom patcher list can be downloaded directly."
+        : "Only the patch version marked Current can be downloaded directly.";
+    case "All":
+      return "Every published patch version can be downloaded directly.";
+  }
+}
+
 export const PATCH_DOWNLOAD_OPTIONS: {
   value: PatchesDownloadPermission;
   label: string;
-  /** Short helper shown next to or below the option */
-  description: string;
 }[] = [
-  {
-    value: "None",
-    label: "None",
-    description: "Users can only download your hack through the built-in patcher.",
-  },
-  {
-    value: "Current",
-    label: "Current only",
-    description: "Only the patch version marked Current can be downloaded directly.",
-  },
-  {
-    value: "All",
-    label: "All published",
-    description: "Every published patch version can be downloaded directly.",
-  },
+  { value: "None", label: "None" },
+  { value: "Current", label: "Current only" },
+  { value: "All", label: "All published" },
 ];
 
 function optionLabel(value: PatchesDownloadPermission): string {
@@ -38,11 +40,13 @@ function optionLabel(value: PatchesDownloadPermission): string {
 interface DownloadPermissionSettingsProps {
   hackSlug: string;
   initialPermission: PatchesDownloadPermission;
+  isCustomPatcherActive?: boolean;
 }
 
 export default function DownloadPermissionSettings({
   hackSlug,
   initialPermission,
+  isCustomPatcherActive = false,
 }: DownloadPermissionSettingsProps) {
   const [savedPermission, setSavedPermission] = useState<PatchesDownloadPermission>(initialPermission);
   const [selectedPermission, setSelectedPermission] = useState<PatchesDownloadPermission>(initialPermission);
@@ -129,10 +133,14 @@ export default function DownloadPermissionSettings({
       <div>
         <p className="text-xs sm:text-sm text-foreground/60 leading-snug md:-mt-4 mb-6">
           Changing this setting will allow users to download the patch file directly from this page as an alternative to using the built-in patcher.
+          {isCustomPatcherActive && (
+            <> With <strong className="font-medium text-foreground/70">Custom</strong> patcher versions active, "Current only" applies to every version in your Custom patcher list—not the Current badge alone.</>
+          )}
         </p>
         <RadioCardsBody
           selectedPermission={selectedPermission}
           savedPermission={savedPermission}
+          isCustomPatcherActive={isCustomPatcherActive}
           onSelect={setSelectedPermission}
         />
 
@@ -170,10 +178,12 @@ export default function DownloadPermissionSettings({
 function RadioCardsBody({
   selectedPermission,
   savedPermission,
+  isCustomPatcherActive,
   onSelect,
 }: {
   selectedPermission: PatchesDownloadPermission;
   savedPermission: PatchesDownloadPermission;
+  isCustomPatcherActive: boolean;
   onSelect: (v: PatchesDownloadPermission) => void;
 }) {
   const dirty = selectedPermission !== savedPermission;
@@ -207,7 +217,9 @@ function RadioCardsBody({
             </span>
             <span className="min-w-0 flex-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 sm:gap-x-1.5 sm:gap-y-0 leading-tight">
               <span className="text-sm font-semibold sm:text-xs">{opt.label}</span>
-              <span className="text-xs text-foreground/55 sm:text-[11px]">{opt.description}</span>
+              <span className="text-xs text-foreground/55 sm:text-[11px]">
+                {patchDownloadOptionDescription(opt.value, isCustomPatcherActive)}
+              </span>
               {showSavedBadge && (
                 <span className="inline-flex items-center rounded px-1 py-px text-[10px] font-medium uppercase tracking-wide text-foreground/60 bg-foreground/5 ring-1 ring-[var(--border)]">
                   Saved

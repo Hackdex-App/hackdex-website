@@ -66,6 +66,42 @@ export type Database = {
           },
         ]
       }
+      hack_patcher_patches: {
+        Row: {
+          created_at: string
+          hack_slug: string
+          patch_id: number
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          hack_slug: string
+          patch_id: number
+          sort_order: number
+        }
+        Update: {
+          created_at?: string
+          hack_slug?: string
+          patch_id?: number
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hack_patcher_patches_hack_slug_fkey"
+            columns: ["hack_slug"]
+            isOneToOne: false
+            referencedRelation: "hacks"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "hack_patcher_patches_patch_id_fkey"
+            columns: ["patch_id"]
+            isOneToOne: false
+            referencedRelation: "patches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hack_tags: {
         Row: {
           hack_slug: string
@@ -141,6 +177,7 @@ export type Database = {
           created_at: string
           created_by: string
           current_patch: number | null
+          custom_version_name: string | null
           description: string
           downloads: number
           estimated_release: string | null
@@ -177,6 +214,7 @@ export type Database = {
           created_at?: string
           created_by: string
           current_patch?: number | null
+          custom_version_name?: string | null
           description: string
           downloads?: number
           estimated_release?: string | null
@@ -213,6 +251,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           current_patch?: number | null
+          custom_version_name?: string | null
           description?: string
           downloads?: number
           estimated_release?: string | null
@@ -463,6 +502,14 @@ export type Database = {
       }
       is_archiver: { Args: never; Returns: boolean }
       is_claims_admin: { Args: never; Returns: boolean }
+      replace_hack_patcher_patches: {
+        Args: {
+          p_custom_version_name?: string
+          p_hack_slug: string
+          p_patch_ids: number[]
+        }
+        Returns: undefined
+      }
       set_claim: {
         Args: { claim: string; uid: string; value: Json }
         Returns: string

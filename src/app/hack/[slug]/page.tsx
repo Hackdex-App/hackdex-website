@@ -115,7 +115,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
   
   if (!metadata) return notFound();
   
-  const { hack, images, tags, profile, otherHacks, patch } = metadata;
+  const { hack, images, tags, profile, otherHacks, patch, displayVersion } = metadata;
   const baseRom = baseRoms.find((r) => r.id === hack.base_rom);
   const author = hack.original_author ? hack.original_author : (profile?.username ? `@${profile.username}` : "Unknown");
 
@@ -148,7 +148,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
 
   // Extract patch info from cached metadata
   const patchFilename = patch?.filename || null;
-  const patchVersion = isArchive ? "Archive" : (patch?.version || "");
+  const patchVersion = displayVersion;
   const patchId = patch?.id || null;
   const lastUpdated = patch ? new Date(patch.created_at).toLocaleDateString() : null;
   const patchCreatedAt = patch?.created_at || null;
@@ -228,6 +228,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
           patchFilename={patchFilename}
           patchId={patchId ?? undefined}
           hackSlug={hack.slug}
+          patcherSelector={metadata.patcherSelector}
         />
       )}
 
@@ -596,7 +597,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
                 using our built-in patcher.
               </p>
               <p className="mt-2">
-                By pressing the "Patch Now" button, your browser will apply the downloaded <span className="font-semibold">{hack.title}</span> .bps patch file to your legally-obtained <span className="font-semibold">{baseRom?.name}</span> ROM. The patched ROM will then be automatically downloaded.
+                By pressing "Agree and Patch", your browser will download and apply the <span className="font-semibold">{hack.title}</span> .bps patch file to your legally-obtained <span className="font-semibold">{baseRom?.name}</span> ROM. The patched ROM will then be automatically downloaded.
               </p>
               <p className="mt-2">
                 No pre-patched ROMs or base ROMs are hosted or distributed on this site. All patching is done locally on your device.
