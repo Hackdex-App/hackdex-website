@@ -22,11 +22,16 @@ create policy "Patcher patches are viewable by everyone"
 create policy "Users can insert patcher patches for own hacks"
   on public.hack_patcher_patches for insert
   with check (
-    public.is_admin() OR
-    (public.is_archiver() AND public.is_archive_hack_for_archiver(hack_slug)) OR
-    exists (
-      select 1 from public.hacks h
-      where h.slug = hack_patcher_patches.hack_slug and h.created_by = auth.uid()
+    (public.is_admin() OR
+      (public.is_archiver() AND public.is_archive_hack_for_archiver(hack_slug)) OR
+      exists (
+        select 1 from public.hacks h
+        where h.slug = hack_patcher_patches.hack_slug and h.created_by = auth.uid()
+      ))
+    AND exists (
+      select 1 from public.patches p
+      where p.id = hack_patcher_patches.patch_id
+        and p.parent_hack = hack_patcher_patches.hack_slug
     )
   );
 
