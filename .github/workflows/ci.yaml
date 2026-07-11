@@ -17,6 +17,17 @@ jobs:
         with:
           version: latest
 
+      - name: Check new migrations are after main
+        run: |
+          git fetch origin main --depth=1
+          tip=$(git ls-tree --name-only origin/main:supabase/migrations | sort | tail -1)
+          oldest_new=$(git diff --name-only --diff-filter=A origin/main -- supabase/migrations \
+            | xargs -n1 basename | sort | head -1)
+          if [ -n "$oldest_new" ] && [[ ! "$oldest_new" > "$tip" ]]; then
+            echo "::error::$oldest_new must be renamed to after $tip"
+            exit 1
+          fi
+
       - name: Start Supabase local development setup
         run: supabase db start
 
