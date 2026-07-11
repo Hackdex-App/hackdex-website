@@ -16,11 +16,13 @@ export interface HackPatchFormProps {
   slug: string;
   baseRomId: string;
   existingVersions: string[];
+  isCustomPatcherActive: boolean;
+  customVersionName?: string | null;
   currentVersion?: string;
 }
 
 export default function HackPatchForm(props: HackPatchFormProps) {
-  const { slug, baseRomId, existingVersions, currentVersion } = props;
+  const { slug, baseRomId, existingVersions, isCustomPatcherActive, customVersionName, currentVersion } = props;
   const [version, setVersion] = React.useState("");
   const [patchMode, setPatchMode] = React.useState<"bps" | "rom">("bps");
   const [patchFile, setPatchFile] = React.useState<File | null>(null);
@@ -163,8 +165,19 @@ export default function HackPatchForm(props: HackPatchFormProps) {
     <div className="grid gap-5">
       {currentVersion !== undefined && (
         <div className="flex items-center rounded-md border border-[var(--border)]/70 bg-[var(--surface-2)]/20 px-3 py-2">
-          <FaInfoCircle size={12} className="mr-1 text-foreground/80" />
-          <p className="text-xs text-foreground/60">Current version: <span className="text-foreground/90 font-medium">{currentVersion || 'Not set'}</span></p>
+          <div className="min-w-[24px]">
+            <FaInfoCircle size={12} className="mr-1 text-foreground/80" />
+          </div>
+          <div className="flex flex-col">
+            <p data-has-custom-patcher={isCustomPatcherActive} className="text-xs text-foreground/60 data-[has-custom-patcher=true]:text-foreground/90 data-[has-custom-patcher=true]:text-sm">
+              {isCustomPatcherActive ? 'Public version name:' : 'Current version:'} <span className="text-foreground/90 font-bold">{currentVersion || 'Not set'}</span>
+            </p>
+            {isCustomPatcherActive && (
+              <p className="text-xs text-foreground/60 mt-1">
+                <span className="font-bold">Custom</span> selected for the <span className="font-bold">Patcher Version Settings</span>.
+              </p>
+            )}
+          </div>
         </div>
       )}
       <div className="grid gap-2">
@@ -262,18 +275,29 @@ export default function HackPatchForm(props: HackPatchFormProps) {
       {!!error && <div className="text-sm text-red-400">{error}</div>}
 
       <div className="flex items-start gap-3 border-t border-[var(--border)] pt-4 mt-2">
-        <label className="flex items-start gap-2 cursor-pointer">
+        <label className="flex items-start gap-2 cursor-pointer has-disabled:cursor-not-allowed">
           <input
             type="checkbox"
-            checked={publishAutomatically}
-            onChange={(e) => setPublishAutomatically(e.target.checked)}
+            disabled={isCustomPatcherActive || submitting}
+            checked={!isCustomPatcherActive && publishAutomatically}
+            onChange={(e) => {
+              if (isCustomPatcherActive) return;
+              setPublishAutomatically(e.target.checked);
+            }}
             className="mt-0.5 rounded border-[var(--border)] text-emerald-600 focus:ring-emerald-600"
           />
           <div className="text-sm">
             <div className="font-medium text-foreground/90">Publish Automatically</div>
-            <div className="text-foreground/60 mt-0.5">
-              If checked, this version will be published and set as the current patch immediately after upload.
-            </div>
+            {isCustomPatcherActive ? (
+              <div className="italic text-foreground/60 mt-0.5">
+                <p>Because you have "Custom" selected for the Patcher Version Settings, this version <span className="font-bold">cannot</span> be published automatically.</p>
+                <p className="mt-1">To make this patch available for download, you will need to manually select it after pressing the <span className="font-bold">"Edit patcher versions"</span> button.</p>
+              </div>
+            ): (
+              <div className="text-foreground/60 mt-0.5">
+                If checked, this version will be published and set as the current patch immediately after upload.
+              </div>
+            )}
           </div>
         </label>
       </div>

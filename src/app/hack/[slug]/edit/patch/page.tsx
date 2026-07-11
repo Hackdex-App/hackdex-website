@@ -4,6 +4,7 @@ import HackPatchForm from "@/components/Hack/HackPatchForm";
 import Link from "next/link";
 import { FaChevronLeft } from "react-icons/fa6";
 import { isInformationalArchiveHack, isDownloadableArchiveHack, canEditAsCreator, canEditAsAdmin, canEditAsArchiver } from "@/utils/hack";
+import { getPatcherSelectablePatches } from "@/utils/patches/patcher-selectable-patches";
 
 interface EditPatchPageProps {
   params: Promise<{ slug: string }>;
@@ -19,7 +20,7 @@ export default async function EditPatchPage({ params }: EditPatchPageProps) {
 
   const { data: hack } = await supabase
     .from("hacks")
-    .select("slug,base_rom,created_by,title,current_patch,original_author,permission_from,is_archive")
+    .select("slug,base_rom,created_by,title,current_patch,original_author,permission_from,is_archive,custom_version_name")
     .eq("slug", slug)
     .maybeSingle();
   if (!hack) return notFound();
@@ -55,8 +56,11 @@ export default async function EditPatchPage({ params }: EditPatchPageProps) {
     .order("created_at", { ascending: true });
   const existingVersions = (patchRows || []).map((p: any) => p.version as string);
 
+  const patcherSelection = await getPatcherSelectablePatches(supabase, slug, hack.current_patch);
+  const isCustomPatcherActive = patcherSelection.savedPatchIds.length > 0;
+
   const currentPatch = patchRows?.find((p: any) => p.id === hack.current_patch);
-  const currentVersion = currentPatch?.version;
+  const currentVersion = isCustomPatcherActive ? hack.custom_version_name ?? undefined : currentPatch?.version;
 
   return (
     <div className="mx-auto max-w-screen-lg px-6 py-10">
@@ -70,6 +74,8 @@ export default async function EditPatchPage({ params }: EditPatchPageProps) {
           slug={slug}
           baseRomId={hack.base_rom}
           existingVersions={existingVersions}
+          isCustomPatcherActive={isCustomPatcherActive}
+          customVersionName={isCustomPatcherActive ? hack.custom_version_name : undefined}
           currentVersion={currentVersion}
         />
       </div>
