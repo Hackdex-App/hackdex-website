@@ -1,12 +1,7 @@
 DO $$ BEGIN
-  IF EXISTS (
-    SELECT 1
-    FROM pg_enum e
-    JOIN pg_type t ON e.enumtypid = t.oid
-    WHERE t.typname = 'Tag Categories' AND e.enumlabel = 'Sprites'
-  ) THEN
-    ALTER TYPE public."Tag Categories" RENAME VALUE 'Sprites' TO 'Graphics';
-  END IF;
+  if exists (select 1 from pg_type where typname = 'Tag Categories' and typtype = 'e' and typarray = 0) then
+    alter type public."Tag Categories" rename value 'Sprites' to 'Graphics';
+  end if;
 END $$;
 
 alter type public."Tag Categories" add value if not exists 'Category';

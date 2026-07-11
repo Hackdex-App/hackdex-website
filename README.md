@@ -125,13 +125,14 @@ After Supabase and MinIO are running, reset the database and upload dev fixtures
 npm run db:reset
 ```
 
-This runs `supabase db reset` (migrations + [`supabase/seed.sql`](supabase/seed.sql)) and uploads the example BPS patch to MinIO via [`scripts/seed-storage.mjs`](scripts/seed-storage.mjs).
+This runs `supabase db reset` (migrations only — `[db.seed]` is disabled for CI), applies [`supabase/seed.sql`](supabase/seed.sql) via the local Supabase Postgres container, then uploads the shared BPS patch and cover images to MinIO via [`scripts/seed-storage.mjs`](scripts/seed-storage.mjs).
 
 You can also run the steps separately:
 
 ```
-supabase db reset      # Postgres seed only
-npm run seed:storage   # upload public/patches/example_patch.bps → MinIO
+supabase db reset
+docker exec -i supabase_db_pokemon-romhack-platform psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/seed.sql
+npm run seed:storage
 ```
 
 **Dev login accounts** (password `Password1` for all):
@@ -140,18 +141,29 @@ npm run seed:storage   # upload public/patches/example_patch.bps → MinIO
 |-------|----------|------|
 | `admin@hackdex.local` | `admin` | Admin (`claims_admin`) |
 | `creator@hackdex.local` | `creator` | Regular creator |
-| `creator2@hackdex.local` | `creator2` | Owns the pending hack |
+| `creator2@hackdex.local` | `creator2` | Owns pending hacks |
 
-**Seeded hacks:**
+**Seeded hacks (highlights):**
 
 | Slug | Status | Purpose |
 |------|--------|---------|
-| `seed-emerald-demo` | Approved | Discover, download, in-browser patch (uses `poke_emerald`) |
-| `seed-pending-demo` | Pending | Admin dashboard approval flow |
+| `seed-emerald-demo` | Approved | Baseline discover, download, patch (`poke_emerald`); edit tags to see “New” badges |
+| `seed-pending-demo` | Pending | Missing patch/screenshot warnings |
+| `seed-pending-ready` | Pending | Ready-for-review (patch + covers present) |
+| `seed-patcher-only-{account}-{1\|2\|3}` | Approved | Nine editable sandboxes (3 per account), patcher-only (`None` permission) |
+| `seed-all-downloads` | Approved | Direct download on all published versions (`All`) |
+| `seed-current-only` | Approved | Direct download on current version only (`Current`) |
+| `seed-draft-version` | Approved | Unpublished draft + publish UI |
+| `seed-archived-version` | Approved | Archived older version + restore |
+| `seed-archive-info` | Archive | Informational archive (no patch) |
+| `seed-archive-download` | Archive | Downloadable archive with permission |
+| `seed-third-party` | Approved | Third-party author display |
 
-To test in-browser patching on `seed-emerald-demo`, link a local **Pokémon Emerald** ROM (CRC32 `1f1c08fb`). The patch file is [`public/patches/example_patch.bps`](public/patches/example_patch.bps), uploaded to MinIO as `seed-emerald-demo-1.0.bps`.
+All patch rows share one MinIO object (`seed-shared.bps`). Complete hacks have ≥3 cover images (`{slug}/cover-1.png` …) fetched from placehold.co during `seed:storage`.
 
-**Note:** `seed:storage` requires `S3_*` and `PATCHES_BUCKET` in `.env.local` or `.env.development.local`. If `PATCH_TOKEN_SECRET` and `PATCHES_DOWNLOAD_BASE_URL` are set, patch downloads route through the Cloudflare Worker instead of MinIO — unset those for local MinIO testing.
+To test in-browser patching on `seed-emerald-demo`, link a local **Pokémon Emerald** ROM (CRC32 `1f1c08fb`). The patch file is [`public/patches/example_patch.bps`](public/patches/example_patch.bps), uploaded as `seed-shared.bps`.
+
+**Note:** `seed:storage` requires `S3_*`, `PATCHES_BUCKET`, and `COVERS_BUCKET` in `.env.local` or `.env.development.local`, plus `NEXT_PUBLIC_HACK_COVERS_DOMAIN` for viewing covers in the app. It needs network access to placehold.co for cover images. If `PATCH_TOKEN_SECRET` and `PATCHES_DOWNLOAD_BASE_URL` are set, patch downloads route through the Cloudflare Worker instead of MinIO — unset those for local MinIO testing.
 
 ### Install & run
 
