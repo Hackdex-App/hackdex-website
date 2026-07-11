@@ -733,6 +733,7 @@ export async function rollbackToVersion(slug: string, patchId: number): Promise<
   if (unpubErr) return { ok: false, error: unpubErr.message };
 
   revalidateTag(`hack:${slug}:metadata`);
+  revalidateTag("discover");
   revalidatePath(`/hack/${slug}/versions`);
   revalidatePath(`/hack/${slug}`);
   return { ok: true };
@@ -925,6 +926,7 @@ export async function publishPatchVersion(slug: string, patchId: number): Promis
   }
 
   revalidateTag(`hack:${slug}:metadata`);
+  revalidateTag("discover");
   revalidatePath(`/hack/${slug}/versions`);
   revalidatePath(`/hack/${slug}`);
   return { ok: true, willBecomeCurrent };
@@ -1093,6 +1095,7 @@ export async function updatePatcherSelectablePatches(
   if (replaceErr) return { ok: false, error: replaceErr.message };
 
   revalidateTag(`hack:${slug}:metadata`);
+  revalidateTag("discover");
   revalidatePath(`/hack/${slug}`);
   revalidatePath(`/hack/${slug}/versions`);
 
