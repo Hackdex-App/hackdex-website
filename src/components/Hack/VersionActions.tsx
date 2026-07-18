@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { FiX, FiMoreVertical } from "react-icons/fi";
+import { FiMoreVertical } from "react-icons/fi";
 import {
   FaDownload,
   FaTrash,
@@ -10,6 +10,7 @@ import {
   FaCheck,
 } from "react-icons/fa6";
 import { Menu, MenuButton, MenuItem, MenuItems, MenuSeparator } from "@headlessui/react";
+import Modal from "@/components/Primitives/Modal";
 import {
   archivePatchVersion,
   restorePatchVersion,
@@ -422,32 +423,31 @@ export default function VersionActions({
         </Menu>
 
         {/* Restore Modal */}
-        {showRestoreModal && (
-          <Modal
-            title="Restore Version"
-            onClose={() => !actionLoading && setShowRestoreModal(false)}
-          >
-            <p className="text-foreground/80 mb-4">
-              Restore version <strong>{patch.version}</strong>? This will make it visible again.
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={handleRestore}
-                disabled={actionLoading}
-                className="flex-1 rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {actionLoading ? "Restoring..." : "Restore"}
-              </button>
-              <button
-                onClick={() => setShowRestoreModal(false)}
-                disabled={actionLoading}
-                className="flex-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-4 py-2 text-sm font-medium hover:bg-[var(--surface-3)] disabled:opacity-50"
-              >
-                Cancel
-              </button>
-            </div>
-          </Modal>
-        )}
+        <Modal
+          title="Restore Version"
+          visible={showRestoreModal}
+          onClose={() => !actionLoading && setShowRestoreModal(false)}
+        >
+          <p className="text-foreground/80 mb-4">
+            Restore version <strong>{patch.version}</strong>? This will make it visible again.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={handleRestore}
+              disabled={actionLoading}
+              className="flex-1 rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {actionLoading ? "Restoring..." : "Restore"}
+            </button>
+            <button
+              onClick={() => setShowRestoreModal(false)}
+              disabled={actionLoading}
+              className="flex-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-4 py-2 text-sm font-medium hover:bg-[var(--surface-3)] disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </Modal>
       </>
     );
   }
@@ -581,115 +581,223 @@ export default function VersionActions({
       </Menu>
 
       {/* Delete Modal */}
-      {showDeleteModal && (
-        <Modal
-          title="Archive Version"
-          onClose={() => !actionLoading && setShowDeleteModal(false)}
-        >
-          {archiveWouldRemoveLastCustomPatch ? (
+      <Modal
+        title="Archive Version"
+        visible={showDeleteModal}
+        onClose={() => !actionLoading && setShowDeleteModal(false)}
+      >
+        {archiveWouldRemoveLastCustomPatch ? (
+          <p className="text-foreground/80 mb-4">
+            Version <strong>{patch.version}</strong> is one of the last 2 versions in the <strong>Custom</strong> patcher list. Switch to <strong>Latest published patch</strong> or add another Custom version before archiving it.
+          </p>
+        ) : (
+          <>
             <p className="text-foreground/80 mb-4">
-              Version <strong>{patch.version}</strong> is one of the last 2 versions in the <strong>Custom</strong> patcher list. Switch to <strong>Latest published patch</strong> or add another Custom version before archiving it.
+              Are you sure you want to archive version <strong>{patch.version}</strong>? This will hide it from public view, but it can be restored later.
             </p>
-          ) : (
-            <>
-              <p className="text-foreground/80 mb-4">
-                Are you sure you want to archive version <strong>{patch.version}</strong>? This will hide it from public view, but it can be restored later.
+            {isInCustomPatcherList && (
+              <p className="text-sm text-foreground/60 mb-4">
+                This version will also be removed from the Custom patcher list.
               </p>
-              {isInCustomPatcherList && (
-                <p className="text-sm text-foreground/60 mb-4">
-                  This version will also be removed from the Custom patcher list.
-                </p>
-              )}
-            </>
-          )}
-          <div className="flex gap-2">
-            {!archiveWouldRemoveLastCustomPatch && (
-              <button
-                onClick={handleDelete}
-                disabled={actionLoading}
-                className="flex-1 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {actionLoading ? "Archiving..." : "Archive"}
-              </button>
             )}
+          </>
+        )}
+        <div className="flex gap-2">
+          {!archiveWouldRemoveLastCustomPatch && (
             <button
-              onClick={() => setShowDeleteModal(false)}
+              onClick={handleDelete}
               disabled={actionLoading}
-              className="flex-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-4 py-2 text-sm font-medium hover:bg-[var(--surface-3)] disabled:opacity-50"
+              className="flex-1 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Cancel
+              {actionLoading ? "Archiving..." : "Archive"}
             </button>
-          </div>
-        </Modal>
-      )}
+          )}
+          <button
+            onClick={() => setShowDeleteModal(false)}
+            disabled={actionLoading}
+            className="flex-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-4 py-2 text-sm font-medium hover:bg-[var(--surface-3)] disabled:opacity-50"
+          >
+            Cancel
+          </button>
+        </div>
+      </Modal>
 
       {/* Rollback Modal */}
-      {showRollbackModal && (
-        <Modal
-          title="Rollback to Version"
-          onClose={() => !actionLoading && setShowRollbackModal(false)}
-        >
-          <p className="text-foreground/80 mb-4">
-            Rollback to version <strong>{patch.version}</strong>? This will set this version as the current patch and unpublish all newer versions.
-          </p>
-          <div className="flex gap-2">
-            <button
-              onClick={handleRollback}
-              disabled={actionLoading}
-              className="flex-1 rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {actionLoading ? "Rolling back..." : "Rollback"}
-            </button>
-            <button
-              onClick={() => setShowRollbackModal(false)}
-              disabled={actionLoading}
-              className="flex-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-4 py-2 text-sm font-medium hover:bg-[var(--surface-3)] disabled:opacity-50"
-            >
-              Cancel
-            </button>
-          </div>
-        </Modal>
-      )}
+      <Modal
+        title="Rollback to Version"
+        visible={showRollbackModal}
+        onClose={() => !actionLoading && setShowRollbackModal(false)}
+      >
+        <p className="text-foreground/80 mb-4">
+          Rollback to version <strong>{patch.version}</strong>? This will set this version as the current patch and unpublish all newer versions.
+        </p>
+        <div className="flex gap-2">
+          <button
+            onClick={handleRollback}
+            disabled={actionLoading}
+            className="flex-1 rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {actionLoading ? "Rolling back..." : "Rollback"}
+          </button>
+          <button
+            onClick={() => setShowRollbackModal(false)}
+            disabled={actionLoading}
+            className="flex-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-4 py-2 text-sm font-medium hover:bg-[var(--surface-3)] disabled:opacity-50"
+          >
+            Cancel
+          </button>
+        </div>
+      </Modal>
 
       {/* Publish Modal */}
-      {showPublishModal && (
-        <Modal
-          title="Publish Version"
-          onClose={() => !actionLoading && setShowPublishModal(false)}
-        >
-          <p className="text-foreground/80 mb-4">
-            Publish version <strong>{patch.version}</strong>? This will make it viewable to the public along with its changelog.
-          </p>
-          <p className="text-sm text-foreground/60 mb-4">
-            {isCustomPatcherActive
-              ? "This will not add the version to the Custom patcher list. Add it through Patcher Version Settings if you want it available in the homepage downloader."
-              : "If this version is newer than the current patch, it will become the primary download used for all users."}
-          </p>
-          <div className="flex gap-2">
-            <button
-              onClick={handlePublish}
-              disabled={actionLoading}
-              className="flex-1 rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {actionLoading ? "Publishing..." : "Publish"}
-            </button>
-            <button
-              onClick={() => setShowPublishModal(false)}
-              disabled={actionLoading}
-              className="flex-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-4 py-2 text-sm font-medium hover:bg-[var(--surface-3)] disabled:opacity-50"
-            >
-              Cancel
-            </button>
-          </div>
-        </Modal>
-      )}
+      <Modal
+        title="Publish Version"
+        visible={showPublishModal}
+        onClose={() => !actionLoading && setShowPublishModal(false)}
+      >
+        <p className="text-foreground/80 mb-4">
+          Publish version <strong>{patch.version}</strong>? This will make it viewable to the public along with its changelog.
+        </p>
+        <p className="text-sm text-foreground/60 mb-4">
+          {isCustomPatcherActive
+            ? "This will not add the version to the Custom patcher list. Add it through Patcher Version Settings if you want it available in the homepage downloader."
+            : "If this version is newer than the current patch, it will become the primary download used for all users."}
+        </p>
+        <div className="flex gap-2">
+          <button
+            onClick={handlePublish}
+            disabled={actionLoading}
+            className="flex-1 rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {actionLoading ? "Publishing..." : "Publish"}
+          </button>
+          <button
+            onClick={() => setShowPublishModal(false)}
+            disabled={actionLoading}
+            className="flex-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-4 py-2 text-sm font-medium hover:bg-[var(--surface-3)] disabled:opacity-50"
+          >
+            Cancel
+          </button>
+        </div>
+      </Modal>
 
       {/* Re-upload Modal */}
-      {showReuploadModal && (
-        <Modal
-          title="Re-upload Patch File"
-          onClose={() => {
-            if (!actionLoading) {
+      <Modal
+        title="Re-upload Patch File"
+        visible={showReuploadModal}
+        onClose={() => {
+          if (!actionLoading) {
+            setShowReuploadModal(false);
+            setReuploadFile(null);
+            setReuploadError(null);
+            setChecksumStatus("idle");
+            setChecksumError("");
+            setGenStatus("idle");
+            setGenError("");
+            setBaseRomFile(null);
+            setPatchMode("bps");
+          }
+        }}
+      >
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-2">
+            Provide patch <span className="text-red-500">*</span>
+          </label>
+          <div className="flex flex-col gap-3">
+            <div className="inline-flex items-center">
+              <button
+                type="button"
+                onClick={() => setPatchMode("bps")}
+                className={`rounded-md rounded-r-none px-3 py-1.5 text-xs border-l-1 border-y-1 ${patchMode === "bps" ? "bg-[var(--surface-2)] border-[var(--border)]" : "text-foreground/70 border-[var(--border)]"}`}
+              >
+                Upload .bps
+              </button>
+              <button
+                type="button"
+                onClick={() => setPatchMode("rom")}
+                className={`rounded-md rounded-l-none px-3 py-1.5 text-xs border-1 ${patchMode === "rom" ? "bg-[var(--surface-2)] border-[var(--border)]" : "text-foreground/70 border-[var(--border)]"}`}
+              >
+                Upload modified ROM (auto-generate .bps)
+              </button>
+            </div>
+
+            {patchMode === "bps" && (
+              <div className="grid gap-2">
+                <input
+                  ref={patchInputRef}
+                  onChange={onUploadPatch}
+                  type="file"
+                  accept=".bps"
+                  className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] file:bg-black/10 dark:file:bg-[var(--surface-2)] file:text-foreground/80 file:text-sm file:font-medium file:not-italic file:rounded-md file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer"
+                />
+                <p className="text-xs text-foreground/60">Upload a BPS patch file.</p>
+                {checksumStatus === "validating" && <div className="text-xs text-foreground/70">Validating checksum…</div>}
+                {checksumStatus === "valid" && <div className="text-xs text-emerald-400/90">Checksum valid.</div>}
+                {checksumStatus === "invalid" && !!checksumError && <div className="text-xs text-red-400">{checksumError}</div>}
+                {checksumStatus === "unknown" && !!checksumError && <div className="text-xs text-amber-400/90">{checksumError}</div>}
+              </div>
+            )}
+
+            {patchMode === "rom" && (
+              <div className="grid gap-3">
+                <div className="rounded-md border border-[var(--border)] p-3 bg-[var(--surface-2)]/50">
+                  <div className="text-xs text-foreground/75">Required base ROM</div>
+                  <div className="mt-1 text-sm font-medium">{baseRomEntry ? `${baseRomEntry.name} (${baseRomEntry.platform})` : "Unknown base ROM"}</div>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                    <span className={`rounded-full px-2 py-0.5 ring-1 ${baseRomReady ? "bg-emerald-600/60 text-white ring-emerald-700/80 dark:bg-emerald-500/25 dark:text-emerald-100 dark:ring-emerald-400/90" : baseRomNeedsPermission ? "bg-amber-600/60 text-white ring-amber-700/80 dark:bg-amber-500/50 dark:text-amber-100 dark:ring-amber-400/90" : "bg-red-600/60 text-white ring-red-700/80 dark:bg-red-500/50 dark:text-red-100 dark:ring-red-400/90"}`}>
+                      {baseRomReady ? "Ready" : baseRomNeedsPermission ? "Permission needed" : "Base ROM needed"}
+                    </span>
+                    {baseRomNeedsPermission && (
+                      <button type="button" onClick={onGrantPermission} disabled={!supported} className="rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2 py-1 disabled:opacity-60 disabled:cursor-not-allowed">Grant permission</button>
+                    )}
+                    {baseRomMissing && (
+                      <label className="inline-flex items-center gap-2 text-xs text-foreground/80">
+                        <input
+                          ref={baseRomInputRef}
+                          type="file"
+                          onChange={onUploadBaseRom}
+                          accept={baseRomPlatform ? platformAccept(baseRomPlatform) : "*/*"}
+                          className="rounded-md bg-[var(--surface-2)] px-2 py-1 text-xs ring-1 ring-inset ring-[var(--border)]"
+                        />
+                        <span>Upload base ROM</span>
+                      </label>
+                    )}
+                  </div>
+                  {!!genError && <div className="mt-2 text-xs text-red-400">{genError}</div>}
+                </div>
+
+                <div className="grid gap-2">
+                  <label className="text-sm text-foreground/80">Modified ROM</label>
+                  <input
+                    ref={modifiedRomInputRef}
+                    type="file"
+                    accept={baseRomPlatform ? platformAccept(baseRomPlatform) : "*/*"}
+                    disabled={!baseRomEntry || !baseRomReady || !baseRomPlatform}
+                    onChange={onUploadModifiedRom}
+                    className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm ring-1 ring-inset ring-[var(--border)] disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                  <p className="text-xs text-foreground/60">We'll generate a .bps patch on-device. No ROMs are uploaded.</p>
+                  {genStatus === "generating" && <div className="text-xs text-foreground/70">Generating patch…</div>}
+                  {genStatus === "ready" && reuploadFile && <div className="text-xs text-emerald-400/90">Patch ready: {reuploadFile.name}</div>}
+                  {genStatus === "error" && !!genError && <div className="text-xs text-red-400">{genError}</div>}
+                </div>
+              </div>
+            )}
+          </div>
+          {reuploadError && (
+            <p className="mt-2 text-sm text-red-400">{reuploadError}</p>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={handleReupload}
+            disabled={actionLoading || !reuploadFile || checksumStatus === "invalid"}
+            className="flex-1 rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {actionLoading ? "Uploading..." : "Upload"}
+          </button>
+          <button
+            onClick={() => {
               setShowReuploadModal(false);
               setReuploadFile(null);
               setReuploadError(null);
@@ -699,163 +807,15 @@ export default function VersionActions({
               setGenError("");
               setBaseRomFile(null);
               setPatchMode("bps");
-            }
-          }}
-        >
-          <div className="mb-4">
-            <label className="block text-sm font-medium mb-2">
-              Provide patch <span className="text-red-500">*</span>
-            </label>
-            <div className="flex flex-col gap-3">
-              <div className="inline-flex items-center">
-                <button
-                  type="button"
-                  onClick={() => setPatchMode("bps")}
-                  className={`rounded-md rounded-r-none px-3 py-1.5 text-xs border-l-1 border-y-1 ${patchMode === "bps" ? "bg-[var(--surface-2)] border-[var(--border)]" : "text-foreground/70 border-[var(--border)]"}`}
-                >
-                  Upload .bps
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPatchMode("rom")}
-                  className={`rounded-md rounded-l-none px-3 py-1.5 text-xs border-1 ${patchMode === "rom" ? "bg-[var(--surface-2)] border-[var(--border)]" : "text-foreground/70 border-[var(--border)]"}`}
-                >
-                  Upload modified ROM (auto-generate .bps)
-                </button>
-              </div>
-
-              {patchMode === "bps" && (
-                <div className="grid gap-2">
-                  <input
-                    ref={patchInputRef}
-                    onChange={onUploadPatch}
-                    type="file"
-                    accept=".bps"
-                    className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] file:bg-black/10 dark:file:bg-[var(--surface-2)] file:text-foreground/80 file:text-sm file:font-medium file:not-italic file:rounded-md file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer"
-                  />
-                  <p className="text-xs text-foreground/60">Upload a BPS patch file.</p>
-                  {checksumStatus === "validating" && <div className="text-xs text-foreground/70">Validating checksum…</div>}
-                  {checksumStatus === "valid" && <div className="text-xs text-emerald-400/90">Checksum valid.</div>}
-                  {checksumStatus === "invalid" && !!checksumError && <div className="text-xs text-red-400">{checksumError}</div>}
-                  {checksumStatus === "unknown" && !!checksumError && <div className="text-xs text-amber-400/90">{checksumError}</div>}
-                </div>
-              )}
-
-              {patchMode === "rom" && (
-                <div className="grid gap-3">
-                  <div className="rounded-md border border-[var(--border)] p-3 bg-[var(--surface-2)]/50">
-                    <div className="text-xs text-foreground/75">Required base ROM</div>
-                    <div className="mt-1 text-sm font-medium">{baseRomEntry ? `${baseRomEntry.name} (${baseRomEntry.platform})` : "Unknown base ROM"}</div>
-                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                      <span className={`rounded-full px-2 py-0.5 ring-1 ${baseRomReady ? "bg-emerald-600/60 text-white ring-emerald-700/80 dark:bg-emerald-500/25 dark:text-emerald-100 dark:ring-emerald-400/90" : baseRomNeedsPermission ? "bg-amber-600/60 text-white ring-amber-700/80 dark:bg-amber-500/50 dark:text-amber-100 dark:ring-amber-400/90" : "bg-red-600/60 text-white ring-red-700/80 dark:bg-red-500/50 dark:text-red-100 dark:ring-red-400/90"}`}>
-                        {baseRomReady ? "Ready" : baseRomNeedsPermission ? "Permission needed" : "Base ROM needed"}
-                      </span>
-                      {baseRomNeedsPermission && (
-                        <button type="button" onClick={onGrantPermission} disabled={!supported} className="rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2 py-1 disabled:opacity-60 disabled:cursor-not-allowed">Grant permission</button>
-                      )}
-                      {baseRomMissing && (
-                        <label className="inline-flex items-center gap-2 text-xs text-foreground/80">
-                          <input
-                            ref={baseRomInputRef}
-                            type="file"
-                            onChange={onUploadBaseRom}
-                            accept={baseRomPlatform ? platformAccept(baseRomPlatform) : "*/*"}
-                            className="rounded-md bg-[var(--surface-2)] px-2 py-1 text-xs ring-1 ring-inset ring-[var(--border)]"
-                          />
-                          <span>Upload base ROM</span>
-                        </label>
-                      )}
-                    </div>
-                    {!!genError && <div className="mt-2 text-xs text-red-400">{genError}</div>}
-                  </div>
-
-                  <div className="grid gap-2">
-                    <label className="text-sm text-foreground/80">Modified ROM</label>
-                    <input
-                      ref={modifiedRomInputRef}
-                      type="file"
-                      accept={baseRomPlatform ? platformAccept(baseRomPlatform) : "*/*"}
-                      disabled={!baseRomEntry || !baseRomReady || !baseRomPlatform}
-                      onChange={onUploadModifiedRom}
-                      className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm ring-1 ring-inset ring-[var(--border)] disabled:opacity-50 disabled:cursor-not-allowed"
-                    />
-                    <p className="text-xs text-foreground/60">We'll generate a .bps patch on-device. No ROMs are uploaded.</p>
-                    {genStatus === "generating" && <div className="text-xs text-foreground/70">Generating patch…</div>}
-                    {genStatus === "ready" && reuploadFile && <div className="text-xs text-emerald-400/90">Patch ready: {reuploadFile.name}</div>}
-                    {genStatus === "error" && !!genError && <div className="text-xs text-red-400">{genError}</div>}
-                  </div>
-                </div>
-              )}
-            </div>
-            {reuploadError && (
-              <p className="mt-2 text-sm text-red-400">{reuploadError}</p>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={handleReupload}
-              disabled={actionLoading || !reuploadFile || checksumStatus === "invalid"}
-              className="flex-1 rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {actionLoading ? "Uploading..." : "Upload"}
-            </button>
-            <button
-              onClick={() => {
-                setShowReuploadModal(false);
-                setReuploadFile(null);
-                setReuploadError(null);
-                setChecksumStatus("idle");
-                setChecksumError("");
-                setGenStatus("idle");
-                setGenError("");
-                setBaseRomFile(null);
-                setPatchMode("bps");
-              }}
-              disabled={actionLoading}
-              className="flex-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-4 py-2 text-sm font-medium hover:bg-[var(--surface-3)] disabled:opacity-50"
-            >
-              Cancel
-            </button>
-          </div>
-        </Modal>
-      )}
+            }}
+            disabled={actionLoading}
+            className="flex-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-4 py-2 text-sm font-medium hover:bg-[var(--surface-3)] disabled:opacity-50"
+          >
+            Cancel
+          </button>
+        </div>
+      </Modal>
     </>
-  );
-}
-
-function Modal({
-  title,
-  children,
-  onClose,
-}: {
-  title: string;
-  children: React.ReactNode;
-  onClose: () => void;
-}) {
-  return (
-    <div className="fixed left-0 right-0 top-0 bottom-0 z-[100] flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black/50 dark:bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        className="relative z-[101] card backdrop-blur-lg dark:!bg-black/70 p-6 max-w-md w-full rounded-lg"
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close modal"
-          className="absolute top-4 right-4 p-1.5 rounded-md text-foreground/60 hover:text-foreground hover:bg-[var(--surface-2)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-        >
-          <FiX size={20} />
-        </button>
-        <h2 className="text-xl font-semibold mb-4 pr-8">{title}</h2>
-        {children}
-      </div>
-    </div>
   );
 }
 

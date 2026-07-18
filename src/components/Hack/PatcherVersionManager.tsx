@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FiX } from "react-icons/fi";
+import Modal from "@/components/Primitives/Modal";
 import { updatePatcherSelectablePatches } from "@/app/hack/[slug]/actions";
 import PatcherVersionSettings from "@/components/Hack/PatcherVersionSettings";
 import VersionList from "@/components/Hack/VersionList";
@@ -308,105 +308,68 @@ export default function PatcherVersionManager({
         isCustomPatcherActive={publishedOption === "custom"}
         onTogglePatcherPatch={togglePatch}
       />
-      {showPublishModal && (
-        <Modal
-          title="Publish Patcher Changes"
-          onClose={() => !saving && setShowPublishModal(false)}
-        >
-          <p className="text-foreground/80 mb-3">
-            These patches will be available to choose from in the downloader on your hack&apos;s homepage:
-          </p>
-          {draftVersionLabels.length > 0 ? (
-            <ul className="mb-4 space-y-1 text-sm text-foreground/75">
-              {draftVersionLabels.map((label, index) => (
-                <li key={label} className="flex items-center gap-2">
-                  <span aria-hidden>-</span>
-                  <span>{label}</span>
-                  {draftOption === "custom" && index === 0 && (
-                    <span className="inline-flex items-center rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-                      Default
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mb-4 text-sm text-foreground/60">No current patch is set.</p>
-          )}
-          {draftOption === "custom" && (
-            <p className="mb-4 text-sm text-foreground/70">
-              Public version name: <strong className="text-foreground">{draftCustomVersionName.trim()}</strong>
-            </p>
-          )}
-          {selectedUnpublishedVersionLabels.length > 0 && (
-            <p className="mb-4 text-sm text-amber-600 dark:text-amber-400">
-              Selected unpublished versions will be published when these changes are saved.
-            </p>
-          )}
-          {publishError && (
-            <p className="mb-4 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
-              {publishError}
-            </p>
-          )}
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={confirmPublish}
-              disabled={saving}
-              className="flex-1 inline-flex items-center justify-center rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-[var(--accent-foreground)] hover:bg-[var(--accent-700)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {saving ? "Publishing..." : "Publish Changes"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setShowPublishModal(false);
-                setPublishError(null);
-              }}
-              disabled={saving}
-              className="flex-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-4 py-2 text-sm font-medium hover:bg-[var(--surface-3)] disabled:opacity-50"
-            >
-              Cancel
-            </button>
-          </div>
-        </Modal>
-      )}
-    </>
-  );
-}
-
-function Modal({
-  title,
-  children,
-  onClose,
-}: {
-  title: string;
-  children: React.ReactNode;
-  onClose: () => void;
-}) {
-  return (
-    <div className="fixed left-0 right-0 top-0 bottom-0 z-[100] flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black/50 dark:bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        className="relative z-[101] card backdrop-blur-lg dark:!bg-black/70 p-6 max-w-md w-full rounded-lg"
+      <Modal
+        title="Publish Patcher Changes"
+        visible={showPublishModal}
+        onClose={() => !saving && setShowPublishModal(false)}
       >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close modal"
-          className="absolute top-4 right-4 p-1.5 rounded-md text-foreground/60 hover:text-foreground hover:bg-[var(--surface-2)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-        >
-          <FiX size={20} />
-        </button>
-        <h2 className="text-xl font-semibold mb-4 pr-8">{title}</h2>
-        {children}
-      </div>
-    </div>
+        <p className="text-foreground/80 mb-3">
+          These patches will be available to choose from in the downloader on your hack&apos;s homepage:
+        </p>
+        {draftVersionLabels.length > 0 ? (
+          <ul className="mb-4 space-y-1 text-sm text-foreground/75">
+            {draftVersionLabels.map((label, index) => (
+              <li key={label} className="flex items-center gap-2">
+                <span aria-hidden>-</span>
+                <span>{label}</span>
+                {draftOption === "custom" && index === 0 && (
+                  <span className="inline-flex items-center rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                    Default
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mb-4 text-sm text-foreground/60">No current patch is set.</p>
+        )}
+        {draftOption === "custom" && (
+          <p className="mb-4 text-sm text-foreground/70">
+            Public version name: <strong className="text-foreground">{draftCustomVersionName.trim()}</strong>
+          </p>
+        )}
+        {selectedUnpublishedVersionLabels.length > 0 && (
+          <p className="mb-4 text-sm text-amber-600 dark:text-amber-400">
+            Selected unpublished versions will be published when these changes are saved.
+          </p>
+        )}
+        {publishError && (
+          <p className="mb-4 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+            {publishError}
+          </p>
+        )}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={confirmPublish}
+            disabled={saving}
+            className="flex-1 inline-flex items-center justify-center rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-[var(--accent-foreground)] hover:bg-[var(--accent-700)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {saving ? "Publishing..." : "Publish Changes"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setShowPublishModal(false);
+              setPublishError(null);
+            }}
+            disabled={saving}
+            className="flex-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-4 py-2 text-sm font-medium hover:bg-[var(--surface-3)] disabled:opacity-50"
+          >
+            Cancel
+          </button>
+        </div>
+      </Modal>
+    </>
   );
 }
