@@ -26,6 +26,7 @@ import { sha1Hex } from "@/utils/hash";
 import { platformAccept, setDraftCovers, getDraftCovers, deleteDraftCovers } from "@/utils/idb";
 import { slugify, sortOrderedTags } from "@/utils/format";
 import type { CatalogTagRow } from "@/types/catalogTag";
+import { HACK_FORM_DESCRIPTION_PLACEHOLDER } from "./hackFormConstants";
 
 function SortableCoverItem({ id, index, url, filename, onRemove }: { id: string; index: number; url: string; filename: string; onRemove: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
@@ -98,7 +99,7 @@ export default function HackSubmitForm({
   }
   const [title, setTitle] = React.useState(() => initialDraftRef.current?.title || "");
   const [summary, setSummary] = React.useState(() => initialDraftRef.current?.summary || "");
-  const [description, setDescription] = React.useState(() => initialDraftRef.current?.description || "");
+  const [description, setDescription] = React.useState(() => initialDraftRef.current?.description || HACK_FORM_DESCRIPTION_PLACEHOLDER);
   const [newCoverFiles, setNewCoverFiles] = React.useState<File[]>([]);
   const [coverErrors, setCoverErrors] = React.useState<string[]>([]);
   const [baseRom, setBaseRom] = React.useState(() => initialDraftRef.current?.baseRom || "");
@@ -938,6 +939,10 @@ export default function HackSubmitForm({
                       </div>
                     )}
                   </div>
+                  <p className="text-xs text-foreground/60">
+                    A credits section is required.{" "}
+                    <a href="https://www.markdownguide.org/basic-syntax/" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground/80 transition-colors">Supports Markdown <FiExternalLink className="inline-block h-3 w-3" /></a>
+                  </p>
                   {isDummy ? (
                     <div className="prose max-w-none h-36 rounded-md bg-[var(--surface-2)] px-3 py-2 ring-1 ring-inset ring-[var(--border)] text-foreground/60 select-none">
                       <Markdown headingLevelOffset={1}>{description || "Write a longer markdown description here."}</Markdown>
@@ -947,7 +952,7 @@ export default function HackSubmitForm({
                       rows={14}
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
-                      placeholder="Supports Markdown"
+                      placeholder={HACK_FORM_DESCRIPTION_PLACEHOLDER}
                       className={`rounded-md bg-[var(--surface-2)] px-3 py-2 min-h-[14rem] text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]`}
                     />
                   ) : (

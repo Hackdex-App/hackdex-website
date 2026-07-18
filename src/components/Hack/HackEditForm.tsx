@@ -13,6 +13,7 @@ import Select from "@/components/Primitives/Select";
 import type { Database } from "@/types/db";
 import type { CatalogTagRow } from "@/types/catalogTag";
 import { FiExternalLink } from "react-icons/fi";
+import { HACK_FORM_DESCRIPTION_PLACEHOLDER } from "./hackFormConstants";
 
 interface HackEditFormProps {
   slug: string;
@@ -44,7 +45,7 @@ export default function HackEditForm({ slug, initial, catalogTags, tagsUpdatedAt
   const MAX_COVERS = 10;
   const [title, setTitle] = React.useState(initial.title);
   const [summary, setSummary] = React.useState(initial.summary);
-  const [description, setDescription] = React.useState(initial.description);
+  const [description, setDescription] = React.useState(initial.description || HACK_FORM_DESCRIPTION_PLACEHOLDER);
   const [showMdPreview, setShowMdPreview] = React.useState(false);
   const [baseRom, setBaseRom] = React.useState(initial.base_rom);
   const [language, setLanguage] = React.useState(initial.language);
@@ -340,12 +341,16 @@ export default function HackEditForm({ slug, initial, catalogTags, tagsUpdatedAt
                   )}
                 </div>
               </div>
+              <p className="text-xs text-foreground/60">
+                A credits section is required.{" "}
+                <a href="https://www.markdownguide.org/basic-syntax/" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground/80 transition-colors">Supports Markdown <FiExternalLink className="inline-block h-3 w-3" /></a>
+              </p>
               {!showMdPreview ? (
                 <textarea
                   rows={14}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Supports Markdown"
+                  placeholder={HACK_FORM_DESCRIPTION_PLACEHOLDER}
                   className={`rounded-md px-3 py-2 min-h-[14rem] text-sm ring-1 ring-inset focus:outline-none focus:ring-2 ${descriptionChanged ? 'ring-[var(--ring)] bg-[var(--surface-2)]' : 'bg-[var(--surface-2)] ring-[var(--border)]'}`}
                 />
               ) : (
