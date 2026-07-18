@@ -5,8 +5,6 @@ import StickyActionBar from "@/components/Hack/StickyActionBar";
 import BaseRomErrorModal, { type BaseRomErrorModalState } from "@/components/Hack/BaseRomErrorModal";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
 import { baseRoms } from "@/data/baseRoms";
-import BinFile from "rom-patcher-js/rom-patcher-js/modules/BinFile.js";
-import BPS from "rom-patcher-js/rom-patcher-js/modules/RomPatcher.format.bps.js";
 import type { DownloadEventDetail } from "@/types/util";
 import { getSignedPatchUrl, updatePatchDownloadCount } from "@/app/hack/[slug]/actions";
 import { sha1Hex } from "@/utils/hash";
@@ -16,6 +14,8 @@ import {
   isAnyRomExtension,
 } from "@/utils/romFile";
 import type { SelectablePatch } from "@/types/patcher";
+import { applyPatch, patchFormatFromFilename } from "@/utils/patching";
+import { SaveCancelledError } from "@/utils/patching/save";
 
 interface HackActionsProps {
   title: string;
@@ -46,6 +46,7 @@ const HackActions: React.FC<HackActionsProps> = ({
   const { isLinked, hasPermission, hasCached, importUploadedBlob, ensurePermission, linkRom, getFileBlob, supported } = useBaseRoms();
   const [file, setFile] = React.useState<File | null>(null);
   const [status, setStatus] = React.useState<"idle" | "ready" | "patching" | "done" | "downloading">("idle");
+  const [patchProgress, setPatchProgress] = React.useState<number | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [patchBlob, setPatchBlob] = React.useState<Blob | null>(null);
   const [patchUrl, setPatchUrl] = React.useState<string | null>(null);
@@ -287,28 +288,34 @@ const HackActions: React.FC<HackActionsProps> = ({
       }
 
       setStatus("patching");
+      setPatchProgress(null);
 
-      await Promise.all([
-        new Promise((r) => setTimeout(r, 1000)),
-        (async () => {
-          const [romBuf, patchBuf] = await Promise.all([
-            baseFile.arrayBuffer(),
-            blob.arrayBuffer(),
-          ]);
-
-          const romBin = new BinFile(romBuf);
-          romBin.fileName = baseFile.name + (platform ? `.${platform.toLowerCase()}` : "");
-          const patchBin = new BinFile(patchBuf);
-
-          const patch = BPS.fromFile(patchBin);
-          const patchedRom = patch.apply(romBin);
-
-          const outExt = platform ? platform.toLowerCase() : 'bin';
-          const outputName = `${title} (${selectedVersion}).${outExt}`;
-          patchedRom.fileName = outputName;
-          patchedRom.save();
-        })(),
-      ]);
+      try {
+        await Promise.all([
+          new Promise((r) => setTimeout(r, 1000)),
+          (async () => {
+            const outExt = platform ? platform.toLowerCase() : "bin";
+            const outputName = `${title} (${selectedVersion}).${outExt}`;
+            await applyPatch({
+              format: patchFormatFromFilename(selectedFilename),
+              baseFile,
+              patchBlob: blob,
+              outputName,
+              sourceName: baseFile.name + (platform ? `.${platform.toLowerCase()}` : ""),
+              onProgress: ({ bytesOut }) => setPatchProgress(bytesOut),
+            });
+          })(),
+        ]);
+      } catch (e: unknown) {
+        if (e instanceof SaveCancelledError) {
+          setStatus("idle");
+          setPatchProgress(null);
+          return;
+        }
+        throw e;
+      } finally {
+        setPatchProgress(null);
+      }
 
       setStatus("done");
 
@@ -339,6 +346,7 @@ const HackActions: React.FC<HackActionsProps> = ({
     } catch (e: any) {
       setError(e?.message || "Failed to patch ROM");
       setStatus("idle");
+      setPatchProgress(null);
       console.error(e);
     }
   }
@@ -365,6 +373,7 @@ const HackActions: React.FC<HackActionsProps> = ({
         onUploadChange={onSelectFile}
         termsAgreed={termsAgreed}
         isVerifyingRom={isVerifyingRom}
+        patchProgress={patchProgress}
       />
       {romErrorModal && (
         <BaseRomErrorModal

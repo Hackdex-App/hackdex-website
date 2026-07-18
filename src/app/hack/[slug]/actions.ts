@@ -1010,11 +1010,12 @@ export async function confirmReuploadPatchVersion(
     return { ok: false, error: "Patch not found" };
   }
 
-  // Update patch filename
+  // Update patch filename and format (derived from object key extension)
+  const format = objectKey.toLowerCase().endsWith(".xdelta") ? "xdelta" : "bps";
   const serviceClient = await createServiceClient();
   const { error: updateErr } = await serviceClient
     .from("patches")
-    .update({ filename: objectKey, updated_at: new Date().toISOString() })
+    .update({ filename: objectKey, format, updated_at: new Date().toISOString() })
     .eq("id", patchId);
 
   if (updateErr) return { ok: false, error: updateErr.message };

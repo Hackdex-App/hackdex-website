@@ -390,6 +390,7 @@ export type Database = {
           changelog: string | null
           created_at: string
           filename: string
+          format: Database["public"]["Enums"]["Patch Format"]
           id: number
           parent_hack: string | null
           published: boolean
@@ -405,6 +406,7 @@ export type Database = {
           changelog?: string | null
           created_at?: string
           filename: string
+          format?: Database["public"]["Enums"]["Patch Format"]
           id?: number
           parent_hack?: string | null
           published?: boolean
@@ -420,6 +422,7 @@ export type Database = {
           changelog?: string | null
           created_at?: string
           filename?: string
+          format?: Database["public"]["Enums"]["Patch Format"]
           id?: number
           parent_hack?: string | null
           published?: boolean
@@ -522,6 +525,7 @@ export type Database = {
     }
     Enums: {
       "Completion Status": "Complete" | "Demo" | "Alpha" | "Beta"
+      "Patch Format": "bps" | "xdelta"
       "Patches Download Permission": "None" | "Current" | "All"
       "Tag Categories":
         | "Pokédex"
@@ -665,6 +669,7 @@ export const Constants = {
   public: {
     Enums: {
       "Completion Status": ["Complete", "Demo", "Alpha", "Beta"],
+      "Patch Format": ["bps", "xdelta"],
       "Patches Download Permission": ["None", "Current", "All"],
       "Tag Categories": [
         "Pokédex",
