@@ -309,3 +309,19 @@ export const getHackInsights = async ({ slug }: { slug: string }): Promise<HackI
 
   return runner();
 };
+
+export const assignHacksToAdminForReview = async ({ slugs }: { slugs: string[] }): Promise<void> => {
+  const supa = await createClient();
+  const { data: userResp } = await supa.auth.getUser();
+  const user = userResp.user;
+  if (!user) throw new Error("Unauthorized");
+
+  const { data: admin } = await supa.rpc("is_admin");
+  if (!admin) throw new Error("Unauthorized");
+
+  const { error } = await supa
+    .from("hacks")
+    .update({ assigned_admin: user.id })
+    .in("slug", slugs);
+  if (error) throw error;
+};
