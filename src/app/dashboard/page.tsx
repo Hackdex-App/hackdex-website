@@ -18,17 +18,20 @@ export default async function DashboardPage() {
   if (isAdmin) {
     const { data: pendingHacksData } = await supa
       .from("hacks")
-      .select("slug,title,approved,updated_at,downloads,current_patch,version,created_at,created_by")
+      .select("slug,title,approved,updated_at,downloads,current_patch,version,created_at,created_by,assigned_admin")
       .eq("approved", false)
       .order("created_at", { ascending: false });
 
     if (pendingHacksData && pendingHacksData.length > 0) {
       // Fetch creator usernames
-      const creatorIds = [...new Set(pendingHacksData.map(h => h.created_by as string))];
+      const profileIds = [
+        ...new Set(pendingHacksData.map(h => h.created_by as string)),
+        ...new Set(pendingHacksData.map(h => h.assigned_admin).filter(a => a !== null) as string[]),
+      ];
       const { data: profiles } = await supa
         .from("profiles")
         .select("id,username,full_name,verified")
-        .in("id", creatorIds);
+        .in("id", profileIds);
 
       const usernameById = new Map<string, string | null>();
       const fullNameById = new Map<string, string | null>();
@@ -42,7 +45,7 @@ export default async function DashboardPage() {
       // Fetch creator emails using service client (admin API)
       const serviceClient = await createServiceClient();
       const emailById = new Map<string, string | null>();
-      for (const userId of creatorIds) {
+      for (const userId of profileIds) {
         try {
           const { data: userData, error } = await serviceClient.auth.admin.getUserById(userId);
           if (!error && userData?.user?.email) {
@@ -60,6 +63,7 @@ export default async function DashboardPage() {
         creator_full_name: fullNameById.get(h.created_by as string) || null,
         creator_email: emailById.get(h.created_by as string) || null,
         creator_verified: verifiedById.get(h.created_by as string) || false,
+        assigned_admin_username: usernameById.get(h.assigned_admin as string) || null,
       }));
     }
   }
@@ -103,7 +107,7 @@ export default async function DashboardPage() {
         displayName={full_name || `@${username}`}
       />
 
-      {isAdmin && <PendingHacks hacks={pendingHacks} />}
+      {isAdmin && <PendingHacks hacks={pendingHacks} userId={user.id} />}
 
       {isAdmin && <ArchiverManagement />}
 
