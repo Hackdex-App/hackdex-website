@@ -247,7 +247,7 @@ export default async function Home() {
           </div>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {hackData.map((hack) => (
-              <HackCard key={hack.slug} hack={hack} />
+              <HackCard key={hack.slug} hack={hack} prefetch={true} />
             ))}
           </div>
           <div className="sm:hidden flex justify-center mt-6">

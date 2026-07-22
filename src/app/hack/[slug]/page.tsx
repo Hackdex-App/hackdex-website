@@ -558,6 +558,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
                   <li key={otherHack.slug}>
                     <Link
                       href={`/hack/${otherHack.slug}`}
+                      prefetch={false}
                       target="_blank"
                       className="group block hover:text-foreground"
                     >

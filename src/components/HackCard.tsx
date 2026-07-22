@@ -13,6 +13,7 @@ import { FaRegImages } from "react-icons/fa6";
 import { ImDownload } from "react-icons/im";
 import { RiArchiveStackFill } from "react-icons/ri";
 import type { Database } from "@/types/db";
+import type { LinkProps } from "next/link";
 
 export interface HackCardAttributes {
   slug: string;
@@ -29,7 +30,19 @@ export interface HackCardAttributes {
   completion_status?: Database["public"]["Enums"]["Completion Status"] | null;
 };
 
-export default function HackCard({ hack, clickable = true, className = "" }: { hack: HackCardAttributes; clickable?: boolean; className?: string }) {
+interface HackCardProps {
+  hack: HackCardAttributes;
+  clickable?: boolean;
+  prefetch?: LinkProps["prefetch"];
+  className?: string;
+}
+
+export default function HackCard({
+  hack,
+  clickable = true,
+  prefetch = false,
+  className = "",
+}: HackCardProps) {
   const isArchive = hack.is_archive;
   const { isLinked, hasPermission, hasCached } = useBaseRoms();
   const match = baseRoms.find((r) => r.id === hack.baseRomId);
@@ -222,6 +235,7 @@ export default function HackCard({ hack, clickable = true, className = "" }: { h
         href={`/hack/${hack.slug}`}
         className={`group block ${className}`.trim()}
         draggable={false}
+        prefetch={prefetch}
         onDragStart={(e) => {
           e.preventDefault();
         }}
