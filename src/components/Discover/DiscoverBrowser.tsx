@@ -161,7 +161,8 @@ export default function DiscoverBrowser({ initialState }: DiscoverBrowserProps) 
       out = out.filter((h) =>
         h.title.toLowerCase().includes(q) ||
         h.author.toLowerCase().includes(q) ||
-        (h.description || "").toLowerCase().includes(q)
+        h.summary?.toLowerCase().includes(q) ||
+        h.tags.some((t) => t.name.toLowerCase().includes(q))
       );
     }
     // AND filter across selected tags: hack must include all selectedTags

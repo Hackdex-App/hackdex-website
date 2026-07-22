@@ -38,7 +38,7 @@ export async function getDiscoverData(sort: DiscoverSortOption): Promise<Discove
         // Build base query for hacks (public/anon view: only approved hacks)
         let query = supabase
           .from("hacks")
-          .select("slug,title,summary,description,base_rom,downloads,created_by,updated_at,current_patch,custom_version_name,original_author,approved_at,is_archive,completion_status")
+          .select("slug,title,summary,base_rom,downloads,created_by,updated_at,current_patch,custom_version_name,original_author,approved_at,is_archive,completion_status")
           .eq("approved", true);
 
       // Apply sorting based on sort type
@@ -298,7 +298,6 @@ export async function getDiscoverData(sort: DiscoverSortOption): Promise<Discove
         baseRomId: r.base_rom,
         version: mappedVersions.get(r.slug) || "Pre-release",
         summary: r.summary,
-        description: r.description,
         is_archive: r.is_archive,
         completion_status: r.completion_status,
       }));
