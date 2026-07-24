@@ -45,12 +45,13 @@ export const baseRoms: BaseRom[] = [
   { id: "poke_crystal",           name: "Pokémon Crystal (Rev 0)",                          platform: "GBC",  category: "GSC",              region: "USA",              crc32: "ee6f5188",  sha1: "f4cd194bdee0d04ca4eac29e09b8e4e9d818c133" },
   { id: "poke_crystal_rev1",      name: "Pokémon Crystal (Rev 1)",                          platform: "GBC",  category: "GSC",              region: "USA, Europe",      crc32: "3358e30a",  sha1: "f2f52230b536214ef7c9924f483392993e226cfb" },
   { id: "poke_tcg",               name: "Pokémon Trading Card Game",                        platform: "GBC",  category: "Spin-off",         region: "USA",              crc32: "81069d53",  sha1: "0f8670a583255cff3e5b7ca71b5d7454d928fc48" },
+  { id: "poke_tcg2_jp",           name: "Pokémon Card GB 2 (JP)",                           platform: "GBC",  category: "Spin-off",         region: "Japan",            crc32: "6c933a14",  sha1: "a7e12bcc5f514e3aad8de570fd511aab0a308822" },
 
   // GB
   { id: "poke_red",               name: "Pokémon Red",                                      platform: "GB",   category: "RBY",              region: "USA, Europe",      crc32: "9f7fdd53",  sha1: "ea9bcae617fdf159b045185467ae58b2e4a48b9a" },
   { id: "poke_red_france",        name: "Pokémon Rouge (FR)",                               platform: "GB",   category: "RBY",              region: "France",           crc32: "337fce11",  sha1: "47a7622fa30e6402a3891fe65b3a930bf9bd7aec" },
   { id: "poke_blue",              name: "Pokémon Blue",                                     platform: "GB",   category: "RBY",              region: "USA, Europe",      crc32: "d6da8a1a",  sha1: "d7037c83e1ae5b39bde3c30787637ba1d4c48ce2" },
-  { id: "poke_blue_france",       name: "Pokémon Bleue (FR)",                                platform: "GB",   category: "RBY",              region: "France",           crc32: "50e2fc1d",  sha1: "47faa910d0e073c600665bf9c83b6bd17babdf8a" },
+  { id: "poke_blue_france",       name: "Pokémon Bleue (FR)",                               platform: "GB",   category: "RBY",              region: "France",           crc32: "50e2fc1d",  sha1: "47faa910d0e073c600665bf9c83b6bd17babdf8a" },
   { id: "poke_yellow",            name: "Pokémon Yellow",                                   platform: "GB",   category: "RBY",              region: "USA, Europe",      crc32: "7d527d62",  sha1: "cc7d03262ebfaf2f06772c1a480c7d9d5f4a38e1" },
 
   // NDS
@@ -58,7 +59,9 @@ export const baseRoms: BaseRom[] = [
   { id: "poke_platinum",          name: "Pokémon Platinum (Rev 1)",                         platform: "NDS",  category: "DPPt",             region: "USA",              crc32: "69d628e8",  sha1: "0862EC35B24DE5C7E2DCB88C9EEA0873110D755C" },
   { id: "poke_platinum_germany",  name: "Pokémon Platin (DE)",                              platform: "NDS",  category: "DPPt",             region: "Germany",          crc32: "37e9d9e5",  sha1: "d40f19ac24d67c721a4ab25e1c013154443d75b4" },
   { id: "poke_diamond_rev5",      name: "Pokémon Diamond",                                  platform: "NDS",  category: "DPPt",             region: "USA",              crc32: "84427823",  sha1: "a46233d8b79a69ea87aa295a0efad5237d02841e" },
+  { id: "poke_diamond_rev5_de",   name: "Pokémon Diamant (DE)",                             platform: "NDS",  category: "DPPt",             region: "Germany",          crc32: "87cf7b1f",  sha1: "432dbe312bc51e36bb8cb6fcb5e08f6968f124a4" },
   { id: "poke_pearl_rev5",        name: "Pokémon Pearl",                                    platform: "NDS",  category: "DPPt",             region: "USA",              crc32: "e2d87ebf",  sha1: "99083bf15ec7c6b81b4ba241ee10abd9e80999ac" },
+  { id: "poke_pearl_rev5_de",     name: "Pokémon Perl (DE)",                                platform: "NDS",  category: "DPPt",             region: "Germany",          crc32: "95a4fcab",  sha1: "c13395f2a35bb9d2f8e867d9f504896398f795cb" },
   { id: "poke_heartgold",         name: "Pokémon HeartGold",                                platform: "NDS",  category: "HGSS",             region: "USA",              crc32: "c180a0e9",  sha1: "4FCDED0E2713DC03929845DE631D0932EA2B5A37" },
   { id: "poke_soulsilver",        name: "Pokémon SoulSilver",                               platform: "NDS",  category: "HGSS",             region: "USA",              crc32: "d8ea6090",  sha1: "f8dc38ea20c17541a43b58c5e6d18c1732c7e582" },
   { id: "poke_black",             name: "Pokémon Black",                                    platform: "NDS",  category: "BW",               region: "USA, Europe",      crc32: "4f6e5580",  sha1: "26ad0b9967aa279c4a266ee69f52b9b2332399a5" },
