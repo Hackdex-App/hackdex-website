@@ -14,7 +14,7 @@ import {
   isAnyRomExtension,
 } from "@/utils/romFile";
 import type { SelectablePatch } from "@/types/patcher";
-import { applyPatch, patchFormatFromFilename } from "@/utils/patching";
+import { applyPatch, type PatchFormat } from "@/utils/patching";
 import { SaveCancelledError } from "@/utils/patching/save";
 
 interface HackActionsProps {
@@ -50,6 +50,7 @@ const HackActions: React.FC<HackActionsProps> = ({
   const [error, setError] = React.useState<string | null>(null);
   const [patchBlob, setPatchBlob] = React.useState<Blob | null>(null);
   const [patchUrl, setPatchUrl] = React.useState<string | null>(null);
+  const [patchFormat, setPatchFormat] = React.useState<PatchFormat | null>(null);
   const [termsAgreed, setTermsAgreed] = React.useState(false);
   const [romErrorModal, setRomErrorModal] = React.useState<BaseRomErrorModalState | null>(null);
   const [isVerifyingRom, setIsVerifyingRom] = React.useState(false);
@@ -80,6 +81,7 @@ const HackActions: React.FC<HackActionsProps> = ({
     setTermsAgreed(false);
     setPatchUrl(null);
     setPatchBlob(null);
+    setPatchFormat(null);
     setStatus("idle");
   }
 
@@ -217,7 +219,7 @@ const HackActions: React.FC<HackActionsProps> = ({
     }
   }
 
-  async function onAgreeToTerms(): Promise<{ url: string; blob: Blob } | null> {
+  async function onAgreeToTerms(): Promise<{ url: string; blob: Blob; format: PatchFormat } | null> {
     try {
       setError(null);
       setStatus("downloading");
@@ -233,6 +235,7 @@ const HackActions: React.FC<HackActionsProps> = ({
       }
 
       setPatchUrl(result.url);
+      setPatchFormat(result.format);
       setTermsAgreed(true);
 
       const res = await fetch(result.url);
@@ -245,7 +248,7 @@ const HackActions: React.FC<HackActionsProps> = ({
         setStatus("idle");
       }
 
-      return { url: result.url, blob };
+      return { url: result.url, blob, format: result.format };
     } catch (e: any) {
       setError(e?.message || "Failed to fetch patch URL");
       setStatus("idle");
@@ -260,12 +263,14 @@ const HackActions: React.FC<HackActionsProps> = ({
 
       let url = patchUrl;
       let blob = patchBlob;
+      let format = patchFormat;
 
-      if (!termsAgreed || !url || !blob) {
+      if (!termsAgreed || !url || !blob || !format) {
         const downloaded = await onAgreeToTerms();
         if (!downloaded) return;
         url = downloaded.url;
         blob = downloaded.blob;
+        format = downloaded.format;
 
         const romReady = isRomReadyForPatch();
         if (!romReady) return;
@@ -297,7 +302,7 @@ const HackActions: React.FC<HackActionsProps> = ({
             const outExt = platform ? platform.toLowerCase() : "bin";
             const outputName = `${title} (${selectedVersion}).${outExt}`;
             await applyPatch({
-              format: patchFormatFromFilename(selectedFilename),
+              format,
               baseFile,
               patchBlob: blob,
               outputName,

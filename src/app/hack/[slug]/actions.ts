@@ -229,12 +229,21 @@ export async function getHackDownloads(slug: string): Promise<number | null> {
   return runner();
 }
 
+type GetSignedPatchUrlResult = {
+  ok: true;
+  url: string;
+  format: Database["public"]["Enums"]["Patch Format"];
+} | {
+  ok: false;
+  error: string;
+};
+
 export async function getSignedPatchUrl(
   slug: string,
   options?: {
     patchId?: number;
   }
-): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+): Promise<GetSignedPatchUrlResult> {
   const supabase = await createClient();
 
   // Get user for permission check
@@ -282,7 +291,7 @@ export async function getSignedPatchUrl(
   // Fetch patch info
   const { data: patch, error: patchError } = await supabase
     .from("patches")
-    .select("id, bucket, filename, parent_hack, published, archived")
+    .select("id, bucket, filename, parent_hack, published, archived, format")
     .eq("id", selectedPatchId)
     .maybeSingle();
 
@@ -297,12 +306,12 @@ export async function getSignedPatchUrl(
   try {
     const workerUrl = buildPatchDownloadUrl(patch.filename);
     if (workerUrl) {
-      return { ok: true, url: workerUrl };
+      return { ok: true, url: workerUrl, format: patch.format };
     }
     const client = getMinioClient();
     const bucket = patch.bucket || PATCHES_BUCKET;
     const signedUrl = await client.presignedGetObject(bucket, patch.filename, 60 * 5);
-    return { ok: true, url: signedUrl };
+    return { ok: true, url: signedUrl, format: patch.format };
   } catch (error) {
     console.error("Error signing patch URL:", error);
     return { ok: false, error: "Failed to generate download URL" };

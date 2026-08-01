@@ -8,10 +8,11 @@ import { APIEmbed } from "discord-api-types/v10";
 import { slugify } from "@/utils/format";
 import { checkEditPermission, checkPatchEditPermission } from "@/utils/hack";
 import { getCachedTagsWithUsage, resolveTagIdsInOrder } from "@/data/tags";
+import type { PatchFormat } from "@/utils/patching";
 
 type HackInsert = TablesInsert<"hacks">;
 
-function patchFormatFromObjectKey(objectKey: string): "bps" | "xdelta" {
+function patchFormatFromObjectKey(objectKey: string): PatchFormat {
   return objectKey.toLowerCase().endsWith(".xdelta") ? "xdelta" : "bps";
 }
 

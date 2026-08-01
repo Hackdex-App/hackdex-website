@@ -2,8 +2,9 @@ import BinFile from "rom-patcher-js/rom-patcher-js/modules/BinFile.js";
 import BPS from "rom-patcher-js/rom-patcher-js/modules/RomPatcher.format.bps.js";
 import { createOutputSink, SaveCancelledError } from "@/utils/patching/save";
 import { decodeXdelta, friendlyXdeltaError } from "@/utils/patching/xdelta";
+import type { Database } from "@/types/db";
 
-export type PatchFormat = "bps" | "xdelta";
+export type PatchFormat = Database["public"]["Enums"]["Patch Format"];
 
 export function patchFormatFromFilename(filename: string | null | undefined): PatchFormat {
   if (filename && filename.toLowerCase().endsWith(".xdelta")) {
