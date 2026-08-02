@@ -25,9 +25,12 @@ function triggerBlobDownload(blob: Blob, fileName: string): void {
   a.href = blobUrl;
   a.download = fileName;
   document.body.appendChild(a);
-  a.dispatchEvent(new MouseEvent("click"));
-  URL.revokeObjectURL(blobUrl);
-  document.body.removeChild(a);
+  a.click();
+  // Defer cleanup so the browser can start the download before the URL is revoked.
+  setTimeout(() => {
+    URL.revokeObjectURL(blobUrl);
+    a.remove();
+  }, 1000);
 }
 
 /** Normalize worker-transferred views for BlobPart / BufferSource (TS 5.9 ArrayBuffer typing). */

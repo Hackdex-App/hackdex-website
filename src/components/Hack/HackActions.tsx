@@ -14,8 +14,8 @@ import {
   isAnyRomExtension,
 } from "@/utils/romFile";
 import type { SelectablePatch } from "@/types/patcher";
-import { applyPatch, type PatchFormat } from "@/utils/patching";
-import { SaveCancelledError } from "@/utils/patching/save";
+import { applyPatch, patchFormatFromFilename, type PatchFormat } from "@/utils/patching";
+import { createOutputSink, SaveCancelledError, type OutputSink } from "@/utils/patching/save";
 
 interface HackActionsProps {
   title: string;
@@ -128,19 +128,6 @@ const HackActions: React.FC<HackActionsProps> = ({
       if (timeoutId) clearTimeout(timeoutId);
     }
   }, [error]);
-
-  // When patch URL is fetched and terms are agreed, automatically proceed with patching if ROM is ready
-  React.useEffect(() => {
-    if (termsAgreed && patchUrl && patchBlob && status === "idle") {
-      const romReady = isRomReadyForPatch();
-      if (romReady) {
-        const timeoutId = setTimeout(() => {
-          onPatch();
-        }, 0);
-        return () => clearTimeout(timeoutId);
-      }
-    }
-  }, [termsAgreed, patchUrl, patchBlob, file, baseRomId, isLinked, hasPermission, hasCached, status]);
 
   async function onSelectFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0] ?? null;
@@ -258,8 +245,38 @@ const HackActions: React.FC<HackActionsProps> = ({
   }
 
   async function onPatch() {
+    let outputSink: OutputSink | null = null;
+    const discardSink = async () => {
+      if (!outputSink) return;
+      const sink = outputSink;
+      outputSink = null;
+      try {
+        await sink.abort();
+      } catch {
+        // ignore abort failures when discarding an unused sink
+      }
+    };
+
     try {
       setError(null);
+
+      // Create xdelta sink during the click gesture, before any other awaits that
+      // would drop transient user activation (terms download, ROM permission, etc.).
+      const outExt = platform ? platform.toLowerCase() : "bin";
+      const outputName = `${title} (${selectedVersion}).${outExt}`;
+      const earlyFormat = patchFormat ?? patchFormatFromFilename(selectedFilename);
+      if (earlyFormat === "xdelta" && status !== "patching") {
+        try {
+          outputSink = await createOutputSink(outputName);
+        } catch (e: unknown) {
+          if (e instanceof SaveCancelledError) {
+            setStatus("idle");
+            setPatchProgress(null);
+            return;
+          }
+          throw e;
+        }
+      }
 
       let url = patchUrl;
       let blob = patchBlob;
@@ -267,13 +284,24 @@ const HackActions: React.FC<HackActionsProps> = ({
 
       if (!termsAgreed || !url || !blob || !format) {
         const downloaded = await onAgreeToTerms();
-        if (!downloaded) return;
+        if (!downloaded) {
+          await discardSink();
+          return;
+        }
         url = downloaded.url;
         blob = downloaded.blob;
         format = downloaded.format;
 
         const romReady = isRomReadyForPatch();
-        if (!romReady) return;
+        if (!romReady) {
+          await discardSink();
+          return;
+        }
+      }
+
+      // BPS uses rom-patcher save; drop any unused early sink.
+      if (format !== "xdelta") {
+        await discardSink();
       }
 
       if (status === "patching") {
@@ -282,13 +310,22 @@ const HackActions: React.FC<HackActionsProps> = ({
 
       let baseFile = file;
       if (!baseFile) {
-        if (!isLinked(baseRomId) && !hasCached(baseRomId)) return;
+        if (!isLinked(baseRomId) && !hasCached(baseRomId)) {
+          await discardSink();
+          return;
+        }
         if (!hasCached(baseRomId)) {
           const perm = await ensurePermission(baseRomId, true);
-          if (perm !== "granted") return;
+          if (perm !== "granted") {
+            await discardSink();
+            return;
+          }
         }
         const linkedFile = await getFileBlob(baseRomId);
-        if (!linkedFile) return;
+        if (!linkedFile) {
+          await discardSink();
+          return;
+        }
         baseFile = linkedFile;
       }
 
@@ -299,14 +336,16 @@ const HackActions: React.FC<HackActionsProps> = ({
         await Promise.all([
           new Promise((r) => setTimeout(r, 1000)),
           (async () => {
-            const outExt = platform ? platform.toLowerCase() : "bin";
-            const outputName = `${title} (${selectedVersion}).${outExt}`;
+            // BPS ignores outputSink; xdelta uses the gesture-created sink.
+            const sink = outputSink;
+            outputSink = null;
             await applyPatch({
               format,
               baseFile,
               patchBlob: blob,
               outputName,
               sourceName: baseFile.name + (platform ? `.${platform.toLowerCase()}` : ""),
+              outputSink: sink ?? undefined,
               onProgress: ({ bytesOut }) => setPatchProgress(bytesOut),
             });
           })(),
@@ -349,6 +388,7 @@ const HackActions: React.FC<HackActionsProps> = ({
         console.error(e);
       }
     } catch (e: any) {
+      await discardSink();
       setError(e?.message || "Failed to patch ROM");
       setStatus("idle");
       setPatchProgress(null);

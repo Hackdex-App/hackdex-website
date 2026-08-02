@@ -1,6 +1,6 @@
 import BinFile from "rom-patcher-js/rom-patcher-js/modules/BinFile.js";
 import BPS from "rom-patcher-js/rom-patcher-js/modules/RomPatcher.format.bps.js";
-import { createOutputSink, SaveCancelledError } from "@/utils/patching/save";
+import { createOutputSink, SaveCancelledError, type OutputSink } from "@/utils/patching/save";
 import { decodeXdelta, friendlyXdeltaError } from "@/utils/patching/xdelta";
 import type { Database } from "@/types/db";
 
@@ -19,9 +19,11 @@ export async function applyPatch(opts: {
   patchBlob: Blob;
   outputName: string;
   sourceName?: string;
+  /** Pre-created sink (xdelta). Prefer creating during the user-gesture before other awaits. */
+  outputSink?: OutputSink;
   onProgress?: (p: { bytesOut: number }) => void;
 }): Promise<void> {
-  const { format, baseFile, patchBlob, outputName, sourceName, onProgress } = opts;
+  const { format, baseFile, patchBlob, outputName, sourceName, outputSink, onProgress } = opts;
 
   if (format === "bps") {
     const [romBuf, patchBuf] = await Promise.all([
@@ -41,7 +43,7 @@ export async function applyPatch(opts: {
   }
 
   // format === "xdelta"
-  const sink = await createOutputSink(outputName);
+  const sink = outputSink ?? await createOutputSink(outputName);
   try {
     const result = await decodeXdelta({
       sourceFile: baseFile,
