@@ -3,7 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { canEditAsCreator, canEditAsAdmin } from "@/utils/hack";
 import VersionList from "@/components/Hack/VersionList";
 import DownloadPermissionSettings from "@/components/Hack/DownloadPermissionSettings";
-import PatcherVersionManager from "@/components/Hack/PatcherVersionManager";
+import PatcherVersionManager, { type Patch } from "@/components/Hack/PatcherVersionManager";
 import CollapsibleCard from "@/components/Primitives/CollapsibleCard";
 import Link from "next/link";
 import { FaChevronLeft, FaPlus, FaStar } from "react-icons/fa6";
@@ -33,7 +33,7 @@ export default async function VersionsPage({ params }: VersionsPageProps) {
   // Fetch all published, non-archived patches
   const { data: patches } = await supabase
     .from("patches")
-    .select("id, version, created_at, updated_at, changelog, published, archived")
+    .select("id, version, created_at, updated_at, changelog, published, archived, format")
     .eq("parent_hack", slug)
     .eq("published", true)
     .eq("archived", false)
@@ -44,7 +44,7 @@ export default async function VersionsPage({ params }: VersionsPageProps) {
   if (canEdit) {
     const { data: unpub } = await supabase
       .from("patches")
-      .select("id, version, created_at, updated_at, changelog, published, archived")
+      .select("id, version, created_at, updated_at, changelog, published, archived, format")
       .eq("parent_hack", slug)
       .eq("published", false)
       .eq("archived", false)
@@ -52,7 +52,7 @@ export default async function VersionsPage({ params }: VersionsPageProps) {
     unpublishedPatches = unpub || [];
   }
 
-  const allPatches = [...(patches || []), ...unpublishedPatches].sort((a, b) => 
+  const allPatches: Patch[] = [...(patches || []), ...unpublishedPatches].sort((a, b) => 
     new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
   const patcherSelection = await getPatcherSelectablePatches(supabase, slug, hack.current_patch);

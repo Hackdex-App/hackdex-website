@@ -9,16 +9,7 @@ import type { PatchesDownloadPermission } from "@/components/Hack/DownloadPermis
 import { updatePatchChangelog, updatePatchVersion, getPatchDownloadUrl, updatePatchDownloadCount } from "@/app/hack/[slug]/actions";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
-
-interface Patch {
-  id: number;
-  version: string;
-  created_at: string;
-  updated_at: string | null;
-  changelog: string | null;
-  published: boolean;
-  archived: boolean;
-}
+import type { Patch } from "@/components/Hack/PatcherVersionManager";
 
 function shouldShowPublicPatchDownload(
   permission: PatchesDownloadPermission,
@@ -277,6 +268,9 @@ export default function VersionList({
                 Archived
               </span>
             )}
+            <span className="inline-flex items-center rounded-full bg-gray-500/20 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-400">
+              .{patch.format}
+            </span>
           </div>
         );
 
