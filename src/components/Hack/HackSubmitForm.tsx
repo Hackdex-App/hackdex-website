@@ -25,6 +25,8 @@ import BPS from "rom-patcher-js/rom-patcher-js/modules/RomPatcher.format.bps.js"
 import { sha1Hex } from "@/utils/hash";
 import { platformAccept, setDraftCovers, getDraftCovers, deleteDraftCovers } from "@/utils/idb";
 import { slugify, sortOrderedTags } from "@/utils/format";
+import { patchFormatFromFilename } from "@/utils/patching";
+import { encodeXdelta, trialDecodeXdelta, friendlyXdeltaError } from "@/utils/patching/xdelta";
 import type { CatalogTagRow } from "@/types/catalogTag";
 import { HACK_FORM_DESCRIPTION_PLACEHOLDER } from "./hackFormConstants";
 
@@ -179,6 +181,8 @@ export default function HackSubmitForm({
     setPatchFile(null);
     setGenStatus("idle");
     setGenError("");
+    setChecksumStatus("idle");
+    setChecksumError("");
     patchInputRef.current && (patchInputRef.current.value = "");
     modifiedRomInputRef.current && (modifiedRomInputRef.current.value = "");
   }, [patchMode]);
@@ -431,7 +435,7 @@ export default function HackSubmitForm({
   const step1Valid = !!title.trim() && !!platform && !!baseRom.trim() && !!language.trim() && !!completionStatus.trim() && (isArchive ? !!originalAuthor.trim() : true);
   const step2Valid = (isArchive ? true : !!version.trim()) && !!summary.trim() && !summaryTooLong && !!description.trim() && tags.length > 0;
   const step3Valid = (newCoverFiles.length > 0) && !overLimit && coverErrors.length === 0 && (!boxArt.trim() || urlLike(boxArt)) && allSocialValid;
-  const isValid = step1Valid && step2Valid && step3Valid && (isArchive ? true : !!patchFile);
+  const isValid = step1Valid && step2Valid && step3Valid && (isArchive ? true : !!patchFile) && checksumStatus !== "invalid" && checksumStatus !== "validating";
 
   const onSubmit = async () => {
     if (!isValid || submitting) return;
@@ -484,7 +488,10 @@ export default function HackSubmitForm({
         window.location.href = `/hack/${prepared.slug}`;
       } else {
         console.log('[HackSubmitForm] Getting patch upload URL...');
-        const presigned = await presignPatchAndSaveCovers({ slug: prepared.slug, version, coverUrls: uploadedCoverUrls });
+        const safeVersion = version.replace(/[^a-zA-Z0-9._-]+/g, "-");
+        const patchExt = patchFormatFromFilename(patchFile?.name) === "xdelta" ? "xdelta" : "bps";
+        const objectKey = `${prepared.slug}-${safeVersion}.${patchExt}`;
+        const presigned = await presignPatchAndSaveCovers({ slug: prepared.slug, version, coverUrls: uploadedCoverUrls, objectKey });
         if (!presigned.ok) throw new Error(presigned.error || 'Failed to presign');
 
         if (patchFile) {
@@ -567,14 +574,14 @@ export default function HackSubmitForm({
           return;
         }
       }
-      const [origBuf, modBuf] = await Promise.all([baseFile.arrayBuffer(), mod.arrayBuffer()]);
-      const origBin = new BinFile(origBuf);
-      const modBin = new BinFile(modBuf);
-      const deltaMode = origBin.fileSize <= 4194304;
-      const patch = BPS.buildFromRoms(origBin, modBin, deltaMode);
       const fileName = slug || title || "patch";
-      const patchBin = patch.export(fileName);
-      const out = new File([patchBin._u8array], `${fileName}.bps`, { type: 'application/octet-stream' });
+      const { result, patch } = await encodeXdelta({ sourceFile: baseFile, targetFile: mod });
+      if (!result.ok || !patch) {
+        setGenStatus("error");
+        setGenError(friendlyXdeltaError(result));
+        return;
+      }
+      const out = new File([patch], `${fileName}.xdelta`, { type: 'application/octet-stream' });
       setPatchFile(out);
       setGenStatus("ready");
     } catch (err: any) {
@@ -596,9 +603,42 @@ export default function HackSubmitForm({
         return;
       }
 
+      if (patchFormatFromFilename(patch.name) === "xdelta") {
+        const baseFile = baseRom ? await getFileBlob(baseRom) : null;
+        if (!baseFile) {
+          setChecksumStatus("unknown");
+          setChecksumError("Cannot validate without the base ROM on this device. Proceed at your own risk, or upload your modified ROM instead.");
+          setPatchFile(patch);
+          return;
+        }
+        const result = await trialDecodeXdelta({ sourceFile: baseFile, patchBlob: patch });
+        if (result.ok && result.hasChecksums === true) {
+          setChecksumStatus("valid");
+          setChecksumError("");
+          setPatchFile(patch);
+          return;
+        }
+        if (!result.ok) {
+          const msg = (result.errorMessage ?? "").toLowerCase();
+          setChecksumStatus("invalid");
+          setChecksumError(
+            msg.includes("checksum")
+              ? "Checksum validation failed. The patch file is not compatible with the selected base ROM."
+              : friendlyXdeltaError(result)
+          );
+          setPatchFile(null);
+          return;
+        }
+        setChecksumStatus("unknown");
+        setChecksumError("This patch has no embedded checksums. Proceed at your own risk, or upload your modified ROM instead.");
+        setPatchFile(patch);
+        return;
+      }
+
       if (!baseRomEntry) {
         setChecksumStatus("unknown");
         setChecksumError("A checksum is not available to validate this patch file. Proceed at your own risk, or upload your modified ROM instead.");
+        setPatchFile(patch);
         return;
       }
 
@@ -607,6 +647,7 @@ export default function HackSubmitForm({
       if (bps.sourceChecksum === 0 || bps.sourceChecksum === undefined) {
         setChecksumStatus("unknown");
         setChecksumError("A checksum is not available to validate this patch file. Proceed at your own risk, or upload your modified ROM instead.");
+        setPatchFile(patch);
         return;
       }
 
@@ -614,18 +655,19 @@ export default function HackSubmitForm({
       if (bps.sourceChecksum !== baseRomChecksum) {
         setChecksumStatus("invalid");
         setChecksumError("Checksum validation failed. The patch file is not compatible with the selected base ROM.");
+        setPatchFile(null);
         return;
       }
 
       // All checks passed, set the checksum status to valid
       setChecksumStatus("valid");
       setChecksumError("");
-
       setPatchFile(patch);
     }
     catch (err: any) {
       setChecksumStatus("unknown");
       setChecksumError(err?.message || "Failed to validate patch file.");
+      setPatchFile(e.target.files?.[0] || null);
     }
   }
 
@@ -1205,14 +1247,14 @@ https://discord.gg/example`}
                         onClick={() => setPatchMode("bps")}
                         className={`rounded-md rounded-r-none px-3 py-1.5 text-xs border-l-1 border-y-1 ${patchMode === "bps" ? "bg-[var(--surface-2)] border-[var(--border)]" : "text-foreground/70 border-[var(--border)]"}`}
                       >
-                        Upload .bps
+                        Upload .bps/.xdelta
                       </button>
                       <button
                         type="button"
                         onClick={() => setPatchMode("rom")}
                         className={`rounded-md rounded-l-none px-3 py-1.5 text-xs border-1 ${patchMode === "rom" ? "bg-[var(--surface-2)] border-[var(--border)]" : "text-foreground/70 border-[var(--border)]"}`}
                       >
-                        Upload modified ROM (auto-generate .bps)
+                        Upload modified ROM (auto-generate .xdelta)
                       </button>
                     </div>
 
@@ -1222,10 +1264,10 @@ https://discord.gg/example`}
                           ref={patchInputRef}
                           onChange={onUploadPatch}
                           type="file"
-                          accept=".bps"
+                          accept=".bps,.xdelta"
                           className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] file:bg-black/10 dark:file:bg-[var(--surface-2)] file:text-foreground/80 file:text-sm file:font-medium file:not-italic file:rounded-md file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer"
                         />
-                        <p className="text-xs text-foreground/60">Upload a BPS patch file.</p>
+                        <p className="text-xs text-foreground/60">Upload a .bps or .xdelta patch file.</p>
                         {checksumStatus === "validating" && <div className="text-xs text-foreground/70">Validating checksum…</div>}
                         {checksumStatus === "valid" && <div className="text-xs text-emerald-400/90">Checksum valid.</div>}
                         {checksumStatus === "invalid" && !!checksumError && <div className="text-xs text-red-400">{checksumError}</div>}
@@ -1265,7 +1307,7 @@ https://discord.gg/example`}
                             onChange={onUploadModifiedRom}
                             className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm ring-1 ring-inset ring-[var(--border)] disabled:opacity-50 disabled:cursor-not-allowed"
                           />
-                          <p className="text-xs text-foreground/60">We'll generate a .bps patch on-device. No ROMs are uploaded.</p>
+                          <p className="text-xs text-foreground/60">We'll generate a .xdelta patch on-device. No ROMs are uploaded.</p>
                           {genStatus === "generating" && <div className="text-xs text-foreground/70">Generating patch…</div>}
                           {genStatus === "ready" && patchFile && <div className="text-xs text-emerald-400/90">Patch ready: {patchFile.name}</div>}
                           {genStatus === "error" && !!genError && <div className="text-xs text-red-400">{genError}</div>}

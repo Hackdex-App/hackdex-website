@@ -16,8 +16,8 @@ Hackdex is a community hub for discovering and sharing Pokémon romhack patches.
 ## Core features
 
 - **Discover**: curated hacks with screenshots, tags, versions, and summaries
-- **Submit**: metadata, screenshots, social links, and a BPS patch file
-- **Patch in the browser**: Powered by [RomPatcher.js](https://github.com/marcrobledo/RomPatcher.js); linked base roms stay on the user's device
+- **Submit**: metadata, screenshots, social links, and a `.bps` or `.xdelta` patch file
+- **Patch in the browser**: BPS via [RomPatcher.js](https://github.com/marcrobledo/RomPatcher.js); xdelta (VCDIFF) via a WASM build of [xdelta3](https://github.com/jmacd/xdelta) with glue from the Hackdex fork of [xdelta-wasm](https://github.com/Hackdex-App/xdelta-wasm) (forked from [kotcrab/xdelta-wasm](https://github.com/kotcrab/xdelta-wasm); statically linked [XZ Utils](https://tukaani.org/xz/) liblzma); linked base roms stay on the user's device
 - **Safe delivery**: public urls for cover images, short-lived signed URLs for patch downloads and other assets; no rom storage required
 
 ## Tech stack
@@ -25,7 +25,7 @@ Hackdex is a community hub for discovering and sharing Pokémon romhack patches.
 - Next.js 15 (App Router), TypeScript, React 19, Tailwind CSS 4
 - Supabase (Postgres, Auth, Storage) for data, auth, and cover images
 - S3-compatible object storage (Minio locally or preferred provider) for patch files (`patches` bucket)
-- In-browser patching with RomPatcher.js; local persistence with IndexedDB and the File System Access API
+- In-browser patching with RomPatcher.js and xdelta3 WASM; local persistence with IndexedDB and the File System Access API
 
 ## High-level architecture
 

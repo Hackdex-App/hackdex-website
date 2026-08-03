@@ -8,10 +8,11 @@ import PatcherVersionSettings from "@/components/Hack/PatcherVersionSettings";
 import VersionList from "@/components/Hack/VersionList";
 import { CUSTOM_VERSION_NAME_MAX_LENGTH, suggestCustomVersionName } from "@/utils/patches/hack-display-version";
 import type { PatchesDownloadPermission } from "@/components/Hack/DownloadPermissionSettings";
+import type { PatchFormat } from "@/utils/patching";
 
 type PatcherOption = "latest" | "custom";
 
-interface Patch {
+export interface Patch {
   id: number;
   version: string;
   created_at: string;
@@ -19,6 +20,7 @@ interface Patch {
   changelog: string | null;
   published: boolean;
   archived: boolean;
+  format: PatchFormat;
 }
 
 interface PatcherVersionManagerProps {

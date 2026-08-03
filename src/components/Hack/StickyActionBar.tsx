@@ -27,6 +27,7 @@ interface StickyActionBarProps {
   onUploadChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   termsAgreed: boolean;
   isVerifyingRom?: boolean;
+  patchProgress?: number | null;
 }
 
 export default function StickyActionBar({
@@ -49,6 +50,7 @@ export default function StickyActionBar({
   onUploadChange,
   termsAgreed,
   isVerifyingRom = false,
+  patchProgress = null,
 }: StickyActionBarProps) {
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
@@ -159,7 +161,7 @@ export default function StickyActionBar({
                 ? "bg-amber-600/60 text-white ring-amber-700/80 dark:bg-amber-500/50 dark:text-amber-100 dark:ring-amber-400/90"
                 : "bg-red-600/60 text-white ring-red-700/80 dark:bg-red-500/50 dark:text-red-100 dark:ring-red-400/90"
             }`}>
-              {romReady ? (filename ?? ".bps file ready") : isLinked ? "Permission needed" : "Base ROM needed"}
+              {romReady ? (filename ?? "patch file ready") : isLinked ? "Permission needed" : "Base ROM needed"}
             </span>
           )}
           {!baseRomsLoading && !romReady && !isLinked && (
@@ -207,7 +209,11 @@ export default function StickyActionBar({
             className={`shine-wrap btn-premium data-[ready=false]:hidden! h-11 md:h-9 w-full md:min-w-46 ${!termsAgreed || status === 'downloading' ? "md:w-32" : "md:w-auto"} text-base md:text-sm font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 ${romReady && status !== 'downloading' && status !== 'ready' && termsAgreed ? "mt-6 md:mt-0" : ""}`}
           >
             <span>{
-              status === "patching" ? "Patching…" :
+              status === "patching" ? (
+                patchProgress != null && patchProgress > 0
+                  ? `Patching… (${(patchProgress / (1024 * 1024)).toFixed(0)} MB)`
+                  : "Patching…"
+              ) :
               status === "downloading" ? "Downloading…" :
               status === "done" ? (
                 patchAgainReady ? "Patch Again" : "Patched"

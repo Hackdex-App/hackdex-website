@@ -8,8 +8,13 @@ import { APIEmbed } from "discord-api-types/v10";
 import { slugify } from "@/utils/format";
 import { checkEditPermission, checkPatchEditPermission } from "@/utils/hack";
 import { getCachedTagsWithUsage, resolveTagIdsInOrder } from "@/data/tags";
+import type { PatchFormat } from "@/utils/patching";
 
 type HackInsert = TablesInsert<"hacks">;
+
+function patchFormatFromObjectKey(objectKey: string): PatchFormat {
+  return objectKey.toLowerCase().endsWith(".xdelta") ? "xdelta" : "bps";
+}
 
 async function ensureUniqueSlug(base: string, supabase: Awaited<ReturnType<typeof createClient>>) {
   let candidate = base;
@@ -173,8 +178,7 @@ export async function presignPatchAndSaveCovers(args: {
   slug: string;
   version: string;
   coverUrls: string[];
-  // desired object key; if omitted we build from slug+version
-  objectKey?: string;
+  objectKey: string;
 }) {
   const supabase = await createClient();
   const {
@@ -207,15 +211,11 @@ export async function presignPatchAndSaveCovers(args: {
     const { error: cErr } = await supabase.from("hack_covers").insert(rows);
     if (cErr) return { ok: false, error: cErr.message } as const;
   }
-
-  const safeVersion = args.version.replace(/[^a-zA-Z0-9._-]+/g, "-");
-  const objectKey = args.objectKey || `${args.slug}-${safeVersion}.bps`;
-
   const client = getMinioClient();
   // 10 minutes to upload
-  const url = await client.presignedPutObject(PATCHES_BUCKET, objectKey, 60 * 10);
+  const url = await client.presignedPutObject(PATCHES_BUCKET, args.objectKey, 60 * 10);
 
-  return { ok: true, presignedUrl: url, objectKey } as const;
+  return { ok: true, presignedUrl: url, objectKey: args.objectKey } as const;
 }
 
 export async function confirmPatchUpload(args: { slug: string; objectKey: string; version: string, firstUpload?: boolean; publishAutomatically?: boolean }) {
@@ -268,6 +268,7 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
     filename: args.objectKey,
     version: args.version,
     parent_hack: args.slug,
+    format: patchFormatFromObjectKey(args.objectKey),
   };
 
   // Set published status based on publishAutomatically flag

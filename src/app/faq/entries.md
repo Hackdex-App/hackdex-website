@@ -79,14 +79,12 @@ Only the original creator or a member of their team can submit the hack to Hackd
 Account creation is required for submissions to preserve author control and attribution. This ensures your work is properly credited and you maintain control over your hack's listing. This also allows you to update your hack after submission.
 
 ### What format should I submit my hack in?
-We only accept BPS patch files, not complete ROMs. Hackdex utilizes a built-in patcher that users apply to their own legally obtained base ROMs. This helps keep the platform safer from potential legal issues.
+We accept `.bps` and `.xdelta` patch files, not complete ROMs. Hackdex utilizes a built-in patcher that users apply to their own legally obtained base ROMs. This helps keep the platform safer from potential legal issues. xdelta is the preferred format going forward; legacy BPS patches continue to work.
 
-A built-in patcher is also included in the submission form, so you also have the option to provide your modified ROM and the base ROM to generate the patch file automatically.
+A built-in patcher is also included in the submission form, so you also have the option to provide your modified ROM and the base ROM to generate a `.xdelta` patch file automatically.
 
-### Why only BPS patch files?
-The BPS format is the successor to the IPS and UPS formats, with the added benefit of including hash checksums for verification. This helps ensure that the patch file is linked to the correct base ROM. An incorrect base ROM will result in a corrupted game.
-
-There are also plans to add Xdelta support for NDS hacks in the future.
+### Why only BPS and Xdelta patch files?
+Both formats support checksum verification so the patch is linked to the correct base ROM. An incorrect base ROM will result in a corrupted game. BPS remains supported for existing hacks; new in-browser patch creation produces Xdelta files, which is the preferred format going forward.
 
 ### How does my hack gain visibility?
 We highly recommend linking to your romhack's Hackdex page from PokéCommunity, Reddit, or other social media platforms. Doing so can help boost your hack's visibility and outrank those sketchy ROM sharing sites that steal many creators' hard work.
