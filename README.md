@@ -7,7 +7,7 @@
 [![S3 Compatible](https://img.shields.io/badge/Patch_Storage-S3-orange?logo=amazons3&logoColor=white)](https://aws.amazon.com/s3/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE.md)
 
-> **Disclaimer**: A good chunk of this code was initially written with AI assistance using Cursor. Since then, a lot of new changes have been hand-written, and moving forward, I am pledging to not use AI in any future contributions to this project.
+> **Disclaimer**: A good chunk of this code was initially written with AI assistance using Cursor. I later pledged to not use AI in future contributions, but due to life circumstances causing my time to be incredibly limited now, I made the difficult decision to resume using AI assistance in order to prevent Hackdex from going dormant and becoming neglected.
 
 ## What is Hackdex?
 
