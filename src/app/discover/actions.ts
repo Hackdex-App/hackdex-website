@@ -190,13 +190,33 @@ export async function getDiscoverData(sort: DiscoverSortOption): Promise<Discove
       // Calculate trending scores if needed
       let trendingScores: Map<string, number> | null = null;
       if (sort === "trending") {
-        // Get all patches for all hacks, grouped by slug
+        // Get all patches for all hacks, grouped by slug.
+        // Paginate rows per slug chunk to avoid the PostgREST 1000-row cap.
         const { data: allPatches, error: allPatchesError } = await fetchInChunks(slugs, CHUNK_SIZE, async (chunk) => {
-          const { data, error } = await supabase
-            .from("patches")
-            .select("id,parent_hack")
-            .in("parent_hack", chunk);
-          return { data, error };
+          const rows: { id: number; parent_hack: string | null }[] = [];
+          let offset = 0;
+          let hasMore = true;
+
+          while (hasMore) {
+            const { data, error } = await supabase
+              .from("patches")
+              .select("id,parent_hack")
+              .in("parent_hack", chunk)
+              .order("id", { ascending: true })
+              .range(offset, offset + ROW_BATCH_SIZE - 1);
+
+            if (error) return { data: null, error };
+
+            if (!data || data.length === 0) {
+              hasMore = false;
+            } else {
+              rows.push(...data);
+              hasMore = data.length === ROW_BATCH_SIZE;
+              if (hasMore) offset += ROW_BATCH_SIZE;
+            }
+          }
+
+          return { data: rows, error: null };
         });
         if (allPatchesError) throw allPatchesError;
 
