@@ -6,16 +6,25 @@ import BaseRomErrorModal, { type BaseRomErrorModalState } from "@/components/Hac
 import { useBaseRoms } from "@/contexts/BaseRomContext";
 import { baseRoms } from "@/data/baseRoms";
 import type { DownloadEventDetail } from "@/types/util";
-import { getSignedPatchUrl, updatePatchDownloadCount } from "@/app/hack/[slug]/actions";
+import { getSignedPatchUrl, updatePatchDownloadCount, reportPatchDownloadEvent } from "@/app/hack/[slug]/actions";
 import { sha1Hex } from "@/utils/hash";
 import {
   formatRequiredRomExtension,
   isArchiveFile,
   isAnyRomExtension,
 } from "@/utils/romFile";
+import { collectFetchDiagnostics, HTTPError, runConnectivityProbes } from "@/utils/patches/download-telemetry";
 import type { SelectablePatch } from "@/types/patcher";
 import { applyPatch, patchFormatFromFilename, type PatchFormat } from "@/utils/patching";
 import { createOutputSink, SaveCancelledError, type OutputSink } from "@/utils/patching/save";
+
+function deferReport(payload: Parameters<typeof reportPatchDownloadEvent>[0]) {
+  setTimeout(async () => {
+    try {
+      await reportPatchDownloadEvent(payload);
+    } catch {}
+  }, 50);
+}
 
 interface HackActionsProps {
   title: string;
@@ -207,6 +216,11 @@ const HackActions: React.FC<HackActionsProps> = ({
   }
 
   async function onAgreeToTerms(): Promise<{ url: string; blob: Blob; format: PatchFormat } | null> {
+    const eventPatchId = selectedPatch?.id ?? patchId ?? null;
+    const online = typeof navigator !== "undefined" ? navigator.onLine : null;
+
+    let signedUrl: string;
+    let signedFormat: PatchFormat;
     try {
       setError(null);
       setStatus("downloading");
@@ -218,15 +232,46 @@ const HackActions: React.FC<HackActionsProps> = ({
       if (!result.ok) {
         setError(result.error);
         setStatus("idle");
+        deferReport({
+          patchId: eventPatchId,
+          hackSlug,
+          stage: "signed_url",
+          outcome: "failure",
+          errorName: "ServerError",
+          errorMessage: result.error,
+          online,
+          probeSameOrigin: "skipped",
+          probePatchHost: "skipped",
+        });
         return null;
       }
+      signedUrl = result.url;
+      signedFormat = result.format;
+    } catch (e: any) {
+      setError(e?.message || "Failed to fetch patch URL");
+      setStatus("idle");
+      deferReport({
+        patchId: eventPatchId,
+        hackSlug,
+        stage: "signed_url",
+        outcome: "failure",
+        errorName: e?.name ?? null,
+        errorMessage: e?.message ?? null,
+        online,
+        probeSameOrigin: "skipped",
+        probePatchHost: "skipped",
+      });
+      return null;
+    }
 
-      setPatchUrl(result.url);
-      setPatchFormat(result.format);
-      setTermsAgreed(true);
+    setPatchUrl(signedUrl);
+    setPatchFormat(signedFormat);
+    setTermsAgreed(true);
 
-      const res = await fetch(result.url);
-      if (!res.ok) throw new Error("Failed to fetch patch");
+    const fetchStartedAt = performance.now();
+    try {
+      const res = await fetch(signedUrl);
+      if (!res.ok) throw new HTTPError(res.status);
       const blob = await res.blob();
       setPatchBlob(blob);
 
@@ -235,11 +280,35 @@ const HackActions: React.FC<HackActionsProps> = ({
         setStatus("idle");
       }
 
-      return { url: result.url, blob, format: result.format };
+      return { url: signedUrl, blob, format: signedFormat };
     } catch (e: any) {
-      setError(e?.message || "Failed to fetch patch URL");
+      setError(e?.name === "HTTPError" ? "Failed to fetch patch" : (e?.message || "Failed to fetch patch URL"));
       setStatus("idle");
       setTermsAgreed(false);
+
+      const elapsed = performance.now() - fetchStartedAt;
+      setTimeout(async () => {
+        try {
+          const probes = await runConnectivityProbes(signedUrl);
+          const diagnostics = collectFetchDiagnostics(signedUrl, elapsed);
+          await reportPatchDownloadEvent({
+            patchId: eventPatchId,
+            hackSlug,
+            stage: "fetch",
+            outcome: "failure",
+            errorName: e?.name ?? null,
+            errorMessage: e?.message ?? null,
+            online,
+            nextHopProtocol: diagnostics.nextHopProtocol,
+            transferSize: diagnostics.transferSize,
+            durationMs: diagnostics.durationMs,
+            timingEntryPresent: diagnostics.timingEntryPresent,
+            probeSameOrigin: probes.probeSameOrigin,
+            probePatchHost: probes.probePatchHost,
+          });
+        } catch {}
+      }, 50);
+
       return null;
     }
   }
@@ -393,6 +462,17 @@ const HackActions: React.FC<HackActionsProps> = ({
       setStatus("idle");
       setPatchProgress(null);
       console.error(e);
+      deferReport({
+        patchId: selectedPatch?.id ?? patchId ?? null,
+        hackSlug,
+        stage: "patch",
+        outcome: "failure",
+        errorName: e?.name ?? null,
+        errorMessage: e?.message ?? null,
+        online: typeof navigator !== "undefined" ? navigator.onLine : null,
+        probeSameOrigin: "skipped",
+        probePatchHost: "skipped",
+      });
     }
   }
 

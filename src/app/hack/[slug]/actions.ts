@@ -1111,3 +1111,99 @@ export async function updatePatcherSelectablePatches(
 
   return { ok: true };
 }
+
+export interface PatchDownloadEventInput {
+  patchId: number | null;
+  hackSlug: string;
+  stage: "signed_url" | "fetch" | "patch";
+  outcome: "success" | "failure";
+  errorName?: string | null;
+  errorMessage?: string | null;
+  online?: boolean | null;
+  nextHopProtocol?: string | null;
+  transferSize?: number | null;
+  durationMs?: number | null;
+  timingEntryPresent?: boolean | null;
+  probeSameOrigin?: "ok" | "failed" | "timeout" | "skipped" | null;
+  probePatchHost?: "ok" | "failed" | "timeout" | "skipped" | null;
+}
+
+const PATCH_DOWNLOAD_STAGES = new Set(["signed_url", "fetch", "patch"]);
+const PATCH_DOWNLOAD_OUTCOMES = new Set(["success", "failure"]);
+const PATCH_DOWNLOAD_PROBE_RESULTS = new Set(["ok", "failed", "timeout", "skipped"]);
+const HACK_SLUG_MAX_LENGTH = 200;
+const HACK_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+function truncate(value: string | null | undefined, max: number): string | null {
+  if (value == null) return null;
+  return value.length <= max ? value : value.slice(0, max);
+}
+
+function sanitizeHackSlug(value: string | null | undefined): string | null {
+  const slug = truncate(value, HACK_SLUG_MAX_LENGTH);
+  if (slug == null || !HACK_SLUG_PATTERN.test(slug)) return null;
+  return slug;
+}
+
+function sanitizePatchId(value: number | null | undefined): number | null {
+  if (value == null || !Number.isSafeInteger(value) || value <= 0) return null;
+  return value;
+}
+
+function sanitizeNonNegativeFinite(value: number | null | undefined): number | null {
+  if (value == null || !Number.isFinite(value) || value < 0) return null;
+  return value;
+}
+
+function sanitizeProbe(
+  value: string | null | undefined,
+): "ok" | "failed" | "timeout" | "skipped" | null {
+  if (value == null || !PATCH_DOWNLOAD_PROBE_RESULTS.has(value)) return null;
+  return value as "ok" | "failed" | "timeout" | "skipped";
+}
+
+export async function reportPatchDownloadEvent(
+  input: PatchDownloadEventInput,
+): Promise<{ ok: boolean }> {
+  try {
+    if (!PATCH_DOWNLOAD_STAGES.has(input.stage) || !PATCH_DOWNLOAD_OUTCOMES.has(input.outcome)) {
+      return { ok: false };
+    }
+
+    const hdrs = await headers();
+    const userAgent = truncate(hdrs.get("user-agent"), 400);
+    const country = truncate(
+      hdrs.get("x-vercel-ip-country") ?? hdrs.get("cf-ipcountry") ?? null,
+      10,
+    );
+
+    const supabase = await createServiceClient();
+    const { error } = await supabase.from("patch_download_events").insert({
+      patch: sanitizePatchId(input.patchId),
+      hack_slug: sanitizeHackSlug(input.hackSlug),
+      stage: input.stage,
+      outcome: input.outcome,
+      error_name: truncate(input.errorName, 100),
+      error_message: truncate(input.errorMessage, 500),
+      online: input.online ?? null,
+      user_agent: userAgent,
+      next_hop_protocol: truncate(input.nextHopProtocol, 50),
+      transfer_size: sanitizeNonNegativeFinite(input.transferSize),
+      duration_ms: sanitizeNonNegativeFinite(input.durationMs),
+      timing_entry_present: input.timingEntryPresent ?? null,
+      probe_same_origin: sanitizeProbe(input.probeSameOrigin),
+      probe_patch_host: sanitizeProbe(input.probePatchHost),
+      country,
+    });
+
+    if (error) {
+      console.error("reportPatchDownloadEvent", error);
+      return { ok: false };
+    }
+
+    return { ok: true };
+  } catch (e) {
+    console.error("reportPatchDownloadEvent", e);
+    return { ok: false };
+  }
+}
