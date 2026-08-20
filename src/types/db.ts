@@ -307,6 +307,74 @@ export type Database = {
         }
         Relationships: []
       }
+      patch_download_events: {
+        Row: {
+          country: string | null
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          error_name: string | null
+          hack_slug: string | null
+          id: number
+          next_hop_protocol: string | null
+          online: boolean | null
+          outcome: string
+          patch: number | null
+          probe_patch_host: string | null
+          probe_same_origin: string | null
+          stage: string
+          timing_entry_present: boolean | null
+          transfer_size: number | null
+          user_agent: string | null
+        }
+        Insert: {
+          country?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          error_name?: string | null
+          hack_slug?: string | null
+          id?: number
+          next_hop_protocol?: string | null
+          online?: boolean | null
+          outcome: string
+          patch?: number | null
+          probe_patch_host?: string | null
+          probe_same_origin?: string | null
+          stage: string
+          timing_entry_present?: boolean | null
+          transfer_size?: number | null
+          user_agent?: string | null
+        }
+        Update: {
+          country?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          error_name?: string | null
+          hack_slug?: string | null
+          id?: number
+          next_hop_protocol?: string | null
+          online?: boolean | null
+          outcome?: string
+          patch?: number | null
+          probe_patch_host?: string | null
+          probe_same_origin?: string | null
+          stage?: string
+          timing_entry_present?: boolean | null
+          transfer_size?: number | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patch_download_events_patch_fkey"
+            columns: ["patch"]
+            isOneToOne: false
+            referencedRelation: "patches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patch_downloads: {
         Row: {
           created_at: string

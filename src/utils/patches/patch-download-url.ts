@@ -34,6 +34,5 @@ export function buildPatchDownloadUrl(filename: string): string | null {
   const token = mintPatchDownloadToken(filename, expiresAtMs, secret);
   const u = new URL(filename, `${trimTrailingSlash(base)}/`);
   u.searchParams.set("token", token);
-  console.log("buildPatchDownloadUrl", u.href);
   return u.href;
 }
