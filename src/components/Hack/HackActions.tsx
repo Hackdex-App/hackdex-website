@@ -13,6 +13,7 @@ import {
   isArchiveFile,
   isAnyRomExtension,
 } from "@/utils/romFile";
+import { getOrCreateDeviceId } from "@/utils/deviceId";
 import { collectFetchDiagnostics, HTTPError, runConnectivityProbes } from "@/utils/patches/download-telemetry";
 import type { SelectablePatch } from "@/types/patcher";
 import { applyPatch, patchFormatFromFilename, type PatchFormat } from "@/utils/patching";
@@ -436,12 +437,8 @@ const HackActions: React.FC<HackActionsProps> = ({
       try {
         const countPatchId = selectedPatch?.id ?? patchId;
         if (countPatchId != null) {
-          const key = "deviceId";
-          let deviceId = localStorage.getItem(key);
-          if (!deviceId) {
-            deviceId = crypto.randomUUID();
-            localStorage.setItem(key, deviceId);
-          }
+          const deviceId = getOrCreateDeviceId();
+          if (!deviceId) return;
           // Defer count update to avoid Safari cancelling the request
           setTimeout(async () => {
             const deviceIdObscured = deviceId.split("-");

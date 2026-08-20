@@ -7,6 +7,7 @@ import { FiEdit2, FiEdit, FiX } from "react-icons/fi";
 import VersionActions from "@/components/Hack/VersionActions";
 import type { PatchesDownloadPermission } from "@/components/Hack/DownloadPermissionSettings";
 import { updatePatchChangelog, updatePatchVersion, getPatchDownloadUrl, updatePatchDownloadCount } from "@/app/hack/[slug]/actions";
+import { getOrCreateDeviceId } from "@/utils/deviceId";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import type { Patch } from "@/components/Hack/PatcherVersionManager";
@@ -38,12 +39,8 @@ function PublicPatchDownloadButton({ patchId }: { patchId: number }) {
         window.open(result.url, "_blank");
         // Best-effort log download for counting
         try {
-          const key = "deviceId";
-          let deviceId = localStorage.getItem(key);
-          if (!deviceId) {
-            deviceId = crypto.randomUUID();
-            localStorage.setItem(key, deviceId);
-          }
+          const deviceId = getOrCreateDeviceId();
+          if (!deviceId) return;
           setTimeout(async () => {
             const deviceIdObscured = deviceId.split("-");
             const countResult = await updatePatchDownloadCount(patchId, deviceIdObscured);
