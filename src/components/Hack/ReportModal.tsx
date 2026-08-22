@@ -45,22 +45,15 @@ const ReportModal: React.FC<ReportModalProps> = ({ slug, onClose }) => {
   const canSubmit = () => {
     if (!reportType) return false;
 
-    if (reportType === "stolen") {
-      // Stolen requires email and details
-      if (!email.trim() || !details.trim()) return false;
+    if (!details.trim()) return false;
+
+    if (email.trim()) {
       // Basic email validation (matches server-side validation pattern)
       const emailRegex = /^(?!\.)(?!.*\.\.)([a-z0-9_'+\-\.]*)[a-z0-9_'+\-]@([a-z0-9][a-z0-9\-]*\.)+[a-z]{2,}$/;
       if (!emailRegex.test(email.trim().toLowerCase())) return false;
-      return true;
     }
 
-    if (reportType === "misleading") {
-      // Misleading requires details
-      return details.trim().length > 0;
-    }
-
-    // Hateful and Harassment are optional, so can always submit
-    return true;
+    return reportType !== "stolen" || !!email.trim();
   };
 
   const handleSubmit = async () => {
@@ -74,7 +67,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ slug, onClose }) => {
         slug,
         reportType,
         details: details.trim() || null,
-        email: reportType === "stolen" ? email.trim() : null,
+        email: email.trim() || null,
         isImpersonating: reportType === "stolen" ? isImpersonating : null,
       });
 
@@ -174,9 +167,6 @@ const ReportModal: React.FC<ReportModalProps> = ({ slug, onClose }) => {
 
   const renderDetailsPage = () => {
     const isStolen = reportType === "stolen";
-    const isMisleading = reportType === "misleading";
-    const requiresDetails = isStolen || isMisleading;
-    const isOptional = reportType === "hateful" || reportType === "harassment";
 
     return (
       <div className="flex flex-col gap-6 sm:gap-4">
@@ -190,45 +180,46 @@ const ReportModal: React.FC<ReportModalProps> = ({ slug, onClose }) => {
           <p className="mt-1 text-sm text-foreground/80">
             {isStolen
               ? "Please provide your contact information and details about the stolen hack."
-              : isOptional
-              ? "Please provide additional details (optional)."
               : "Please provide additional details."}
           </p>
         </div>
 
         {isStolen && (
-          <>
-            <div>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={isImpersonating}
-                  onChange={(e) => setIsImpersonating(e.target.checked)}
-                  className="w-4 h-4"
-                />
-                <span className="text-sm font-semibold">Is the uploader impersonating you?</span>
-              </label>
-            </div>
-
-            <div>
-              <label className="text-sm font-semibold mb-2 block">
-                Contact Email <span className="text-red-500">*</span>
-              </label>
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer">
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@email.com"
-                className="w-full px-3 py-2 rounded-md border border-[var(--border)] bg-[var(--surface-1)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                type="checkbox"
+                checked={isImpersonating}
+                onChange={(e) => setIsImpersonating(e.target.checked)}
+                className="w-4 h-4"
               />
-            </div>
-          </>
+              <span className="text-sm font-semibold">Is the uploader impersonating you?</span>
+            </label>
+          </div>
         )}
 
         <div>
           <label className="text-sm font-semibold mb-2 block">
-            Additional Details {requiresDetails && <span className="text-red-500">*</span>}
-            {isOptional && <span className="text-foreground/60 text-xs ml-1">(optional)</span>}
+            Contact Email
+            {isStolen ? (
+              <span className="text-red-500"> *</span>
+            ) : (
+              <span className="text-foreground/60 text-xs ml-1">(optional)</span>
+            )}
+          </label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="your@email.com"
+            required={isStolen}
+            className="w-full px-3 py-2 rounded-md border border-[var(--border)] bg-[var(--surface-1)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+          />
+        </div>
+
+        <div>
+          <label className="text-sm font-semibold mb-2 block">
+            Additional Details <span className="text-red-500">*</span>
           </label>
           <textarea
             value={details}
@@ -239,6 +230,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ slug, onClose }) => {
                 : "Please provide additional context..."
             }
             rows={6}
+            required
             className="w-full px-3 py-2 rounded-md border border-[var(--border)] bg-[var(--surface-1)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)] resize-none"
           />
         </div>
@@ -247,6 +239,14 @@ const ReportModal: React.FC<ReportModalProps> = ({ slug, onClose }) => {
           <div className="p-4 rounded-md bg-[var(--surface-2)] border border-[var(--border)]">
             <p className="text-sm text-foreground/90">
               <strong>Note:</strong> We will reach out to you via email. Please ensure you have sufficient proof that you are the original creator of this hack.
+            </p>
+          </div>
+        )}
+
+        {!isStolen && (
+          <div className="p-4 rounded-md bg-[var(--surface-2)] border border-[var(--border)]">
+            <p className="text-sm text-foreground/90">
+              <strong>Note:</strong> If we have questions, we will reach out via email for clarification.
             </p>
           </div>
         )}

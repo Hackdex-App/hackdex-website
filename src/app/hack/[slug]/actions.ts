@@ -356,8 +356,8 @@ export async function submitHackReport(data: {
     return { error: "Hack not found" };
   }
 
-  // Validate email if provided (for stolen reports)
-  if (data.reportType === "stolen" && data.email) {
+  // Validate email if provided
+  if (data.email?.trim()) {
     const emailLower = data.email.trim().toLowerCase();
     const { error: emailError } = validateEmail(emailLower);
     if (emailError) {
@@ -366,17 +366,12 @@ export async function submitHackReport(data: {
   }
 
   // Validate required fields
-  if (data.reportType === "misleading" && !data.details?.trim()) {
-    return { error: "Details are required for misleading reports" };
+  if (data.reportType === "stolen" && !data.email?.trim()) {
+    return { error: "Email is required for stolen hack reports" };
   }
 
-  if (data.reportType === "stolen") {
-    if (!data.email?.trim()) {
-      return { error: "Email is required for stolen hack reports" };
-    }
-    if (!data.details?.trim()) {
-      return { error: "Details are required for stolen hack reports" };
-    }
+  if (!data.details?.trim()) {
+    return { error: "Details are required for hack reports" };
   }
 
   // Build hack URL
@@ -417,14 +412,15 @@ export async function submitHackReport(data: {
     });
   }
 
+  if (data.email?.trim()) {
+    fields.push({
+      name: "Contact Email",
+      value: data.email.trim().toLowerCase(),
+      inline: false,
+    });
+  }
+
   if (data.reportType === "stolen") {
-    if (data.email) {
-      fields.push({
-        name: "Contact Email",
-        value: data.email.trim().toLowerCase(),
-        inline: false,
-      });
-    }
     if (data.isImpersonating !== null) {
       fields.push({
         name: "Is Uploader Impersonating?",
