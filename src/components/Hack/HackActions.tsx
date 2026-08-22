@@ -14,7 +14,14 @@ import {
   isAnyRomExtension,
 } from "@/utils/romFile";
 import { getOrCreateDeviceId } from "@/utils/deviceId";
-import { collectFetchDiagnostics, HTTPError, runConnectivityProbes } from "@/utils/patches/download-telemetry";
+import {
+  collectFetchDiagnostics,
+  collectResponseMetadata,
+  HTTPError,
+  runConnectivityProbes,
+  type FetchFailurePhase,
+  type ResponseMetadata,
+} from "@/utils/patches/download-telemetry";
 import type { SelectablePatch } from "@/types/patcher";
 import { applyPatch, patchFormatFromFilename, type PatchFormat } from "@/utils/patching";
 import { createOutputSink, SaveCancelledError, type OutputSink } from "@/utils/patching/save";
@@ -25,6 +32,20 @@ function deferReport(payload: Parameters<typeof reportPatchDownloadEvent>[0]) {
       await reportPatchDownloadEvent(payload);
     } catch {}
   }, 50);
+}
+
+function getPageOrigin(): string | null {
+  return typeof window !== "undefined" ? window.location.origin : null;
+}
+
+function createFetchSessionId(): string | null {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  if (process.env.NODE_ENV === "development") {
+    return `dev-${Date.now()}`;
+  }
+  return null;
 }
 
 interface HackActionsProps {
@@ -65,6 +86,16 @@ const HackActions: React.FC<HackActionsProps> = ({
   const [romErrorModal, setRomErrorModal] = React.useState<BaseRomErrorModalState | null>(null);
   const [isVerifyingRom, setIsVerifyingRom] = React.useState(false);
   const [selectedPatchId, setSelectedPatchId] = React.useState<number | null>(patcherSelector.defaultPatchId);
+  const fetchSessionIdRef = React.useRef<string | null | undefined>(undefined);
+
+  function getFetchSessionId(): string | null {
+    if (fetchSessionIdRef.current !== undefined) {
+      return fetchSessionIdRef.current;
+    }
+    const id = createFetchSessionId();
+    fetchSessionIdRef.current = id;
+    return id;
+  }
   const baseRomName = React.useMemo(() => baseRoms.find(r => r.id === baseRomId)?.name || null, [baseRomId]);
   const effectivePlatform = React.useMemo(
     () => platform ?? baseRoms.find(r => r.id === baseRomId)?.platform,
@@ -241,6 +272,8 @@ const HackActions: React.FC<HackActionsProps> = ({
           errorName: "ServerError",
           errorMessage: result.error,
           online,
+          pageOrigin: getPageOrigin(),
+          correlationId: getFetchSessionId(),
           probeSameOrigin: "skipped",
           probePatchHost: "skipped",
         });
@@ -259,6 +292,8 @@ const HackActions: React.FC<HackActionsProps> = ({
         errorName: e?.name ?? null,
         errorMessage: e?.message ?? null,
         online,
+        pageOrigin: getPageOrigin(),
+        correlationId: getFetchSessionId(),
         probeSameOrigin: "skipped",
         probePatchHost: "skipped",
       });
@@ -270,15 +305,46 @@ const HackActions: React.FC<HackActionsProps> = ({
     setTermsAgreed(true);
 
     const fetchStartedAt = performance.now();
+    let failurePhase: FetchFailurePhase = "request";
+    let responseMeta: ResponseMetadata = {
+      responseStatus: null,
+      contentLength: null,
+      contentEncoding: null,
+      contentType: null,
+    };
+    const sessionFields = {
+      pageOrigin: getPageOrigin(),
+      correlationId: getFetchSessionId(),
+    };
+
     try {
       const res = await fetch(signedUrl);
+      failurePhase = "response";
+      responseMeta = collectResponseMetadata(res);
       if (!res.ok) throw new HTTPError(res.status);
+      failurePhase = "body";
       const blob = await res.blob();
       setPatchBlob(blob);
 
       const romReady = isRomReadyForPatch();
       if (!romReady) {
         setStatus("idle");
+      }
+
+      if (Math.random() < 0.1) {
+        const elapsed = performance.now() - fetchStartedAt;
+        const diagnostics = collectFetchDiagnostics(signedUrl, elapsed);
+        deferReport({
+          patchId: eventPatchId,
+          hackSlug,
+          stage: "fetch",
+          outcome: "success",
+          online,
+          sampleRate: 0.1,
+          ...sessionFields,
+          ...responseMeta,
+          ...diagnostics,
+        });
       }
 
       return { url: signedUrl, blob, format: signedFormat };
@@ -297,13 +363,13 @@ const HackActions: React.FC<HackActionsProps> = ({
             hackSlug,
             stage: "fetch",
             outcome: "failure",
+            failurePhase,
             errorName: e?.name ?? null,
             errorMessage: e?.message ?? null,
             online,
-            nextHopProtocol: diagnostics.nextHopProtocol,
-            transferSize: diagnostics.transferSize,
-            durationMs: diagnostics.durationMs,
-            timingEntryPresent: diagnostics.timingEntryPresent,
+            ...sessionFields,
+            ...responseMeta,
+            ...diagnostics,
             probeSameOrigin: probes.probeSameOrigin,
             probePatchHost: probes.probePatchHost,
           });
@@ -467,6 +533,8 @@ const HackActions: React.FC<HackActionsProps> = ({
         errorName: e?.name ?? null,
         errorMessage: e?.message ?? null,
         online: typeof navigator !== "undefined" ? navigator.onLine : null,
+        pageOrigin: getPageOrigin(),
+        correlationId: getFetchSessionId(),
         probeSameOrigin: "skipped",
         probePatchHost: "skipped",
       });
