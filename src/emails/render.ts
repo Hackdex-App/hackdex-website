@@ -13,8 +13,16 @@ export type HackApprovedEmailVars = {
   slug: string;
 };
 
+export type HackReviewReplyEmailVars = {
+  title: string;
+  slug: string;
+  message: string;
+  adminName: string;
+};
+
 export type EmailTemplateVars = {
   "hack-approved": HackApprovedEmailVars;
+  "hack-review-reply": HackReviewReplyEmailVars;
 };
 
 export type EmailTemplate = keyof EmailTemplateVars;
@@ -44,6 +52,12 @@ const templateNormalizers: {
   "hack-approved": ({ title, slug }) => ({
     title: escapeHtml(title),
     slug: encodeURIComponent(slug),
+  }),
+  "hack-review-reply": ({ title, slug, message, adminName }) => ({
+    title: escapeHtml(title),
+    slug: encodeURIComponent(slug),
+    message: escapeHtml(message).replace(/\r?\n/g, "<br />"),
+    adminName: escapeHtml(adminName),
   }),
 };
 

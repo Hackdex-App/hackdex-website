@@ -9,6 +9,11 @@ import { slugify } from "@/utils/format";
 import { checkEditPermission, checkPatchEditPermission } from "@/utils/hack";
 import { getCachedTagsWithUsage, resolveTagIdsInOrder } from "@/data/tags";
 import type { PatchFormat } from "@/utils/patching";
+import {
+  ensureHackReviewThread,
+  getHackReviewThread,
+  postHackReviewMessage,
+} from "@/utils/hack-review";
 
 type HackInsert = TablesInsert<"hacks">;
 
@@ -109,6 +114,35 @@ export async function prepareSubmission(formData: FormData) {
     return { ok: false, error: insertErr.message } as const;
   }
 
+  if (!is_archive) {
+    try {
+      const { data: profile } = await supabase.from("profiles").select("username").eq("id", user.id).single();
+      const reviewThread = await ensureHackReviewThread({
+        slug,
+        title,
+        author: profile?.username ? `@${profile.username}` : user.id,
+      });
+      if (!reviewThread && process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL) {
+        await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL, [{
+          title: `Review thread creation failed: ${title}`,
+          description: "The hack was saved, but its Discord review thread could not be created.",
+          color: 0xef4444,
+          url: `${process.env.NEXT_PUBLIC_SITE_URL}/hack/${slug}`,
+        }]);
+      }
+    } catch (error) {
+      console.error(`[HackReview] Failed to create a review thread for ${slug}:`, error);
+      if (process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL) {
+        await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL, [{
+          title: `Review thread creation failed: ${title}`,
+          description: "The hack was saved, but its Discord review thread could not be created.",
+          color: 0xef4444,
+          url: `${process.env.NEXT_PUBLIC_SITE_URL}/hack/${slug}`,
+        }]);
+      }
+    }
+  }
+
   // Tags: restrict to existing only (order follows form submission)
   if (tags.length > 0) {
     const catalog = await getCachedTagsWithUsage();
@@ -118,24 +152,6 @@ export async function prepareSubmission(formData: FormData) {
       const { error: htErr } = await supabase.from("hack_tags").insert(hackTags);
       if (htErr) return { ok: false, error: htErr.message } as const;
     }
-  }
-
-  if (process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL) {
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-    const displayName = profile?.username ? `@${profile.username}` : user.id;
-
-    const embed: APIEmbed = {
-      title: `Hack submission: ${title}`,
-      description: `A new hack by **${displayName}** is being prepared for submission.`,
-      color: 0x40f56a,
-      url: `${process.env.NEXT_PUBLIC_SITE_URL}/hack/${slug}`,
-      footer: {
-        text: `This message brought to you by Hackdex`
-      }
-    }
-    await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL, [
-      embed,
-    ]);
   }
 
   return { ok: true, slug } as const;
@@ -310,38 +326,59 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
     }
   }
 
-  if (process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL) {
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', hack.created_by).single();
-    const displayName = profile?.username ? `@${profile.username}` : hack.created_by;
-    const uploadedByDifferentUser = hack.created_by !== user.id;
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", hack.created_by)
+    .single();
+  const displayName = profile?.username ? `@${profile.username}` : hack.created_by;
+  const uploadedByDifferentUser = hack.created_by !== user.id;
+  const embed: APIEmbed = args.firstUpload ? {
+    title: `:tada: ${hack.title}`,
+    description: `A new hack by **${displayName}** is pending approval by an admin.`
+      + (uploadedByDifferentUser ? ` (Uploaded by ${user.id})` : "")
+      + (hack.verification_contact_info ? `\n\n**Verification contact info:**\n${hack.verification_contact_info}` : ""),
+    color: 0x40f56a,
+    url: `${process.env.NEXT_PUBLIC_SITE_URL}/hack/${args.slug}`,
+    footer: { text: "This message brought to you by Hackdex" },
+  } : {
+    title: `New update for ${hack.title}`,
+    description: `**${hack.title}** has been updated to **${args.version}**`,
+    color: 0x40f56a,
+    url: `${process.env.NEXT_PUBLIC_SITE_URL}/hack/${args.slug}`,
+    footer: {
+      text: hack.approved
+        ? "This message brought to you by Hackdex"
+        : "This hack is still pending approval",
+    },
+  };
 
-    const embed: APIEmbed = args.firstUpload ? {
-      title: `:tada: ${hack.title}`,
-      description: `A new hack by **${displayName}** is pending approval by an admin.`
-        + (uploadedByDifferentUser ? ` (Uploaded by ${user.id})` : '')
-        + (hack.verification_contact_info ? `\n\n**Verification contact info:**\n${hack.verification_contact_info}` : ''),
-      color: 0x40f56a,
-      url: `${process.env.NEXT_PUBLIC_SITE_URL}/hack/${args.slug}`,
-      footer: {
-        text: `This message brought to you by Hackdex`
+  let reviewThread = null;
+  let reviewLookupSucceeded = false;
+  if (!hack.is_archive) {
+    try {
+      reviewThread = await getHackReviewThread(args.slug);
+      reviewLookupSucceeded = true;
+      if (!reviewThread && args.firstUpload) {
+        reviewThread = await ensureHackReviewThread({
+          slug: args.slug,
+          title: hack.title,
+          author: displayName,
+        });
       }
-    } : {
-      title: `New update for ${hack.title}`,
-      description: `**${hack.title}** has been updated to **${args.version}**`,
-      color: 0x40f56a,
-      url: `${process.env.NEXT_PUBLIC_SITE_URL}/hack/${args.slug}`,
-      footer: {
-        text: hack.approved ? `This message brought to you by Hackdex` : `This hack is still pending approval`
-      }
+    } catch (error) {
+      console.error(`[HackReview] Failed to load or create the review thread for ${args.slug}:`, error);
     }
+  }
 
-    const webhookUrl = args.firstUpload || !hack.approved ?
-      process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL :
-      process.env.DISCORD_WEBHOOK_HACKDEX_HACKS_URL || process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL;
+  if (reviewThread) {
+    await postHackReviewMessage(reviewThread, { embeds: [embed] });
+  } else if (reviewLookupSucceeded && process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL) {
+    await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL, [embed]);
+  }
 
-    await sendDiscordMessageEmbed(webhookUrl, [
-      embed,
-    ]);
+  if (hack.approved && process.env.DISCORD_WEBHOOK_HACKDEX_HACKS_URL) {
+    await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_HACKDEX_HACKS_URL, [embed]);
   }
 
   // Redirect to versions page if not publishing automatically, otherwise to hack page

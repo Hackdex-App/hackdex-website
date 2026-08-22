@@ -11,6 +11,11 @@ import { checkEditPermission, checkPatchEditPermission } from "@/utils/hack";
 import { getCachedTagsWithUsage, resolveTagIdsInOrder } from "@/data/tags";
 import { sendTransactionalEmail } from "@/utils/email";
 import { renderEmail } from "@/emails/render";
+import { approveDiscordReviewThread } from "@/utils/discord-rest";
+import {
+  getHackReviewThread,
+  postHackReviewMessage,
+} from "@/utils/hack-review";
 
 export async function updateHack(args: {
   slug: string;
@@ -352,6 +357,18 @@ export async function approveHack(slug: string, verified?: boolean) {
     }
   } catch (error) {
     console.error("[HackApprove] Failed to send email to creator:", error);
+  }
+
+  try {
+    const reviewThread = await getHackReviewThread(slug);
+    if (reviewThread) {
+      await postHackReviewMessage(reviewThread, {
+        content: `✅ **${hack.title}** has been approved and is now live on Hackdex.`,
+      });
+      await approveDiscordReviewThread(reviewThread.discord_thread_id);
+    }
+  } catch (error) {
+    console.error(`[HackReview] Failed to update the approved review thread for ${slug}:`, error);
   }
 
   if (process.env.DISCORD_WEBHOOK_HACKDEX_HACKS_URL) {

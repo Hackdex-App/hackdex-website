@@ -1,0 +1,29 @@
+<mjml>
+  <mj-head>
+    <mj-include path="../partials/head.mjml" />
+    <mj-preview>Hackdex has a review message about {{title}}</mj-preview>
+  </mj-head>
+  <mj-body background-color="#f3f4f6">
+    <mj-include path="../partials/header.mjml" />
+    <mj-section background-color="#ffffff">
+      <mj-column>
+        <mj-text font-size="24px" font-weight="700" color="#171717" padding-bottom="12px">
+          Review update for {{title}}
+        </mj-text>
+        <mj-text font-size="16px" line-height="24px" color="#374151" padding-bottom="8px">
+          <strong>{{adminName}}</strong> from the Hackdex review team wrote:
+        </mj-text>
+        <mj-text font-size="16px" line-height="24px" color="#171717" padding="16px" background-color="#f9fafb">
+          {{message}}
+        </mj-text>
+        <mj-button href="https://hackdex.app/hack/{{slug}}" padding="20px 25px">
+          <strong>View your hack</strong>
+        </mj-button>
+        <mj-text font-size="16px" line-height="24px" color="#374151">
+          You can reply directly to this email. Your response will be sent to the Hackdex review team.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-include path="../partials/sign-off.mjml" />
+  </mj-body>
+</mjml>
