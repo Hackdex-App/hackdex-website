@@ -27,6 +27,7 @@ type DiscordInteraction = {
   };
   member?: {
     nick?: string | null;
+    roles?: string[];
     user?: {
       id?: string;
       avatar?: string | null;
@@ -130,6 +131,29 @@ export async function POST(request: Request) {
         await editDeferredResponse(
           interaction,
           "This command can only be used in a mapped Hackdex review thread.",
+        );
+        return;
+      }
+
+      const replyRoleIds = (process.env.DISCORD_REPLY_ROLE_IDS ?? "")
+        .split(",")
+        .map((roleId) => roleId.trim())
+        .filter(Boolean);
+      if (replyRoleIds.length === 0) {
+        console.error(
+          "[HackReview] DISCORD_REPLY_ROLE_IDS is missing or empty; refusing /reply.",
+        );
+        await editDeferredResponse(
+          interaction,
+          "This command is not configured.",
+        );
+        return;
+      }
+      const memberRoles = interaction.member?.roles ?? [];
+      if (!replyRoleIds.some((roleId) => memberRoles.includes(roleId))) {
+        await editDeferredResponse(
+          interaction,
+          "You do not have permission to use this command.",
         );
         return;
       }

@@ -38,6 +38,11 @@ function headerValue(
   return entry?.[1];
 }
 
+function normalizeEmailAddress(value: string): string {
+  const bracketedAddress = value.match(/<\s*([^<>]+)\s*>/)?.[1];
+  return (bracketedAddress ?? value).trim().toLowerCase();
+}
+
 function replyTokenFromAddresses(
   addresses: string[],
   inboundDomain: string,
@@ -152,12 +157,46 @@ export async function POST(request: Request) {
     }
 
     const body = stripQuotedReply(email.text ?? "");
+    let creatorEmailMatches = false;
+    if (reviewThread) {
+      const { data: hack, error: hackError } = await serviceClient
+        .from("hacks")
+        .select("created_by")
+        .eq("slug", reviewThread.hack_slug)
+        .maybeSingle();
+      if (hackError || !hack) {
+        console.warn(
+          "[HackReview] Could not load the hack creator for inbound email verification:",
+          hackError ?? "Hack not found",
+        );
+      } else {
+        const { data: creatorData, error: creatorError } =
+          await serviceClient.auth.admin.getUserById(hack.created_by);
+        const creatorEmail = creatorData?.user?.email;
+        if (creatorError || !creatorEmail) {
+          console.warn(
+            "[HackReview] Could not load the hack creator email for inbound verification:",
+            creatorError ?? "No email found",
+          );
+        } else {
+          creatorEmailMatches =
+            normalizeEmailAddress(email.from) === normalizeEmailAddress(creatorEmail);
+        }
+      }
+    }
+
     const embed: APIEmbed = {
       title: (email.subject || "(No subject)").slice(0, 256),
       description: (body || "(No plain-text body)").slice(0, 3500),
       color: 0x5865f2,
       fields: [
-        { name: "From", value: email.from.slice(0, 1024), inline: true },
+        {
+          name: reviewThread
+            ? `From ${creatorEmailMatches ? "✅" : "❓"}`
+            : "From",
+          value: email.from.slice(0, 1024),
+          inline: true,
+        },
         ...(!reviewThread
           ? [{
               name: "To",
