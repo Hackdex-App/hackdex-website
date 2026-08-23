@@ -111,6 +111,8 @@ export async function POST(request: Request) {
   });
 
   after(async () => {
+    let emailSentConfirmation: string | null = null;
+    let threadPostSucceeded = false;
     try {
       const serviceClient = await createServiceClient();
       const { data: reviewThread, error } = await serviceClient
@@ -175,8 +177,9 @@ export async function POST(request: Request) {
         await editDeferredResponse(interaction, emailResult.error);
         return;
       }
+      emailSentConfirmation = `emailed ${emailResult.email} as ${adminName}`;
 
-      await postHackReviewMessage(reviewThread, {
+      const threadPostResult = await postHackReviewMessage(reviewThread, {
         embeds: [{
           title: emailResult.subject,
           author: {
@@ -192,16 +195,23 @@ export async function POST(request: Request) {
           color: 0x57f287,
         }],
       });
+      threadPostSucceeded = threadPostResult === "posted";
       await editDeferredResponse(
         interaction,
-        `emailed ${emailResult.email} as ${adminName}`,
+        threadPostSucceeded
+          ? emailSentConfirmation
+          : `${emailSentConfirmation}. The review thread message could not be posted.`,
       );
     } catch (error) {
       console.error("[HackReview] Failed to handle /reply:", error);
       try {
         await editDeferredResponse(
           interaction,
-          "The review email could not be sent.",
+          emailSentConfirmation
+            ? threadPostSucceeded
+              ? emailSentConfirmation
+              : `${emailSentConfirmation}. The review thread message could not be posted.`
+            : "The review email could not be sent.",
         );
       } catch (responseError) {
         console.error("[HackReview] Failed to update the deferred interaction:", responseError);
