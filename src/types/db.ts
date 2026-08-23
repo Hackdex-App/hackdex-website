@@ -102,6 +102,44 @@ export type Database = {
           },
         ]
       }
+      hack_review_threads: {
+        Row: {
+          created_at: string
+          discord_parent_channel_id: string
+          discord_thread_id: string
+          hack_slug: string
+          reply_token: string
+          resend_last_email_id: string | null
+          resend_last_message_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          discord_parent_channel_id: string
+          discord_thread_id: string
+          hack_slug: string
+          reply_token: string
+          resend_last_email_id?: string | null
+          resend_last_message_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          discord_parent_channel_id?: string
+          discord_thread_id?: string
+          hack_slug?: string
+          reply_token?: string
+          resend_last_email_id?: string | null
+          resend_last_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hack_review_threads_hack_slug_fkey"
+            columns: ["hack_slug"]
+            isOneToOne: true
+            referencedRelation: "hacks"
+            referencedColumns: ["slug"]
+          },
+        ]
+      }
       hack_tags: {
         Row: {
           hack_slug: string

@@ -3,6 +3,8 @@
 import { unstable_cache as cache } from "next/cache";
 import { createClient, createServiceClient } from "@/utils/supabase/server";
 import { canEditAsCreator, canEditAsArchiver } from "@/utils/hack";
+import { getHackReviewThread, postHackReviewMessage } from "@/utils/hack-review";
+import { claimDiscordReviewThread } from "@/utils/discord-rest";
 import { checkUserRoles } from "@/utils/user";
 
 interface SeriesDataset {
@@ -324,4 +326,33 @@ export const assignHacksToAdminForReview = async ({ slugs }: { slugs: string[] }
     .update({ assigned_admin: user.id })
     .in("slug", slugs);
   if (error) throw error;
+
+  const { data: profile, error: profileError } = await supa
+    .from("profiles")
+    .select("username")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (profileError) {
+    console.warn("[HackReview] Failed to load claiming admin profile:", profileError);
+  }
+  const adminName = profile?.username || "An admin";
+
+  await Promise.all(
+    slugs.map(async (slug) => {
+      try {
+        const reviewThread = await getHackReviewThread(slug);
+        if (!reviewThread) return;
+
+        await postHackReviewMessage(reviewThread, {
+          content: `${adminName} has claimed the hack for review.`,
+        });
+        await claimDiscordReviewThread(reviewThread.discord_thread_id);
+      } catch (notificationError) {
+        console.error(
+          `[HackReview] Failed to notify the review thread for ${slug}:`,
+          notificationError,
+        );
+      }
+    }),
+  );
 };
