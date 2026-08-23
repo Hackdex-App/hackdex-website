@@ -335,7 +335,7 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
   const displayName = profile?.username ? `@${profile.username}` : hack.created_by;
   const uploadedByDifferentUser = hack.created_by !== user.id;
   const embed: APIEmbed = args.firstUpload ? {
-    title: `:tada: ${hack.title}`,
+    title: hack.title,
     description: `A new hack by **${displayName}** is pending approval by an admin.`
       + (uploadedByDifferentUser ? ` (Uploaded by ${user.id})` : "")
       + (hack.verification_contact_info ? `\n\n**Verification contact info:**\n${hack.verification_contact_info}` : ""),
@@ -354,31 +354,33 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
     },
   };
 
-  let reviewThread = null;
-  if (!hack.is_archive) {
-    try {
-      reviewThread = await getHackReviewThread(args.slug);
-      if (!reviewThread && args.firstUpload) {
-        reviewThread = await ensureHackReviewThread({
-          slug: args.slug,
-          title: hack.title,
-          author: displayName,
-          isClaimed: hack.assigned_admin !== null,
-        });
-      }
-    } catch (error) {
-      console.error(`[HackReview] Failed to load or create the review thread for ${args.slug}:`, error);
+  if (hack.approved) {
+    if (process.env.DISCORD_WEBHOOK_HACKDEX_HACKS_URL) {
+      await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_HACKDEX_HACKS_URL, [embed]);
     }
-  }
+  } else {
+    let reviewThread = null;
+    if (!hack.is_archive) {
+      try {
+        reviewThread = await getHackReviewThread(args.slug);
+        if (!reviewThread && args.firstUpload) {
+          reviewThread = await ensureHackReviewThread({
+            slug: args.slug,
+            title: hack.title,
+            author: displayName,
+            isClaimed: hack.assigned_admin !== null,
+          });
+        }
+      } catch (error) {
+        console.error(`[HackReview] Failed to load or create the review thread for ${args.slug}:`, error);
+      }
+    }
 
-  if (reviewThread) {
-    await postHackReviewMessage(reviewThread, { embeds: [embed] });
-  } else if (process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL) {
-    await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL, [embed]);
-  }
-
-  if (hack.approved && process.env.DISCORD_WEBHOOK_HACKDEX_HACKS_URL) {
-    await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_HACKDEX_HACKS_URL, [embed]);
+    if (reviewThread) {
+      await postHackReviewMessage(reviewThread, { embeds: [embed] });
+    } else if (process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL) {
+      await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL, [embed]);
+    }
   }
 
   // Redirect to versions page if not publishing automatically, otherwise to hack page
