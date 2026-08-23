@@ -46,7 +46,7 @@ function replyTokenFromAddresses(
   const pattern = new RegExp(`reviews\\+([A-Za-z0-9_-]+)@${escapedDomain}`, "i");
   for (const address of addresses) {
     const match = address.match(pattern);
-    if (match) return match[1];
+    if (match) return match[1].toLowerCase();
   }
   return null;
 }
@@ -109,10 +109,11 @@ export async function POST(request: Request) {
     let reviewThread = null;
 
     if (replyToken) {
+      const escapedReplyToken = replyToken.replaceAll("_", "\\_");
       const { data, error } = await serviceClient
         .from("hack_review_threads")
         .select("*")
-        .eq("reply_token", replyToken)
+        .ilike("reply_token", escapedReplyToken)
         .maybeSingle();
       if (error) throw error;
       reviewThread = data;

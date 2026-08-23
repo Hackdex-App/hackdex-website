@@ -48,7 +48,7 @@ export async function ensureHackReviewThread(args: {
       discord_thread_id: discordThread.id,
       discord_parent_channel_id:
         discordThread.parent_id ?? process.env.DISCORD_REVIEW_FORUM_CHANNEL_ID!,
-      reply_token: randomBytes(24).toString("base64url"),
+      reply_token: randomBytes(24).toString("hex"),
     })
     .select("*")
     .single();
