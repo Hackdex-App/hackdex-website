@@ -93,7 +93,10 @@ export async function emailHackCreator(args: {
   hackSlug: string;
   message: string;
   adminName: string;
-}): Promise<{ ok: true; email: string } | { ok: false; error: string }> {
+}): Promise<
+  | { ok: true; email: string; subject: string; creatorUsername: string | null }
+  | { ok: false; error: string }
+> {
   const apiKey = process.env.RESEND_API_KEY;
   const inboundDomain = process.env.RESEND_INBOUND_DOMAIN;
   if (!apiKey || !inboundDomain) {
@@ -123,6 +126,18 @@ export async function emailHackCreator(args: {
       creatorError ?? "No email found",
     );
     return { ok: false, error: "Submitter email was not found." };
+  }
+
+  const { data: creatorProfile, error: profileError } = await serviceClient
+    .from("profiles")
+    .select("username")
+    .eq("id", row.hacks.created_by)
+    .maybeSingle();
+  if (profileError) {
+    console.warn(
+      "[HackReview] Failed to load the hack creator profile:",
+      profileError,
+    );
   }
 
   const resend = new Resend(apiKey);
@@ -171,5 +186,10 @@ export async function emailHackCreator(args: {
     console.error("[HackReview] Failed to persist Resend message metadata:", updateError);
   }
 
-  return { ok: true, email: creatorEmail };
+  return {
+    ok: true,
+    email: creatorEmail,
+    subject,
+    creatorUsername: creatorProfile?.username ?? null,
+  };
 }

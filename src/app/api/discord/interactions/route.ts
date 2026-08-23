@@ -28,6 +28,8 @@ type DiscordInteraction = {
   member?: {
     nick?: string | null;
     user?: {
+      id?: string;
+      avatar?: string | null;
       global_name?: string | null;
       username?: string;
     };
@@ -136,6 +138,10 @@ export async function POST(request: Request) {
         || interaction.member?.user?.global_name
         || interaction.member?.user?.username
         || "Hackdex admin";
+      const discordUser = interaction.member?.user;
+      const avatarUrl = discordUser?.id && discordUser.avatar
+        ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`
+        : undefined;
       const emailResult = await emailHackCreator({
         hackSlug: reviewThread.hack_slug,
         message,
@@ -147,7 +153,20 @@ export async function POST(request: Request) {
       }
 
       await postHackReviewMessage(reviewThread, {
-        content: `**${adminName} emailed the submitter:**\n${message}`,
+        embeds: [{
+          title: emailResult.subject,
+          author: {
+            name: adminName,
+            ...(avatarUrl ? { icon_url: avatarUrl } : {}),
+          },
+          description: message,
+          footer: {
+            text: emailResult.creatorUsername
+              ? `Sent to the email of ${emailResult.creatorUsername}`
+              : "Sent to the email of the hack creator",
+          },
+          color: 0x57f287,
+        }],
       });
       await editDeferredResponse(
         interaction,

@@ -158,7 +158,13 @@ export async function POST(request: Request) {
       color: 0x5865f2,
       fields: [
         { name: "From", value: email.from.slice(0, 1024), inline: true },
-        { name: "To", value: (email.to.join(", ") || inboundDomain).slice(0, 1024), inline: true },
+        ...(!reviewThread
+          ? [{
+              name: "To",
+              value: (email.to.join(", ") || inboundDomain).slice(0, 1024),
+              inline: true,
+            }]
+          : []),
       ],
     };
 
