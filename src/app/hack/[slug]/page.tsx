@@ -25,6 +25,8 @@ import Avatar from "@/components/Account/Avatar";
 import CollapsibleCard from "@/components/Primitives/CollapsibleCard";
 import CollapsibleTags from "@/components/Hack/CollapsibleTags";
 import { getHackMetadata, getHackDownloads } from "@/app/hack/[slug]/actions";
+import CreateReviewThreadMenuItem from "@/components/Hack/CreateReviewThreadMenuItem";
+import { getHackReviewThread } from "@/utils/hack-review";
 
 interface HackDetailProps {
   params: Promise<{ slug: string }>;
@@ -145,6 +147,11 @@ export default async function HackDetail({ params }: HackDetailProps) {
       return notFound();
     }
   }
+
+  const hasReviewThread =
+    isAdmin && !isArchive
+      ? Boolean(await getHackReviewThread(hack.slug))
+      : false;
 
   // Extract patch info from cached metadata
   const patchFilename = patch?.filename || null;
@@ -459,6 +466,9 @@ export default async function HackDetail({ params }: HackDetailProps) {
                     <FiMail className="mr-2 inline-block align-middle mb-0.5 text-foreground/80" size={12} />
                     Contact creator
                   </MenuItem>
+                )}
+                {isAdmin && !isArchive && !hasReviewThread && (
+                  <CreateReviewThreadMenuItem slug={hack.slug} />
                 )}
               </HackOptionsMenu>
             </div>

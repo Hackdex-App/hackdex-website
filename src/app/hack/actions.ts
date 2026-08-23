@@ -13,6 +13,7 @@ import { sendTransactionalEmail } from "@/utils/email";
 import { renderEmail } from "@/emails/render";
 import { approveDiscordReviewThread } from "@/utils/discord-rest";
 import {
+  ensureHackReviewThread,
   getHackReviewThread,
   postHackReviewMessage,
 } from "@/utils/hack-review";
@@ -392,5 +393,62 @@ export async function approveHack(slug: string, verified?: boolean) {
   revalidateTag(`hack:${slug}:downloads`);
   revalidatePath(`/hack/${slug}`);
   redirect(`/hack/${slug}`);
+}
+
+export async function createHackReviewThread(slug: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Unauthorized" } as const;
+
+  const { data: isAdmin } = await supabase.rpc("is_admin");
+  if (!isAdmin) return { ok: false, error: "Forbidden" } as const;
+
+  const serviceClient = await createServiceClient();
+  const { data: hack, error: hackError } = await serviceClient
+    .from("hacks")
+    .select("slug, title, created_by, is_archive")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (hackError) return { ok: false, error: hackError.message } as const;
+  if (!hack) return { ok: false, error: "Hack not found" } as const;
+  if (hack.is_archive) {
+    return { ok: false, error: "Archive hacks cannot have review threads." } as const;
+  }
+
+  try {
+    const existingThread = await getHackReviewThread(slug);
+    if (existingThread) {
+      revalidatePath(`/hack/${slug}`);
+      return { ok: true, alreadyExists: true } as const;
+    }
+
+    const { data: profile } = await serviceClient
+      .from("profiles")
+      .select("username")
+      .eq("id", hack.created_by)
+      .maybeSingle();
+    const reviewThread = await ensureHackReviewThread({
+      slug: hack.slug,
+      title: hack.title,
+      author: profile?.username ? `@${profile.username}` : hack.created_by,
+    });
+    if (!reviewThread) {
+      return {
+        ok: false,
+        error: "Failed to create the Discord review thread.",
+      } as const;
+    }
+
+    revalidatePath(`/hack/${slug}`);
+    return { ok: true, alreadyExists: false } as const;
+  } catch (error) {
+    console.error(`[HackReview] Failed to create a review thread for ${slug}:`, error);
+    return {
+      ok: false,
+      error: "Failed to create the Discord review thread.",
+    } as const;
+  }
 }
 
