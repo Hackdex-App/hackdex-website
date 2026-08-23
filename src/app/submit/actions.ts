@@ -354,11 +354,9 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
   };
 
   let reviewThread = null;
-  let reviewLookupSucceeded = false;
   if (!hack.is_archive) {
     try {
       reviewThread = await getHackReviewThread(args.slug);
-      reviewLookupSucceeded = true;
       if (!reviewThread && args.firstUpload) {
         reviewThread = await ensureHackReviewThread({
           slug: args.slug,
@@ -373,7 +371,7 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
 
   if (reviewThread) {
     await postHackReviewMessage(reviewThread, { embeds: [embed] });
-  } else if (reviewLookupSucceeded && process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL) {
+  } else if (process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL) {
     await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL, [embed]);
   }
 
