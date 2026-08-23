@@ -208,7 +208,12 @@ export async function POST(request: Request) {
     };
 
     if (reviewThread) {
-      await postHackReviewMessage(reviewThread, { embeds: [embed] });
+      const postResult = await postHackReviewMessage(reviewThread, {
+        embeds: [embed],
+      });
+      if (postResult !== "posted") {
+        throw new Error("Inbound email could not be posted to Discord");
+      }
       const { error: updateError } = await serviceClient
         .from("hack_review_threads")
         .update({
