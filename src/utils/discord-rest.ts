@@ -106,6 +106,7 @@ export async function createDiscordReviewThread(args: {
   title: string;
   slug: string;
   author?: string | null;
+  isClaimed: boolean;
 }): Promise<DiscordThread | null> {
   const forumChannelId = process.env.DISCORD_REVIEW_FORUM_CHANNEL_ID;
   const pendingTagId = process.env.DISCORD_FORUM_TAG_PENDING_ID;
@@ -120,13 +121,21 @@ export async function createDiscordReviewThread(args: {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
   const author = args.author ? ` by **${args.author}**` : "";
   const url = siteUrl ? `${siteUrl}/hack/${encodeURIComponent(args.slug)}` : "";
+  const claimTagId = args.isClaimed
+    ? process.env.DISCORD_FORUM_TAG_CLAIMED_ID
+    : process.env.DISCORD_FORUM_TAG_UNCLAIMED_ID;
+  if (!claimTagId) {
+    console.warn(
+      `[DiscordReview] ${args.isClaimed ? "DISCORD_FORUM_TAG_CLAIMED_ID" : "DISCORD_FORUM_TAG_UNCLAIMED_ID"} is missing; creating review thread without a claim tag.`,
+    );
+  }
 
   return discordRequest<DiscordThread>(`/channels/${forumChannelId}/threads`, {
     method: "POST",
     body: JSON.stringify({
       name: title,
       auto_archive_duration: 10080,
-      applied_tags: [pendingTagId],
+      applied_tags: claimTagId ? [pendingTagId, claimTagId] : [pendingTagId],
       message: {
         embeds: [{
           title: args.title,
@@ -170,6 +179,30 @@ export async function approveDiscordReviewThread(threadId: string): Promise<bool
   const appliedTags = new Set(thread.applied_tags ?? []);
   appliedTags.delete(pendingTagId);
   appliedTags.add(approvedTagId);
+
+  const updated = await discordRequest<DiscordThread>(`/channels/${threadId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ applied_tags: Array.from(appliedTags) }),
+  });
+  return updated !== null;
+}
+
+export async function claimDiscordReviewThread(threadId: string): Promise<boolean> {
+  const claimedTagId = process.env.DISCORD_FORUM_TAG_CLAIMED_ID;
+  const unclaimedTagId = process.env.DISCORD_FORUM_TAG_UNCLAIMED_ID;
+  if (!claimedTagId || !unclaimedTagId) {
+    console.warn(
+      "[DiscordReview] DISCORD_FORUM_TAG_CLAIMED_ID or DISCORD_FORUM_TAG_UNCLAIMED_ID is missing; skipping review claim tag update.",
+    );
+    return false;
+  }
+
+  const thread = await getDiscordThread(threadId);
+  if (!thread) return false;
+
+  const appliedTags = new Set(thread.applied_tags ?? []);
+  appliedTags.delete(unclaimedTagId);
+  appliedTags.add(claimedTagId);
 
   const updated = await discordRequest<DiscordThread>(`/channels/${threadId}`, {
     method: "PATCH",

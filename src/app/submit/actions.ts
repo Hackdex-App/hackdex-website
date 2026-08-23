@@ -121,6 +121,7 @@ export async function prepareSubmission(formData: FormData) {
         slug,
         title,
         author: profile?.username ? `@${profile.username}` : user.id,
+        isClaimed: false,
       });
       if (!reviewThread && process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL) {
         await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL, [{
@@ -243,7 +244,7 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
 
   const { data: hack, error: hErr } = await supabase
     .from("hacks")
-    .select("slug, created_by, title, current_patch, original_author, permission_from, is_archive, approved, verification_contact_info")
+    .select("slug, created_by, title, current_patch, original_author, permission_from, is_archive, approved, assigned_admin, verification_contact_info")
     .eq("slug", args.slug)
     .maybeSingle();
   if (hErr) return { ok: false, error: hErr.message } as const;
@@ -362,6 +363,7 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
           slug: args.slug,
           title: hack.title,
           author: displayName,
+          isClaimed: hack.assigned_admin !== null,
         });
       }
     } catch (error) {

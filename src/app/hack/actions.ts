@@ -408,7 +408,7 @@ export async function createHackReviewThread(slug: string) {
   const serviceClient = await createServiceClient();
   const { data: hack, error: hackError } = await serviceClient
     .from("hacks")
-    .select("slug, title, created_by, is_archive")
+    .select("slug, title, created_by, assigned_admin, is_archive")
     .eq("slug", slug)
     .maybeSingle();
   if (hackError) return { ok: false, error: hackError.message } as const;
@@ -429,16 +429,29 @@ export async function createHackReviewThread(slug: string) {
       .select("username")
       .eq("id", hack.created_by)
       .maybeSingle();
+    const { data: assignedProfile } = hack.assigned_admin
+      ? await serviceClient
+        .from("profiles")
+        .select("username")
+        .eq("id", hack.assigned_admin)
+        .maybeSingle()
+      : { data: null };
     const reviewThread = await ensureHackReviewThread({
       slug: hack.slug,
       title: hack.title,
       author: profile?.username ? `@${profile.username}` : hack.created_by,
+      isClaimed: hack.assigned_admin !== null,
     });
     if (!reviewThread) {
       return {
         ok: false,
         error: "Failed to create the Discord review thread.",
       } as const;
+    }
+    if (hack.assigned_admin) {
+      await postHackReviewMessage(reviewThread, {
+        content: `${assignedProfile?.username || "An admin"} has claimed the hack for review.`,
+      });
     }
 
     revalidatePath(`/hack/${slug}`);

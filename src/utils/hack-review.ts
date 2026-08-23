@@ -31,6 +31,7 @@ export async function ensureHackReviewThread(args: {
   title: string;
   author?: string | null;
   isArchive?: boolean;
+  isClaimed: boolean;
 }): Promise<HackReviewThread | null> {
   if (args.isArchive) return null;
 
