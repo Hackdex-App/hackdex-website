@@ -90,6 +90,8 @@ RESEND_INBOUND_DOMAIN=
 RESEND_FROM=
 ```
 
+Register Discord guild commands locally with `npm run discord:register`; in production, an admin can visit `/api/discord/register`.
+
 ### Supabase (local)
 
 Follow the official guide to run Supabase locally with the CLI (includes Studio):

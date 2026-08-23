@@ -1,5 +1,6 @@
 import type { APIEmbed } from "discord-api-types/v10";
 import { verifyKey } from "discord-interactions";
+import { discordGuildCommands } from "./discord-commands.mjs";
 
 const DISCORD_API_BASE = "https://discord.com/api/v10";
 
@@ -8,6 +9,17 @@ type DiscordThread = {
   parent_id?: string | null;
   applied_tags?: string[];
 };
+
+type DiscordGuildCommand = {
+  name: string;
+};
+
+export class DiscordEnvironmentError extends Error {
+  constructor(missingEnvironment: string[]) {
+    super(`Missing Discord environment: ${missingEnvironment.join(", ")}`);
+    this.name = "DiscordEnvironmentError";
+  }
+}
 
 function getDiscordBotToken(): string | null {
   const token = process.env.DISCORD_BOT_TOKEN;
@@ -42,6 +54,34 @@ async function discordRequest<T>(
 
   if (response.status === 204) return null;
   return response.json() as Promise<T>;
+}
+
+export async function registerDiscordGuildCommands(): Promise<
+  DiscordGuildCommand[]
+> {
+  const requiredEnvironment = [
+    "DISCORD_APPLICATION_ID",
+    "DISCORD_GUILD_ID",
+    "DISCORD_BOT_TOKEN",
+  ] as const;
+  const missingEnvironment = requiredEnvironment.filter(
+    (name) => !process.env[name],
+  );
+  if (missingEnvironment.length > 0) {
+    throw new DiscordEnvironmentError(missingEnvironment);
+  }
+
+  const registered = await discordRequest<DiscordGuildCommand[]>(
+    `/applications/${process.env.DISCORD_APPLICATION_ID}/guilds/${process.env.DISCORD_GUILD_ID}/commands`,
+    {
+      method: "PUT",
+      body: JSON.stringify(discordGuildCommands),
+    },
+  );
+  if (!registered) {
+    throw new Error("Discord command registration returned no result.");
+  }
+  return registered;
 }
 
 export async function verifyDiscordRequest(
