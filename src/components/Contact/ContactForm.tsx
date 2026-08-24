@@ -86,6 +86,14 @@ export default function ContactForm() {
         </span>
       </div>
 
+      {topic === "bug" && (
+        <div className="p-4 rounded-md bg-[var(--surface-2)] border border-[var(--border)]">
+          <p className="text-sm text-foreground/90">
+            <strong>Note:</strong> This form is meant only for bugs with the Hackdex website. For bugs found in a rom hack, please reach out to the original creator of that hack.
+          </p>
+        </div>
+      )}
+
       <div className="grid gap-2 md:grid-cols-2 md:gap-4">
         <div className="grid gap-2">
           <label htmlFor="name" className="text-sm text-foreground/80">Name (optional)</label>
