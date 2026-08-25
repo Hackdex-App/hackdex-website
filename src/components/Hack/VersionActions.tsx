@@ -797,7 +797,7 @@ export default function VersionActions({
                           type="file"
                           onChange={onUploadBaseRom}
                           accept={baseRomPlatform ? platformAccept(baseRomPlatform) : "*/*"}
-                          className="cursor-pointer rounded-md bg-[var(--surface-2)] px-2 py-1 text-xs ring-1 ring-inset ring-[var(--border)] file:cursor-pointer"
+                          className="cursor-pointer rounded-md bg-[var(--surface-2)] px-2 py-1 text-xs italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] file:bg-black/10 dark:file:bg-[var(--surface-2)] file:text-foreground/80 file:text-xs file:font-medium file:not-italic file:rounded-md file:border-0 file:px-2 file:py-1 file:mr-2 file:cursor-pointer"
                         />
                         <span>Upload base ROM</span>
                       </label>
@@ -814,7 +814,7 @@ export default function VersionActions({
                     accept={baseRomPlatform ? platformAccept(baseRomPlatform) : "*/*"}
                     disabled={!baseRomEntry || !baseRomReady || !baseRomPlatform}
                     onChange={onUploadModifiedRom}
-                    className="cursor-pointer rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm ring-1 ring-inset ring-[var(--border)] file:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="cursor-pointer rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] file:bg-black/10 dark:file:bg-[var(--surface-2)] file:text-foreground/80 file:text-sm file:font-medium file:not-italic file:rounded-md file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                   <p className="text-xs text-foreground/60">We'll generate a .xdelta patch on-device. No ROMs are uploaded.</p>
                   {genStatus === "generating" && <div className="text-xs text-foreground/70">Generating patch…</div>}
