@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { FiMoreVertical } from "react-icons/fi";
+import { FiAlertTriangle, FiMoreVertical } from "react-icons/fi";
 import {
   FaDownload,
   FaTrash,
@@ -761,8 +761,9 @@ export default function VersionActions({
                   accept=".bps,.xdelta"
                   className="cursor-pointer rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] file:bg-black/10 dark:file:bg-[var(--surface-2)] file:text-foreground/80 file:text-sm file:font-medium file:not-italic file:rounded-md file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer"
                 />
-                <p className="text-xs text-foreground/60">
-                  Patch file upload is a fallback. Hackdex cannot always guarantee that an uploaded patch is compatible with the chosen base ROM. Auto-generating from a modified ROM is recommended.
+                <p className="flex items-center gap-1.5 text-xs text-foreground/60">
+                  <FiAlertTriangle className="h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" />
+                  <span>Patch file upload is a fallback. Hackdex cannot always guarantee that an uploaded patch is compatible with the chosen base ROM. Auto-generating from a modified ROM is recommended.</span>
                 </p>
                 {checksumStatus === "validating" && <div className="text-xs text-foreground/70">Validating checksum…</div>}
                 {checksumStatus === "valid" && <div className="text-xs text-emerald-400/90">Checksum valid.</div>}
