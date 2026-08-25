@@ -3,10 +3,15 @@
 import { useCallback, useEffect, useRef } from "react";
 import { PiConfettiBold } from "react-icons/pi";
 
-const STORAGE_KEY = "hackdex:500k-confetti";
 const COLORS = ["#f43f5e", "#f97316", "#f59e0b", "#fb7185"];
 const BURST_MS_DESKTOP = 2200;
 const BURST_MS_MOBILE = 1400;
+
+function formatMilestone(milestone: string): string {
+  if (!/^\d+$/.test(milestone)) return milestone;
+
+  return `${milestone.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}+`;
+}
 
 function prefersReducedMotion(): boolean {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -16,8 +21,9 @@ function isMobileViewport(): boolean {
   return window.matchMedia("(max-width: 640px)").matches;
 }
 
-export default function MilestoneCelebration() {
+export default function MilestoneCelebration({ milestone }: { milestone: string }) {
   const frameRef = useRef<number | null>(null);
+  const storageKey = `hackdex:downloads-milestone:${milestone}:confetti`;
 
   const stopConfetti = useCallback(() => {
     if (frameRef.current !== null) {
@@ -71,7 +77,7 @@ export default function MilestoneCelebration() {
   useEffect(() => {
     let alreadyShown = false;
     try {
-      alreadyShown = localStorage.getItem(STORAGE_KEY) === "1";
+      alreadyShown = localStorage.getItem(storageKey) === "1";
     } catch {
       // Private browsing or storage blocked
     }
@@ -81,7 +87,7 @@ export default function MilestoneCelebration() {
     const timer = window.setTimeout(() => {
       void fireConfetti();
       try {
-        localStorage.setItem(STORAGE_KEY, "1");
+        localStorage.setItem(storageKey, "1");
       } catch {
         // Private browsing or storage blocked
       }
@@ -91,7 +97,7 @@ export default function MilestoneCelebration() {
       window.clearTimeout(timer);
       stopConfetti();
     };
-  }, [fireConfetti, stopConfetti]);
+  }, [fireConfetti, stopConfetti, storageKey]);
 
   return (
     <button
@@ -100,7 +106,7 @@ export default function MilestoneCelebration() {
       className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm ring-1 ring-[var(--accent)]/30 bg-[var(--accent)]/10 text-foreground/90 elevate hover:ring-[var(--accent)]/50 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
     >
       <PiConfettiBold size={16} className="text-[var(--accent)]" aria-hidden="true" />
-      <span className="font-semibold gradient-text">500,000+ downloads</span>
+      <span className="font-semibold gradient-text">{formatMilestone(milestone)} downloads</span>
       <span className="-ml-0.5">Thank you!</span>
       <span className="sr-only">. Activate to replay the celebration confetti.</span>
     </button>

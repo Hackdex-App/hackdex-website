@@ -21,6 +21,7 @@ export const metadata: Metadata = {
 export const revalidate = 604800; // 1 week in seconds
 
 export default async function Home() {
+  const downloadsMilestone = process.env.NEXT_PUBLIC_DOWNLOADS_MILESTONE?.trim();
   const supabase = await createClient();
 
   // Fetch top 6 approved hacks ordered by downloads
@@ -152,7 +153,9 @@ export default async function Home() {
         <div className="mx-auto max-w-screen-2xl px-6 pt-12 pb-8 sm:py-20">
           <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,34rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,42rem)]">
             <div>
-              <MilestoneCelebration />
+              {downloadsMilestone && (
+                <MilestoneCelebration milestone={downloadsMilestone} />
+              )}
               <h1 className="mt-5 text-4xl font-bold tracking-tight sm:text-6xl text-balance">
                 Bring your ROM once.
                 <br />
