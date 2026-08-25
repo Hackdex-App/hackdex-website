@@ -79,9 +79,9 @@ Only the original creator or a member of their team can submit the hack to Hackd
 Account creation is required for submissions to preserve author control and attribution. This ensures your work is properly credited and you maintain control over your hack's listing. This also allows you to update your hack after submission.
 
 ### What format should I submit my hack in?
-We accept `.bps` and `.xdelta` patch files, not complete ROMs. Hackdex utilizes a built-in patcher that users apply to their own legally obtained base ROMs. This helps keep the platform safer from potential legal issues. xdelta is the preferred format going forward; legacy BPS patches continue to work.
+We recommend providing your modified ROM in the submission form. Hackdex uses your selected base ROM to generate an `.xdelta` patch on your device, and no ROMs are uploaded. Users receive the generated patch, not a complete ROM.
 
-A built-in patcher is also included in the submission form, so you also have the option to provide your modified ROM and the base ROM to generate a `.xdelta` patch file automatically.
+If you already have a `.bps` or `.xdelta` patch file, you can upload it as a fallback. Hackdex cannot always guarantee that an uploaded patch is compatible with the chosen base ROM, so auto-generating from your modified ROM is recommended.
 
 ### Why only BPS and Xdelta patch files?
 Both formats support checksum verification so the patch is linked to the correct base ROM. An incorrect base ROM will result in a corrupted game. BPS remains supported for existing hacks; new in-browser patch creation produces Xdelta files, which is the preferred format going forward.

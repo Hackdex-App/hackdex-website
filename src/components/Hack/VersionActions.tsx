@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { FiMoreVertical } from "react-icons/fi";
+import { FiAlertTriangle, FiMoreVertical } from "react-icons/fi";
 import {
   FaDownload,
   FaTrash,
@@ -68,7 +68,7 @@ export default function VersionActions({
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [showReuploadModal, setShowReuploadModal] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
-  const [patchMode, setPatchMode] = useState<"bps" | "rom">("bps");
+  const [patchMode, setPatchMode] = useState<"bps" | "rom">("rom");
   const [reuploadFile, setReuploadFile] = useState<File | null>(null);
   const [reuploadError, setReuploadError] = useState<string | null>(null);
   const [checksumStatus, setChecksumStatus] = useState<"idle" | "validating" | "valid" | "invalid" | "unknown">("idle");
@@ -397,6 +397,7 @@ export default function VersionActions({
       if (confirmResult.ok) {
         setShowReuploadModal(false);
         setReuploadFile(null);
+        setPatchMode("rom");
         onActionComplete();
       } else {
         throw new Error(confirmResult.error || "Failed to confirm upload");
@@ -437,6 +438,7 @@ export default function VersionActions({
         {/* Mobile: Use dropdown menu */}
         <Menu as="div" className="relative sm:hidden">
           <MenuButton
+            id={`version-actions-menu-archived-${patch.id}`}
             aria-label="Version actions"
             className="inline-flex h-8 w-8 items-center justify-center rounded-md ring-1 ring-[var(--border)] bg-[var(--surface-2)] text-foreground/80 hover:bg-[var(--surface-3)] hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border)]"
           >
@@ -557,6 +559,7 @@ export default function VersionActions({
       {/* Mobile: Use dropdown menu */}
       <Menu as="div" className="relative sm:hidden">
         <MenuButton
+          id={`version-actions-menu-active-${patch.id}`}
           aria-label="Version actions"
           className="inline-flex h-8 w-8 items-center justify-center rounded-md ring-1 ring-[var(--border)] bg-[var(--surface-2)] text-foreground/80 hover:bg-[var(--surface-3)] hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border)]"
         >
@@ -740,7 +743,7 @@ export default function VersionActions({
             setGenStatus("idle");
             setGenError("");
             setBaseRomFile(null);
-            setPatchMode("bps");
+            setPatchMode("rom");
           }
         }}
       >
@@ -749,23 +752,6 @@ export default function VersionActions({
             Provide patch <span className="text-red-500">*</span>
           </label>
           <div className="flex flex-col gap-3">
-            <div className="inline-flex items-center">
-              <button
-                type="button"
-                onClick={() => setPatchMode("bps")}
-                className={`rounded-md rounded-r-none px-3 py-1.5 text-xs border-l-1 border-y-1 ${patchMode === "bps" ? "bg-[var(--surface-2)] border-[var(--border)]" : "text-foreground/70 border-[var(--border)]"}`}
-              >
-                Upload .bps/.xdelta
-              </button>
-              <button
-                type="button"
-                onClick={() => setPatchMode("rom")}
-                className={`rounded-md rounded-l-none px-3 py-1.5 text-xs border-1 ${patchMode === "rom" ? "bg-[var(--surface-2)] border-[var(--border)]" : "text-foreground/70 border-[var(--border)]"}`}
-              >
-                Upload modified ROM (auto-generate .xdelta)
-              </button>
-            </div>
-
             {patchMode === "bps" && (
               <div className="grid gap-2">
                 <input
@@ -773,13 +759,23 @@ export default function VersionActions({
                   onChange={onUploadPatch}
                   type="file"
                   accept=".bps,.xdelta"
-                  className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] file:bg-black/10 dark:file:bg-[var(--surface-2)] file:text-foreground/80 file:text-sm file:font-medium file:not-italic file:rounded-md file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer"
+                  className="cursor-pointer rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] file:bg-black/10 dark:file:bg-[var(--surface-2)] file:text-foreground/80 file:text-sm file:font-medium file:not-italic file:rounded-md file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer"
                 />
-                <p className="text-xs text-foreground/60">Upload a .bps or .xdelta patch file.</p>
+                <p className="flex items-center gap-1.5 text-xs text-foreground/60">
+                  <FiAlertTriangle className="h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" />
+                  <span>Patch file upload is a fallback. Hackdex cannot always guarantee that an uploaded patch is compatible with the chosen base ROM. Auto-generating from a modified ROM is recommended.</span>
+                </p>
                 {checksumStatus === "validating" && <div className="text-xs text-foreground/70">Validating checksum…</div>}
                 {checksumStatus === "valid" && <div className="text-xs text-emerald-400/90">Checksum valid.</div>}
                 {checksumStatus === "invalid" && !!checksumError && <div className="text-xs text-red-400">{checksumError}</div>}
                 {checksumStatus === "unknown" && !!checksumError && <div className="text-xs text-amber-400/90">{checksumError}</div>}
+                <button
+                  type="button"
+                  onClick={() => setPatchMode("rom")}
+                  className="w-fit cursor-pointer text-xs text-foreground/60 underline underline-offset-2 transition-colors hover:text-foreground/80"
+                >
+                  Generate from a modified ROM instead (Recommended)
+                </button>
               </div>
             )}
 
@@ -802,7 +798,7 @@ export default function VersionActions({
                           type="file"
                           onChange={onUploadBaseRom}
                           accept={baseRomPlatform ? platformAccept(baseRomPlatform) : "*/*"}
-                          className="rounded-md bg-[var(--surface-2)] px-2 py-1 text-xs ring-1 ring-inset ring-[var(--border)]"
+                          className="cursor-pointer rounded-md bg-[var(--surface-2)] px-2 py-1 text-xs italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] file:bg-black/10 dark:file:bg-[var(--surface-2)] file:text-foreground/80 file:text-xs file:font-medium file:not-italic file:rounded-md file:border-0 file:px-2 file:py-1 file:mr-2 file:cursor-pointer"
                         />
                         <span>Upload base ROM</span>
                       </label>
@@ -812,20 +808,27 @@ export default function VersionActions({
                 </div>
 
                 <div className="grid gap-2">
-                  <label className="text-sm text-foreground/80">Modified ROM</label>
+                  <label className="text-sm text-foreground/80">Modified ROM <span className="text-foreground/60">(Recommended)</span></label>
                   <input
                     ref={modifiedRomInputRef}
                     type="file"
                     accept={baseRomPlatform ? platformAccept(baseRomPlatform) : "*/*"}
                     disabled={!baseRomEntry || !baseRomReady || !baseRomPlatform}
                     onChange={onUploadModifiedRom}
-                    className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm ring-1 ring-inset ring-[var(--border)] disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="cursor-pointer rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] file:bg-black/10 dark:file:bg-[var(--surface-2)] file:text-foreground/80 file:text-sm file:font-medium file:not-italic file:rounded-md file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                   <p className="text-xs text-foreground/60">We'll generate a .xdelta patch on-device. No ROMs are uploaded.</p>
                   {genStatus === "generating" && <div className="text-xs text-foreground/70">Generating patch…</div>}
                   {genStatus === "ready" && reuploadFile && <div className="text-xs text-emerald-400/90">Patch ready: {reuploadFile.name}</div>}
                   {genStatus === "error" && !!genError && <div className="text-xs text-red-400">{genError}</div>}
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setPatchMode("bps")}
+                  className="w-fit cursor-pointer text-xs text-foreground/60 underline underline-offset-2 transition-colors hover:text-foreground/80"
+                >
+                  Already have a .bps or .xdelta file?
+                </button>
               </div>
             )}
           </div>
@@ -851,7 +854,7 @@ export default function VersionActions({
               setGenStatus("idle");
               setGenError("");
               setBaseRomFile(null);
-              setPatchMode("bps");
+              setPatchMode("rom");
             }}
             disabled={actionLoading}
             className="flex-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-4 py-2 text-sm font-medium hover:bg-[var(--surface-3)] disabled:opacity-50"
