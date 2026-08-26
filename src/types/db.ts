@@ -347,57 +347,87 @@ export type Database = {
       }
       patch_download_events: {
         Row: {
+          content_encoding: string | null
+          content_length: number | null
+          content_type: string | null
+          correlation_id: string | null
           country: string | null
           created_at: string
+          decoded_body_size: number | null
           duration_ms: number | null
+          encoded_body_size: number | null
           error_message: string | null
           error_name: string | null
+          failure_phase: string | null
           hack_slug: string | null
           id: number
           next_hop_protocol: string | null
           online: boolean | null
           outcome: string
+          page_origin: string | null
           patch: number | null
           probe_patch_host: string | null
           probe_same_origin: string | null
+          response_status: number | null
+          sample_rate: number | null
           stage: string
           timing_entry_present: boolean | null
           transfer_size: number | null
           user_agent: string | null
         }
         Insert: {
+          content_encoding?: string | null
+          content_length?: number | null
+          content_type?: string | null
+          correlation_id?: string | null
           country?: string | null
           created_at?: string
+          decoded_body_size?: number | null
           duration_ms?: number | null
+          encoded_body_size?: number | null
           error_message?: string | null
           error_name?: string | null
+          failure_phase?: string | null
           hack_slug?: string | null
           id?: number
           next_hop_protocol?: string | null
           online?: boolean | null
           outcome: string
+          page_origin?: string | null
           patch?: number | null
           probe_patch_host?: string | null
           probe_same_origin?: string | null
+          response_status?: number | null
+          sample_rate?: number | null
           stage: string
           timing_entry_present?: boolean | null
           transfer_size?: number | null
           user_agent?: string | null
         }
         Update: {
+          content_encoding?: string | null
+          content_length?: number | null
+          content_type?: string | null
+          correlation_id?: string | null
           country?: string | null
           created_at?: string
+          decoded_body_size?: number | null
           duration_ms?: number | null
+          encoded_body_size?: number | null
           error_message?: string | null
           error_name?: string | null
+          failure_phase?: string | null
           hack_slug?: string | null
           id?: number
           next_hop_protocol?: string | null
           online?: boolean | null
           outcome?: string
+          page_origin?: string | null
           patch?: number | null
           probe_patch_host?: string | null
           probe_same_origin?: string | null
+          response_status?: number | null
+          sample_rate?: number | null
           stage?: string
           timing_entry_present?: boolean | null
           transfer_size?: number | null

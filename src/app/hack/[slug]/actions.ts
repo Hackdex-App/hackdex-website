@@ -1122,13 +1122,26 @@ export interface PatchDownloadEventInput {
   timingEntryPresent?: boolean | null;
   probeSameOrigin?: "ok" | "failed" | "timeout" | "skipped" | null;
   probePatchHost?: "ok" | "failed" | "timeout" | "skipped" | null;
+  failurePhase?: "request" | "response" | "body" | null;
+  responseStatus?: number | null;
+  contentLength?: number | null;
+  contentEncoding?: string | null;
+  contentType?: string | null;
+  encodedBodySize?: number | null;
+  decodedBodySize?: number | null;
+  pageOrigin?: string | null;
+  correlationId?: string | null;
+  sampleRate?: number | null;
 }
 
 const PATCH_DOWNLOAD_STAGES = new Set(["signed_url", "fetch", "patch"]);
 const PATCH_DOWNLOAD_OUTCOMES = new Set(["success", "failure"]);
 const PATCH_DOWNLOAD_PROBE_RESULTS = new Set(["ok", "failed", "timeout", "skipped"]);
+const PATCH_DOWNLOAD_FAILURE_PHASES = new Set(["request", "response", "body"]);
 const HACK_SLUG_MAX_LENGTH = 200;
 const HACK_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const DEV_CORRELATION_ID_PATTERN = /^dev-\d+$/;
 
 function truncate(value: string | null | undefined, max: number): string | null {
   if (value == null) return null;
@@ -1156,6 +1169,48 @@ function sanitizeProbe(
 ): "ok" | "failed" | "timeout" | "skipped" | null {
   if (value == null || !PATCH_DOWNLOAD_PROBE_RESULTS.has(value)) return null;
   return value as "ok" | "failed" | "timeout" | "skipped";
+}
+
+function sanitizeFailurePhase(
+  value: string | null | undefined,
+): "request" | "response" | "body" | null {
+  if (value == null || !PATCH_DOWNLOAD_FAILURE_PHASES.has(value)) return null;
+  return value as "request" | "response" | "body";
+}
+
+function sanitizeResponseStatus(value: number | null | undefined): number | null {
+  if (value == null || !Number.isInteger(value) || value < 100 || value > 599) return null;
+  return value;
+}
+
+function sanitizeNonNegativeInteger(value: number | null | undefined): number | null {
+  if (value == null || !Number.isSafeInteger(value) || value < 0) return null;
+  return value;
+}
+
+function sanitizeSampleRate(value: number | null | undefined): number | null {
+  if (value == null || !Number.isFinite(value) || value <= 0 || value > 1) return null;
+  return value;
+}
+
+function sanitizePageOrigin(value: string | null | undefined): string | null {
+  const origin = truncate(value, 200);
+  if (origin == null) return null;
+  try {
+    const parsed = new URL(origin);
+    if (parsed.origin !== origin) return null;
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+    return origin;
+  } catch {
+    return null;
+  }
+}
+
+function sanitizeCorrelationId(value: string | null | undefined): string | null {
+  const id = truncate(value?.trim(), 64);
+  if (id == null || id.length === 0) return null;
+  if (UUID_PATTERN.test(id) || DEV_CORRELATION_ID_PATTERN.test(id)) return id;
+  return null;
 }
 
 export async function reportPatchDownloadEvent(
@@ -1190,6 +1245,16 @@ export async function reportPatchDownloadEvent(
       probe_same_origin: sanitizeProbe(input.probeSameOrigin),
       probe_patch_host: sanitizeProbe(input.probePatchHost),
       country,
+      failure_phase: sanitizeFailurePhase(input.failurePhase),
+      response_status: sanitizeResponseStatus(input.responseStatus),
+      content_length: sanitizeNonNegativeInteger(input.contentLength),
+      content_encoding: truncate(input.contentEncoding, 100),
+      content_type: truncate(input.contentType, 200),
+      encoded_body_size: sanitizeNonNegativeInteger(input.encodedBodySize),
+      decoded_body_size: sanitizeNonNegativeInteger(input.decodedBodySize),
+      page_origin: sanitizePageOrigin(input.pageOrigin),
+      correlation_id: sanitizeCorrelationId(input.correlationId),
+      sample_rate: sanitizeSampleRate(input.sampleRate),
     });
 
     if (error) {
