@@ -75,8 +75,11 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* Smooth scrolling and anchor offset for sticky header */
-html { scroll-behavior: smooth; }
+/* Smooth scrolling and stable layout when overlays lock page scrolling. */
+html {
+  scroll-behavior: smooth;
+  scrollbar-gutter: stable;
+}
 :root { --anchor-offset: 38px; }
 @media (min-width: 768px) { :root { --anchor-offset: 72px; } }
 /* Modern browsers honor scroll-padding-top on the scroll container */
@@ -174,6 +177,55 @@ html { scroll-padding-top: var(--anchor-offset); }
 .anim-pulse { animation: pulseSoft 2.4s ease-in-out infinite; }
 .anim-pop { animation: popIn 220ms cubic-bezier(0.16, 1, 0.3, 1); }
 
+/* Onboarding beacon: rose dot ringed against the page, breathing halo behind it.
+   The halo's static look is the reduced-motion resting state. */
+@keyframes onboardingBeaconScale {
+  /* 10px beacon / 26px halo: begin at the beacon's outer edge. */
+  0% { transform: scale(0.385); }
+  64%, 100% { transform: scale(1.4); }
+}
+@keyframes onboardingBeaconFade {
+  0%, 34% { opacity: 0.55; }
+  64%, 100% { opacity: 0; }
+}
+@keyframes onboardingBeaconFadeDark {
+  0% { opacity: 1; }
+  64%, 100% { opacity: 0; }
+}
+.onboarding-beacon {
+  position: absolute;
+  display: block;
+  z-index: 3;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #f43f5e;
+  outline: 2px solid var(--background);
+}
+.onboarding-beacon-large {
+  width: 12px;
+  height: 12px;
+}
+.onboarding-beacon::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  background: rgba(244, 63, 94, 0.45);
+  transform-origin: center;
+  animation:
+    onboardingBeaconScale 1.5s cubic-bezier(0, 0, 0.2, 1) infinite,
+    onboardingBeaconFade 1.5s linear infinite;
+}
+@media (prefers-color-scheme: dark) {
+  .onboarding-beacon::after {
+    background: rgba(244, 63, 94, 0.95);
+    animation:
+      onboardingBeaconScale 1.5s cubic-bezier(0, 0, 0.2, 1) infinite,
+      onboardingBeaconFadeDark 1.5s linear infinite;
+  }
+}
+
 @keyframes heroConnectorDash {
   to { stroke-dashoffset: -24; }
 }
@@ -187,6 +239,7 @@ html { scroll-padding-top: var(--anchor-offset); }
   .anim-float,
   .anim-pulse,
   .anim-pop,
+  .onboarding-beacon::after,
   .hero-connector-path,
   .hero-hack-image {
     animation: none !important;

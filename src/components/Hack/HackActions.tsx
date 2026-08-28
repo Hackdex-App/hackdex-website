@@ -3,7 +3,9 @@
 import React from "react";
 import StickyActionBar from "@/components/Hack/StickyActionBar";
 import BaseRomErrorModal, { type BaseRomErrorModalState } from "@/components/Hack/BaseRomErrorModal";
+import HackOnboardingOverlay from "@/components/Hack/Onboarding/HackOnboardingOverlay";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
+import { useHackOnboarding } from "@/hooks/useHackOnboarding";
 import { baseRoms } from "@/data/baseRoms";
 import type { DownloadEventDetail } from "@/types/util";
 import { getSignedPatchUrl, updatePatchDownloadCount, reportPatchDownloadEvent } from "@/app/hack/[slug]/actions";
@@ -73,7 +75,17 @@ const HackActions: React.FC<HackActionsProps> = ({
   hackSlug,
   patcherSelector,
 }) => {
-  const { isLinked, hasPermission, hasCached, importUploadedBlob, ensurePermission, linkRom, getFileBlob, supported } = useBaseRoms();
+  const {
+    isLinked,
+    hasPermission,
+    hasCached,
+    importUploadedBlob,
+    ensurePermission,
+    linkRom,
+    getFileBlob,
+    supported,
+    loading: baseRomsLoading,
+  } = useBaseRoms();
   const [file, setFile] = React.useState<File | null>(null);
   const [status, setStatus] = React.useState<"idle" | "ready" | "patching" | "done" | "downloading">("idle");
   const [patchProgress, setPatchProgress] = React.useState<number | null>(null);
@@ -85,9 +97,18 @@ const HackActions: React.FC<HackActionsProps> = ({
   const [romErrorModal, setRomErrorModal] = React.useState<BaseRomErrorModalState | null>(null);
   const [isVerifyingRom, setIsVerifyingRom] = React.useState(false);
   const [selectedPatchId, setSelectedPatchId] = React.useState<number | null>(patcherSelector.defaultPatchId);
+  const [versionPickerOpen, setVersionPickerOpen] = React.useState(false);
   const selectedPatchIdRef = React.useRef(selectedPatchId);
   const fetchSessionIdRef = React.useRef<string | null | undefined>(undefined);
+  const linkInteractionPendingRef = React.useRef(false);
   selectedPatchIdRef.current = selectedPatchId;
+  const romReady = hasPermission(baseRomId) || hasCached(baseRomId);
+  const onboarding = useHackOnboarding({
+    hasVersionPicker: patcherSelector.selectablePatches.length > 1,
+    romReady,
+    romReadyKnown: !baseRomsLoading,
+    versionPickerOpen,
+  });
 
   function getFetchSessionId(): string | null {
     if (fetchSessionIdRef.current !== undefined) {
@@ -119,6 +140,12 @@ const HackActions: React.FC<HackActionsProps> = ({
     setSelectedPatchId(patcherSelector.defaultPatchId);
   }, [patcherSelector.defaultPatchId]);
 
+  React.useEffect(() => {
+    if (!romReady || !linkInteractionPendingRef.current) return;
+    linkInteractionPendingRef.current = false;
+    onboarding.onHackPageRomSupplied();
+  }, [romReady, onboarding.onHackPageRomSupplied]);
+
   function resetPatchSession() {
     setTermsAgreed(false);
     setPatchUrl(null);
@@ -128,6 +155,7 @@ const HackActions: React.FC<HackActionsProps> = ({
   }
 
   function onVersionChange(nextPatchId: number) {
+    onboarding.onVersionConfirmed();
     if (nextPatchId === selectedPatchId) return;
     selectedPatchIdRef.current = nextPatchId;
     setSelectedPatchId(nextPatchId);
@@ -244,6 +272,7 @@ const HackActions: React.FC<HackActionsProps> = ({
       await importUploadedBlob(f);
       setFile(f);
       setStatus("ready");
+      onboarding.onHackPageRomSupplied();
     } finally {
       setIsVerifyingRom(false);
     }
@@ -495,6 +524,7 @@ const HackActions: React.FC<HackActionsProps> = ({
             await discardSink();
             return;
           }
+          onboarding.onHackPageRomSupplied();
         }
         const linkedFile = await getFileBlob(baseRomId);
         if (!linkedFile) {
@@ -537,6 +567,7 @@ const HackActions: React.FC<HackActionsProps> = ({
       }
 
       setStatus("done");
+      onboarding.onPatchSucceeded();
 
       // Best-effort log applied event for counting and animate badge
       try {
@@ -580,6 +611,17 @@ const HackActions: React.FC<HackActionsProps> = ({
     }
   }
 
+  async function onClickLink() {
+    if (isLinked(baseRomId)) {
+      const permission = await ensurePermission(baseRomId, true);
+      if (permission === "granted") onboarding.onHackPageRomSupplied();
+      return;
+    }
+
+    linkInteractionPendingRef.current = true;
+    await linkRom(baseRomId);
+  }
+
   return (
     <>
       <StickyActionBar
@@ -588,6 +630,11 @@ const HackActions: React.FC<HackActionsProps> = ({
         selectablePatches={patcherSelector.selectablePatches}
         selectedPatchId={selectedPatch?.id ?? selectedPatchId}
         onVersionChange={onVersionChange}
+        onVersionPickerOpenChange={setVersionPickerOpen}
+        onboardingHighlight={onboarding.cardOpen ? onboarding.currentStep : null}
+        onboardingDimBar={onboarding.cardOpen && onboarding.locked && !onboarding.hideForPicker}
+        onboardingGateLabel={onboarding.showGate ? onboarding.gateLabel : null}
+        onOnboardingGateClick={onboarding.openFromGate}
         author={author}
         filename={selectedFilename}
         baseRomName={baseRomName}
@@ -596,14 +643,26 @@ const HackActions: React.FC<HackActionsProps> = ({
         status={status}
         error={error}
         isLinked={isLinked(baseRomId)}
-        romReady={hasPermission(baseRomId) || hasCached(baseRomId)}
-        onClickLink={() => (isLinked(baseRomId) ? ensurePermission(baseRomId, true) : linkRom(baseRomId))}
+        romReady={romReady}
+        onClickLink={onClickLink}
         supported={supported}
         onUploadChange={onSelectFile}
         termsAgreed={termsAgreed}
         isVerifyingRom={isVerifyingRom}
         patchProgress={patchProgress}
       />
+      {onboarding.cardOpen && onboarding.currentStep && (
+        <HackOnboardingOverlay
+          step={onboarding.currentStep}
+          locked={onboarding.locked}
+          isLastStep={onboarding.isLastStep}
+          hide={onboarding.hideForPicker}
+          onNext={onboarding.next}
+          onGotIt={onboarding.gotIt}
+          onDismiss={onboarding.dismissCard}
+          baseRomName={baseRomName}
+        />
+      )}
       {romErrorModal && (
         <BaseRomErrorModal
           state={romErrorModal}
