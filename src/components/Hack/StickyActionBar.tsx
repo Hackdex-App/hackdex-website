@@ -6,6 +6,9 @@ import { FiChevronDown, FiX } from "react-icons/fi";
 import { platformAccept } from "@/utils/idb";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
 import type { Platform } from "@/data/baseRoms";
+import HackOnboardingGate from "@/components/Hack/Onboarding/HackOnboardingGate";
+
+type OnboardingTarget = "version" | "selectRom" | "agree";
 
 interface StickyActionBarProps {
   title: string;
@@ -28,6 +31,15 @@ interface StickyActionBarProps {
   termsAgreed: boolean;
   isVerifyingRom?: boolean;
   patchProgress?: number | null;
+  onVersionPickerOpenChange?: (open: boolean) => void;
+  /** Control the onboarding is pointing at. Dims the bar around it and lights it up. */
+  onboardingHighlight?: OnboardingTarget | null;
+  onboardingDimBar?: boolean;
+  /** The beacon rides along with `onboardingHighlight`; set false to suppress it. */
+  onboardingBeacon?: boolean;
+  /** Renders the onboarding opt-in gate when both gate props are supplied. */
+  onboardingGateLabel?: string | null;
+  onOnboardingGateClick?: () => void;
 }
 
 export default function StickyActionBar({
@@ -51,6 +63,12 @@ export default function StickyActionBar({
   termsAgreed,
   isVerifyingRom = false,
   patchProgress = null,
+  onVersionPickerOpenChange,
+  onboardingHighlight = null,
+  onboardingDimBar = false,
+  onboardingBeacon = true,
+  onboardingGateLabel = null,
+  onOnboardingGateClick,
 }: StickyActionBarProps) {
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
@@ -61,6 +79,25 @@ export default function StickyActionBar({
   const [patchAgainReady, setPatchAgainReady] = React.useState(true);
   const [versionPickerOpen, setVersionPickerOpen] = React.useState(false);
   const hasVersionPicker = selectablePatches.length > 1 && !!onVersionChange;
+  const onboardingActive = onboardingDimBar || onboardingHighlight !== null;
+
+  // Reported through a ref so an inline parent callback cannot loop the effect.
+  const versionPickerOpenChange = React.useRef(onVersionPickerOpenChange);
+  React.useEffect(() => {
+    versionPickerOpenChange.current = onVersionPickerOpenChange;
+  }, [onVersionPickerOpenChange]);
+  React.useEffect(() => {
+    versionPickerOpenChange.current?.(versionPickerOpen);
+  }, [versionPickerOpen]);
+
+  // Lifts the target above the dim layer and rings it with the spotlight.
+  const isSpotlight = (target: OnboardingTarget) => onboardingHighlight === target;
+  const spotlight = (target: OnboardingTarget) =>
+    isSpotlight(target)
+      ? " relative z-[2] outline-[3px] outline-offset-2 outline-[color-mix(in_oklab,var(--accent)_45%,transparent)]"
+      : "";
+  const spotlightAttr = (target: OnboardingTarget) =>
+    isSpotlight(target) || undefined;
 
   // Keep error mounted to allow fade-out when error becomes null
   React.useEffect(() => {
@@ -99,8 +136,23 @@ export default function StickyActionBar({
   };
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 md:sticky md:top-18 md:z-30 flex flex-col gap-2 pb-safe">
-      <div className="mx-auto w-full lg:max-w-screen-lg flex flex-col md:flex-row md:items-center md:justify-between md:gap-4 rounded-t-xl md:rounded-md border border-[var(--border)] bg-[var(--surface-2)]/80 px-4 py-3 pb-[env(safe-area-inset-bottom)] md:pb-3 shadow-[0_-6px_24px_rgba(0,0,0,0.2)] md:shadow-none backdrop-blur supports-[backdrop-filter]:bg-[color-mix(in_oklab,var(--background)_90%,transparent)] md:supports-[backdrop-filter]:bg-[color-mix(in_oklab,var(--background)_70%,transparent)]">
+    <div
+      className={`fixed inset-x-0 bottom-0 md:sticky md:top-18 flex flex-col gap-2 pb-safe ${
+        // Raised above the coach scrim so the lit control stays reachable.
+        onboardingActive ? "z-[60] md:z-[60]" : "z-40 md:z-30"
+      }`}
+    >
+      {/* The error banner occupies the same edge as the gate, so it wins. */}
+      {onboardingGateLabel && onOnboardingGateClick && errorMessage === null && (
+        <HackOnboardingGate label={onboardingGateLabel} onClick={onOnboardingGateClick} />
+      )}
+      <div data-hack-action-bar className="relative mx-auto w-full lg:max-w-screen-lg flex flex-col md:flex-row md:items-center md:justify-between md:gap-4 rounded-t-xl md:rounded-md border border-[var(--border)] bg-[var(--surface-2)]/80 px-4 py-3 pb-[env(safe-area-inset-bottom)] md:pb-3 shadow-[0_-6px_24px_rgba(0,0,0,0.2)] md:shadow-none backdrop-blur supports-[backdrop-filter]:bg-[color-mix(in_oklab,var(--background)_90%,transparent)] md:supports-[backdrop-filter]:bg-[color-mix(in_oklab,var(--background)_70%,transparent)]">
+        {onboardingDimBar && (
+          <div
+            aria-hidden
+            className="absolute inset-0 z-[1] rounded-t-xl md:rounded-md bg-[#171717]/25 dark:bg-black/55"
+          />
+        )}
         <div className="md:w-fit md:max-w-[40%] lg:max-w-[45%]">
           <div className="flex items-center gap-2">
             <div className="truncate text-xl font-bold md:text-sm md:font-medium">{title}</div>
@@ -110,14 +162,18 @@ export default function StickyActionBar({
                 aria-label="Patch version"
                 aria-haspopup="dialog"
                 aria-expanded={versionPickerOpen}
+                data-onboarding-spotlight={spotlightAttr("version")}
                 onClick={() => setVersionPickerOpen((open) => !open)}
-                className="shrink-0 max-w-44 ml-auto md:ml-0 inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1 text-[11px] font-semibold text-foreground/90 shadow-sm focus:outline-none md:hover:bg-[var(--surface-3)] md:focus:ring-2 md:focus:ring-[var(--accent)]"
+                className={`relative shrink-0 max-w-44 ml-auto md:ml-0 inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1 text-[11px] font-semibold text-foreground/90 shadow-sm cursor-pointer focus:outline-none md:hover:bg-[var(--surface-3)] md:focus:ring-2 md:focus:ring-[var(--accent)]${spotlight("version")}`}
               >
                 <span className="truncate">{version}</span>
                 {versionPickerOpen ? (
                   <FiX size={13} className="shrink-0 text-foreground/65" aria-hidden />
                 ) : (
                   <FiChevronDown size={13} className="shrink-0 text-foreground/65" aria-hidden />
+                )}
+                {onboardingBeacon && onboardingHighlight === "version" && (
+                  <OnboardingBeacon className="-top-[3px] -right-[3px]" />
                 )}
               </button>
             ) : version && (
@@ -127,7 +183,7 @@ export default function StickyActionBar({
           <div className="truncate text-sm md:text-xs text-foreground/60">By {author}</div>
         </div>
         {hasVersionPicker && versionPickerOpen && (
-          <div className="md:hidden mt-3 mb-4 animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <div className="relative z-[2] md:hidden mt-3 mb-4 animate-in fade-in slide-in-from-bottom-2 duration-200">
             <div className="mb-2">
               <div className="text-xs font-semibold uppercase tracking-wide text-foreground/55">Select version</div>
             </div>
@@ -174,22 +230,30 @@ export default function StickyActionBar({
                 disabled={isVerifyingRom}
                 className="hidden"
               />
-              <button
-                type="button"
-                onClick={() => uploadInputRef.current?.click()}
-                disabled={isVerifyingRom}
-                className="shine-wrap btn-premium h-11 md:h-9 w-5/6 mx-auto md:w-auto md:mx-0 md:min-w-34 text-base md:text-sm font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                {isVerifyingRom ? (
-                  <span>Verifying…</span>
-                ) : baseRomName ? (
-                  <span>Select <span className="font-bold">{baseRomName}</span> ROM</span>
-                ) : baseRomPlatform ? (
-                  <span>Select <span className="font-bold">{baseRomPlatform}</span> ROM</span>
-                ) : (
-                  <span>Select Base ROM</span>
+              {/* The button clips its own overflow for the shine sweep, so the
+                  beacon rides on this wrapper instead. */}
+              <span className="relative inline-flex w-5/6 mx-auto md:w-auto md:mx-0">
+                <button
+                  type="button"
+                  onClick={() => uploadInputRef.current?.click()}
+                  disabled={isVerifyingRom}
+                  data-onboarding-spotlight={spotlightAttr("selectRom")}
+                  className={`shine-wrap btn-premium h-11 md:h-9 w-full md:w-auto md:min-w-34 text-base md:text-sm font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70${spotlight("selectRom")}`}
+                >
+                  {isVerifyingRom ? (
+                    <span>Verifying…</span>
+                  ) : baseRomName ? (
+                    <span>Select <span className="font-bold">{baseRomName}</span> ROM</span>
+                  ) : baseRomPlatform ? (
+                    <span>Select <span className="font-bold">{baseRomPlatform}</span> ROM</span>
+                  ) : (
+                    <span>Select Base ROM</span>
+                  )}
+                </button>
+                {onboardingBeacon && onboardingHighlight === "selectRom" && (
+                  <OnboardingBeacon large className="-top-[3px] right-[2px]" />
                 )}
-              </button>
+              </span>
             </label>
           )}
           {!baseRomsLoading && !romReady && isLinked && (
@@ -197,29 +261,43 @@ export default function StickyActionBar({
               type="button"
               onClick={onClickLink}
               disabled={!supported}
-              className="w-5/6 md:w-auto rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm md:text-xs cursor-pointer hover:bg-[var(--surface-3)] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+              data-onboarding-spotlight={spotlightAttr("selectRom")}
+              className={`relative w-5/6 md:w-auto rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm md:text-xs cursor-pointer hover:bg-[var(--surface-3)] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60${spotlight("selectRom")}`}
             >
               Grant permission
+              {onboardingBeacon && onboardingHighlight === "selectRom" && (
+                <OnboardingBeacon large className="-top-[3px] -right-[3px]" />
+              )}
             </button>
           )}
-          <button
-            onClick={onPatch}
+          {/* Wrapper owns the layout slot so the beacon can escape the button's
+              overflow clip. Hiding it here keeps the flex gap collapsed. */}
+          <span
             data-ready={romReady}
-            disabled={!mounted || !romReady || (status !== "ready" && status !== "done" && status !== "idle") || !patchAgainReady}
-            className={`shine-wrap btn-premium data-[ready=false]:hidden! h-11 md:h-9 w-full md:min-w-46 ${!termsAgreed || status === 'downloading' ? "md:w-32" : "md:w-auto"} text-base md:text-sm font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 ${romReady && status !== 'downloading' && status !== 'ready' && termsAgreed ? "mt-6 md:mt-0" : ""}`}
+            className={`relative inline-flex data-[ready=false]:hidden! w-full md:w-auto ${romReady && status !== 'downloading' && status !== 'ready' && termsAgreed ? "mt-6 md:mt-0" : ""}`}
           >
-            <span>{
-              status === "patching" ? (
-                patchProgress != null && patchProgress > 0
-                  ? `Patching… (${(patchProgress / (1024 * 1024)).toFixed(0)} MB)`
-                  : "Patching…"
-              ) :
-              status === "downloading" ? "Downloading…" :
-              status === "done" ? (
-                patchAgainReady ? "Patch Again" : "Patched"
-              ) : termsAgreed ? "Retry Patching" : "Agree and Patch"
-            }</span>
-          </button>
+            <button
+              onClick={onPatch}
+              data-onboarding-spotlight={spotlightAttr("agree")}
+              disabled={!mounted || !romReady || (status !== "ready" && status !== "done" && status !== "idle") || !patchAgainReady}
+              className={`shine-wrap btn-premium h-11 md:h-9 w-full md:min-w-46 ${!termsAgreed || status === 'downloading' ? "md:w-32" : "md:w-auto"} text-base md:text-sm font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70${spotlight("agree")}`}
+            >
+              <span>{
+                status === "patching" ? (
+                  patchProgress != null && patchProgress > 0
+                    ? `Patching… (${(patchProgress / (1024 * 1024)).toFixed(0)} MB)`
+                    : "Patching…"
+                ) :
+                status === "downloading" ? "Downloading…" :
+                status === "done" ? (
+                  patchAgainReady ? "Patch Again" : "Patched"
+                ) : termsAgreed ? "Retry Patching" : "Agree and Patch"
+              }</span>
+            </button>
+            {onboardingBeacon && onboardingHighlight === "agree" && (
+              <OnboardingBeacon large className="-top-[3px] right-[2px]" />
+            )}
+          </span>
         </div>
       </div>
       {hasVersionPicker && versionPickerOpen && (
@@ -262,6 +340,16 @@ export default function StickyActionBar({
         </div>
       )}
     </div>
+  );
+}
+
+/** Rose onboarding beacon with a reduced-motion-safe halo. */
+function OnboardingBeacon({ className, large = false }: { className: string; large?: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={`onboarding-beacon ${large ? "onboarding-beacon-large" : ""} pointer-events-none absolute! block overflow-visible ${className}`}
+    />
   );
 }
 
