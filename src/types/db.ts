@@ -368,7 +368,9 @@ export type Database = {
           patch: number | null
           probe_patch_host: string | null
           probe_same_origin: string | null
+          received_bytes: number | null
           response_status: number | null
+          resume_count: number | null
           sample_rate: number | null
           stage: string
           timing_entry_present: boolean | null
@@ -397,7 +399,9 @@ export type Database = {
           patch?: number | null
           probe_patch_host?: string | null
           probe_same_origin?: string | null
+          received_bytes?: number | null
           response_status?: number | null
+          resume_count?: number | null
           sample_rate?: number | null
           stage: string
           timing_entry_present?: boolean | null
@@ -426,7 +430,9 @@ export type Database = {
           patch?: number | null
           probe_patch_host?: string | null
           probe_same_origin?: string | null
+          received_bytes?: number | null
           response_status?: number | null
+          resume_count?: number | null
           sample_rate?: number | null
           stage?: string
           timing_entry_present?: boolean | null
