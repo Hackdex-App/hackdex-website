@@ -164,7 +164,7 @@ export default function StickyActionBar({
                 aria-expanded={versionPickerOpen}
                 data-onboarding-spotlight={spotlightAttr("version")}
                 onClick={() => setVersionPickerOpen((open) => !open)}
-                className={`relative shrink-0 max-w-44 ml-auto md:ml-0 inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1 text-[11px] font-semibold text-foreground/90 shadow-sm focus:outline-none md:hover:bg-[var(--surface-3)] md:focus:ring-2 md:focus:ring-[var(--accent)]${spotlight("version")}`}
+                className={`relative shrink-0 max-w-44 ml-auto md:ml-0 inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1 text-[11px] font-semibold text-foreground/90 shadow-sm cursor-pointer focus:outline-none md:hover:bg-[var(--surface-3)] md:focus:ring-2 md:focus:ring-[var(--accent)]${spotlight("version")}`}
               >
                 <span className="truncate">{version}</span>
                 {versionPickerOpen ? (
