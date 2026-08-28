@@ -1132,6 +1132,8 @@ export interface PatchDownloadEventInput {
   pageOrigin?: string | null;
   correlationId?: string | null;
   sampleRate?: number | null;
+  resumeCount?: number | null;
+  receivedBytes?: number | null;
 }
 
 const PATCH_DOWNLOAD_STAGES = new Set(["signed_url", "fetch", "patch"]);
@@ -1255,6 +1257,8 @@ export async function reportPatchDownloadEvent(
       page_origin: sanitizePageOrigin(input.pageOrigin),
       correlation_id: sanitizeCorrelationId(input.correlationId),
       sample_rate: sanitizeSampleRate(input.sampleRate),
+      resume_count: sanitizeNonNegativeInteger(input.resumeCount),
+      received_bytes: sanitizeNonNegativeInteger(input.receivedBytes),
     });
 
     if (error) {

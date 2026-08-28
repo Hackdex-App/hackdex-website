@@ -16,12 +16,11 @@ import {
 import { getOrCreateDeviceId } from "@/utils/deviceId";
 import {
   collectFetchDiagnostics,
-  collectResponseMetadata,
-  HTTPError,
   runConnectivityProbes,
   type FetchFailurePhase,
   type ResponseMetadata,
 } from "@/utils/patches/download-telemetry";
+import { downloadPatch, DownloadPatchError } from "@/utils/patches/download-patch";
 import type { SelectablePatch } from "@/types/patcher";
 import { applyPatch, patchFormatFromFilename, type PatchFormat } from "@/utils/patching";
 import { createOutputSink, SaveCancelledError, type OutputSink } from "@/utils/patching/save";
@@ -86,7 +85,9 @@ const HackActions: React.FC<HackActionsProps> = ({
   const [romErrorModal, setRomErrorModal] = React.useState<BaseRomErrorModalState | null>(null);
   const [isVerifyingRom, setIsVerifyingRom] = React.useState(false);
   const [selectedPatchId, setSelectedPatchId] = React.useState<number | null>(patcherSelector.defaultPatchId);
+  const selectedPatchIdRef = React.useRef(selectedPatchId);
   const fetchSessionIdRef = React.useRef<string | null | undefined>(undefined);
+  selectedPatchIdRef.current = selectedPatchId;
 
   function getFetchSessionId(): string | null {
     if (fetchSessionIdRef.current !== undefined) {
@@ -128,6 +129,7 @@ const HackActions: React.FC<HackActionsProps> = ({
 
   function onVersionChange(nextPatchId: number) {
     if (nextPatchId === selectedPatchId) return;
+    selectedPatchIdRef.current = nextPatchId;
     setSelectedPatchId(nextPatchId);
     resetPatchSession();
   }
@@ -248,8 +250,10 @@ const HackActions: React.FC<HackActionsProps> = ({
   }
 
   async function onAgreeToTerms(): Promise<{ url: string; blob: Blob; format: PatchFormat } | null> {
+    const selectedPatchIdAtStart = selectedPatchId;
     const eventPatchId = selectedPatch?.id ?? patchId ?? null;
     const online = typeof navigator !== "undefined" ? navigator.onLine : null;
+    const correlationId = getFetchSessionId();
 
     let signedUrl: string;
     let signedFormat: PatchFormat;
@@ -273,10 +277,13 @@ const HackActions: React.FC<HackActionsProps> = ({
           errorMessage: result.error,
           online,
           pageOrigin: getPageOrigin(),
-          correlationId: getFetchSessionId(),
+          correlationId,
           probeSameOrigin: "skipped",
           probePatchHost: "skipped",
         });
+        return null;
+      }
+      if (selectedPatchIdRef.current !== selectedPatchIdAtStart) {
         return null;
       }
       signedUrl = result.url;
@@ -293,10 +300,14 @@ const HackActions: React.FC<HackActionsProps> = ({
         errorMessage: e?.message ?? null,
         online,
         pageOrigin: getPageOrigin(),
-        correlationId: getFetchSessionId(),
+        correlationId,
         probeSameOrigin: "skipped",
         probePatchHost: "skipped",
       });
+      return null;
+    }
+
+    if (selectedPatchIdRef.current !== selectedPatchIdAtStart) {
       return null;
     }
 
@@ -314,50 +325,76 @@ const HackActions: React.FC<HackActionsProps> = ({
     };
     const sessionFields = {
       pageOrigin: getPageOrigin(),
-      correlationId: getFetchSessionId(),
+      correlationId,
     };
 
     try {
-      const res = await fetch(signedUrl);
-      failurePhase = "response";
-      responseMeta = collectResponseMetadata(res);
-      if (!res.ok) throw new HTTPError(res.status);
-      failurePhase = "body";
-      const blob = await res.blob();
-      setPatchBlob(blob);
+      const download = await downloadPatch({
+        url: signedUrl,
+        getNewSignedUrl: async () => {
+          const result = await getSignedPatchUrl(
+            hackSlug,
+            eventPatchId == null ? undefined : { patchId: eventPatchId },
+          );
+          if (!result.ok) throw new Error(result.error);
+          return result.url;
+        },
+      });
+      signedUrl = download.url;
+      failurePhase = download.failurePhase;
+      responseMeta = download.responseMetadata;
+
+      const selectionIsCurrent = selectedPatchIdRef.current === selectedPatchIdAtStart;
+      if (selectionIsCurrent) {
+        setPatchUrl(download.url);
+        setPatchBlob(download.blob);
+      }
 
       const romReady = isRomReadyForPatch();
-      if (!romReady) {
+      if (selectionIsCurrent && !romReady) {
         setStatus("idle");
       }
 
-      if (Math.random() < 0.1) {
+      const shouldReportSuccess = download.resumeCount > 0 || Math.random() < 0.1;
+      if (shouldReportSuccess) {
         const elapsed = performance.now() - fetchStartedAt;
-        const diagnostics = collectFetchDiagnostics(signedUrl, elapsed);
+        const diagnostics = collectFetchDiagnostics(download.url, elapsed);
         deferReport({
           patchId: eventPatchId,
           hackSlug,
           stage: "fetch",
           outcome: "success",
           online,
-          sampleRate: 0.1,
+          sampleRate: download.resumeCount > 0 ? 1 : 0.1,
+          resumeCount: download.resumeCount,
+          receivedBytes: download.receivedBytes,
           ...sessionFields,
           ...responseMeta,
           ...diagnostics,
         });
       }
 
-      return { url: signedUrl, blob, format: signedFormat };
+      if (!selectionIsCurrent) return null;
+      return { url: download.url, blob: download.blob, format: signedFormat };
     } catch (e: any) {
-      setError(e?.name === "HTTPError" ? "Failed to fetch patch" : (e?.message || "Failed to fetch patch URL"));
-      setStatus("idle");
-      setTermsAgreed(false);
+      const downloadError = e instanceof DownloadPatchError ? e : null;
+      const failureUrl = downloadError?.url ?? signedUrl;
+      const resumeCount = downloadError?.resumeCount ?? 0;
+      const receivedBytes = downloadError?.receivedBytes ?? 0;
+      failurePhase = downloadError?.failurePhase ?? failurePhase;
+      responseMeta = downloadError?.responseMetadata ?? responseMeta;
+
+      if (selectedPatchIdRef.current === selectedPatchIdAtStart) {
+        setError(e?.name === "HTTPError" ? "Failed to fetch patch" : (e?.message || "Failed to fetch patch URL"));
+        setStatus("idle");
+        setTermsAgreed(false);
+      }
 
       const elapsed = performance.now() - fetchStartedAt;
       setTimeout(async () => {
         try {
-          const probes = await runConnectivityProbes(signedUrl);
-          const diagnostics = collectFetchDiagnostics(signedUrl, elapsed);
+          const probes = await runConnectivityProbes(failureUrl);
+          const diagnostics = collectFetchDiagnostics(failureUrl, elapsed);
           await reportPatchDownloadEvent({
             patchId: eventPatchId,
             hackSlug,
@@ -367,6 +404,8 @@ const HackActions: React.FC<HackActionsProps> = ({
             errorName: e?.name ?? null,
             errorMessage: e?.message ?? null,
             online,
+            resumeCount,
+            receivedBytes,
             ...sessionFields,
             ...responseMeta,
             ...diagnostics,
