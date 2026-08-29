@@ -1,9 +1,24 @@
-import { type NextRequest } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
 import { updateSession } from '@/utils/supabase/middleware'
 
 export async function middleware(request: NextRequest) {
   // update user's auth session
-  return await updateSession(request)
+  const sessionResponse = await updateSession(request)
+
+  const segments = request.nextUrl.pathname.split('/').filter(Boolean)
+  if (segments.length === 2 && segments[0] === 'hack') {
+    const slug = segments[1]
+    const url = request.nextUrl.clone()
+    url.pathname = `/hack/${slug}/session`
+
+    const rewriteResponse = NextResponse.rewrite(url)
+    sessionResponse.cookies.getAll().forEach((cookie) => {
+      rewriteResponse.cookies.set(cookie)
+    })
+    return rewriteResponse
+  }
+
+  return sessionResponse
 }
 
 // All values must be hardcoded in the middleware config,

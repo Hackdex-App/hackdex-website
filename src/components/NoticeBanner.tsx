@@ -1,19 +1,26 @@
 import { get } from "@vercel/edge-config";
+import { unstable_cache } from "next/cache";
 
 const NOTICE_KEY = process.env.NEXT_PUBLIC_NOTICE_KEY ?? "global_notice_message";
 
-export default async function NoticeBanner() {
-  let message: string | null = null;
-
-  try {
-    const value = await get<string | null>(NOTICE_KEY);
-    if (typeof value === "string" && value.trim().length > 0) {
-      message = value.trim();
+const getNoticeMessage = unstable_cache(
+  async () => {
+    try {
+      const value = await get<string | null>(NOTICE_KEY);
+      if (typeof value === "string" && value.trim().length > 0) {
+        return value.trim();
+      }
+    } catch {
+      // Fail silently if Edge Config is unavailable or misconfigured
     }
-  } catch (error) {
-    // Fail silently if Edge Config is unavailable or misconfigured
     return null;
-  }
+  },
+  ["notice-banner", NOTICE_KEY],
+  { revalidate: 60, tags: ["notice-banner"] },
+);
+
+export default async function NoticeBanner() {
+  const message = await getNoticeMessage();
 
   if (!message) {
     return null;

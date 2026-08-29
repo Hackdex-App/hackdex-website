@@ -130,6 +130,7 @@ export async function updateHack(args: {
   }
 
   revalidateTag(`hack:${args.slug}:metadata`);
+  revalidatePath(`/hack/${args.slug}`);
   return { ok: true } as const;
 }
 
@@ -212,6 +213,7 @@ export async function saveHackCovers(args: { slug: string; coverUrls: string[] }
   }
 
   revalidateTag(`hack:${args.slug}:metadata`);
+  revalidatePath(`/hack/${args.slug}`);
   return { ok: true } as const;
 }
 
