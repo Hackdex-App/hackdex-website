@@ -64,9 +64,11 @@ export async function middleware(request: NextRequest) {
   return sessionResponse;
 }
 
-// Matcher values must be string literals (statically analyzed). `/hack/:slug`
-// matches `/hack/foo` but not `/hack/foo/edit`. Separate matcher objects are OR;
-// items in a single `has` array are AND.
+// Matcher values must be string literals (statically analyzed), which is why
+// the Supabase project ID is hardcoded in the cookie keys. Forks should
+// replace `sb-scfxbqapigdjfebqwmoj-auth-token` with their own project ref.
+// `/hack/:slug` matches `/hack/foo` but not `/hack/foo/edit`. Separate matcher
+// objects are OR; items in a single `has` array are AND.
 export const config = {
   matcher: [
     { source: "/hack/:slug" },
