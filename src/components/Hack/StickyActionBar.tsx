@@ -135,6 +135,9 @@ export default function StickyActionBar({
     }
   };
 
+  // Mystery Dungeon-length titles (e.g. "Explorers of Sky") stay readable at text-sm.
+  const compactSelectRomLabel = (baseRomName?.length ?? 0) >= 36;
+
   return (
     <div
       className={`fixed inset-x-0 bottom-0 md:sticky md:top-18 flex flex-col gap-2 pb-safe ${
@@ -194,7 +197,7 @@ export default function StickyActionBar({
             />
           </div>
         )}
-        <div className={`${hasVersionPicker && versionPickerOpen ? "hidden md:flex" : "flex"} w-full md:w-auto flex-col md:flex-row items-stretch md:items-center gap-2 mb-4 md:mb-0`}>
+        <div className={`${hasVersionPicker && versionPickerOpen ? "hidden md:flex" : "flex"} w-full min-w-0 md:flex-1 md:justify-end flex-col md:flex-row items-stretch md:items-center gap-2 mb-4 md:mb-0`}>
           {!termsAgreed || status === "downloading" ? (
             baseRomsLoading ? (
               <p className="rounded-full mx-auto md:mx-0 px-2 py-6 md:py-0.5 text-base text-center md:text-right md:mr-1 md:text-balance font-bold">
@@ -221,7 +224,7 @@ export default function StickyActionBar({
             </span>
           )}
           {!baseRomsLoading && !romReady && !isLinked && (
-            <label className="min-w-max inline-flex items-center gap-2 text-xs text-foreground/80">
+            <label className="flex w-full min-w-0 max-w-full md:w-auto items-center justify-center md:justify-end">
               <input
                 ref={uploadInputRef}
                 type="file"
@@ -232,20 +235,22 @@ export default function StickyActionBar({
               />
               {/* The button clips its own overflow for the shine sweep, so the
                   beacon rides on this wrapper instead. */}
-              <span className="relative inline-flex w-5/6 mx-auto md:w-auto md:mx-0">
+              <span className="relative inline-flex w-5/6 max-w-full min-w-0 mx-auto md:w-auto md:mx-0">
                 <button
                   type="button"
                   onClick={() => uploadInputRef.current?.click()}
                   disabled={isVerifyingRom}
                   data-onboarding-spotlight={spotlightAttr("selectRom")}
-                  className={`shine-wrap btn-premium h-11 md:h-9 w-full md:w-auto md:min-w-34 text-base md:text-sm font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70${spotlight("selectRom")}`}
+                  className={`shine-wrap btn-premium min-h-11 md:min-h-9 h-auto py-2 w-full max-w-full md:w-auto md:min-w-34 text-balance text-center font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70${spotlight("selectRom")} ${
+                    compactSelectRomLabel ? "text-sm" : "text-base md:text-sm"
+                  }`}
                 >
                   {isVerifyingRom ? (
                     <span>Verifying…</span>
                   ) : baseRomName ? (
-                    <span>Select <span className="font-bold">{baseRomName}</span> ROM</span>
+                    <span className="min-w-0 w-full">Select <span className="font-bold">{baseRomName}</span> ROM</span>
                   ) : baseRomPlatform ? (
-                    <span>Select <span className="font-bold">{baseRomPlatform}</span> ROM</span>
+                    <span className="min-w-0 w-full">Select <span className="font-bold">{baseRomPlatform}</span> ROM</span>
                   ) : (
                     <span>Select Base ROM</span>
                   )}
