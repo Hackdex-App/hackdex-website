@@ -329,6 +329,11 @@ html { scroll-padding-top: var(--anchor-offset); }
   --tw-prose-code: var(--foreground);
   --tw-prose-hr: var(--border);
   --tw-prose-captions: color-mix(in oklab, var(--foreground) 70%, transparent);
+  overflow-wrap: anywhere;
+}
+
+.prose pre {
+  overflow-x: auto;
 }
 
 .prose * {
@@ -418,6 +423,8 @@ html { scroll-padding-top: var(--anchor-offset); }
 
 .prose table {
   @apply my-6 w-full text-sm text-left text-foreground/70;
+  display: block;
+  overflow-x: auto;
 }
 .prose table th, .prose table td {
   @apply px-6 py-4 border border-zinc-400/30 dark:border-zinc-600/50;

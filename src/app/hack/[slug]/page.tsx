@@ -477,7 +477,7 @@ export default async function HackDetail({ params }: HackDetailProps) {
       </div>
 
       <div className="mt-6 px-6 flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_260px]">
-        <div className="space-y-6 lg:min-w-[640px]">
+        <div className="min-w-0 space-y-6 lg:min-w-[640px]">
           <Gallery images={images} title={hack.title} />
 
           {patchId && patchCreatedAt && (
