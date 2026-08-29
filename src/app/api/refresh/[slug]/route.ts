@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { checkUserRoles } from "@/utils/user";
 import { createClient } from "@/utils/supabase/server";
 
@@ -17,5 +17,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
 
   revalidateTag(`hack:${slug}:metadata`);
   revalidateTag(`hack:${slug}:downloads`);
+  revalidatePath(`/hack/${slug}`);
   return NextResponse.redirect(new URL(`/hack/${slug}`, req.url));
 }
