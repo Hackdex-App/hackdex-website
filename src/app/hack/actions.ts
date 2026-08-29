@@ -345,6 +345,7 @@ export async function approveHack(slug: string, verified?: boolean) {
     .eq("slug", slug);
 
   if (updateErr) return { ok: false, error: updateErr.message } as const;
+  revalidateDiscoverCatalog();
 
   try {
     const { data: creatorData, error: creatorError } = await serviceClient.auth.admin.getUserById(hack.created_by);
@@ -398,7 +399,6 @@ export async function approveHack(slug: string, verified?: boolean) {
   revalidateTag(`hack:${slug}:metadata`);
   revalidateTag(`hack:${slug}:downloads`);
   revalidatePath(`/hack/${slug}`);
-  revalidateDiscoverCatalog();
   redirect(`/hack/${slug}`);
 }
 

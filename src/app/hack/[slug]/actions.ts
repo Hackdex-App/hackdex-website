@@ -641,6 +641,7 @@ export async function archivePatchVersion(slug: string, patchId: number): Promis
   }
 
   revalidateTag(`hack:${slug}:metadata`);
+  revalidateDiscoverCatalog();
   revalidatePath(`/hack/${slug}`);
   revalidatePath(`/hack/${slug}/versions`);
   return { ok: true };
@@ -854,6 +855,7 @@ export async function updatePatchVersion(slug: string, patchId: number, version:
   if (updateErr) return { ok: false, error: updateErr.message };
 
   revalidateTag(`hack:${slug}:metadata`);
+  revalidateDiscoverCatalog();
   revalidatePath(`/hack/${slug}/versions`);
   revalidatePath(`/hack/${slug}`);
   return { ok: true };

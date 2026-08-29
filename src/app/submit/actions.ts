@@ -14,6 +14,7 @@ import {
   getHackReviewThread,
   postHackReviewMessage,
 } from "@/utils/hack-review";
+import { revalidateDiscoverCatalog } from "@/app/discover/revalidate";
 
 type HackInsert = TablesInsert<"hacks">;
 
@@ -269,6 +270,7 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
   if (existing) return { ok: false, error: "That version already exists for this hack." } as const;
 
   let shouldPublishAutomatically = !!args.publishAutomatically;
+  let didUpdateCurrentPatch = false;
   if (shouldPublishAutomatically) {
     const { data: customPatcherRows, error: customPatcherErr } = await supabase
       .from("hack_patcher_patches")
@@ -324,7 +326,12 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
         .update({ current_patch: patch.id })
         .eq("slug", args.slug);
       if (uErr) return { ok: false, error: uErr.message } as const;
+      didUpdateCurrentPatch = true;
     }
+  }
+
+  if (hack.approved && didUpdateCurrentPatch) {
+    revalidateDiscoverCatalog();
   }
 
   const { data: profile } = await supabase
