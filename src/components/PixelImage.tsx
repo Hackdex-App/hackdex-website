@@ -9,13 +9,23 @@ type PixelImageProps = {
   src: string;
   alt: string;
   mode?: "cover" | "contain"; // cover: fill and crop, contain: letterbox without cropping
+  pixelPerfect?: boolean; // snap to integer scaling; rendering stays pixelated either way
   className?: string; // applied to wrapper
   imgClassName?: string; // applied to img
   style?: React.CSSProperties; // wrapper style
   onClick?: React.MouseEventHandler<HTMLDivElement>;
 };
 
-export default function PixelImage({ src, alt, mode = "cover", className = "", imgClassName = "", style, onClick }: PixelImageProps) {
+export default function PixelImage({
+  src,
+  alt,
+  mode = "cover",
+  pixelPerfect = true,
+  className = "",
+  imgClassName = "",
+  style,
+  onClick,
+}: PixelImageProps) {
   const wrapperRef = React.useRef<HTMLDivElement | null>(null);
   const imgRef = React.useRef<HTMLImageElement | null>(null);
   const [containerSize, setContainerSize] = React.useState<{ width: number; height: number }>({ width: 0, height: 0 });
@@ -146,7 +156,7 @@ export default function PixelImage({ src, alt, mode = "cover", className = "", i
     };
   }, []);
 
-  // Determine integer scaling factor
+  // Determine scaling factor, snapping to whole pixels by default
   const scale = React.useMemo(() => {
     const iw = naturalSize.width;
     const ih = naturalSize.height;
@@ -157,18 +167,18 @@ export default function PixelImage({ src, alt, mode = "cover", className = "", i
 
     const scaleX = cw / iw;
     const scaleY = ch / ih;
+    const availableScale = mode === "cover" ? Math.max(scaleX, scaleY) : Math.min(scaleX, scaleY);
+
+    if (!pixelPerfect) return availableScale;
 
     if (mode === "cover") {
-      const required = Math.max(scaleX, scaleY);
       // Snap UP to the nearest step to ensure we cover the container
-      return Math.max(1, Math.ceil(required));
+      return Math.max(1, Math.ceil(availableScale));
     } else {
-      // contain
-      const allowed = Math.min(scaleX, scaleY);
       // Snap DOWN to nearest step to avoid overflow
-      return Math.max(1, Math.floor(allowed));
+      return Math.max(1, Math.floor(availableScale));
     }
-  }, [naturalSize, containerSize, mode, devicePixelRatioState]);
+  }, [naturalSize, containerSize, mode, pixelPerfect, devicePixelRatioState]);
 
   const widthPx = naturalSize.width > 0 ? naturalSize.width * scale : undefined;
   const heightPx = naturalSize.height > 0 ? naturalSize.height * scale : undefined;
@@ -201,7 +211,7 @@ export default function PixelImage({ src, alt, mode = "cover", className = "", i
   }, [checkImageNaturalSize]);
 
   return (
-    <div ref={setRef} className={`relative overflow-hidden w-full h-full ${className}`.trim()} style={style} onClick={onClick}>
+    <div ref={setRef} className={`relative flex h-full w-full items-center justify-center overflow-hidden ${className}`.trim()} style={style} onClick={onClick}>
       {/* Loading spinner */}
       {!isReady && (
         <div
@@ -253,15 +263,16 @@ export default function PixelImage({ src, alt, mode = "cover", className = "", i
 
           checkAndSetNaturalSize();
         }}
+        width={naturalSize.width || undefined}
+        height={naturalSize.height || undefined}
         className={`pointer-events-none select-none ${imgClassName}`.trim()}
         style={{
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          width: widthPx ? `${widthPx}px` : undefined,
-          height: heightPx ? `${heightPx}px` : undefined,
-          maxWidth: "max-content",
+          width: widthPx,
+          height: heightPx,
+          maxWidth: "none",
+          maxHeight: "none",
+          aspectRatio: naturalSize.width > 0 && naturalSize.height > 0 ? `${naturalSize.width} / ${naturalSize.height}` : undefined,
+          objectFit: "contain",
           imageRendering: "pixelated",
           opacity: isReady ? 1 : 0,
           transition: isReady ? "opacity 0.1s" : "none",
