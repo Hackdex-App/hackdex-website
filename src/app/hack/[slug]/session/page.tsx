@@ -7,6 +7,7 @@ import HackDetailView from "@/components/Hack/HackDetailView";
 import {
   checkEditPermission,
   checkPatchEditPermission,
+  isArchiveHack,
 } from "@/utils/hack";
 import { getHackReviewThread } from "@/utils/hack-review";
 import { createClient } from "@/utils/supabase/server";
@@ -19,12 +20,8 @@ export async function generateMetadata({ params }: HackDetailPageProps) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) {
-    return { title: "Hack not found" };
-  }
-
   const { slug } = await params;
-  return getHackPageMetadata(slug, true);
+  return getHackPageMetadata(slug, Boolean(user));
 }
 
 export default async function HackSessionDetail({
@@ -34,9 +31,6 @@ export default async function HackSessionDetail({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) {
-    notFound();
-  }
 
   const { slug } = await params;
   const [metadata, downloads] = await Promise.all([
@@ -45,6 +39,22 @@ export default async function HackSessionDetail({
   ]);
   if (!metadata) {
     notFound();
+  }
+
+  if (!user) {
+    if (!metadata.hack.approved || isArchiveHack(metadata.hack)) {
+      notFound();
+    }
+
+    return (
+      <HackDetailView
+        metadata={metadata}
+        downloads={downloads}
+        canEdit={false}
+        canUploadPatch={false}
+        isAdmin={false}
+      />
+    );
   }
 
   const { hack } = metadata;
