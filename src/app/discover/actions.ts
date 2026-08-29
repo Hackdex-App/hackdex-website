@@ -1,377 +1,267 @@
- "use server";
-
 import { unstable_cache as cache } from "next/cache";
 import { createServiceClient } from "@/utils/supabase/server";
-import { getCachedTagsWithUsage, buildTagFilterGroups } from "@/data/tags";
-import { sortOrderedTags, OrderedTag, getCoverUrls } from "@/utils/format";
+import { sortOrderedTags, type OrderedTag, getCoverUrls } from "@/utils/format";
 import { fetchInChunks } from "@/utils/array";
-import { HackCardAttributes } from "@/components/HackCard";
-import type { DiscoverSortOption } from "@/types/discover";
+import type { Tables } from "@/types/db";
+import type { DiscoverData } from "@/types/discover";
 import { resolveHackDisplayVersion } from "@/utils/patches/hack-display-version";
 
 const TRENDING_WINDOW_DAYS = 3;
-const TIME_TO_LIVE = 600; // 10 minutes
+const DISCOVER_REVALIDATE_SECONDS = 1800;
 const CHUNK_SIZE = 150;
+const ROW_BATCH_SIZE = 1000;
 
- export interface DiscoverDataResult {
-   hacks: HackCardAttributes[];
-   tagGroups: Record<string, string[]>;
-   ungroupedTags: string[];
- }
+type HackTagRow = Pick<Tables<"hack_tags">, "hack_slug" | "order"> & {
+  tags: Pick<Tables<"tags">, "name">;
+};
 
- function getDayStamp() {
-   const now = new Date();
-   const startOfTodayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-   return startOfTodayUtc.toISOString().slice(0, 10); // YYYY-MM-DD
- }
+type PatchRow = Pick<Tables<"patches">, "id" | "parent_hack" | "version" | "published_at">;
 
-export async function getDiscoverData(sort: DiscoverSortOption): Promise<DiscoverDataResult> {
-   const dayStamp = getDayStamp();
+function buildTagGroups(rows: Pick<Tables<"tags">, "name" | "category">[]) {
+  const tagGroups: Record<string, string[]> = {};
+  const ungroupedTags: string[] = [];
 
-    const runner = cache(
-      async () => {
-        // Must use service role client because cookies cannot be used when caching
-        // Viewing permissions are enforced manually (only approved hacks are shown)
-        // TODO: Add `published` as a requirement when it's implemented
-        const supabase = await createServiceClient();
+  for (const row of rows) {
+    if (row.category) {
+      (tagGroups[row.category] ??= []).push(row.name);
+    } else {
+      ungroupedTags.push(row.name);
+    }
+  }
 
-        // Build base query for hacks (public/anon view: only approved hacks)
-        let query = supabase
-          .from("hacks")
-          .select("slug,title,summary,base_rom,downloads,created_by,updated_at,current_patch,custom_version_name,original_author,approved_at,is_archive,completion_status")
-          .eq("approved", true);
+  for (const tags of Object.values(tagGroups)) {
+    tags.sort((a, b) => a.localeCompare(b));
+  }
+  ungroupedTags.sort((a, b) => a.localeCompare(b));
 
-      // Apply sorting based on sort type
-      if (sort === "popular") {
-        // When sorting by popularity, always show non-archive hacks first.
-        // Archives are defined by the `is_archive` flag, so we order by that after downloads.
-        query = query
-          .order("downloads", { ascending: false })
-          .order("is_archive", { ascending: true });
-      } else if (sort === "trending") {
-        // For trending, we'll fetch all and calculate scores in JS
-        // Still order by downloads first for efficiency, then `is_archive` to keep non-archives first.
-        query = query
-          .order("downloads", { ascending: false })
-          .order("is_archive", { ascending: true });
-      } else if (sort === "updated") {
-        // Will sort by current patch published_at in JS after fetching patches
-      } else if (sort === "alpha") {
-        query = query.order("title", { ascending: true });
-      } else {
-        // "new" or default
-        query = query.order("approved_at", { ascending: false });
-      }
+  return { tagGroups, ungroupedTags };
+}
 
-       const { data: rows, error: hacksError } = await query;
-       if (hacksError) throw hacksError;
+async function generateDiscoverData(): Promise<DiscoverData> {
+  const generatedAt = new Date().toISOString();
+  const supabase = await createServiceClient();
 
-       const slugs = (rows || []).map((r) => r.slug);
+  const { data: rows, error: hacksError } = await supabase
+    .from("hacks")
+    .select(
+      "slug,title,summary,base_rom,downloads,created_by,current_patch,custom_version_name,original_author,approved_at,is_archive,completion_status",
+    )
+    .eq("approved", true)
+    .eq("is_archive", false);
+  if (hacksError) throw hacksError;
 
-       // Fetch covers
-       const { data: coverRows, error: coversError } = await fetchInChunks(slugs, CHUNK_SIZE, async (chunk) => {
+  const slugs = rows.map((row) => row.slug);
+
+  const { data: coverRows, error: coversError } = await fetchInChunks(
+    slugs,
+    CHUNK_SIZE,
+    async (slugChunk) => {
+      const { data, error } = await supabase
+        .from("hack_covers")
+        .select("hack_slug,url,position")
+        .in("hack_slug", slugChunk)
+        .order("position", { ascending: true });
+      return { data, error };
+    },
+  );
+  if (coversError) throw coversError;
+
+  const coversBySlug = new Map<string, string[]>();
+  if (coverRows.length > 0) {
+    const coverKeys = coverRows.map((cover) => cover.url);
+    const publicUrls = getCoverUrls(coverKeys);
+    const publicUrlByKey = new Map(
+      coverKeys.map((key, index) => [key, publicUrls[index]] as const),
+    );
+
+    for (const cover of coverRows) {
+      const publicUrl = publicUrlByKey.get(cover.url);
+      if (!publicUrl) continue;
+      const covers = coversBySlug.get(cover.hack_slug) ?? [];
+      covers.push(publicUrl);
+      coversBySlug.set(cover.hack_slug, covers);
+    }
+  }
+
+  const { data: tagRows, error: tagsError } = await fetchInChunks<string, HackTagRow>(
+    slugs,
+    CHUNK_SIZE,
+    async (slugChunk) => {
+      const chunkRows: HackTagRow[] = [];
+      let offset = 0;
+
+      while (true) {
         const { data, error } = await supabase
-          .from("hack_covers")
-          .select("hack_slug,url,position")
-          .in("hack_slug", chunk)
-          .order("position", { ascending: true });
-        return { data, error };
-      });
-      if (coversError) throw coversError;
+          .from("hack_tags")
+          .select("hack_slug,order,tags(name)")
+          .in("hack_slug", slugChunk)
+          .range(offset, offset + ROW_BATCH_SIZE - 1)
+          .order("hack_slug", { ascending: true });
+        if (error) return { data: null, error };
+        if (!data || data.length === 0) break;
 
-      const coversBySlug = new Map<string, string[]>();
-      if (coverRows && coverRows.length > 0) {
-        const coverKeys = coverRows.map((c) => c.url);
-        const urls = getCoverUrls(coverKeys);
-        const urlToSignedUrl = new Map<string, string>();
-        coverKeys.forEach((key, idx) => {
-          if (urls[idx]) urlToSignedUrl.set(key, urls[idx]);
-        });
-
-        coverRows.forEach((c) => {
-          const arr = coversBySlug.get(c.hack_slug) || [];
-          const signed = urlToSignedUrl.get(c.url);
-          if (signed) {
-            arr.push(signed);
-            coversBySlug.set(c.hack_slug, arr);
-          }
-        });
+        chunkRows.push(...data);
+        if (data.length < ROW_BATCH_SIZE) break;
+        offset += ROW_BATCH_SIZE;
       }
 
-       // Fetch tags - chunk slugs to avoid URI limits,
-       // paginate rows per chunk to avoid 1000 row limit per query
-       const ROW_BATCH_SIZE = 1000;
-       const { data: tagRows, error: tagsError } = await fetchInChunks(slugs, CHUNK_SIZE, async (slugChunk) => {
-         const rows: any[] = [];
-         let offset = 0;
-         let hasMore = true;
+      return { data: chunkRows, error: null };
+    },
+  );
+  if (tagsError) throw tagsError;
 
-         while (hasMore) {
-           const { data, error } = await supabase
-             .from("hack_tags")
-             .select("hack_slug,order,tags(name,category)")
-             .in("hack_slug", slugChunk)
-             .range(offset, offset + ROW_BATCH_SIZE - 1)
-             .order("hack_slug", { ascending: true });
+  const tagsBySlug = new Map<string, OrderedTag[]>();
+  for (const row of tagRows) {
+    if (!row.tags?.name) continue;
+    const tags = tagsBySlug.get(row.hack_slug) ?? [];
+    tags.push({ name: row.tags.name, order: row.order });
+    tagsBySlug.set(row.hack_slug, tags);
+  }
 
-           if (error) return { data: null, error };
+  const { data: patchRows, error: patchesError } = await fetchInChunks<string, PatchRow>(
+    slugs,
+    CHUNK_SIZE,
+    async (slugChunk) => {
+      const chunkRows: PatchRow[] = [];
+      let offset = 0;
 
-           if (!data || data.length === 0) {
-             hasMore = false;
-           } else {
-             rows.push(...data);
-             hasMore = data.length === ROW_BATCH_SIZE;
-             if (hasMore) offset += ROW_BATCH_SIZE;
-           }
-         }
-
-         return { data: rows, error: null };
-       });
-       if (tagsError) throw tagsError;
-
-       const tagsBySlug = new Map<string, OrderedTag[]>();
-       (tagRows || []).forEach((r: any) => {
-         if (!r.tags?.name) return;
-         const arr = tagsBySlug.get(r.hack_slug) || [];
-         arr.push({
-           name: r.tags.name,
-           order: r.order,
-         });
-         tagsBySlug.set(r.hack_slug, arr);
-       });
-
-      // Fetch patches for version mapping
-      const patchIds = Array.from(
-        new Set(
-          (rows || [])
-            .map((r: any) => r.current_patch as number | null)
-            .filter((id): id is number => typeof id === "number")
-        )
-      );
-
-      const versionsByPatchId = new Map<number, string>();
-      const publishedAtByPatchId = new Map<number, string | null>();
-       if (patchIds.length > 0) {
-         const { data: patchRows, error: patchesError } = await fetchInChunks(patchIds, CHUNK_SIZE, async (chunk) => {
-          const { data, error } = await supabase
-           .from("patches")
-           .select("id,version,published_at")
-           .in("id", chunk);
-          return { data, error };
-        });
-        if (patchesError) throw patchesError;
-
-        (patchRows || []).forEach((p: any) => {
-          if (typeof p.id === "number") {
-            versionsByPatchId.set(p.id, p.version || "Pre-release");
-            publishedAtByPatchId.set(p.id, p.published_at ?? null);
-          }
-        });
-      }
-
-      const customDefaultVersionsBySlug = new Map<string, string>();
-      const customPatcherSlugs = new Set<string>();
-      if (slugs.length > 0) {
-        const { data: customPatchRows, error: customPatchRowsError } = await supabase
-          .from("hack_patcher_patches")
-          .select("hack_slug, sort_order, patches!inner(version)")
-          .in("hack_slug", slugs)
-          .order("sort_order", { ascending: true });
-        if (customPatchRowsError) throw customPatchRowsError;
-
-        (customPatchRows || []).forEach((row: any) => {
-          customPatcherSlugs.add(row.hack_slug);
-          if (customDefaultVersionsBySlug.has(row.hack_slug)) return;
-          const patch = Array.isArray(row.patches) ? row.patches[0] : row.patches;
-          if (patch?.version) customDefaultVersionsBySlug.set(row.hack_slug, patch.version);
-        });
-      }
-
-      // Calculate trending scores if needed
-      let trendingScores: Map<string, number> | null = null;
-      if (sort === "trending") {
-        // Get all patches for all hacks, grouped by slug.
-        // Paginate rows per slug chunk to avoid the PostgREST 1000-row cap.
-        const { data: allPatches, error: allPatchesError } = await fetchInChunks(slugs, CHUNK_SIZE, async (chunk) => {
-          const rows: { id: number; parent_hack: string | null }[] = [];
-          let offset = 0;
-          let hasMore = true;
-
-          while (hasMore) {
-            const { data, error } = await supabase
-              .from("patches")
-              .select("id,parent_hack")
-              .in("parent_hack", chunk)
-              .order("id", { ascending: true })
-              .range(offset, offset + ROW_BATCH_SIZE - 1);
-
-            if (error) return { data: null, error };
-
-            if (!data || data.length === 0) {
-              hasMore = false;
-            } else {
-              rows.push(...data);
-              hasMore = data.length === ROW_BATCH_SIZE;
-              if (hasMore) offset += ROW_BATCH_SIZE;
-            }
-          }
-
-          return { data: rows, error: null };
-        });
-        if (allPatchesError) throw allPatchesError;
-
-        // Group patch IDs by parent_hack (slug)
-        const patchIdsBySlug = new Map<string, number[]>();
-        (allPatches || []).forEach((p: any) => {
-          if (typeof p.id === "number" && p.parent_hack) {
-            const arr = patchIdsBySlug.get(p.parent_hack) || [];
-            arr.push(p.id);
-            patchIdsBySlug.set(p.parent_hack, arr);
-          }
-        });
-
-        // Calculate recent downloads over the trending window
-        const since = new Date();
-        since.setDate(since.getDate() - TRENDING_WINDOW_DAYS);
-        const sinceISO = since.toISOString();
-
-        const recentDownloadsBySlug = new Map<string, number>();
-
-        // Query download counts per slug using head: true with count: 'exact'
-        // This avoids fetching all download rows and just gets counts
-        // One query per slug instead of one per patch
-        const downloadCountPromises = Array.from(patchIdsBySlug.entries()).map(async ([slug, patchIds]) => {
-          const { count, error } = await supabase
-            .from("patch_downloads")
-            .select("*", { count: "exact", head: true })
-            .in("patch", patchIds)
-            .gte("created_at", sinceISO);
-
-          if (error) throw error;
-          return { slug, count: count || 0 };
-        });
-
-        const downloadCounts = await Promise.all(downloadCountPromises);
-        downloadCounts.forEach(({ slug, count }) => {
-          recentDownloadsBySlug.set(slug, count);
-        });
-
-        // Calculate trending scores: recent_downloads_window + (8 * log(downloads + 1))
-        // Give small boost to longer lived popular hacks
-        trendingScores = new Map<string, number>();
-        (rows || []).forEach((r: any) => {
-          const recentDownloads = recentDownloadsBySlug.get(r.slug) || 0;
-          const lifetimeDownloads = r.downloads || 0;
-          const score = recentDownloads + (8 * Math.log(lifetimeDownloads + 1));
-          trendingScores!.set(r.slug, score);
-        });
-      }
-
-      // Map versions and current patch published_at per hack
-      const mappedVersions = new Map<string, string>();
-      const publishedAtBySlug = new Map<string, string | null>();
-      (rows || []).forEach((r: any) => {
-        const currentPatchVersion = typeof r.current_patch === "number"
-          ? versionsByPatchId.get(r.current_patch) || "Pre-release"
-          : "";
-        mappedVersions.set(r.slug, resolveHackDisplayVersion({
-          isArchive: r.is_archive,
-          isCustomPatcherActive: customPatcherSlugs.has(r.slug),
-          customVersionName: r.custom_version_name,
-          customDefaultPatchVersion: customDefaultVersionsBySlug.get(r.slug),
-          currentPatchVersion,
-        }));
-
-        if (typeof r.current_patch === "number") {
-          const publishedAt = publishedAtByPatchId.get(r.current_patch) ?? null;
-          publishedAtBySlug.set(r.slug, publishedAt);
-        } else {
-          publishedAtBySlug.set(r.slug, null);
-        }
-      });
-
-      const catalogTags = await getCachedTagsWithUsage();
-      const { tagGroups: groups, ungroupedTags: ungrouped } = buildTagFilterGroups(catalogTags);
-
-      // Fetch profiles for author names
-      const creatorIds = [...new Set(rows.map((r) => r.created_by))];
-      const { data: profiles, error: profilesError } = await fetchInChunks(creatorIds, CHUNK_SIZE, async (chunk) => {
+      while (true) {
         const { data, error } = await supabase
-          .from("profiles")
-          .select("id,username")
-          .in("id", chunk);
-        return { data, error };
-      });
-      if (profilesError) throw profilesError;
+          .from("patches")
+          .select("id,parent_hack,version,published_at")
+          .in("parent_hack", slugChunk)
+          .order("id", { ascending: true })
+          .range(offset, offset + ROW_BATCH_SIZE - 1);
+        if (error) return { data: null, error };
+        if (!data || data.length === 0) break;
 
-      const usernameById = new Map<string, string>();
-      (profiles || []).forEach((p) => usernameById.set(p.id, p.username ? `@${p.username}` : "Unknown"));
-
-      // Transform rows to HackCardAttributes
-      let mapped = (rows || []).map((r) => ({
-        slug: r.slug,
-        title: r.title,
-        author: r.original_author ? r.original_author : usernameById.get(r.created_by as string) || "Unknown",
-        covers: coversBySlug.get(r.slug) || [],
-        tags: sortOrderedTags(tagsBySlug.get(r.slug) || []),
-        downloads: r.downloads,
-        baseRomId: r.base_rom,
-        version: mappedVersions.get(r.slug) || "Pre-release",
-        summary: r.summary,
-        is_archive: r.is_archive,
-        completion_status: r.completion_status,
-      }));
-
-      // Sort by current patch published_at for "updated" sort
-      if (sort === "updated") {
-        mapped = [...mapped].sort((a, b) => {
-          const aPub = publishedAtBySlug.get(a.slug);
-          const bPub = publishedAtBySlug.get(b.slug);
-
-          // Nulls (no published_at) go last
-          if (!aPub && !bPub) return 0;
-          if (!aPub) return 1;
-          if (!bPub) return -1;
-
-          const aTime = new Date(aPub).getTime();
-          const bTime = new Date(bPub).getTime();
-
-          // Secondary sort: when times are equal, push archives to end
-          if (aTime === bTime) {
-            if (a.is_archive && !b.is_archive) return 1;
-            if (!a.is_archive && b.is_archive) return -1;
-          }
-
-          return bTime - aTime; // Descending order (newest first)
-        });
+        chunkRows.push(...data);
+        if (data.length < ROW_BATCH_SIZE) break;
+        offset += ROW_BATCH_SIZE;
       }
 
-      // Sort by trending score if needed
-      if (sort === "trending" && trendingScores) {
-        mapped = [...mapped].sort((a, b) => {
-          const scoreA = trendingScores!.get(a.slug) || 0;
-          const scoreB = trendingScores!.get(b.slug) || 0;
+      return { data: chunkRows, error: null };
+    },
+  );
+  if (patchesError) throw patchesError;
 
-          // Secondary sort: push archives to end
-          if (scoreA === scoreB) {
-            if (a.is_archive && !b.is_archive) return 1;
-            if (!a.is_archive && b.is_archive) return -1;
-          }
+  const patchesById = new Map(patchRows.map((patch) => [patch.id, patch] as const));
+  const patchIdsBySlug = new Map<string, number[]>();
+  for (const patch of patchRows) {
+    if (!patch.parent_hack) continue;
+    const patchIds = patchIdsBySlug.get(patch.parent_hack) ?? [];
+    patchIds.push(patch.id);
+    patchIdsBySlug.set(patch.parent_hack, patchIds);
+  }
 
-          return scoreB - scoreA; // Descending order
-        });
-      }
+  const customDefaultVersionsBySlug = new Map<string, string>();
+  const customPatcherSlugs = new Set<string>();
+  if (slugs.length > 0) {
+    const { data: customPatchRows, error: customPatchRowsError } = await supabase
+      .from("hack_patcher_patches")
+      .select("hack_slug,sort_order,patches!inner(version)")
+      .in("hack_slug", slugs)
+      .order("sort_order", { ascending: true });
+    if (customPatchRowsError) throw customPatchRowsError;
 
-      return {
-        hacks: mapped,
-        tagGroups: groups,
-        ungroupedTags: ungrouped,
-      } satisfies DiscoverDataResult;
-     },
-     [`discover-data:${sort}:${dayStamp}`], // Cache key
-     { revalidate: TIME_TO_LIVE, tags: ["discover"] } // Cache duration
-   );
+    for (const row of customPatchRows) {
+      customPatcherSlugs.add(row.hack_slug);
+      if (customDefaultVersionsBySlug.has(row.hack_slug)) continue;
+      const patch = Array.isArray(row.patches) ? row.patches[0] : row.patches;
+      if (patch?.version) customDefaultVersionsBySlug.set(row.hack_slug, patch.version);
+    }
+  }
 
-   return runner();
- }
+  const since = new Date(generatedAt);
+  since.setUTCDate(since.getUTCDate() - TRENDING_WINDOW_DAYS);
+  const downloadCounts = await Promise.all(
+    [...patchIdsBySlug.entries()].map(async ([slug, patchIds]) => {
+      const { count, error } = await supabase
+        .from("patch_downloads")
+        .select("*", { count: "exact", head: true })
+        .in("patch", patchIds)
+        .gte("created_at", since.toISOString());
+      if (error) throw error;
+      return [slug, count ?? 0] as const;
+    }),
+  );
+  const recentDownloadsBySlug = new Map(downloadCounts);
 
+  const { data: catalogTags, error: catalogTagsError } = await supabase
+    .from("tags")
+    .select("name,category");
+  if (catalogTagsError) throw catalogTagsError;
+  const { tagGroups, ungroupedTags } = buildTagGroups(catalogTags);
+
+  const creatorIds = [...new Set(rows.map((row) => row.created_by))];
+  const { data: profiles, error: profilesError } = await fetchInChunks(
+    creatorIds,
+    CHUNK_SIZE,
+    async (idChunk) => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id,username")
+        .in("id", idChunk);
+      return { data, error };
+    },
+  );
+  if (profilesError) throw profilesError;
+  const usernameById = new Map(
+    profiles.map((profile) => [
+      profile.id,
+      profile.username ? `@${profile.username}` : "Unknown",
+    ]),
+  );
+
+  const hacks = rows.map((row) => {
+    const currentPatch = row.current_patch
+      ? patchesById.get(row.current_patch)
+      : undefined;
+    const currentPatchVersion = currentPatch?.version ?? "";
+    const downloads = row.downloads ?? 0;
+    const recentDownloads = recentDownloadsBySlug.get(row.slug) ?? 0;
+
+    return {
+      slug: row.slug,
+      title: row.title,
+      author: row.original_author || usernameById.get(row.created_by) || "Unknown",
+      covers: coversBySlug.get(row.slug) ?? [],
+      tags: sortOrderedTags(tagsBySlug.get(row.slug) ?? []),
+      downloads,
+      baseRomId: row.base_rom,
+      version: resolveHackDisplayVersion({
+        isArchive: false,
+        isCustomPatcherActive: customPatcherSlugs.has(row.slug),
+        customVersionName: row.custom_version_name,
+        customDefaultPatchVersion: customDefaultVersionsBySlug.get(row.slug),
+        currentPatchVersion,
+      }),
+      summary: row.summary,
+      is_archive: false,
+      completion_status: row.completion_status,
+      approvedAt: row.approved_at,
+      publishedAt: currentPatch?.published_at ?? null,
+      trendingScore: recentDownloads + 8 * Math.log(downloads + 1),
+    };
+  });
+
+  return {
+    hacks,
+    generatedAt,
+    tagGroups,
+    ungroupedTags,
+  };
+}
+
+const getCachedDiscoverData = cache(
+  generateDiscoverData,
+  ["discover-data"],
+  {
+    revalidate: DISCOVER_REVALIDATE_SECONDS,
+    tags: ["discover"],
+  },
+);
+
+export async function getDiscoverData(): Promise<DiscoverData> {
+  return getCachedDiscoverData();
+}

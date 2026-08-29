@@ -17,6 +17,7 @@ import {
   getHackReviewThread,
   postHackReviewMessage,
 } from "@/utils/hack-review";
+import { revalidateDiscoverCatalog } from "@/app/discover/revalidate";
 
 export async function updateHack(args: {
   slug: string;
@@ -131,6 +132,7 @@ export async function updateHack(args: {
 
   revalidateTag(`hack:${args.slug}:metadata`);
   revalidatePath(`/hack/${args.slug}`);
+  revalidateDiscoverCatalog();
   return { ok: true } as const;
 }
 
@@ -214,6 +216,7 @@ export async function saveHackCovers(args: { slug: string; coverUrls: string[] }
 
   revalidateTag(`hack:${args.slug}:metadata`);
   revalidatePath(`/hack/${args.slug}`);
+  revalidateDiscoverCatalog();
   return { ok: true } as const;
 }
 
@@ -327,6 +330,7 @@ export async function approveHack(slug: string, verified?: boolean) {
   // If already approved, return success
   if (hack.approved) {
     revalidatePath(`/hack/${slug}`);
+    revalidateDiscoverCatalog();
     return { ok: true } as const;
   }
 
@@ -394,6 +398,7 @@ export async function approveHack(slug: string, verified?: boolean) {
   revalidateTag(`hack:${slug}:metadata`);
   revalidateTag(`hack:${slug}:downloads`);
   revalidatePath(`/hack/${slug}`);
+  revalidateDiscoverCatalog();
   redirect(`/hack/${slug}`);
 }
 

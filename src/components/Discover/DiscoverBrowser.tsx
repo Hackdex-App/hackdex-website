@@ -24,8 +24,6 @@ import { IoEllipsisHorizontal } from "react-icons/io5";
 import { BsSdCardFill } from "react-icons/bs";
 import { CATEGORY_ICONS } from "@/components/Icons/tagCategories";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
-import { HackCardAttributes } from "@/components/HackCard";
-import { getDiscoverData } from "@/app/discover/actions";
 import {
   buildDiscoverSearchParams,
   DISCOVER_COMPLETION_STATUSES,
@@ -33,9 +31,10 @@ import {
   validateDiscoverTags,
   type DiscoverUrlState,
 } from "@/app/discover/search-params";
-import type { DiscoverSortOption } from "@/types/discover";
+import type { DiscoverHack, DiscoverSortOption } from "@/types/discover";
 import Select, { SelectOption } from "@/components/Primitives/Select";
 import { useDiscoverUrlState } from "./useDiscoverUrlState";
+import DiscoverLastUpdated from "./DiscoverLastUpdated";
 
 const SORT_ICON_MAP: Record<DiscoverSortOption, IconType> = {
   trending: MdWhatshot,
@@ -56,25 +55,30 @@ const SORT_OPTIONS: SelectOption[] = [
 const HACKS_PER_PAGE = 9;
 
 interface DiscoverBrowserProps {
+  catalog: DiscoverHack[];
+  generatedAt: string;
   initialState: DiscoverUrlState;
+  tagGroups: Record<string, string[]>;
+  ungroupedTags: string[];
 }
 
-export default function DiscoverBrowser({ initialState }: DiscoverBrowserProps) {
+export default function DiscoverBrowser({
+  catalog,
+  generatedAt,
+  initialState,
+  tagGroups,
+  ungroupedTags,
+}: DiscoverBrowserProps) {
   const [query, setQuery] = React.useState(initialState.query);
   const [selectedTags, setSelectedTags] = React.useState<string[]>(() => [...initialState.tags]);
   const [selectedBaseRoms, setSelectedBaseRoms] = React.useState<string[]>(() => [...initialState.baseRoms]);
   const [selectedCompletionStatuses, setSelectedCompletionStatuses] = React.useState<string[]>(() => [...initialState.completionStatuses]);
   const [sort, setSort] = React.useState<DiscoverSortOption>(initialState.sort);
-  const [hacks, setHacks] = React.useState<HackCardAttributes[]>([]);
-  const [tagGroups, setTagGroups] = React.useState<Record<string, string[]>>({});
-  const [ungroupedTags, setUngroupedTags] = React.useState<string[]>([]);
-  const [loadingHacks, setLoadingHacks] = React.useState(true);
-  const [loadingTags, setLoadingTags] = React.useState(true);
   const [onlyReady, setOnlyReady] = React.useState(initialState.onlyReady);
   const [currentPage, setCurrentPage] = React.useState(initialState.page);
   const listRef = React.useRef<HTMLDivElement | null>(null);
 
-  const { cached, statuses, countReady } = useBaseRoms();
+  const { cached, statuses, countReady, loading: baseRomsLoading } = useBaseRoms();
   const readyBaseRomIds = React.useMemo(() => {
     const set = new Set<string>();
     try {
@@ -111,32 +115,15 @@ export default function DiscoverBrowser({ initialState }: DiscoverBrowserProps) 
     setCurrentPage(nextState.page);
   }, []);
 
-  const { syncUrl, syncUrlWith, scheduleSearchUrlSync } = useDiscoverUrlState({
+  const {
+    initialUrlStateApplied,
+    syncUrl,
+    syncUrlWith,
+    scheduleSearchUrlSync,
+  } = useDiscoverUrlState({
     currentState: currentUrlState,
     onUrlStateChange: applyUrlState,
   });
-
-  React.useEffect(() => {
-    const run = async () => {
-      setLoadingHacks(true);
-      setLoadingTags(true);
-      try {
-        const result = await getDiscoverData(sort);
-        setHacks(result.hacks);
-        setTagGroups(result.tagGroups);
-        setUngroupedTags(result.ungroupedTags);
-      } catch (error) {
-        console.error("Failed to fetch hacks:", error);
-        setHacks([]);
-        setTagGroups({});
-        setUngroupedTags([]);
-      } finally {
-        setLoadingHacks(false);
-        setLoadingTags(false);
-      }
-    };
-    run();
-  }, [sort]);
 
   const validTagNames = React.useMemo(
     () => new Set([...Object.values(tagGroups).flat(), ...ungroupedTags]),
@@ -144,7 +131,7 @@ export default function DiscoverBrowser({ initialState }: DiscoverBrowserProps) 
   );
 
   React.useEffect(() => {
-    if (loadingTags || selectedTags.length === 0) return;
+    if (!initialUrlStateApplied || selectedTags.length === 0) return;
 
     const nextState = validateDiscoverTags(currentUrlState, validTagNames);
     if (discoverUrlStatesEqual(nextState, currentUrlState)) return;
@@ -152,10 +139,10 @@ export default function DiscoverBrowser({ initialState }: DiscoverBrowserProps) 
     setSelectedTags([...nextState.tags]);
     setCurrentPage(1);
     syncUrl({ ...nextState, page: 1 }, "replace");
-  }, [currentUrlState, loadingTags, selectedTags.length, syncUrl, validTagNames]);
+  }, [currentUrlState, initialUrlStateApplied, selectedTags.length, syncUrl, validTagNames]);
 
   const filtered = React.useMemo(() => {
-    let out = hacks;
+    let out = catalog;
     const q = query.toLowerCase();
     if (q) {
       out = out.filter((h) =>
@@ -188,8 +175,34 @@ export default function DiscoverBrowser({ initialState }: DiscoverBrowserProps) 
     if (onlyReady) {
       out = out.filter((h) => !h.is_archive && h.baseRomId && readyBaseRomIds.has(h.baseRomId));
     }
-    return out;
-  }, [hacks, query, selectedTags, selectedBaseRoms, selectedCompletionStatuses, onlyReady, readyBaseRomIds]);
+    return [...out].sort((a, b) => {
+      if (sort === "popular") return b.downloads - a.downloads;
+      if (sort === "new") {
+        return (b.approvedAt ? Date.parse(b.approvedAt) : 0) -
+          (a.approvedAt ? Date.parse(a.approvedAt) : 0);
+      }
+      if (sort === "updated") {
+        if (!a.publishedAt && !b.publishedAt) return 0;
+        if (!a.publishedAt) return 1;
+        if (!b.publishedAt) return -1;
+        return Date.parse(b.publishedAt) - Date.parse(a.publishedAt);
+      }
+      if (sort === "alpha") return a.title.localeCompare(b.title);
+      return b.trendingScore - a.trendingScore;
+    });
+  }, [
+    catalog,
+    onlyReady,
+    query,
+    readyBaseRomIds,
+    selectedBaseRoms,
+    selectedCompletionStatuses,
+    selectedTags,
+    sort,
+  ]);
+
+  const showSkeleton =
+    !initialUrlStateApplied || (onlyReady && baseRomsLoading);
 
   const totalPages = React.useMemo(
     () => Math.max(1, Math.ceil(filtered.length / HACKS_PER_PAGE)),
@@ -198,11 +211,11 @@ export default function DiscoverBrowser({ initialState }: DiscoverBrowserProps) 
 
   React.useEffect(() => {
     // Clamp current page if the number of results shrinks
-    if (!loadingHacks && currentPage > totalPages) {
+    if (!showSkeleton && currentPage > totalPages) {
       setCurrentPage(totalPages);
       syncUrlWith({ page: totalPages }, "replace");
     }
-  }, [currentPage, loadingHacks, syncUrlWith, totalPages]);
+  }, [currentPage, showSkeleton, syncUrlWith, totalPages]);
 
   const paginationRange = React.useMemo(() => {
     const startIndex = (currentPage - 1) * HACKS_PER_PAGE;
@@ -408,52 +421,40 @@ export default function DiscoverBrowser({ initialState }: DiscoverBrowserProps) 
             syncUrlWith({ completionStatuses: vals, page: 1 });
           }}
         />
-        {loadingTags ? (
-          <>
-            {[
-              "w-28","w-36","w-32","w-24","w-24","w-28","w-36","w-36"
-            ].map((w, i) => (
-              <div key={i} className={`h-8 ${w} animate-pulse rounded-full bg-[var(--surface-2)]`} />
-            ))}
-          </>
-        ) : (
-          <>
-            {Object.keys(tagGroups)
-              .sort((a, b) => a.localeCompare(b))
-              .map((cat) => (
-                <MultiSelectDropdown
-                  key={cat}
-                  icon={CATEGORY_ICONS[cat]}
-                  label={cat}
-                  options={tagGroups[cat].map((t) => ({ id: t, name: t }))}
-                  values={selectedTags.filter((t) => tagGroups[cat].includes(t))}
-                  onChange={(vals) => {
-                    // Replace selections for this category while keeping others
-                    const others = selectedTags.filter((tag) => !tagGroups[cat].includes(tag));
-                    const nextTags = [...others, ...vals];
-                    setSelectedTags(nextTags);
-                    setCurrentPage(1);
-                    syncUrlWith({ tags: nextTags, page: 1 });
-                  }}
-                />
-              ))}
-            {/* Advanced dropdown for ungrouped tags at the end */}
-            {ungroupedTags.length > 0 && (
-              <MultiSelectDropdown
-                icon={MdTune}
-                label="Advanced"
-                options={ungroupedTags.map((t) => ({ id: t, name: t }))}
-                values={selectedTags.filter((t) => ungroupedTags.includes(t))}
-                onChange={(vals) => {
-                  const others = selectedTags.filter((tag) => !ungroupedTags.includes(tag));
-                  const nextTags = [...others, ...vals];
-                  setSelectedTags(nextTags);
-                  setCurrentPage(1);
-                  syncUrlWith({ tags: nextTags, page: 1 });
-                }}
-              />
-            )}
-          </>
+        {Object.keys(tagGroups)
+          .sort((a, b) => a.localeCompare(b))
+          .map((cat) => (
+            <MultiSelectDropdown
+              key={cat}
+              icon={CATEGORY_ICONS[cat]}
+              label={cat}
+              options={tagGroups[cat].map((t) => ({ id: t, name: t }))}
+              values={selectedTags.filter((t) => tagGroups[cat].includes(t))}
+              onChange={(vals) => {
+                // Replace selections for this category while keeping others
+                const others = selectedTags.filter((tag) => !tagGroups[cat].includes(tag));
+                const nextTags = [...others, ...vals];
+                setSelectedTags(nextTags);
+                setCurrentPage(1);
+                syncUrlWith({ tags: nextTags, page: 1 });
+              }}
+            />
+          ))}
+        {/* Advanced dropdown for ungrouped tags at the end */}
+        {ungroupedTags.length > 0 && (
+          <MultiSelectDropdown
+            icon={MdTune}
+            label="Advanced"
+            options={ungroupedTags.map((t) => ({ id: t, name: t }))}
+            values={selectedTags.filter((t) => ungroupedTags.includes(t))}
+            onChange={(vals) => {
+              const others = selectedTags.filter((tag) => !ungroupedTags.includes(tag));
+              const nextTags = [...others, ...vals];
+              setSelectedTags(nextTags);
+              setCurrentPage(1);
+              syncUrlWith({ tags: nextTags, page: 1 });
+            }}
+          />
         )}
         {(selectedTags.length > 0 || selectedBaseRoms.length > 0 || selectedCompletionStatuses.length > 0 || onlyReady) && (
           <button
@@ -465,9 +466,9 @@ export default function DiscoverBrowser({ initialState }: DiscoverBrowserProps) 
         )}
       </div>
 
-      {loadingHacks ? (
+      {showSkeleton ? (
         <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
+          {Array.from({ length: HACKS_PER_PAGE }).map((_, i) => (
             <HackCardSkeleton key={i} />
           ))}
         </div>
@@ -599,6 +600,7 @@ export default function DiscoverBrowser({ initialState }: DiscoverBrowserProps) 
           )}
         </>
       )}
+      {!showSkeleton && <DiscoverLastUpdated generatedAt={generatedAt} />}
     </div>
   );
 }
@@ -702,23 +704,26 @@ function MultiSelectDropdown({
 function HackCardSkeleton() {
   return (
     <div className="group block">
-      <div className="rounded-[12px] overflow-hidden card ring-1 ring-[var(--border)]">
+      <div className="h-full overflow-hidden rounded-[12px] card ring-1 ring-[var(--border)] flex flex-col">
         <div className="relative aspect-[3/2] w-full rounded-[12px] overflow-hidden bg-[var(--surface-2)]">
           <div className="absolute inset-0 animate-pulse bg-gradient-to-b from-black/5 to-black/0 dark:from-white/5 dark:to-white/0" />
         </div>
-        <div className="p-4">
+        <div className="p-4 flex flex-col flex-1 min-h-0">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="h-4 w-2/3 animate-pulse rounded bg-[var(--surface-2)]" />
-              <div className="mt-2 h-3 w-24 animate-pulse rounded bg-[var(--surface-2)]" />
+              <div className="mt-1 h-3 w-24 animate-pulse rounded bg-[var(--surface-2)]" />
             </div>
             <div className="h-4 w-12 shrink-0 animate-pulse rounded bg-[var(--surface-2)]" />
           </div>
-          <div className="mt-3 space-y-2">
+          <div className="mt-2 space-y-2">
             <div className="h-3 w-full animate-pulse rounded bg-[var(--surface-2)]" />
             <div className="h-3 w-5/6 animate-pulse rounded bg-[var(--surface-2)]" />
           </div>
-          <div className="mt-3 h-3 w-32 animate-pulse rounded bg-[var(--surface-2)]" />
+          <div className="mt-auto flex justify-between pt-3">
+            <div className="h-3 w-32 animate-pulse rounded bg-[var(--surface-2)]" />
+            <div className="h-3 w-16 animate-pulse rounded bg-[var(--surface-2)]" />
+          </div>
         </div>
       </div>
     </div>

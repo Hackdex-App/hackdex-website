@@ -1,6 +1,10 @@
 import DiscoverBrowser from "@/components/Discover/DiscoverBrowser";
 import type { Metadata } from "next";
-import { parseDiscoverSearchParams } from "./search-params";
+import { getDiscoverData } from "./actions";
+import { DISCOVER_DEFAULT_STATE } from "./search-params";
+
+export const dynamic = "error";
+export const revalidate = 1800;
 
 export const metadata: Metadata = {
   description: "Find and download Pokémon romhacks for Game Boy, Game Boy Color, Game Boy Advance, and Nintendo DS.",
@@ -9,13 +13,8 @@ export const metadata: Metadata = {
   },
 };
 
-interface DiscoverPageProps {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-};
-
-export default async function DiscoverPage(props: DiscoverPageProps) {
-  const searchParams = await props.searchParams;
-  const initialState = parseDiscoverSearchParams(searchParams);
+export default async function DiscoverPage() {
+  const { hacks, generatedAt, tagGroups, ungroupedTags } = await getDiscoverData();
 
   return (
     <div className="mx-auto max-w-screen-2xl px-6 py-10">
@@ -28,10 +27,14 @@ export default async function DiscoverPage(props: DiscoverPageProps) {
         </div>
       </div>
       <div className="mt-6">
-        <DiscoverBrowser initialState={initialState} />
+        <DiscoverBrowser
+          catalog={hacks}
+          generatedAt={generatedAt}
+          initialState={DISCOVER_DEFAULT_STATE}
+          tagGroups={tagGroups}
+          ungroupedTags={ungroupedTags}
+        />
       </div>
     </div>
   );
 }
-
-
