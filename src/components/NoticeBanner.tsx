@@ -1,26 +1,41 @@
-import { get } from "@vercel/edge-config";
-import { unstable_cache } from "next/cache";
+"use client";
 
-const NOTICE_KEY = process.env.NEXT_PUBLIC_NOTICE_KEY ?? "global_notice_message";
+import { useEffect, useState } from "react";
 
-const getNoticeMessage = unstable_cache(
-  async () => {
-    try {
-      const value = await get<string | null>(NOTICE_KEY);
-      if (typeof value === "string" && value.trim().length > 0) {
-        return value.trim();
+export default function NoticeBanner() {
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function fetchNotice() {
+      try {
+        const response = await fetch("/api/notice", {
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data: unknown = await response.json();
+        if (
+          typeof data === "object" &&
+          data !== null &&
+          "message" in data &&
+          (typeof data.message === "string" || data.message === null)
+        ) {
+          setMessage(data.message);
+        }
+      } catch {
+        // Fail silently if the notice endpoint is unavailable.
       }
-    } catch {
-      // Fail silently if Edge Config is unavailable or misconfigured
     }
-    return null;
-  },
-  ["notice-banner", NOTICE_KEY],
-  { revalidate: 60, tags: ["notice-banner"] },
-);
 
-export default async function NoticeBanner() {
-  const message = await getNoticeMessage();
+    void fetchNotice();
+
+    return () => controller.abort();
+  }, []);
 
   if (!message) {
     return null;
