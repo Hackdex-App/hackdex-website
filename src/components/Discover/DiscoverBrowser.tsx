@@ -711,7 +711,7 @@ function HackCardSkeleton() {
         <div className="p-4 flex flex-col flex-1 min-h-0">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <div className="h-5 w-2/3 animate-pulse rounded bg-[var(--surface-2)]" />
+              <div className="h-[22.5px] w-2/3 animate-pulse rounded bg-[var(--surface-2)]" />
               <div className="mt-1 h-4 w-24 animate-pulse rounded bg-[var(--surface-2)]" />
             </div>
             <div className="h-5 w-12 shrink-0 animate-pulse rounded bg-[var(--surface-2)]" />
@@ -721,8 +721,8 @@ function HackCardSkeleton() {
             <div className="h-3 w-5/6 animate-pulse rounded bg-[var(--surface-2)]" />
           </div>
           <div className="mt-auto flex justify-between pt-3">
-            <div className="h-5 w-32 animate-pulse rounded bg-[var(--surface-2)]" />
-            <div className="h-5 w-16 animate-pulse rounded bg-[var(--surface-2)]" />
+            <div className="h-4 w-32 animate-pulse rounded bg-[var(--surface-2)]" />
+            <div className="h-4 w-16 animate-pulse rounded bg-[var(--surface-2)]" />
           </div>
         </div>
       </div>
