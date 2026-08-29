@@ -135,6 +135,9 @@ export default function StickyActionBar({
     }
   };
 
+  // Mystery Dungeon-length titles (e.g. "Explorers of Sky") stay readable at text-sm.
+  const compactSelectRomLabel = (baseRomName?.length ?? 0) >= 36;
+
   return (
     <div
       className={`fixed inset-x-0 bottom-0 md:sticky md:top-18 flex flex-col gap-2 pb-safe ${
@@ -238,7 +241,9 @@ export default function StickyActionBar({
                   onClick={() => uploadInputRef.current?.click()}
                   disabled={isVerifyingRom}
                   data-onboarding-spotlight={spotlightAttr("selectRom")}
-                  className={`shine-wrap btn-premium min-h-11 md:min-h-9 h-auto py-2 w-full max-w-full md:w-auto md:min-w-34 text-balance text-center text-base md:text-sm font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70${spotlight("selectRom")}`}
+                  className={`shine-wrap btn-premium min-h-11 md:min-h-9 h-auto py-2 w-full max-w-full md:w-auto md:min-w-34 text-balance text-center font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70${spotlight("selectRom")} ${
+                    compactSelectRomLabel ? "text-sm" : "text-base md:text-sm"
+                  }`}
                 >
                   {isVerifyingRom ? (
                     <span>Verifying…</span>
