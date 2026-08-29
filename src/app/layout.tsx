@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
@@ -27,6 +27,10 @@ export const metadata: Metadata = {
   },
   description: "Use our built-in patcher to download and play Pokémon romhacks for Game Boy, Game Boy Color, Game Boy Advance, and Nintendo DS.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL!),
+};
+
+export const viewport: Viewport = {
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
