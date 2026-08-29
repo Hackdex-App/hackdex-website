@@ -25,7 +25,7 @@ export async function generateStaticParams() {
     .eq("approved", true)
     .eq("is_archive", false)
     .order("downloads", { ascending: false })
-    .limit(100);
+    .limit(750);
 
   return (hacks || []).map(({ slug }) => ({ slug }));
 }
