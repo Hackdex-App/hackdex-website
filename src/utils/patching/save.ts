@@ -48,7 +48,7 @@ function createBlobSink(fileName: string): OutputSink {
       chunks.push(asArrayBufferView(bytes));
     },
     async close() {
-      triggerBlobDownload(new Blob(chunks), fileName);
+      triggerBlobDownload(new Blob(chunks, { type: "application/octet-stream" }), fileName);
     },
     async abort() {
       chunks.length = 0;
