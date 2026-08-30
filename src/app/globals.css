@@ -75,9 +75,8 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* Smooth scrolling and stable layout when overlays lock page scrolling. */
+/* Stable layout when overlays lock page scrolling. */
 html {
-  scroll-behavior: smooth;
   scrollbar-gutter: stable;
 }
 :root { --anchor-offset: 38px; }

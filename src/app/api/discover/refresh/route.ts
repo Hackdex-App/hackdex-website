@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
 import { checkUserRoles } from "@/utils/user";
 import { createClient } from "@/utils/supabase/server";
+import { revalidateDiscoverCatalog } from "@/app/discover/revalidate";
 
 export async function GET(req: NextRequest) {
   const supa = await createClient();
@@ -14,6 +14,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  revalidateTag("discover");
+  revalidateDiscoverCatalog();
   return NextResponse.redirect(new URL("/discover", req.url));
 }

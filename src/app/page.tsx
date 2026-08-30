@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { FaArrowRightLong } from "react-icons/fa6";
-import { createClient } from "@/utils/supabase/server";
+import { createServiceClient } from "@/utils/supabase/server";
 import HackCard from "@/components/HackCard";
 import Button from "@/components/Button";
 import MilestoneCelebration from "@/components/Home/MilestoneCelebration";
@@ -17,12 +17,12 @@ export const metadata: Metadata = {
   },
 };
 
-// TODO: Lower to 3600 (1 hour) once we get more traffic
-export const revalidate = 604800; // 1 week in seconds
+export const dynamic = "error";
+export const revalidate = 1800;
 
 export default async function Home() {
   const downloadsMilestone = process.env.NEXT_PUBLIC_DOWNLOADS_MILESTONE?.trim();
-  const supabase = await createClient();
+  const supabase = await createServiceClient();
 
   // Fetch top 6 approved hacks ordered by downloads
   const { data: popularHacks } = await supabase

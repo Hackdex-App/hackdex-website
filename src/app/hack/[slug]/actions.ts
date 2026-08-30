@@ -14,6 +14,7 @@ import { Database, Constants } from "@/types/db";
 import { getPatcherSelectablePatches } from "@/utils/patches/patcher-selectable-patches";
 import { CUSTOM_VERSION_NAME_MAX_LENGTH, resolveHackDisplayVersion } from "@/utils/patches/hack-display-version";
 import type { SelectablePatch } from "@/types/patcher";
+import { revalidateDiscoverCatalog } from "@/app/discover/revalidate";
 
 const PATCHES_DOWNLOAD_PERMISSION_VALUES = Constants.public.Enums[
   "Patches Download Permission"
@@ -640,6 +641,7 @@ export async function archivePatchVersion(slug: string, patchId: number): Promis
   }
 
   revalidateTag(`hack:${slug}:metadata`);
+  revalidateDiscoverCatalog();
   revalidatePath(`/hack/${slug}`);
   revalidatePath(`/hack/${slug}/versions`);
   return { ok: true };
@@ -738,7 +740,7 @@ export async function rollbackToVersion(slug: string, patchId: number): Promise<
   if (unpubErr) return { ok: false, error: unpubErr.message };
 
   revalidateTag(`hack:${slug}:metadata`);
-  revalidateTag("discover");
+  revalidateDiscoverCatalog();
   revalidatePath(`/hack/${slug}/versions`);
   revalidatePath(`/hack/${slug}`);
   return { ok: true };
@@ -853,6 +855,7 @@ export async function updatePatchVersion(slug: string, patchId: number, version:
   if (updateErr) return { ok: false, error: updateErr.message };
 
   revalidateTag(`hack:${slug}:metadata`);
+  revalidateDiscoverCatalog();
   revalidatePath(`/hack/${slug}/versions`);
   revalidatePath(`/hack/${slug}`);
   return { ok: true };
@@ -931,7 +934,7 @@ export async function publishPatchVersion(slug: string, patchId: number): Promis
   }
 
   revalidateTag(`hack:${slug}:metadata`);
-  revalidateTag("discover");
+  revalidateDiscoverCatalog();
   revalidatePath(`/hack/${slug}/versions`);
   revalidatePath(`/hack/${slug}`);
   return { ok: true, willBecomeCurrent };
@@ -1101,7 +1104,7 @@ export async function updatePatcherSelectablePatches(
   if (replaceErr) return { ok: false, error: replaceErr.message };
 
   revalidateTag(`hack:${slug}:metadata`);
-  revalidateTag("discover");
+  revalidateDiscoverCatalog();
   revalidatePath(`/hack/${slug}`);
   revalidatePath(`/hack/${slug}/versions`);
 

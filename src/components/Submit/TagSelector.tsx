@@ -247,7 +247,7 @@ export default function TagSelector({ value, onChange, catalogTags, newTagsCutof
   React.useEffect(() => {
     const el = activeCategory ? categoryRefs.current[activeCategory] : null;
     if (el) {
-      try { el.scrollIntoView({ block: 'nearest' }); } catch {}
+      try { el.scrollIntoView({ block: "nearest", behavior: "smooth" }); } catch {}
     }
   }, [activeCategory]);
 
@@ -257,7 +257,7 @@ export default function TagSelector({ value, onChange, catalogTags, newTagsCutof
     if (activeTagIndex == null) return;
     const el = tagItemRefs.current[activeTagIndex];
     if (el) {
-      try { el.scrollIntoView({ block: 'nearest' }); } catch {}
+      try { el.scrollIntoView({ block: "nearest", behavior: "smooth" }); } catch {}
     }
   }, [activeTagIndex]);
 

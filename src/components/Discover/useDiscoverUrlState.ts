@@ -20,6 +20,7 @@ interface UseDiscoverUrlStateArgs {
 
 export function useDiscoverUrlState({ currentState, onUrlStateChange }: UseDiscoverUrlStateArgs) {
   const pathname = usePathname();
+  const [initialUrlStateApplied, setInitialUrlStateApplied] = React.useState(false);
   const searchUrlTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentStateRef = React.useRef(currentState);
   const onUrlStateChangeRef = React.useRef(onUrlStateChange);
@@ -86,21 +87,34 @@ export function useDiscoverUrlState({ currentState, onUrlStateChange }: UseDisco
 
   React.useEffect(() => clearSearchUrlTimeout, [clearSearchUrlTimeout]);
 
+  React.useLayoutEffect(() => {
+    const nextState = parseDiscoverSearchParams(
+      new URLSearchParams(window.location.search),
+    );
+    if (!discoverUrlStatesEqual(nextState, currentStateRef.current)) {
+      onUrlStateChangeRef.current(nextState);
+      currentStateRef.current = nextState;
+    }
+    setInitialUrlStateApplied(true);
+  }, []);
+
   React.useEffect(() => {
     const applyUrlState = () => {
-      const nextState = parseDiscoverSearchParams(new URLSearchParams(window.location.search));
+      const nextState = parseDiscoverSearchParams(
+        new URLSearchParams(window.location.search),
+      );
       if (discoverUrlStatesEqual(nextState, currentStateRef.current)) return;
 
       clearSearchUrlTimeout();
       onUrlStateChangeRef.current(nextState);
+      currentStateRef.current = nextState;
     };
-
-    applyUrlState();
     window.addEventListener("popstate", applyUrlState);
     return () => window.removeEventListener("popstate", applyUrlState);
   }, [clearSearchUrlTimeout]);
 
   return {
+    initialUrlStateApplied,
     syncUrl,
     syncUrlWith,
     scheduleSearchUrlSync,
