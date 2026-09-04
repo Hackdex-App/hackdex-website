@@ -3,6 +3,7 @@
 --
 -- Shared constants (keep in sync with scripts/seed-storage.mjs):
 --   SEED_SHARED_BPS      = seed-shared.bps
+--   SEED_SHARED_XDELTA   = seed-shared.xdelta
 --   SEED_APPROVED_SLUG   = seed-emerald-demo
 --   SEED_PENDING_SLUG    = seed-pending-demo
 
@@ -221,11 +222,12 @@ INSERT INTO public.tags (id, name, category, created_at) VALUES
 
 SELECT setval(pg_get_serial_sequence('public.tags', 'id'), (SELECT MAX(id) FROM public.tags));
 
--- Hacks (19 total; tags_updated_at past on emerald + pending-demo for New-tag demo)
+-- Hacks (18 total; tags_updated_at past on emerald + pending-demo for New-tag demo)
+-- downloads defaults to 0; patch_downloads inserts increment via trigger
 INSERT INTO public.hacks (
   slug, title, summary, description, base_rom, patch_url, version,
   created_by, language, approved, approved_at, approved_by,
-  completion_status, patches_download_permission, downloads,
+  completion_status, patches_download_permission,
   is_archive, published, tags_updated_at,
   original_author, permission_from
 ) VALUES
@@ -237,7 +239,7 @@ INSERT INTO public.hacks (
     'poke_emerald', '', '1.0',
     '22222222-2222-2222-2222-222222222222',
     'English', true, now(), '11111111-1111-1111-1111-111111111111',
-    'Complete', 'Current', 42,
+    'Complete', 'Current',
     false, false, now() - interval '30 days',
     null, null
   ),
@@ -249,7 +251,7 @@ INSERT INTO public.hacks (
     'poke_emerald', '', '0.1',
     '33333333-3333-3333-3333-333333333333',
     'English', false, null, null,
-    'Beta', 'None', 0,
+    'Beta', 'None',
     false, false, now() - interval '30 days',
     null, null
   ),
@@ -261,7 +263,7 @@ INSERT INTO public.hacks (
     'poke_emerald', '', '0.2',
     '33333333-3333-3333-3333-333333333333',
     'English', false, null, null,
-    'Beta', 'None', 0,
+    'Beta', 'None',
     false, false, default,
     null, null
   ),
@@ -273,7 +275,7 @@ INSERT INTO public.hacks (
     'poke_emerald', '', '2.0',
     '22222222-2222-2222-2222-222222222222',
     'English', true, now(), '11111111-1111-1111-1111-111111111111',
-    'Alpha', 'All', 10,
+    'Alpha', 'All',
     false, false, default,
     null, null
   ),
@@ -285,7 +287,7 @@ INSERT INTO public.hacks (
     'poke_emerald', '', '2.0',
     '22222222-2222-2222-2222-222222222222',
     'English', true, now(), '11111111-1111-1111-1111-111111111111',
-    'Complete', 'Current', 5,
+    'Demo', 'Current',
     false, false, default,
     null, null
   ),
@@ -297,7 +299,7 @@ INSERT INTO public.hacks (
     'poke_emerald', '', '2.0',
     '22222222-2222-2222-2222-222222222222',
     'English', true, now(), '11111111-1111-1111-1111-111111111111',
-    'Complete', 'Current', 3,
+    'Complete', 'Current',
     false, false, default,
     null, null
   ),
@@ -309,33 +311,9 @@ INSERT INTO public.hacks (
     'poke_emerald', '', '2.0',
     '22222222-2222-2222-2222-222222222222',
     'English', true, now(), '11111111-1111-1111-1111-111111111111',
-    'Complete', 'Current', 7,
+    'Complete', 'Current',
     false, false, default,
     null, null
-  ),
-  (
-    'seed-archive-info',
-    'Seed Archive Info',
-    'Informational archive hack with no downloadable patch.',
-    'Tests archive banner and gallery without a current patch.',
-    'poke_emerald', '', 'Archive',
-    '11111111-1111-1111-1111-111111111111',
-    'English', true, now(), '11111111-1111-1111-1111-111111111111',
-    'Complete', 'None', 0,
-    true, false, default,
-    'Lost Hack Team', null
-  ),
-  (
-    'seed-archive-download',
-    'Seed Archive Download',
-    'Downloadable archive hack with permission attribution.',
-    'Tests archive download flow with permission_from metadata.',
-    'poke_emerald', '', '1.0',
-    '11111111-1111-1111-1111-111111111111',
-    'English', true, now(), '11111111-1111-1111-1111-111111111111',
-    'Complete', 'Current', 15,
-    true, false, default,
-    'Retro Creator', 'Retro Creator'
   ),
   (
     'seed-third-party',
@@ -345,10 +323,41 @@ INSERT INTO public.hacks (
     'poke_emerald', '', '1.0',
     '22222222-2222-2222-2222-222222222222',
     'English', true, now(), '11111111-1111-1111-1111-111111111111',
-    'Complete', 'Current', 20,
+    'Complete', 'Current',
     false, false, default,
     'Famous Hacker', 'Famous Hacker'
+  ),
+  (
+    'seed-xdelta-demo',
+    'Seed Xdelta Demo',
+    'Approved hack with a published xdelta patch.',
+    'Seeded development data using the shared example xdelta for Pokémon Emerald. Run npm run seed:storage after db reset.',
+    'poke_emerald', '', '1.0',
+    '22222222-2222-2222-2222-222222222222',
+    'English', true, now(), '11111111-1111-1111-1111-111111111111',
+    'Complete', 'Current',
+    false, false, default,
+    null, null
   );
+
+UPDATE public.hacks SET
+  assigned_admin = '11111111-1111-1111-1111-111111111111',
+  verification_contact_info = 'creator2@hackdex.local / Discord: creator2'
+WHERE slug = 'seed-pending-ready';
+
+UPDATE public.hacks SET
+  box_art = 'https://images.launchbox-app.com/1fde111d-8805-47ba-af07-03b436e4dfde.jpg',
+  social_links = '{
+    "discord": "https://discord.gg/example",
+    "twitter": "https://twitter.com/example",
+    "pokecommunity": "https://www.pokecommunity.com/threads/example.1/",
+    "github": "https://github.com/example/seed-emerald-demo"
+  }'::jsonb
+WHERE slug = 'seed-emerald-demo';
+
+UPDATE public.hacks SET
+  custom_version_name = '1.0 + 2.0'
+WHERE slug = 'seed-all-downloads';
 
 -- Nine patcher-only sandboxes (3 per owner account)
 DO $$
@@ -431,7 +440,7 @@ BEGIN
   END LOOP;
 END $$;
 
--- Patches for non-sandbox hacks (all use shared seed-shared.bps object key)
+-- Patches for non-sandbox hacks (BPS rows omit format; default is bps)
 INSERT INTO public.patches (parent_hack, version, filename, bucket, published, published_at, changelog) VALUES
   ('seed-emerald-demo', '1.0', 'seed-shared.bps', 'patches', true, now(), 'Initial seeded version for local development.'),
   ('seed-pending-ready', '0.2', 'seed-shared.bps', 'patches', true, now(), 'Ready-for-review pending version.'),
@@ -444,8 +453,10 @@ INSERT INTO public.patches (parent_hack, version, filename, bucket, published, p
   ('seed-draft-version', '2.1', 'seed-shared.bps', 'patches', false, null, 'Unpublished draft version.'),
   ('seed-archived-version', '1.0', 'seed-shared.bps', 'patches', true, now(), 'Archived older version.'),
   ('seed-archived-version', '2.0', 'seed-shared.bps', 'patches', true, now(), 'Current published version.'),
-  ('seed-archive-download', '1.0', 'seed-shared.bps', 'patches', true, now(), 'Archive download version.'),
   ('seed-third-party', '1.0', 'seed-shared.bps', 'patches', true, now(), 'Third-party credited version.');
+
+INSERT INTO public.patches (parent_hack, version, filename, bucket, published, published_at, changelog, format) VALUES
+  ('seed-xdelta-demo', '1.0', 'seed-shared.xdelta', 'patches', true, now(), 'Xdelta seeded version.', 'xdelta');
 
 UPDATE public.patches
 SET archived = true, archived_at = now()
@@ -457,8 +468,8 @@ UPDATE public.hacks SET current_patch = (SELECT id FROM public.patches WHERE par
 UPDATE public.hacks SET current_patch = (SELECT id FROM public.patches WHERE parent_hack = 'seed-current-only' AND version = '2.0' LIMIT 1) WHERE slug = 'seed-current-only';
 UPDATE public.hacks SET current_patch = (SELECT id FROM public.patches WHERE parent_hack = 'seed-draft-version' AND version = '2.0' LIMIT 1) WHERE slug = 'seed-draft-version';
 UPDATE public.hacks SET current_patch = (SELECT id FROM public.patches WHERE parent_hack = 'seed-archived-version' AND version = '2.0' LIMIT 1) WHERE slug = 'seed-archived-version';
-UPDATE public.hacks SET current_patch = (SELECT id FROM public.patches WHERE parent_hack = 'seed-archive-download' AND version = '1.0' LIMIT 1) WHERE slug = 'seed-archive-download';
 UPDATE public.hacks SET current_patch = (SELECT id FROM public.patches WHERE parent_hack = 'seed-third-party' AND version = '1.0' LIMIT 1) WHERE slug = 'seed-third-party';
+UPDATE public.hacks SET current_patch = (SELECT id FROM public.patches WHERE parent_hack = 'seed-xdelta-demo' AND version = '1.0' LIMIT 1) WHERE slug = 'seed-xdelta-demo';
 
 -- hack_tags (all complete hacks except seed-pending-demo)
 INSERT INTO public.hack_tags (hack_slug, tag_id, "order") VALUES
@@ -481,17 +492,14 @@ INSERT INTO public.hack_tags (hack_slug, tag_id, "order") VALUES
   ('seed-archived-version', 28, 1),
   ('seed-archived-version', 49, 2),
   ('seed-archived-version', 71, 3),
-  ('seed-archive-info', 85, 1),
-  ('seed-archive-info', 31, 2),
-  ('seed-archive-info', 82, 3),
-  ('seed-archive-download', 87, 1),
-  ('seed-archive-download', 49, 2),
-  ('seed-archive-download', 71, 3),
   ('seed-third-party', 45, 1),
   ('seed-third-party', 71, 2),
-  ('seed-third-party', 31, 3);
+  ('seed-third-party', 31, 3),
+  ('seed-xdelta-demo', 38, 1),
+  ('seed-xdelta-demo', 71, 2),
+  ('seed-xdelta-demo', 90, 3);
 
--- hack_covers (18 complete hacks × 3 covers; seed-pending-demo has none)
+-- hack_covers (17 complete hacks × 3 covers; seed-pending-demo has none)
 DO $$
 DECLARE
   v_slug text;
@@ -503,9 +511,8 @@ BEGIN
     'seed-current-only',
     'seed-draft-version',
     'seed-archived-version',
-    'seed-archive-info',
-    'seed-archive-download',
-    'seed-third-party'
+    'seed-third-party',
+    'seed-xdelta-demo'
   ] LOOP
     INSERT INTO public.hack_covers (hack_slug, url, position) VALUES
       (v_slug, v_slug || '/cover-1.png', 1),
@@ -513,3 +520,27 @@ BEGIN
       (v_slug, v_slug || '/cover-3.png', 3);
   END LOOP;
 END $$;
+
+-- Custom patcher versions for seed-all-downloads (published 1.0 then 2.0)
+INSERT INTO public.hack_patcher_patches (hack_slug, patch_id, sort_order)
+SELECT 'seed-all-downloads', p.id, spec.sort_order
+FROM (VALUES ('1.0', 1), ('2.0', 2)) AS spec(version, sort_order)
+JOIN public.patches p ON p.parent_hack = 'seed-all-downloads' AND p.version = spec.version;
+
+-- patch_downloads: dated unique (patch, device_id) rows across ~30 days.
+-- Trigger increments hacks.downloads; do not also hardcode downloads on hacks.
+INSERT INTO public.patch_downloads (patch, device_id, created_at)
+SELECT
+  p.id,
+  'seed-device-' || spec.slug || '-' || spec.ver || '-' || gs.n,
+  now() - (gs.n * 30.0 / spec.cnt) * interval '1 day'
+FROM (
+  VALUES
+    ('seed-emerald-demo', '1.0', 30),
+    ('seed-all-downloads', '1.0', 9),
+    ('seed-all-downloads', '2.0', 18),
+    ('seed-current-only', '2.0', 12),
+    ('seed-third-party', '1.0', 15)
+) AS spec(slug, ver, cnt)
+JOIN public.patches p ON p.parent_hack = spec.slug AND p.version = spec.ver
+CROSS JOIN LATERAL generate_series(0, spec.cnt - 1) AS gs(n);

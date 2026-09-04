@@ -3,6 +3,7 @@
  *
  * Shared constants (keep in sync with supabase/seed.sql):
  *   SEED_SHARED_BPS      = seed-shared.bps
+ *   SEED_SHARED_XDELTA   = seed-shared.xdelta
  *   SEED_APPROVED_SLUG   = seed-emerald-demo
  *   SEED_PENDING_SLUG    = seed-pending-demo
  *
@@ -20,11 +21,13 @@ import { fileURLToPath } from "node:url";
 import { Client } from "minio";
 
 export const SEED_SHARED_BPS = "seed-shared.bps";
+export const SEED_SHARED_XDELTA = "seed-shared.xdelta";
 const PATCHES_BUCKET = process.env.PATCHES_BUCKET || "patches";
 const COVERS_BUCKET = process.env.COVERS_BUCKET || "covers";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const FIXTURE_PATH = path.resolve(__dirname, "../public/patches/example_patch.bps");
+const BPS_FIXTURE_PATH = path.resolve(__dirname, "../public/patches/example_patch.bps");
+const XDELTA_FIXTURE_PATH = path.resolve(__dirname, "../public/patches/example_patch.xdelta");
 
 /** Hacks that get ≥3 cover images (all complete seeded hacks). */
 const COMPLETE_HACK_SLUGS = [
@@ -43,9 +46,8 @@ const COMPLETE_HACK_SLUGS = [
   "seed-current-only",
   "seed-draft-version",
   "seed-archived-version",
-  "seed-archive-info",
-  "seed-archive-download",
   "seed-third-party",
+  "seed-xdelta-demo",
 ];
 
 const COVER_PALETTES = [
@@ -86,20 +88,35 @@ function placeholdUrl(slug, index) {
   return `https://placehold.co/240x160/${palette.bg}/${palette.text}/png?text=${text}`;
 }
 
-async function uploadSharedPatch(client) {
-  if (!existsSync(FIXTURE_PATH)) {
-    console.error(`Fixture not found: ${FIXTURE_PATH}`);
-    console.error("Expected public/patches/example_patch.bps (Pokémon Emerald dev patch).");
+async function uploadPatchFixture(client, fixturePath, objectKey, expectedHint) {
+  if (!existsSync(fixturePath)) {
+    console.error(`Fixture not found: ${fixturePath}`);
+    console.error(expectedHint);
     process.exit(1);
   }
 
-  const { size } = await stat(FIXTURE_PATH);
-  console.log(`Uploading ${FIXTURE_PATH} (${(size / 1024 / 1024).toFixed(1)} MB)`);
-  console.log(`  → ${PATCHES_BUCKET}/${SEED_SHARED_BPS}`);
+  const { size } = await stat(fixturePath);
+  console.log(`Uploading ${fixturePath} (${(size / 1024 / 1024).toFixed(1)} MB)`);
+  console.log(`  → ${PATCHES_BUCKET}/${objectKey}`);
 
-  await client.fPutObject(PATCHES_BUCKET, SEED_SHARED_BPS, FIXTURE_PATH, {
+  await client.fPutObject(PATCHES_BUCKET, objectKey, fixturePath, {
     "Content-Type": "application/octet-stream",
   });
+}
+
+async function uploadSharedPatches(client) {
+  await uploadPatchFixture(
+    client,
+    BPS_FIXTURE_PATH,
+    SEED_SHARED_BPS,
+    "Expected public/patches/example_patch.bps (Pokémon Emerald dev patch).",
+  );
+  await uploadPatchFixture(
+    client,
+    XDELTA_FIXTURE_PATH,
+    SEED_SHARED_XDELTA,
+    "Expected public/patches/example_patch.xdelta (Pokémon Emerald xdelta fixture).",
+  );
 }
 
 async function uploadCovers(client) {
@@ -136,7 +153,7 @@ async function main() {
   await ensureBucket(client, PATCHES_BUCKET);
   await ensureBucket(client, COVERS_BUCKET);
 
-  await uploadSharedPatch(client);
+  await uploadSharedPatches(client);
   await uploadCovers(client);
 
   console.log("Done.");

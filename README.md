@@ -125,7 +125,7 @@ After Supabase and MinIO are running, reset the database and upload dev fixtures
 npm run db:reset
 ```
 
-This runs `supabase db reset` (migrations only — `[db.seed]` is disabled for CI), applies [`supabase/seed.sql`](supabase/seed.sql) via the local Supabase Postgres container, then uploads the shared BPS patch and cover images to MinIO via [`scripts/seed-storage.mjs`](scripts/seed-storage.mjs).
+This runs `supabase db reset` (migrations only — `[db.seed]` is disabled for CI), applies [`supabase/seed.sql`](supabase/seed.sql) via the local Supabase Postgres container, then uploads the shared BPS and xdelta patches plus cover images to MinIO via [`scripts/seed-storage.mjs`](scripts/seed-storage.mjs).
 
 You can also run the steps separately:
 
@@ -147,21 +147,20 @@ npm run seed:storage
 
 | Slug | Status | Purpose |
 |------|--------|---------|
-| `seed-emerald-demo` | Approved | Baseline discover, download, patch (`poke_emerald`); edit tags to see “New” badges |
-| `seed-pending-demo` | Pending | Missing patch/screenshot warnings |
-| `seed-pending-ready` | Pending | Ready-for-review (patch + covers present) |
+| `seed-emerald-demo` | Approved | Baseline discover, download, patch (`poke_emerald`); box art, social links; edit tags to see "New" badges |
+| `seed-pending-demo` | Pending | Missing patch/screenshot warnings; unassigned |
+| `seed-pending-ready` | Pending | Ready-for-review (patch + covers); assigned to admin; verification contact on the unverified owner |
 | `seed-patcher-only-{account}-{1\|2\|3}` | Approved | Nine editable sandboxes (3 per account), patcher-only (`None` permission) |
-| `seed-all-downloads` | Approved | Direct download on all published versions (`All`) |
-| `seed-current-only` | Approved | Direct download on current version only (`Current`) |
+| `seed-all-downloads` | Approved | Direct download on all published versions (`All`); custom patcher over 1.0 + 2.0 |
+| `seed-current-only` | Approved | Direct download on current version only (`Current`); `Demo` completion status |
 | `seed-draft-version` | Approved | Unpublished draft + publish UI |
 | `seed-archived-version` | Approved | Archived older version + restore |
-| `seed-archive-info` | Archive | Informational archive (no patch) |
-| `seed-archive-download` | Archive | Downloadable archive with permission |
 | `seed-third-party` | Approved | Third-party author display |
+| `seed-xdelta-demo` | Approved | Published xdelta patch (`format = xdelta`) |
 
-All patch rows share one MinIO object (`seed-shared.bps`). Complete hacks have ≥3 cover images (`{slug}/cover-1.png` …) fetched from placehold.co during `seed:storage`.
+BPS patch rows share `seed-shared.bps`. The xdelta row on `seed-xdelta-demo` uses `seed-shared.xdelta`. Complete hacks have ≥3 cover images (`{slug}/cover-1.png` …) fetched from placehold.co during `seed:storage`.
 
-To test in-browser patching on `seed-emerald-demo`, link a local **Pokémon Emerald** ROM (CRC32 `1f1c08fb`). The patch file is [`public/patches/example_patch.bps`](public/patches/example_patch.bps), uploaded as `seed-shared.bps`.
+To test in-browser patching on `seed-emerald-demo`, link a local **Pokémon Emerald** ROM (CRC32 `1f1c08fb`). The BPS fixture is [`public/patches/example_patch.bps`](public/patches/example_patch.bps), uploaded as `seed-shared.bps`. The xdelta fixture is [`public/patches/example_patch.xdelta`](public/patches/example_patch.xdelta), uploaded as `seed-shared.xdelta`.
 
 **Note:** `seed:storage` requires `S3_*`, `PATCHES_BUCKET`, and `COVERS_BUCKET` in `.env.local` or `.env.development.local`, plus `NEXT_PUBLIC_HACK_COVERS_DOMAIN` for viewing covers in the app. It needs network access to placehold.co for cover images. If `PATCH_TOKEN_SECRET` and `PATCHES_DOWNLOAD_BASE_URL` are set, patch downloads route through the Cloudflare Worker instead of MinIO — unset those for local MinIO testing.
 
