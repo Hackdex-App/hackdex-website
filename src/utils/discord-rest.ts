@@ -182,7 +182,10 @@ export async function approveDiscordReviewThread(threadId: string): Promise<bool
 
   const updated = await discordRequest<DiscordThread>(`/channels/${threadId}`, {
     method: "PATCH",
-    body: JSON.stringify({ applied_tags: Array.from(appliedTags) }),
+    body: JSON.stringify({
+      applied_tags: Array.from(appliedTags),
+      archived: true,
+    }),
   });
   return updated !== null;
 }
