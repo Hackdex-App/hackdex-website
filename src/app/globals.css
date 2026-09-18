@@ -282,6 +282,8 @@ html { scroll-padding-top: var(--anchor-offset); }
   100% { transform: scale(1); }
 }
 
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.anim-fade { animation: fadeIn 160ms ease-out; }
 .anim-float { animation: floatY 2.4s ease-in-out infinite; }
 .anim-pulse { animation: pulseSoft 2.4s ease-in-out infinite; }
 .anim-pop { animation: popIn 220ms cubic-bezier(0.16, 1, 0.3, 1); }
@@ -343,6 +345,7 @@ html { scroll-padding-top: var(--anchor-offset); }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .anim-fade,
   .anim-float,
   .anim-pulse,
   .anim-pop,
