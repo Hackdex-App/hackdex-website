@@ -71,7 +71,7 @@ export default function Header() {
     <header className="sticky top-0 z-40 w-full border-b border-line bg-surface">
       <div className="relative mx-auto flex h-14 max-w-[1164px] items-center gap-3 px-6 md:h-[60px] md:gap-7">
         <Link href="/" className="inline-flex items-center gap-2.5 font-display text-[19px]" aria-label="Hackdex home">
-          <Image src="/logo.png" alt="" width={28} height={28} className="rounded-[7px]" data-smooth />
+          <Image src="/logo.png" alt="" width={28} height={28} className="rounded-[7px]" />
           <span>Hackdex</span>
         </Link>
 

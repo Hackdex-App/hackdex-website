@@ -53,3 +53,17 @@ export function getCoverUrls(objectKeys: string[]): string[] {
   }
   return objectKeys.map(key => `${domain}/${key}`);
 }
+
+/** "3 hours ago" inside a day, "4 days ago" inside a week, then "Mar 2025". Used on cards and facts. */
+export function formatRelativeDate(iso: string | null | undefined, now = Date.now()): string | null {
+  if (!iso) return null;
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return null;
+  const minutes = Math.max(0, Math.round((now - then) / 60_000));
+  if (minutes < 60) return minutes <= 1 ? "Just now" : `${minutes} minutes ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
+  const days = Math.round(hours / 24);
+  if (days < 7) return `${days} ${days === 1 ? "day" : "days"} ago`;
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", year: "numeric" });
+}

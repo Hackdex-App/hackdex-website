@@ -190,8 +190,8 @@ body {
   line-height: 1.5;
   font-variant-numeric: tabular-nums;
 }
-img { image-rendering: pixelated; }
-img.smooth, img[data-smooth] { image-rendering: auto; }
+/* Opt-in nearest-neighbor scaling for pixel art shown at an integer multiple of its native size. */
+.pixelated { image-rendering: pixelated; }
 :focus-visible { outline: 2px solid var(--rose); outline-offset: 2px; }
 
 /* Stable layout when overlays lock page scrolling. */
