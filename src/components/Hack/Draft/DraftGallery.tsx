@@ -9,11 +9,13 @@ import { CSS } from "@dnd-kit/utilities";
 import { presignCoverUpload, saveHackCovers } from "@/app/hack/actions";
 import type { Platform } from "@/data/baseRoms";
 import { getCoverUrls } from "@/utils/format";
-import { useDraftEditing } from "./DraftEditing";
+import { useCommitter, useDraftEditing } from "./DraftEditing";
 
 interface Cover {
   key: string;
   url: string;
+  /** Staged upload (manual mode): sent when the page is saved. */
+  file?: File;
 }
 
 interface DraftGalleryProps {
@@ -46,22 +48,43 @@ function readSize(file: File) {
   });
 }
 
+async function upload(slug: string, key: string, file: File) {
+  const presigned = await presignCoverUpload({ slug, objectKey: key });
+  if (!presigned.ok) throw new Error(presigned.error);
+  const put = await fetch(presigned.presignedUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type || "image/png" } });
+  if (!put.ok) throw new Error("Upload failed");
+}
+
 /**
  * Screenshot manager in the Gallery tab. The first shot is the card cover;
- * star moves a shot there. Every change (add, remove, reorder) saves at once.
+ * star moves a shot there. Drafts save every change at once; listed hacks
+ * stage changes (uploads included) until the page is saved.
  */
 export default function DraftGallery({ covers: initial, platform }: DraftGalleryProps) {
-  const { slug, run } = useDraftEditing();
-  const [covers, setCovers] = React.useState(initial);
+  const { slug, live, run } = useDraftEditing();
+  const [covers, setCovers] = React.useState<Cover[]>(initial);
   const [uploading, setUploading] = React.useState(0);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const sizes = allowedSizes(platform);
   const sizeHint = sizes.length ? sizes.map((s) => `${s.w}×${s.h}`).join(" or ") : "native resolution";
 
+  const keys = (list: Cover[]) => list.map((c) => c.key);
+  const changed = keys(covers).join("\n") !== keys(initial).join("\n");
+  useCommitter(changed, async () => {
+    try {
+      for (const c of covers) if (c.file) await upload(slug, c.key, c.file);
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : "Upload failed" };
+    }
+    const res = await saveHackCovers({ slug, coverUrls: keys(covers) });
+    if (res.ok) setCovers((prev) => prev.map(({ key, url }) => ({ key, url })));
+    return res;
+  });
+
   const persist = (next: Cover[]) => {
     setCovers(next);
-    void run(() => saveHackCovers({ slug, coverUrls: next.map((c) => c.key) }));
+    if (live) void run(() => saveHackCovers({ slug, coverUrls: keys(next) }));
   };
 
   async function addFiles(files: File[]) {
@@ -83,11 +106,12 @@ export default function DraftGallery({ covers: initial, platform }: DraftGallery
         }
         const ext = file.name.split(".").pop() || "png";
         const key = `${slug}/${Date.now()}-${i}.${ext}`;
-        const presigned = await presignCoverUpload({ slug, objectKey: key });
-        if (!presigned.ok) throw new Error(presigned.error);
-        const put = await fetch(presigned.presignedUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type || "image/png" } });
-        if (!put.ok) throw new Error("Upload failed");
-        added.push({ key, url: getCoverUrls([key])[0] });
+        if (live) {
+          await upload(slug, key, file);
+          added.push({ key, url: getCoverUrls([key])[0] });
+        } else {
+          added.push({ key, url: URL.createObjectURL(file), file });
+        }
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Upload failed");
@@ -112,7 +136,7 @@ export default function DraftGallery({ covers: initial, platform }: DraftGallery
   }
 
   function remove(i: number) {
-    if (!window.confirm("Delete this screenshot?")) return;
+    if (live && !window.confirm("Delete this screenshot?")) return;
     persist(covers.filter((_, j) => j !== i));
   }
 

@@ -39,6 +39,7 @@ export function DraftStatusStrip({ slug, stage, submittedAt, required, preview =
   const router = useRouter();
   const editing = useDraftEditingOptional();
   const [busy, setBusy] = React.useState(false);
+  const manual = editing !== null && !editing.live;
   const left = required.filter((r) => !r.done).length;
   const canSubmit = left === 0;
   const c = COPY[stage];
@@ -63,7 +64,7 @@ export function DraftStatusStrip({ slug, stage, submittedAt, required, preview =
         Submitted {submittedAt ? new Date(submittedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : ""}. A volunteer will review it; edits you make now are included.
       </>
     ) : (
-      <>Live. Changes publish as you save; new versions go through a quick check.</>
+      <>{editing?.dirty ? "Unsaved changes. Nothing publishes until you save." : "Live. Changes publish when you save; new versions go through a quick check."}</>
     );
 
   return (
@@ -74,7 +75,7 @@ export function DraftStatusStrip({ slug, stage, submittedAt, required, preview =
           {c.pill}
         </span>
         <p className="min-w-0 flex-1 text-text-2">{preview ? "Previewing as a player. This is what the page looks like once listed." : text}</p>
-        {editing && editing.status !== "idle" && (
+        {editing && !manual && editing.status !== "idle" && (
           <span className={`inline-flex items-center gap-1 text-xs ${editing.status === "error" ? "text-error" : "text-text-3"}`} aria-live="polite">
             {editing.status === "saved" && <FiCheck className="h-3.5 w-3.5 text-ready" />}
             {editing.status === "saving" ? "Saving…" : editing.status === "saved" ? "Saved" : "Couldn't save"}
@@ -82,9 +83,27 @@ export function DraftStatusStrip({ slug, stage, submittedAt, required, preview =
         )}
         <div className="flex flex-none items-center gap-2">
           {stage === "listed" ? (
-            <Link href={`/hack/${slug}`} className="inline-flex h-[38px] items-center gap-1.5 rounded-control bg-surface-2 px-3 text-sm font-medium text-text transition-colors hover:bg-line">
-              <FiCheck className="h-4 w-4" /> Done editing
-            </Link>
+            <>
+              <Link
+                href={`/hack/${slug}`}
+                onClick={(e) => {
+                  if (editing?.dirty && !window.confirm("Discard your unsaved changes?")) e.preventDefault();
+                }}
+                className="inline-flex h-[38px] items-center gap-1.5 rounded-control bg-surface-2 px-3 text-sm font-medium text-text transition-colors hover:bg-line"
+              >
+                {editing?.dirty ? "Discard" : "Done editing"}
+              </Link>
+              {manual && (
+                <button
+                  type="button"
+                  disabled={!editing.dirty || editing.status === "saving"}
+                  onClick={() => void editing.saveAll()}
+                  className="inline-flex h-[38px] items-center gap-1.5 rounded-control bg-accent-deep px-4 text-sm font-semibold text-white transition-colors hover:enabled:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {editing.status === "saving" ? "Saving…" : <><FiCheck className="h-4 w-4" /> Save changes</>}
+                </button>
+              )}
+            </>
           ) : preview ? (
             <Link href={`/hack/${slug}`} className="inline-flex h-[38px] items-center gap-1.5 rounded-control bg-surface-2 px-3 text-sm font-medium text-text transition-colors hover:bg-line">
               <FiEdit3 className="h-4 w-4" /> Back to editing

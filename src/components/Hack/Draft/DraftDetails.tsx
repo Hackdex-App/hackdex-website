@@ -36,9 +36,9 @@ const SOCIAL: { key: keyof Social; label: string; placeholder: string }[] = [
 
 const urlLike = (s: string) => !s || /^https?:\/\//i.test(s);
 
-/** "Edit details" button for the rail, opening a sheet with the fields that are not edited in place. Saves on Done. */
+/** "Edit details" button opening a sheet with the fields that are not edited in place. Saves (or stages, on listed hacks) on the footer button. */
 export default function DraftDetails({ values, baseLocked }: DraftDetailsProps) {
-  const { save } = useDraftEditing();
+  const { save, live } = useDraftEditing();
   const [open, setOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [base, setBase] = React.useState(values.base_rom);
@@ -94,7 +94,7 @@ export default function DraftDetails({ values, baseLocked }: DraftDetailsProps) 
                 onClick={done}
                 className="inline-flex h-10 items-center rounded-control bg-accent-deep px-4 text-sm font-semibold text-white transition-colors hover:enabled:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {saving ? "Saving…" : "Save"}
+                {saving ? "Saving…" : live ? "Save" : "Apply"}
               </button>
             </>
           }

@@ -414,7 +414,7 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
     </div>
   );
 
-  return editing ? <DraftEditingProvider slug={hack.slug}>{page}</DraftEditingProvider> : page;
+  return editing ? <DraftEditingProvider slug={hack.slug} live={!hack.approved}>{page}</DraftEditingProvider> : page;
 }
 
 function RailGroup({ title, children }: { title: string; children: React.ReactNode }) {

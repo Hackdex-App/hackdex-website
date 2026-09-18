@@ -8,22 +8,33 @@ import { updateHack } from "@/app/hack/actions";
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 type Result = { ok: true } | { ok: false; error: string };
 type UpdateArgs = Omit<Parameters<typeof updateHack>[0], "slug">;
+type Committer = { dirty: boolean; commit: () => Promise<Result> };
 
 interface DraftEditing {
   slug: string;
+  /** Drafts save as you go. Listed hacks stage changes until Save, since every save publishes. */
+  live: boolean;
   status: SaveStatus;
-  /** Runs a save, reflects it in the status strip, and refreshes server data (checklist, counts) once it lands. */
+  /** Manual mode only: something is staged and not yet saved. */
+  dirty: boolean;
+  /** Runs a save now, reflects it in the strip, and refreshes server data once it lands. */
   run: (work: () => Promise<Result>) => Promise<boolean>;
-  /** Partial hack update through the same path. */
+  /** Partial hack update. Live: saves now. Manual: stages for Save. */
   save: (args: UpdateArgs) => Promise<boolean>;
+  /** Manual mode: writes the staged fields, then every registered committer. */
+  saveAll: () => Promise<boolean>;
+  register: (id: string, committer: Committer | null) => void;
 }
 
 const Ctx = React.createContext<DraftEditing | null>(null);
 
-/** Shared autosave plumbing for every editing island on a draft page. */
-export function DraftEditingProvider({ slug, children }: { slug: string; children: React.ReactNode }) {
+/** Shared save plumbing for every editing island on a hack page in edit mode. */
+export function DraftEditingProvider({ slug, live, children }: { slug: string; live: boolean; children: React.ReactNode }) {
   const router = useRouter();
   const [status, setStatus] = React.useState<SaveStatus>("idle");
+  const [pending, setPending] = React.useState<UpdateArgs>({});
+  const [committerDirty, setCommitterDirty] = React.useState(0);
+  const committers = React.useRef(new Map<string, Committer>());
   const inFlight = React.useRef(0);
   const refreshTimer = React.useRef<number | undefined>(undefined);
 
@@ -45,9 +56,55 @@ export function DraftEditingProvider({ slug, children }: { slug: string; childre
     },
     [router],
   );
-  const save = React.useCallback<DraftEditing["save"]>((args) => run(() => updateHack({ slug, ...args })), [run, slug]);
 
-  const value = React.useMemo(() => ({ slug, status, run, save }), [slug, status, run, save]);
+  const save = React.useCallback<DraftEditing["save"]>(
+    async (args) => {
+      if (live) return run(() => updateHack({ slug, ...args }));
+      setPending((prev) => ({ ...prev, ...args }));
+      return true;
+    },
+    [live, run, slug],
+  );
+
+  const register = React.useCallback<DraftEditing["register"]>((id, committer) => {
+    if (committer) committers.current.set(id, committer);
+    else committers.current.delete(id);
+    setCommitterDirty([...committers.current.values()].filter((c) => c.dirty).length);
+  }, []);
+
+  const saveAll = React.useCallback(async () => {
+    const fields = pending;
+    const work = [...committers.current.values()].filter((c) => c.dirty).map((c) => c.commit);
+    const ok = await run(async () => {
+      if (Object.keys(fields).length > 0) {
+        const res = await updateHack({ slug, ...fields });
+        if (!res.ok) return res;
+      }
+      for (const commit of work) {
+        const res = await commit();
+        if (!res.ok) return res;
+      }
+      return { ok: true };
+    });
+    if (ok) {
+      setPending({});
+      toast.success("Changes published");
+    }
+    return ok;
+  }, [pending, run, slug]);
+
+  const dirty = !live && (Object.keys(pending).length > 0 || committerDirty > 0);
+
+  React.useEffect(() => {
+    if (!dirty) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+
+  const value = React.useMemo(() => ({ slug, live, status, dirty, run, save, saveAll, register }), [slug, live, status, dirty, run, save, saveAll, register]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
@@ -57,9 +114,21 @@ export function useDraftEditing() {
   return ctx;
 }
 
-/** Same as useDraftEditing, but null outside a draft page (the strip is also used on listed hacks). */
+/** Same as useDraftEditing, but null outside edit mode (the strip is also rendered in draft preview). */
 export function useDraftEditingOptional() {
   return React.useContext(Ctx);
+}
+
+/** Registers work that runs on Save in manual mode, e.g. uploading staged screenshots. */
+export function useCommitter(dirty: boolean, commit: () => Promise<Result>) {
+  const { register } = useDraftEditing();
+  const id = React.useId();
+  const commitRef = React.useRef(commit);
+  commitRef.current = commit;
+  React.useEffect(() => {
+    register(id, { dirty, commit: () => commitRef.current() });
+    return () => register(id, null);
+  }, [id, dirty, register]);
 }
 
 /** Calls commit with the latest value once it has stopped changing for `delay` ms. Skips the initial value. */
