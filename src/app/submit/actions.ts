@@ -108,6 +108,7 @@ export async function prepareSubmission(formData: FormData) {
     permission_from: permission_from || null,
     verification_contact_info: verification_contact_info || null,
     current_patch: null, // Archives don't have patches
+    submitted_at: new Date().toISOString(), // The wizard submits in one go; only createDraft leaves this null.
   } as HackInsert;
 
   const { error: insertErr } = await supabase.from("hacks").insert(insertPayload);
@@ -245,7 +246,7 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
 
   const { data: hack, error: hErr } = await supabase
     .from("hacks")
-    .select("slug, created_by, title, current_patch, original_author, permission_from, is_archive, approved, assigned_admin, verification_contact_info")
+    .select("slug, created_by, title, current_patch, original_author, permission_from, is_archive, approved, assigned_admin, verification_contact_info, submitted_at")
     .eq("slug", args.slug)
     .maybeSingle();
   if (hErr) return { ok: false, error: hErr.message } as const;
@@ -365,6 +366,8 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
     if (process.env.DISCORD_WEBHOOK_HACKDEX_HACKS_URL) {
       await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_HACKDEX_HACKS_URL, [embed]);
     }
+  } else if (hack.submitted_at === null) {
+    // Still a private draft: reviewers hear about it when the creator submits, not per upload.
   } else {
     let reviewThread = null;
     if (!hack.is_archive) {
@@ -396,3 +399,131 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
 }
 
 
+
+/**
+ * Starts a private draft from the three things a page needs (title, base ROM,
+ * summary). The creator fills in the rest on the edit page and submits when
+ * the checklist is clear. Nothing is visible to reviewers until then.
+ */
+export async function createDraft(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Unauthorized" } as const;
+
+  const title = (formData.get("title") as string | null)?.trim() ?? "";
+  const base_rom = (formData.get("base_rom") as string | null)?.trim() ?? "";
+  const summary = (formData.get("summary") as string | null)?.trim() ?? "";
+  const behalf = formData.get("who") === "behalf";
+  const original_author = behalf ? (formData.get("original_author") as string | null)?.trim() || null : null;
+  const permission_from = behalf ? (formData.get("permission_from") as string | null)?.trim() || null : null;
+
+  if (!title || !base_rom || summary.length < 10) return { ok: false, error: "Add a title, a base ROM, and a summary to continue." } as const;
+  if (summary.length > 100) return { ok: false, error: "Keep the summary under 100 characters." } as const;
+  if (behalf && (!original_author || !permission_from)) return { ok: false, error: "Name the creator and where they gave permission." } as const;
+
+  const slug = await ensureUniqueSlug(slugify(title), supabase);
+  const insertPayload: HackInsert = {
+    slug,
+    title,
+    summary,
+    description: "",
+    base_rom,
+    language: "English",
+    completion_status: null,
+    version: "",
+    created_by: user.id,
+    downloads: 0,
+    approved: false,
+    is_archive: false,
+    patch_url: "",
+    original_author,
+    permission_from,
+    current_patch: null,
+    submitted_at: null,
+  };
+  const { error } = await supabase.from("hacks").insert(insertPayload);
+  if (error) return { ok: false, error: error.message } as const;
+  return { ok: true, slug } as const;
+}
+
+/** What still stands between a draft and the review queue. Empty means it can be submitted. */
+export async function getDraftChecklist(slug: string) {
+  const supabase = await createClient();
+  const [{ data: hack }, { count: covers }, { count: patches }, { count: tags }] = await Promise.all([
+    supabase.from("hacks").select("base_rom,summary,description,completion_status,language,original_author,permission_from").eq("slug", slug).maybeSingle(),
+    supabase.from("hack_covers").select("id", { count: "exact", head: true }).eq("hack_slug", slug),
+    supabase.from("patches").select("id", { count: "exact", head: true }).eq("parent_hack", slug),
+    supabase.from("hack_tags").select("tag_id", { count: "exact", head: true }).eq("hack_slug", slug),
+  ]);
+  if (!hack) return null;
+  const description = hack.description.trim();
+  const required = [
+    { key: "base", label: "Base ROM chosen", done: !!hack.base_rom },
+    { key: "patch", label: "A patch file uploaded", done: (patches ?? 0) > 0, href: "versions" },
+    { key: "summary", label: "Summary under 100 characters", done: hack.summary.trim().length > 0 && hack.summary.length <= 100 },
+    { key: "description", label: "A description", done: description.length > 0 },
+    { key: "completion", label: "Completion status set", done: !!hack.completion_status },
+    { key: "shots", label: "At least one screenshot", done: (covers ?? 0) > 0 },
+    { key: "tags", label: "At least one tag", done: (tags ?? 0) > 0 },
+    ...(hack.original_author ? [{ key: "permission", label: "Where the creator gave permission", done: !!hack.permission_from }] : []),
+  ];
+  const recommended = [
+    { key: "tags3", label: "Add at least 3 tags so players can find it", done: (tags ?? 0) >= 3 },
+    { key: "long", label: "Description is short (under 200 characters)", done: description.replace(/\s+/g, " ").length >= 200 },
+    { key: "shots3", label: "Three or more screenshots", done: (covers ?? 0) >= 3 },
+  ];
+  return { required, recommended };
+}
+
+/**
+ * Moves a draft into the review queue: stamps submitted_at, opens the Discord
+ * review thread, and tells the admins. Refuses while required items are open.
+ */
+export async function submitForReview(slug: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Unauthorized" } as const;
+
+  const { data: hack, error: hErr } = await supabase
+    .from("hacks")
+    .select("slug, title, created_by, approved, submitted_at, assigned_admin, verification_contact_info, is_archive, original_author, permission_from, current_patch")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (hErr) return { ok: false, error: hErr.message } as const;
+  if (!hack) return { ok: false, error: "Hack not found" } as const;
+  const permission = await checkEditPermission(hack, user.id, supabase);
+  if (!permission.canEdit) return { ok: false, error: "Forbidden" } as const;
+  if (hack.submitted_at !== null) return { ok: false, error: "This hack has already been submitted." } as const;
+
+  const checklist = await getDraftChecklist(slug);
+  const open = checklist?.required.filter((item) => !item.done) ?? [];
+  if (open.length > 0) return { ok: false, error: `Still needed: ${open.map((i) => i.label.toLowerCase()).join(", ")}.` } as const;
+
+  const submittedAt = new Date().toISOString();
+  const { error: uErr } = await supabase.from("hacks").update({ submitted_at: submittedAt }).eq("slug", slug);
+  if (uErr) return { ok: false, error: uErr.message } as const;
+
+  const { data: profile } = await supabase.from("profiles").select("username").eq("id", hack.created_by).single();
+  const displayName = profile?.username ? `@${profile.username}` : hack.created_by;
+  const embed: APIEmbed = {
+    title: hack.title,
+    description: `A new hack by **${displayName}** is pending approval by an admin.`
+      + (hack.verification_contact_info ? `\n\n**Verification contact info:**\n${hack.verification_contact_info}` : ""),
+    color: 0x40f56a,
+    url: `${process.env.NEXT_PUBLIC_SITE_URL}/hack/${slug}`,
+    footer: { text: "This message brought to you by Hackdex" },
+  };
+  try {
+    const reviewThread = await ensureHackReviewThread({ slug, title: hack.title, author: displayName, isClaimed: hack.assigned_admin !== null });
+    if (reviewThread) await postHackReviewMessage(reviewThread, { embeds: [embed] });
+    else if (process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL) await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL, [embed]);
+  } catch (error) {
+    console.error(`[HackReview] Failed to announce ${slug} for review:`, error);
+    if (process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL) await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL, [embed]);
+  }
+  return { ok: true, submittedAt } as const;
+}

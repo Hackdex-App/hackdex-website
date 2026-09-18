@@ -11,6 +11,7 @@ export type HackRow = {
   slug: string;
   title: string;
   approved: boolean;
+  submitted_at: string | null;
   updated_at: string | null;
   downloads: number;
   current_patch: number | null;
@@ -30,7 +31,7 @@ export default function DashboardClient({
   const [selectedSlugs, setSelectedSlugs] = React.useState<string[]>(() => hacks.map((h) => h.slug));
 
   const totalDownloads = React.useMemo(() => hacks.reduce((acc, h) => acc + (h.downloads || 0), 0), [hacks]);
-  const pendingCount = hacks.filter((h) => !h.approved).length;
+  const pendingCount = hacks.filter((h) => !h.approved && h.submitted_at !== null).length;
   const localCutover = React.useMemo(() => {
     const now = new Date();
     const utcMidnight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0));

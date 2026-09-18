@@ -43,6 +43,7 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
   const patchId = patch?.id || null;
   const patchCreatedAt = patch?.created_at || null;
   const patchChangelog = patch?.changelog || null;
+  const isDraft = !hack.approved && hack.submitted_at === null;
   const hasMissingPatch = !hack.approved && patchId === null;
   const hasMissingScreenshots = !hack.approved && images.length === 0;
   const pageUrl = getHackPageUrl(hack.slug);
@@ -117,7 +118,17 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
         </Notice>
       )}
 
-      {!hack.approved && (
+      {isDraft && (
+        <Notice tone="info" icon={<FiInfo size={22} />} title="This is a private draft.">
+          Only you can see this page. Finish the checklist on the{" "}
+          <Link href={`/hack/${hack.slug}/edit`} className="text-link-hd">
+            edit page
+          </Link>{" "}
+          and submit it for review when it is ready.
+        </Notice>
+      )}
+
+      {!hack.approved && !isDraft && (
         <>
           {hasMissingPatch &&
             (isAdmin ? (

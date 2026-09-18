@@ -40,6 +40,8 @@ export interface HackMetadata {
     is_archive: boolean;
     completion_status: Database["public"]["Enums"]["Completion Status"] | null;
     verification_contact_info: string | null;
+    /** null while the creator is still drafting; set once they submit for review. */
+    submitted_at: string | null;
   };
   displayVersion: string;
   images: string[];
@@ -75,7 +77,7 @@ export async function getHackMetadata(slug: string): Promise<HackMetadata | null
 
       const { data: hack, error } = await supabase
         .from("hacks")
-        .select("slug,title,summary,description,base_rom,created_at,updated_at,current_patch,custom_version_name,box_art,social_links,created_by,approved,original_author,permission_from,language,is_archive,completion_status,verification_contact_info")
+        .select("slug,title,summary,description,base_rom,created_at,updated_at,current_patch,custom_version_name,box_art,social_links,created_by,approved,original_author,permission_from,language,is_archive,completion_status,verification_contact_info,submitted_at")
         .eq("slug", slug)
         .maybeSingle();
 

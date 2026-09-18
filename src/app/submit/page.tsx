@@ -1,4 +1,5 @@
 import SubmitPageClient from "@/components/Submit/SubmitPageClient";
+import StartDraftForm from "@/components/Submit/StartDraftForm";
 import { getCachedTagsWithUsage } from "@/data/tags";
 import { createClient } from "@/utils/supabase/server";
 import SubmitAuthOverlay from "@/components/Submit/SubmitAuthOverlay";
@@ -11,8 +12,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function SubmitPage() {
-  const catalogTags = await getCachedTagsWithUsage();
+interface SubmitPageProps {
+  searchParams: Promise<{ mode?: string }>;
+}
+
+export default async function SubmitPage({ searchParams }: SubmitPageProps) {
+  const { mode } = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   let needsInitialSetup = false;
@@ -29,27 +34,36 @@ export default async function SubmitPage() {
     const { data: isArchiver } = await supabase.rpc("is_archiver");
     canCreateArchive = !!isArchiver;
   }
+  const dummy = !user || needsInitialSetup;
+  // Archives still go through the one-shot wizard; everyone else starts a draft.
+  const wizard = mode === "wizard" && canCreateArchive;
 
   return (
-    <div className="mx-auto max-w-[900px] px-6 py-10 w-full">
-      <h1 className="text-3xl font-bold tracking-tight">Submit your ROM hack</h1>
-      <p className="mt-2 text-[15px] text-foreground/80">Share your hack so others can discover and play it.</p>
-      <div className="mt-2 text-sm border border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/60 dark:text-amber-100 p-4 rounded-md">
-        <p className="font-bold mb-2">Important:</p>
-        <div className="flex flex-col gap-1">
-          <p className="text-amber-950/80 dark:text-amber-50/80">
-            Hackdex will only accept submissions for hacks that <span className="text-amber-950 dark:text-amber-50 font-bold">you own</span>.
-            If it is not your hack, try reaching out to the original creator to see if they are interested in submitting it themselves.
-            All hacks must also comply with the <Link href="/terms" className="text-amber-950 dark:text-amber-50 font-bold hover:underline">Terms of Service</Link>.
-          </p>
-          <p className="text-amber-950/80 dark:text-amber-50/80">
-            If you attempt to circumvent this policy, <span className="text-amber-950 dark:text-amber-50 font-bold italic">your submission will be rejected</span> and your account may be banned.
-          </p>
+    <div className="mx-auto w-full max-w-[1164px] px-6 pb-6 pt-8 md:pt-10">
+      {wizard ? (
+        <div className="mx-auto max-w-[900px]">
+          <h1 className="font-display text-[28px]">Submit an archive entry</h1>
+          <div className="mt-8">
+            <SubmitPageClient canCreateArchive={canCreateArchive} dummy={dummy} catalogTags={await getCachedTagsWithUsage()} />
+          </div>
         </div>
-      </div>
-      <div className="mt-8">
-        <SubmitPageClient canCreateArchive={canCreateArchive} dummy={!user || needsInitialSetup} catalogTags={catalogTags} />
-      </div>
+      ) : (
+        <div className="flex flex-col items-center gap-5">
+          <StartDraftForm disabled={dummy} />
+          <div className="max-w-[560px] rounded-card border border-warn/40 bg-warn-soft px-4 py-3 text-[13px] text-text-2">
+            <p>
+              Hackdex only accepts hacks that <b className="font-semibold text-text">you own</b> or have permission to share. All hacks must comply with the{" "}
+              <Link href="/terms" className="text-link-hd">Terms of Service</Link>. Attempts to circumvent this policy are rejected and may get your account banned.
+            </p>
+          </div>
+          {canCreateArchive && (
+            <p className="text-[13px] text-text-3">
+              Submitting an archive entry?{" "}
+              <Link href="/submit?mode=wizard" className="text-link-hd">Use the archive form</Link>
+            </p>
+          )}
+        </div>
+      )}
       {!user ? (
         <SubmitAuthOverlay
           title='Creators only'
@@ -73,6 +87,3 @@ export default async function SubmitPage() {
     </div>
   );
 }
-
-
-

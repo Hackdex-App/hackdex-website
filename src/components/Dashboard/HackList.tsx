@@ -11,10 +11,18 @@ type HackRow = {
   slug: string;
   title: string;
   approved: boolean;
+  submitted_at: string | null;
   updated_at: string | null;
   downloads: number;
   version: string;
 };
+
+function StatusBadge({ hack, className = "" }: { hack: HackRow; className?: string }) {
+  const base = `inline-flex items-center gap-1 rounded-full px-2 py-0.5 ring-1 ${className}`;
+  if (hack.approved) return <span className={`${base} bg-ready-soft text-ready ring-ready/30`}>Approved</span>;
+  if (hack.submitted_at === null) return <span className={`${base} bg-surface-2 text-text-2 ring-line-strong`}>Draft</span>;
+  return <span className={`${base} bg-warn-soft text-warn ring-warn/30`}>In review</span>;
+}
 
 export default function HackList({ hacks }: { hacks: HackRow[] }) {
   const [activeSlug, setActiveSlug] = React.useState<string | null>(null);
@@ -51,11 +59,7 @@ export default function HackList({ hacks }: { hacks: HackRow[] }) {
                 <FiExternalLink className="h-4 w-4 text-foreground/80 group-hover:text-foreground" />
               </Link>
               <div className="col-span-2">
-                {h.approved ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-400 ring-1 ring-emerald-600/30">Approved</span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs text-amber-400 ring-1 ring-amber-600/30">Pending</span>
-                )}
+                <StatusBadge hack={h} className="text-xs" />
               </div>
               <div className="col-span-2">{h.version}</div>
               <div className="col-span-2">{h.downloads}</div>
@@ -80,11 +84,7 @@ export default function HackList({ hacks }: { hacks: HackRow[] }) {
                   <div className="mt-0.5 text-xs text-foreground/60 break-all">/{h.slug}</div>
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                  {h.approved ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-emerald-400 ring-1 ring-emerald-600/30">Approved</span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-amber-400 ring-1 ring-amber-600/30">Pending</span>
-                  )}
+                  <StatusBadge hack={h} />
                   <span className="rounded-full bg-[var(--surface-2)] px-2 py-0.5 ring-1 ring-[var(--border)]">{h.version}</span>
                   <span className="rounded-full bg-[var(--surface-2)] px-2 py-0.5 ring-1 ring-[var(--border)]">{h.downloads} downloads</span>
                 </div>

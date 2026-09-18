@@ -234,6 +234,7 @@ export type Database = {
           search: unknown
           slug: string
           social_links: Json | null
+          submitted_at: string | null
           summary: string
           tags_updated_at: string
           title: string
@@ -272,6 +273,7 @@ export type Database = {
           search?: unknown
           slug: string
           social_links?: Json | null
+          submitted_at?: string | null
           summary: string
           tags_updated_at?: string
           title: string
@@ -310,6 +312,7 @@ export type Database = {
           search?: unknown
           slug?: string
           social_links?: Json | null
+          submitted_at?: string | null
           summary?: string
           tags_updated_at?: string
           title?: string
