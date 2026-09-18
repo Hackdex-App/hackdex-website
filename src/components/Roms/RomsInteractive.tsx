@@ -30,17 +30,15 @@ export default function RomsInteractive() {
   return (
     <>
       {!supported && (
-        <div className="mt-4 rounded-md border border-yellow-500/30 bg-yellow-500/10 p-4 text-sm text-yellow-200">
+        <div className="mt-4 rounded-card border border-warn/40 bg-warn-soft p-4 text-sm text-text-2">
           Your browser may not support local file linking for large ROMs. Try Chrome or Edge on desktop if you have issues.
         </div>
       )}
 
       <div className="mt-6 grid gap-3 text-sm text-foreground/70">
         <div
-          className={`rounded-md border-2 border-dashed p-6 sm:p-8 min-h-[140px] ${
-            dragActive
-              ? "border-[var(--accent)] bg-[var(--accent)]/8 ring-2 ring-[var(--accent)]/30"
-              : "border-[var(--border)] bg-[var(--surface-2)]"
+          className={`min-h-[140px] rounded-card border-[1.5px] border-dashed p-6 transition-colors sm:p-8 ${
+            dragActive ? "border-accent bg-accent-soft/40" : "border-line-strong bg-well"
           }`}
           onDragEnter={(e) => {
             e.preventDefault();
@@ -84,14 +82,14 @@ export default function RomsInteractive() {
                 <p className="mt-1 text-xs text-foreground/70">Or click to choose a file. Recognized ROMs are cached locally and never uploaded.</p>
               </div>
             </div>
-            <label className="inline-flex cursor-pointer items-center justify-center rounded-md bg-[var(--accent)] px-3 py-2 text-sm font-medium text-[var(--accent-foreground)] transition-colors hover:bg-[var(--accent-700)]">
+            <label className="inline-flex h-10 cursor-pointer items-center justify-center rounded-control bg-accent-deep px-4 text-sm font-semibold text-white transition-colors hover:bg-accent-hover">
               <input type="file" onChange={onUpload} className="hidden" accept={platformAcceptAll()} />
               Choose file…
             </label>
           </div>
           {uploadMsg && <div className="mt-2 text-xs text-foreground/70">{uploadMsg}</div>}
         </div>
-        <div className="rounded-md border border-[var(--border)] bg-[var(--surface-2)] p-4 text-xs text-foreground/70">
+        <div className="rounded-control bg-surface-2 px-3.5 py-3 text-xs text-text-2">
           <FaTriangleExclamation size={16} className="inline-block mr-1 text-foreground/30" /> Files are processed locally in your browser and never uploaded.</div>
         <div>Cached size: {(totalCachedBytes / (1024 * 1024)).toFixed(1)} MB</div>
       </div>

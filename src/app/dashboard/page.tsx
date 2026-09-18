@@ -101,7 +101,7 @@ export default async function DashboardPage() {
   const seriesAll = await getDownloadsSeriesAll({ days: 30 });
 
   return (
-    <div className="mx-auto my-auto max-w-screen-2xl px-6 py-8">
+    <div className="mx-auto my-auto w-full max-w-[1164px] px-6 pb-6 pt-4 md:pt-6">
       <DashboardClient
         hacks={hacksWithVersions ?? []}
         initialSeriesAll={seriesAll}
@@ -118,7 +118,7 @@ export default async function DashboardPage() {
             <h2 className="text-xl font-semibold">Archive Management</h2>
             <Link
               href="/dashboard/archives"
-              className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm font-medium hover:bg-black/5 dark:hover:bg-white/10"
+              className="inline-flex h-9 items-center gap-1 rounded-control border border-line-strong bg-surface px-3 text-sm font-medium transition-colors hover:border-text-3"
             >
               View all archives
             </Link>
