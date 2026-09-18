@@ -67,7 +67,7 @@ export default function HackList({ hacks }: { hacks: HackRow[] }) {
                 <IconTooltipButton href={`/hack/${h.slug}/stats`} target="_blank" label="Stats">
                   <FiBarChart2 className="h-4 w-4" />
                 </IconTooltipButton>
-                <IconTooltipButton href={`/hack/${h.slug}/edit`} label="Edit">
+                <IconTooltipButton href={`/hack/${h.slug}?edit=1`} label="Edit">
                   <FiEdit2 className="h-4 w-4" />
                 </IconTooltipButton>
                 <IconTooltipButton href={`/hack/${h.slug}/versions`} label="Manage versions">
@@ -131,7 +131,7 @@ function buildActions(slug: string | null) {
   return [
     { key: "view", label: "View", href: `/hack/${slug}`, icon: <FiExternalLink className="h-4 w-4" /> },
     { key: "stats", label: "Stats", href: `/hack/${slug}/stats`, icon: <FiBarChart2 className="h-4 w-4" /> },
-    { key: "edit", label: "Edit", href: `/hack/${slug}/edit`, icon: <FiEdit2 className="h-4 w-4" /> },
+    { key: "edit", label: "Edit", href: `/hack/${slug}?edit=1`, icon: <FiEdit2 className="h-4 w-4" /> },
     { key: "versions", label: "Manage versions", href: `/hack/${slug}/versions`, icon: <TbVersions className="h-4 w-4" /> },
     { key: "share", label: "Share link", onClick: () => copyShare(slug), icon: <FiShare2 className="h-4 w-4" /> },
   ];

@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { FiAlertCircle, FiCheck, FiEdit3, FiEye, FiExternalLink } from "react-icons/fi";
+import { FiAlertCircle, FiCheck, FiEdit3, FiEye } from "react-icons/fi";
 import { submitForReview } from "@/app/submit/actions";
 import { useDraftEditingOptional } from "@/components/Hack/Draft/DraftEditing";
 
@@ -63,7 +63,7 @@ export function DraftStatusStrip({ slug, stage, submittedAt, required, preview =
         Submitted {submittedAt ? new Date(submittedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : ""}. A volunteer will review it; edits you make now are included.
       </>
     ) : (
-      <>Live. Edits publish immediately; new versions go through a quick check.</>
+      <>Live. Changes publish as you save; new versions go through a quick check.</>
     );
 
   return (
@@ -83,14 +83,14 @@ export function DraftStatusStrip({ slug, stage, submittedAt, required, preview =
         <div className="flex flex-none items-center gap-2">
           {stage === "listed" ? (
             <Link href={`/hack/${slug}`} className="inline-flex h-[38px] items-center gap-1.5 rounded-control bg-surface-2 px-3 text-sm font-medium text-text transition-colors hover:bg-line">
-              <FiExternalLink className="h-4 w-4" /> View public page
+              <FiCheck className="h-4 w-4" /> Done editing
             </Link>
           ) : preview ? (
-            <Link href={`/hack/${slug}/session`} className="inline-flex h-[38px] items-center gap-1.5 rounded-control bg-surface-2 px-3 text-sm font-medium text-text transition-colors hover:bg-line">
+            <Link href={`/hack/${slug}`} className="inline-flex h-[38px] items-center gap-1.5 rounded-control bg-surface-2 px-3 text-sm font-medium text-text transition-colors hover:bg-line">
               <FiEdit3 className="h-4 w-4" /> Back to editing
             </Link>
           ) : (
-            <Link href={`/hack/${slug}/session?preview=1`} className="inline-flex h-[38px] items-center gap-1.5 rounded-control bg-surface-2 px-3 text-sm font-medium text-text transition-colors hover:bg-line">
+            <Link href={`/hack/${slug}?preview=1`} className="inline-flex h-[38px] items-center gap-1.5 rounded-control bg-surface-2 px-3 text-sm font-medium text-text transition-colors hover:bg-line">
               <FiEye className="h-4 w-4" /> Preview as a player
             </Link>
           )}

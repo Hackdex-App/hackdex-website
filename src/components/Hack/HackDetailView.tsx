@@ -39,6 +39,8 @@ export interface DraftEditorData {
   coverKeys: string[];
   /** Set while the creator previews the draft as a player: the strip stays, the fields go. */
   preview: boolean;
+  /** An admin editing a hack they did not create. */
+  notOwner: boolean;
 }
 
 interface HackDetailViewProps {
@@ -147,6 +149,12 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
         </div>
       )}
 
+      {editing && editor.notOwner && (
+        <Notice tone="warn" icon={<FiAlertTriangle size={22} />} title="You are editing a hack you do not own.">
+          Changes save as you type, so be careful with what you change.
+        </Notice>
+      )}
+
       {isDraft && !editor && (
         <Notice tone="info" icon={<FiInfo size={22} />} title="This is a private draft.">
           Only you can see this page. Finish the checklist on the{" "}
@@ -232,7 +240,7 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
         </div>
         <div className="flex flex-none items-center gap-2 md:pt-2">
           <HackShareButton title={hack.title} url={pageUrl} author={hack.original_author || profile?.username || null} />
-          <HackOptionsMenu slug={hack.slug} canEdit={canEdit} canUploadPatch={canUploadPatch}>
+          <HackOptionsMenu slug={hack.slug} canEdit={canEdit && !editing} canUploadPatch={canUploadPatch} editHref={isArchive ? `/hack/${hack.slug}/edit` : `/hack/${hack.slug}?edit=1`}>
             {isAdmin && !hack.approved && (
               <MenuItem as="a" href={`/hack/${hack.slug}/approve`} className="block w-full px-3 py-2 text-left text-sm font-medium text-ready data-focus:bg-surface-2">
                 <FaCircleCheck className="mb-0.5 mr-2 inline-block align-middle" size={12} />

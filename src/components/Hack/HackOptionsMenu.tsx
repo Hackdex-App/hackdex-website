@@ -10,12 +10,15 @@ interface HackOptionsMenuProps {
   slug: string;
   canEdit: boolean;
   canUploadPatch: boolean;
+  /** Where Edit goes: the in-place editor for regular hacks, the form for archives. */
+  editHref: string;
   children?: React.ReactNode;
 }
 
 export default function HackOptionsMenu({
   slug,
   canEdit,
+  editHref,
   canUploadPatch,
   children,
 }: HackOptionsMenuProps) {
@@ -78,7 +81,7 @@ export default function HackOptionsMenu({
             </MenuItem>
             <MenuItem
               as="a"
-              href={`/hack/${slug}/edit`}
+              href={editHref}
               className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm data-focus:bg-surface-2"
             >
               <FiEdit2 className="h-4 w-4" />

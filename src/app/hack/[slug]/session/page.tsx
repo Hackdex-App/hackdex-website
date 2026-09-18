@@ -29,7 +29,7 @@ export async function generateMetadata({ params }: HackDetailPageProps) {
 export default async function HackSessionDetail({
   params,
   searchParams,
-}: HackDetailPageProps & { searchParams: Promise<{ preview?: string }> }) {
+}: HackDetailPageProps & { searchParams: Promise<{ preview?: string; edit?: string }> }) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -90,11 +90,12 @@ export default async function HackSessionDetail({
       ? Boolean(await getHackReviewThread(hack.slug))
       : false;
 
-  // Creators edit unlisted hacks in place here. Admins reviewing someone else's hack see the plain page.
-  const editsInPlace = canEdit && !hack.approved && !isArchive && hack.created_by === userId;
+  // Hacks are edited in place here. Unlisted ones open in edit mode (?preview=1
+  // shows the player view); listed ones show the player view until ?edit=1.
+  const { preview, edit } = await searchParams;
+  const editsInPlace = canEdit && !isArchive && (!hack.approved || edit === "1");
   let editor: DraftEditorData | undefined;
   if (editsInPlace) {
-    const { preview } = await searchParams;
     const [checklist, catalogTags, { data: covers }, { data: row }] = await Promise.all([
       getDraftChecklist(slug),
       getCachedTagsWithUsage(),
@@ -103,12 +104,13 @@ export default async function HackSessionDetail({
     ]);
     if (checklist) {
       editor = {
-        stage: hack.submitted_at === null ? "draft" : "review",
+        stage: hack.approved ? "listed" : hack.submitted_at === null ? "draft" : "review",
+        notOwner: hack.created_by !== userId,
         checklist,
         catalogTags,
         tagsUpdatedAt: row?.tags_updated_at ?? new Date(0).toISOString(),
         coverKeys: (covers ?? []).map((c) => c.url),
-        preview: preview === "1",
+        preview: !hack.approved && preview === "1",
       };
     }
   }

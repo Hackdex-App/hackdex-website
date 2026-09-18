@@ -1,13 +1,11 @@
 import { notFound, redirect } from "next/navigation";
 import HackForm from "@/components/Hack/HackForm";
 import { createClient } from "@/utils/supabase/server";
-import { FaChevronLeft, FaPlus } from "react-icons/fa6";
+import { FaChevronLeft } from "react-icons/fa6";
 import Link from "next/link";
 import { sortOrderedTags, getCoverUrls } from "@/utils/format";
 import { checkEditPermission } from "@/utils/hack";
 import { getCachedTagsWithUsage } from "@/data/tags";
-import { getDraftChecklist } from "@/app/submit/actions";
-import { DraftChecklist, DraftStatusStrip, type DraftStage } from "@/components/Hack/DraftStatus";
 
 interface EditPageProps {
   params: Promise<{ slug: string }>;
@@ -38,9 +36,9 @@ export default async function EditHackPage({ params }: EditPageProps) {
   if (!permission.canEdit) {
     redirect(`/hack/${slug}`);
   }
-  // Unlisted hacks are edited in place on the session page.
-  if (!hack.approved && !isArchive) {
-    redirect(`/hack/${slug}/session`);
+  // Regular hacks are edited in place on the hack page; only archives use this form.
+  if (!isArchive) {
+    redirect(`/hack/${slug}?edit=1`);
   }
 
   let coverKeys: string[] = [];
@@ -78,9 +76,6 @@ export default async function EditHackPage({ params }: EditPageProps) {
     version = currentPatch?.version || "";
   }
 
-  const stage: DraftStage = hack.approved ? "listed" : hack.submitted_at === null ? "draft" : "review";
-  const checklist = isArchive ? null : await getDraftChecklist(slug);
-
   const initial = {
     title: hack.title,
     summary: hack.summary,
@@ -103,8 +98,7 @@ export default async function EditHackPage({ params }: EditPageProps) {
 
   return (
     <div className="mx-auto w-full max-w-[1164px] px-6 pb-6 pt-4 md:pt-6">
-      {checklist && <DraftStatusStrip slug={slug} stage={stage} submittedAt={hack.submitted_at} required={checklist.required} />}
-      <div className="mt-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <h1 className="font-display text-[28px] leading-tight md:text-[32px]">
           <span className="font-normal text-text-3">Edit</span> {hack.title}
         </h1>
@@ -113,22 +107,8 @@ export default async function EditHackPage({ params }: EditPageProps) {
             <FaChevronLeft size={14} className="mr-1.5" />
             Back to hack
           </Link>
-          {!isArchive && <>
-            <Link href={`/hack/${slug}/versions`} className="inline-flex h-10 items-center justify-center rounded-control border border-line-strong bg-surface px-4 text-sm font-medium transition-colors hover:border-text-3">
-              Manage versions
-            </Link>
-            <Link href={`/hack/${slug}/edit/patch`} className="inline-flex h-10 items-center justify-center rounded-control bg-accent-deep px-4 text-sm font-semibold text-white transition-colors hover:bg-accent-hover">
-              <FaPlus size={12} className="mr-2" />
-              {stage === "draft" && !hack.current_patch ? "Upload the patch" : "Upload new version"}
-            </Link>
-          </>}
         </div>
       </div>
-      {checklist && (
-        <div className="mt-6 lg:max-w-[420px]">
-          <DraftChecklist slug={slug} stage={stage} required={checklist.required} recommended={checklist.recommended} />
-        </div>
-      )}
       <div className="mt-4 lg:mt-8">
         <HackForm mode="edit" slug={slug} initial={initial} catalogTags={catalogTags} tagsUpdatedAt={tagsUpdatedAt} />
       </div>
