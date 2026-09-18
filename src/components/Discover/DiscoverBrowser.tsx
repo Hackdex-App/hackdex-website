@@ -253,7 +253,11 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
     setDraft(filterState);
     setOpen((s) => {
       const next = new Set(s);
-      for (const g of ROM_GAMES) if (g.ids.some((id) => selectedBaseRoms.includes(id))) next.add(`rom:${g.platform}`);
+      for (const g of ROM_GAMES) {
+        if (!g.ids.some((id) => selectedBaseRoms.includes(id))) continue;
+        next.add(`rom:${g.platform}`);
+        if (g.dumps.length > 1) next.add(`game:${g.key}`);
+      }
       for (const g of groups) if (g.tags.some((t) => selectedTags.includes(t))) next.add(`tag:${g.name}`);
       return next;
     });
@@ -292,13 +296,8 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
   // Applied chips (phone): one per pick, removable in place.
   const chips: { key: string; label: string; ready?: boolean; onRemove: () => void }[] = [];
   if (onlyReady) chips.push({ key: "ready", label: "Ready to patch", ready: true, onRemove: () => applyFilters({ ...filterState, onlyReady: false }) });
-  for (const g of ROM_GAMES) {
-    if (!g.ids.some((id) => selectedBaseRoms.includes(id))) continue;
-    chips.push({ key: `b-${g.label}`, label: g.label, onRemove: () => applyFilters({ ...filterState, baseRoms: selectedBaseRoms.filter((id) => !g.ids.includes(id)) }) });
-  }
-  const knownIds = new Set(ROM_GAMES.flatMap((g) => g.ids));
+  // One chip per dump, so "FireRed (Rev 1)" reads as exactly what is filtered.
   for (const id of selectedBaseRoms) {
-    if (knownIds.has(id)) continue;
     const name = baseRoms.find((r) => r.id === id)?.name ?? id;
     chips.push({ key: `b-${id}`, label: baseGameLabel(name), onRemove: () => applyFilters({ ...filterState, baseRoms: selectedBaseRoms.filter((v) => v !== id) }) });
   }

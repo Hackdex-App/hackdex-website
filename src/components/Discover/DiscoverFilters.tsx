@@ -20,8 +20,31 @@ export type FilterState = {
 
 export type TagGroup = { name: string; tags: string[] };
 
-/** One row per base ROM, revision and region included: each dump has its own hash, so each is its own filter. */
-export const ROM_GAMES = baseRoms.map((rom) => ({ label: baseGameLabel(rom.name), platform: rom.platform, ids: [rom.id] }));
+export type RomDump = { id: string; label: string };
+export type RomGame = { key: string; label: string; platform: Platform; ids: string[]; dumps: RomDump[] };
+
+/** Grouping key only, never shown: revisions and regional dumps of one game share it. */
+function gameName(name: string) {
+  return baseGameLabel(name).replace(/\s*\((Rev \d+|FR|DE|JP)\)\s*$/i, "");
+}
+
+/**
+ * Base ROMs grouped by game. A game with several dumps (FireRed Rev 0 / Rev 1,
+ * regional releases) nests them under one row; each dump keeps its own id
+ * because each hashes differently and a hack is built against exactly one.
+ */
+export const ROM_GAMES: RomGame[] = (() => {
+  const byKey = new Map<string, RomGame>();
+  for (const rom of baseRoms) {
+    const label = gameName(rom.name);
+    const key = `${rom.platform}:${label}`;
+    const game = byKey.get(key) ?? { key, label, platform: rom.platform, ids: [], dumps: [] };
+    game.ids.push(rom.id);
+    game.dumps.push({ id: rom.id, label: baseGameLabel(rom.name) });
+    byKey.set(key, game);
+  }
+  return [...byKey.values()];
+})();
 
 export function countActive(f: FilterState) {
   return f.tags.length + f.baseRoms.length + f.completionStatuses.length + (f.onlyReady ? 1 : 0);
@@ -71,13 +94,15 @@ export function FilterFields({ value, onChange, tagGroups, counts, readyCount, o
   const tagQuery = tagQ.trim().toLowerCase();
   const rowH = tall ? "min-h-11" : "min-h-8";
 
+  const setBaseRoms = (baseRomsNext: string[]) => onChange({ ...value, baseRoms: baseRomsNext, onlyReady: baseRomsNext.length > 0 ? false : value.onlyReady });
+  // The game row selects every dump; once all are on, it clears them all.
   const toggleGame = (ids: string[]) => {
-    const has = ids.some((id) => value.baseRoms.includes(id));
-    const baseRomsNext = has ? value.baseRoms.filter((id) => !ids.includes(id)) : [...value.baseRoms, ...ids];
-    onChange({ ...value, baseRoms: baseRomsNext, onlyReady: baseRomsNext.length > 0 ? false : value.onlyReady });
+    const all = ids.every((id) => value.baseRoms.includes(id));
+    setBaseRoms(all ? value.baseRoms.filter((id) => !ids.includes(id)) : [...new Set([...value.baseRoms, ...ids])]);
   };
+  const toggleDump = (id: string) => setBaseRoms(toggleValue(value.baseRoms, id));
 
-  const visibleGames = ROM_GAMES.filter((g) => !romQuery || g.label.toLowerCase().includes(romQuery));
+  const visibleGames = ROM_GAMES.map((g) => ({ ...g, dumps: g.dumps.filter((d) => !romQuery || g.label.toLowerCase().includes(romQuery) || d.label.toLowerCase().includes(romQuery)) })).filter((g) => g.dumps.length > 0);
   const visibleGroups = tagGroups
     .map((g) => ({ ...g, tags: g.tags.filter((t) => !tagQuery || t.toLowerCase().includes(tagQuery)) }))
     .filter((g) => g.tags.length > 0);
@@ -117,16 +142,39 @@ export function FilterFields({ value, onChange, tagGroups, counts, readyCount, o
               onToggle={() => onToggleOpen(id)}
               tall={tall}
             >
-              {games.map((g) => (
-                <Check
-                  key={g.label}
-                  className={rowH}
-                  label={g.label}
-                  count={counts.base(g.ids)}
-                  checked={g.ids.some((i) => value.baseRoms.includes(i))}
-                  onChange={() => toggleGame(g.ids)}
-                />
-              ))}
+              {games.map((g) => {
+                const ids = g.dumps.map((d) => d.id);
+                const on = ids.filter((i) => value.baseRoms.includes(i)).length;
+                if (g.dumps.length === 1) {
+                  return <Check key={g.key} className={rowH} label={g.dumps[0].label} count={counts.base(ids)} checked={on === 1} onChange={() => toggleDump(ids[0])} />;
+                }
+                const gid = `game:${g.key}`;
+                const expanded = open.has(gid) || romQuery.length > 0;
+                return (
+                  <div key={g.key}>
+                    <div className="flex items-center gap-1">
+                      <Check className={`${rowH} min-w-0 flex-1`} label={g.label} count={counts.base(ids)} checked={on === ids.length} indeterminate={on > 0 && on < ids.length} onChange={() => toggleGame(ids)} />
+                      <button
+                        type="button"
+                        aria-expanded={expanded}
+                        aria-controls={gid}
+                        aria-label={`${expanded ? "Hide" : "Show"} ${g.label} revisions`}
+                        onClick={() => onToggleOpen(gid)}
+                        className={`inline-flex w-7 flex-none items-center justify-center self-stretch rounded-md text-text-3 transition-colors hover:bg-surface-2 hover:text-text ${tall ? "min-h-11" : "min-h-8"}`}
+                      >
+                        <FiChevronDown className={`h-4 w-4 transition-transform duration-[160ms] ${expanded ? "-rotate-180" : ""}`} />
+                      </button>
+                    </div>
+                    {expanded && (
+                      <div id={gid} className="ml-[9px] border-l border-line pl-4">
+                        {g.dumps.map((d) => (
+                          <Check key={d.id} className={rowH} label={d.label} count={counts.base([d.id])} checked={value.baseRoms.includes(d.id)} onChange={() => toggleDump(d.id)} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </Disclosure>
           );
         })}
@@ -229,12 +277,17 @@ function Disclosure({ id, label, count, picked, expanded, onToggle, tall, childr
   );
 }
 
-function Check({ label, count, checked, onChange, className = "", ready = false }: { label: React.ReactNode; count: number; checked: boolean; onChange: () => void; className?: string; ready?: boolean }) {
+/** Checkbox row. `indeterminate` draws the dash for a parent whose children are only partly selected. */
+function Check({ label, count, checked, indeterminate = false, onChange, className = "", ready = false }: { label: React.ReactNode; count: number; checked: boolean; indeterminate?: boolean; onChange: () => void; className?: string; ready?: boolean }) {
+  const ref = React.useRef<HTMLInputElement | null>(null);
+  React.useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate;
+  }, [indeterminate]);
   return (
     <label className={`group/check flex cursor-pointer select-none items-center gap-2.5 rounded-md text-sm ${className}`}>
-      <input type="checkbox" checked={checked} onChange={onChange} className="peer sr-only" />
+      <input ref={ref} type="checkbox" checked={checked} onChange={onChange} className="peer sr-only" />
       <span
-        className={`relative h-[18px] w-[18px] flex-none rounded-[5px] border-[1.5px] border-line-strong bg-surface transition-colors duration-[120ms] group-hover/check:border-text-3 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent after:absolute after:left-[5px] after:top-[1.5px] after:h-[9px] after:w-[5px] after:rotate-45 after:scale-[.6] after:border-b-2 after:border-r-2 after:border-white after:opacity-0 after:transition-[transform,opacity] after:duration-[120ms] after:content-[''] peer-checked:after:scale-100 peer-checked:after:opacity-100 ${
+        className={`relative h-[18px] w-[18px] flex-none rounded-[5px] border-[1.5px] border-line-strong bg-surface transition-colors duration-[120ms] group-hover/check:border-text-3 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent after:absolute after:left-[5px] after:top-[1.5px] after:h-[9px] after:w-[5px] after:rotate-45 after:scale-[.6] after:border-b-2 after:border-r-2 after:border-white after:opacity-0 after:transition-[transform,opacity] after:duration-[120ms] after:content-[''] peer-checked:after:scale-100 peer-checked:after:opacity-100 peer-indeterminate:border-accent-deep peer-indeterminate:bg-accent-deep peer-indeterminate:after:left-[4px] peer-indeterminate:after:top-[7px] peer-indeterminate:after:h-0 peer-indeterminate:after:w-2 peer-indeterminate:after:rotate-0 peer-indeterminate:after:scale-100 peer-indeterminate:after:border-r-0 peer-indeterminate:after:opacity-100 ${
           ready ? "peer-checked:border-ready peer-checked:bg-ready" : "peer-checked:border-accent-deep peer-checked:bg-accent-deep"
         }`}
       />
