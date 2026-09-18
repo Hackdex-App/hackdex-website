@@ -238,9 +238,10 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
             </>
           )}
         </div>
-        <div className="flex flex-none items-center gap-2 md:pt-2">
+        {!editing && (
+          <div className="flex flex-none items-center gap-2 md:pt-2">
           <HackShareButton title={hack.title} url={pageUrl} author={hack.original_author || profile?.username || null} />
-          <HackOptionsMenu slug={hack.slug} canEdit={canEdit && !editing} canUploadPatch={canUploadPatch} editHref={isArchive ? `/hack/${hack.slug}/edit` : `/hack/${hack.slug}?edit=1`}>
+          <HackOptionsMenu slug={hack.slug} canEdit={canEdit} canUploadPatch={canUploadPatch} editHref={isArchive ? `/hack/${hack.slug}/edit` : `/hack/${hack.slug}?edit=1`}>
             {isAdmin && !hack.approved && (
               <MenuItem as="a" href={`/hack/${hack.slug}/approve`} className="block w-full px-3 py-2 text-left text-sm font-medium text-ready data-focus:bg-surface-2">
                 <FaCircleCheck className="mb-0.5 mr-2 inline-block align-middle" size={12} />
@@ -255,12 +256,21 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
             )}
             {isAdmin && !isArchive && !hasReviewThread && <CreateReviewThreadMenuItem slug={hack.slug} />}
           </HackOptionsMenu>
-        </div>
+          </div>
+        )}
       </header>
 
       <div className="grid items-start gap-6 md:grid-cols-[minmax(0,1fr)_300px] md:grid-rows-[auto_1fr] md:[grid-template-areas:'main_patch'_'main_rail']">
         <div className="order-1 md:order-none md:[grid-area:patch]">
-          {showPatchModule ? (
+          {editing ? (
+            <div className="flex flex-col gap-3">
+              <DraftChecklist slug={hack.slug} stage={editor.stage} required={editor.checklist.required} recommended={editor.checklist.recommended} />
+              <DraftDetails
+                values={{ base_rom: hack.base_rom, language: hack.language ?? "English", completion_status: hack.completion_status, box_art: hack.box_art, social_links: social }}
+                baseLocked={patchId !== null}
+              />
+            </div>
+          ) : showPatchModule ? (
             <HackActions
               title={hack.title}
               version={patchVersion || "Pre-release"}
@@ -285,11 +295,6 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
                   </p>
                 )}
               </div>
-              {editing && (
-                <Link href={uploadHref} className="mt-3 inline-flex h-12 w-full items-center justify-center gap-2 rounded-control bg-accent-deep px-5 text-[15px] font-semibold text-white transition-colors hover:bg-accent-hover">
-                  <FiUpload className="h-5 w-5" /> Upload the patch
-                </Link>
-              )}
             </div>
           )}
         </div>
@@ -316,15 +321,6 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
         </div>
 
         <aside className="order-3 flex flex-col md:order-none md:[grid-area:rail]">
-          {editing && (
-            <div className="mb-[18px] flex flex-col gap-3">
-              <DraftChecklist slug={hack.slug} stage={editor.stage} required={editor.checklist.required} recommended={editor.checklist.recommended} />
-              <DraftDetails
-                values={{ base_rom: hack.base_rom, language: hack.language ?? "English", completion_status: hack.completion_status, box_art: hack.box_art, social_links: social }}
-                baseLocked={patchId !== null}
-              />
-            </div>
-          )}
           <RailGroup title="Compatibility">
             <Facts
               rows={[
