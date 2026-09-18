@@ -152,17 +152,19 @@ export function FilterFields({ value, onChange, tagGroups, counts, readyCount, o
                 const expanded = open.has(gid) || romQuery.length > 0;
                 return (
                   <div key={g.key}>
-                    <div className="flex items-center gap-1">
-                      <Check className={`${rowH} min-w-0 flex-1`} label={g.label} count={counts.base(ids)} checked={on === ids.length} indeterminate={on > 0 && on < ids.length} onChange={() => toggleGame(ids)} />
+                    {/* The box selects every dump; the rest of the row opens the list. */}
+                    <div className={`group/check flex items-center gap-2.5 rounded-md text-sm ${rowH}`}>
+                      <CheckBox checked={on === ids.length} indeterminate={on > 0 && on < ids.length} onChange={() => toggleGame(ids)} ariaLabel={`All ${g.label} revisions`} />
                       <button
                         type="button"
                         aria-expanded={expanded}
                         aria-controls={gid}
-                        aria-label={`${expanded ? "Hide" : "Show"} ${g.label} revisions`}
                         onClick={() => onToggleOpen(gid)}
-                        className={`inline-flex w-7 flex-none items-center justify-center self-stretch rounded-md text-text-3 transition-colors hover:bg-surface-2 hover:text-text ${tall ? "min-h-11" : "min-h-8"}`}
+                        className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 self-stretch text-left"
                       >
-                        <FiChevronDown className={`h-4 w-4 transition-transform duration-[160ms] ${expanded ? "-rotate-180" : ""}`} />
+                        <span className="truncate">{g.label}</span>
+                        <FiChevronDown className={`h-4 w-4 flex-none text-text-3 transition-transform duration-[160ms] ${expanded ? "-rotate-180" : ""}`} aria-hidden />
+                        <small className="ml-auto text-xs tabular-nums text-text-3">{counts.base(ids)}</small>
                       </button>
                     </div>
                     {expanded && (
@@ -277,20 +279,29 @@ function Disclosure({ id, label, count, picked, expanded, onToggle, tall, childr
   );
 }
 
-/** Checkbox row. `indeterminate` draws the dash for a parent whose children are only partly selected. */
-function Check({ label, count, checked, indeterminate = false, onChange, className = "", ready = false }: { label: React.ReactNode; count: number; checked: boolean; indeterminate?: boolean; onChange: () => void; className?: string; ready?: boolean }) {
+const BOX =
+  "relative h-[18px] w-[18px] flex-none rounded-[5px] border-[1.5px] border-line-strong bg-surface transition-colors duration-[120ms] group-hover/check:border-text-3 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent after:absolute after:left-[5px] after:top-[1.5px] after:h-[9px] after:w-[5px] after:rotate-45 after:scale-[.6] after:border-b-2 after:border-r-2 after:border-white after:opacity-0 after:transition-[transform,opacity] after:duration-[120ms] after:content-[''] peer-checked:after:scale-100 peer-checked:after:opacity-100 peer-indeterminate:border-accent-deep peer-indeterminate:bg-accent-deep peer-indeterminate:after:left-[4px] peer-indeterminate:after:top-[7px] peer-indeterminate:after:h-0 peer-indeterminate:after:w-2 peer-indeterminate:after:rotate-0 peer-indeterminate:after:scale-100 peer-indeterminate:after:border-r-0 peer-indeterminate:after:opacity-100";
+
+/** The box alone. `indeterminate` draws the dash for a parent whose children are only partly selected. */
+function CheckBox({ checked, indeterminate = false, onChange, ready = false, ariaLabel }: { checked: boolean; indeterminate?: boolean; onChange: () => void; ready?: boolean; ariaLabel?: string }) {
   const ref = React.useRef<HTMLInputElement | null>(null);
   React.useEffect(() => {
     if (ref.current) ref.current.indeterminate = indeterminate;
   }, [indeterminate]);
   return (
+    <label className="inline-flex cursor-pointer">
+      <input ref={ref} type="checkbox" checked={checked} onChange={onChange} aria-label={ariaLabel} className="peer sr-only" />
+      <span className={`${BOX} ${ready ? "peer-checked:border-ready peer-checked:bg-ready" : "peer-checked:border-accent-deep peer-checked:bg-accent-deep"}`} />
+    </label>
+  );
+}
+
+/** Checkbox row: box, label, count. The whole row toggles. */
+function Check({ label, count, checked, onChange, className = "", ready = false }: { label: React.ReactNode; count: number; checked: boolean; onChange: () => void; className?: string; ready?: boolean }) {
+  return (
     <label className={`group/check flex cursor-pointer select-none items-center gap-2.5 rounded-md text-sm ${className}`}>
-      <input ref={ref} type="checkbox" checked={checked} onChange={onChange} className="peer sr-only" />
-      <span
-        className={`relative h-[18px] w-[18px] flex-none rounded-[5px] border-[1.5px] border-line-strong bg-surface transition-colors duration-[120ms] group-hover/check:border-text-3 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent after:absolute after:left-[5px] after:top-[1.5px] after:h-[9px] after:w-[5px] after:rotate-45 after:scale-[.6] after:border-b-2 after:border-r-2 after:border-white after:opacity-0 after:transition-[transform,opacity] after:duration-[120ms] after:content-[''] peer-checked:after:scale-100 peer-checked:after:opacity-100 peer-indeterminate:border-accent-deep peer-indeterminate:bg-accent-deep peer-indeterminate:after:left-[4px] peer-indeterminate:after:top-[7px] peer-indeterminate:after:h-0 peer-indeterminate:after:w-2 peer-indeterminate:after:rotate-0 peer-indeterminate:after:scale-100 peer-indeterminate:after:border-r-0 peer-indeterminate:after:opacity-100 ${
-          ready ? "peer-checked:border-ready peer-checked:bg-ready" : "peer-checked:border-accent-deep peer-checked:bg-accent-deep"
-        }`}
-      />
+      <input type="checkbox" checked={checked} onChange={onChange} className="peer sr-only" />
+      <span className={`${BOX} ${ready ? "peer-checked:border-ready peer-checked:bg-ready" : "peer-checked:border-accent-deep peer-checked:bg-accent-deep"}`} />
       <span className="min-w-0 flex-1 truncate">{label}</span>
       <small className="text-xs tabular-nums text-text-3">{count}</small>
     </label>
