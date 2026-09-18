@@ -280,12 +280,29 @@ export default function PatchModule({
 
   const compactTarget = mounted && scrolledOut ? document.getElementById(HEADER_COMPACT_ID) : null;
 
+  // The help entry point shows wherever the action is: in the module, beside the
+  // compact action on desktop, and as a floating pill on phones. From the compact
+  // homes it scrolls back to the module first, since the tour spotlights the
+  // full-size controls.
+  const gate = onboardingGateLabel && onOnboardingGateClick && errorMessage === null && !busy
+    ? {
+        label: onboardingGateLabel,
+        beacon: kind === "needs-rom",
+        open: onOnboardingGateClick,
+        openFromAfar: () => {
+          const el = moduleRef.current;
+          if (el) {
+            const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+            window.scrollTo({ top: window.scrollY + el.getBoundingClientRect().top - 80, behavior: reduce ? "auto" : "smooth" });
+          }
+          onOnboardingGateClick();
+        },
+      }
+    : null;
+
   return (
     <div ref={moduleRef} className={`relative ${onboardingActive ? "z-[60]" : ""}`}>
       <input ref={uploadInputRef} type="file" accept={platformAccept(baseRomPlatform)} onChange={onUploadChange} disabled={isVerifyingRom} className="hidden" />
-      {onboardingGateLabel && onOnboardingGateClick && errorMessage === null && (
-        <HackOnboardingGate label={onboardingGateLabel} onClick={onOnboardingGateClick} />
-      )}
       <div data-hack-action-bar className="relative flex flex-col gap-3 rounded-card border border-line bg-surface p-4 shadow-rest">
         {onboardingDimBar && <div aria-hidden className="absolute inset-0 z-[1] rounded-card bg-[#171717]/25 dark:bg-black/55" />}
 
@@ -332,6 +349,7 @@ export default function PatchModule({
         </div>
 
         <ActionButton />
+        {gate && <HackOnboardingGate variant="row" label={gate.label} onClick={gate.open} beacon={gate.beacon} />}
 
         <dl className="mt-0.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[13px] leading-[1.45]">
           <dt className="text-text-3">Version</dt>
@@ -363,6 +381,11 @@ export default function PatchModule({
                 </small>
               )}
               <div className="flex items-center gap-2 max-md:w-full">
+                {gate && (
+                  <div className="hidden md:block">
+                    <HackOnboardingGate variant="icon" label={gate.label} onClick={gate.openFromAfar} beacon={gate.beacon} />
+                  </div>
+                )}
                 {hasVersionPicker && (
                   <div className="max-md:flex-none">
                     {picker}
@@ -374,6 +397,7 @@ export default function PatchModule({
           </div>,
           compactTarget,
         )}
+      {compactTarget && gate && createPortal(<HackOnboardingGate variant="pill" label={gate.label} onClick={gate.openFromAfar} beacon={gate.beacon} />, document.body)}
     </div>
   );
 }

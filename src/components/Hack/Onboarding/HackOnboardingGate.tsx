@@ -1,37 +1,70 @@
 "use client";
 
 import React from "react";
-import { FiChevronDown, FiHelpCircle } from "react-icons/fi";
+import { FiChevronRight, FiHelpCircle } from "react-icons/fi";
 
 interface HackOnboardingGateProps {
   label: string;
   onClick: () => void;
+  /** Rose dot on the icon while the player is most likely stuck (no ROM yet). */
+  beacon?: boolean;
+  /**
+   * row: full-width line under the primary action inside the patch module.
+   * icon: round button beside the compact action in the site header (desktop).
+   * pill: floating chip above the phone tab bar once the module scrolls away.
+   */
+  variant: "row" | "icon" | "pill";
 }
 
-/**
- * Opt-in entry point for the hack page onboarding tour.
- *
- * Positions itself against the StickyActionBar root, so it must be rendered
- * inside that root: an attached tab under the desktop bar (1px overlap, no top
- * border) and a detached frost pill floating above the mobile sheet.
- */
-export default function HackOnboardingGate({ label, onClick }: HackOnboardingGateProps) {
+/** Opt-in entry point for the hack page onboarding tour, in three shapes for three homes. */
+export default function HackOnboardingGate({ label, onClick, beacon = false, variant }: HackOnboardingGateProps) {
+  const icon = (
+    <span className="relative inline-flex flex-none">
+      <FiHelpCircle size={variant === "row" ? 16 : 18} aria-hidden className="text-accent" />
+      {beacon && <span aria-hidden className="onboarding-beacon -right-[3px] -top-[3px] h-2! w-2!" />}
+    </span>
+  );
+
+  if (variant === "icon") {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={label}
+        title={label}
+        className="inline-flex h-9 w-9 flex-none cursor-pointer items-center justify-center rounded-full border border-line-strong bg-surface text-text-2 transition-colors hover:border-text-3 hover:text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      >
+        {icon}
+      </button>
+    );
+  }
+
+  if (variant === "pill") {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="anim-fade fixed bottom-[calc(72px+env(safe-area-inset-bottom))] right-4 z-40 inline-flex cursor-pointer items-center gap-2 rounded-full border border-line-strong bg-surface py-2.5 pl-3.5 pr-3 text-sm font-semibold text-text shadow-lift transition-colors hover:border-text-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent md:hidden"
+      >
+        {icon}
+        {label}
+        <FiChevronRight size={15} aria-hidden className="text-text-3" />
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group/gate absolute bottom-full left-1/2 z-10 mb-3 -translate-x-1/2 inline-flex cursor-pointer items-center gap-2 whitespace-nowrap rounded-full border border-[var(--border)] bg-[var(--surface-2)]/80 px-5 py-2.5 text-sm font-semibold text-foreground/80 shadow-sm backdrop-blur transition-colors supports-[backdrop-filter]:bg-[color-mix(in_oklab,var(--background)_90%,transparent)] hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] after:absolute after:-inset-x-5 after:-top-4 after:-bottom-3 after:content-[''] md:after:hidden md:bottom-auto md:top-full md:mb-0 md:-mt-px md:rounded-t-none md:rounded-b-xl md:border-t-0 md:px-6 md:pt-4 md:pb-3 md:shadow-none md:supports-[backdrop-filter]:bg-[color-mix(in_oklab,var(--background)_70%,transparent)]"
+      className="group/gate -mt-0.5 flex w-full cursor-pointer items-center gap-2 rounded-control border-t border-line pt-3 text-[13px] font-medium text-text-2 transition-colors hover:text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
     >
-      <FiHelpCircle
-        size={16}
-        aria-hidden
-        className="shrink-0 text-[var(--accent)]"
-      />
+      {icon}
       {label}
-      <FiChevronDown
+      <FiChevronRight
         size={15}
         aria-hidden
-        className="shrink-0 text-foreground/60 transition-transform duration-200 group-hover/gate:translate-y-0.5"
+        className="ml-auto text-text-3 transition-transform duration-200 group-hover/gate:translate-x-0.5"
       />
     </button>
   );
