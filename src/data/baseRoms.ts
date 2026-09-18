@@ -74,7 +74,11 @@ export const baseRoms: BaseRom[] = [
 
 
 
-/** Short game label for filters and cards: "FireRed" rather than "Pokémon FireRed (Rev 0)". */
+/**
+ * Base ROM label for filters and cards: "FireRed (Rev 0)" rather than
+ * "Pokémon FireRed (Rev 0)". The revision stays: different dumps have
+ * different hashes, and a player needs to know which one a hack was built on.
+ */
 export function baseGameLabel(name: string) {
-  return name.replace(/^Pokémon\s+/i, "").replace(/\s*\(Rev \d+\)\s*$/i, "");
+  return name.replace(/^Pokémon\s+/i, "");
 }

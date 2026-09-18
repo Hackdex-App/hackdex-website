@@ -20,19 +20,8 @@ export type FilterState = {
 
 export type TagGroup = { name: string; tags: string[] };
 
-/** Unique games from the ROM list. Revisions collapse to one row that toggles all of their ids together. */
-export const ROM_GAMES = (() => {
-  const byKey = new Map<string, { label: string; platform: Platform; ids: string[] }>();
-  for (const rom of baseRoms) {
-    if (/\((FR|DE|JP)\)/.test(rom.name)) continue;
-    const label = baseGameLabel(rom.name);
-    const key = `${rom.platform}:${label}`;
-    const game = byKey.get(key) ?? { label, platform: rom.platform, ids: [] };
-    game.ids.push(rom.id);
-    byKey.set(key, game);
-  }
-  return [...byKey.values()];
-})();
+/** One row per base ROM, revision and region included: each dump has its own hash, so each is its own filter. */
+export const ROM_GAMES = baseRoms.map((rom) => ({ label: baseGameLabel(rom.name), platform: rom.platform, ids: [rom.id] }));
 
 export function countActive(f: FilterState) {
   return f.tags.length + f.baseRoms.length + f.completionStatuses.length + (f.onlyReady ? 1 : 0);
