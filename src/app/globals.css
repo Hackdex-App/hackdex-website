@@ -1,41 +1,154 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* Dark mode is a class on <html>, set before first paint by the inline script in layout.tsx. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---- tokens ----
+   Cool-neutral surrounds so the saturated pixel art and the one rose action are the only
+   warm things on the page. Surfaces step in lightness; shadows are reserved for lift and
+   overlays. Green means "on this device" and nothing else; error is a separate orange-red
+   so brand rose never means danger. Legacy names (--background, --border, --accent...)
+   alias the new set so older components keep working. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --ring: #f43f5e;
-  --muted: rgba(0,0,0,0.20);
-  --border: rgba(0,0,0,0.12);
-  --accent: #f43f5e;
-  --accent-700: #be123c;
-  --accent-foreground: #ffffff;
+  color-scheme: light;
+  --rose: #f43f5e;
+  --rose-deep: #e11d48;
+  --rose-hover: #be123c;
+  --plat-gb: #7d8f6a;
+  --plat-gbc: #9a5be0;
+  --plat-gba: #3b47c9;
+  --plat-nds: #9aa4b0;
+
+  --bg: #f3f4f6;
   --surface: #ffffff;
-  --surface-2: #fafafa;
+  --surface-2: #e9ebef;
+  --surface-3: #dfe2e7;
+  --well: #dfe2e7;
+  --text: #1a1d24;
+  --text-2: #4b5261;
+  --text-3: #5f6674;
+  --line: #e3e6ea;
+  --line-strong: #c9ced6;
+  --rose-soft: #ffe4e9;
+  --rose-text: #be123c;
+  --link: #a8425a;
+  --ready: #15803d;
+  --ready-soft: #dcfce7;
+  --on-ready: #ffffff;
+  --error: #c2410c;
+  --error-soft: #ffedd5;
+  --warn: #a16207;
+  --warn-soft: #fef3c7;
+  --screen: #0d1017;
+  --shadow-rest: 0 1px 2px rgba(20, 24, 33, .05);
+  --shadow-lift: 0 8px 20px -8px rgba(20, 24, 33, .22), 0 2px 4px rgba(20, 24, 33, .06);
+  --shadow-overlay: 0 16px 40px -12px rgba(20, 24, 33, .3);
+
+  /* legacy aliases */
+  --background: var(--bg);
+  --foreground: var(--text);
+  --ring: var(--rose);
+  --muted: rgba(0,0,0,0.20);
+  --border: var(--line);
+  --accent: var(--rose);
+  --accent-700: var(--rose-hover);
+  --accent-foreground: #ffffff;
   --grid-dot-color: rgba(0,0,0,0.08);
+
+  --r-card: 12px;
+  --r-control: 8px;
+  --r-frame: 4px;
+}
+
+.dark {
+  color-scheme: dark;
+  --bg: #15171b;
+  --surface: #1f2126;
+  --surface-2: #2a2d33;
+  --surface-3: #363a42;
+  --well: #101215;
+  --text: #f1f2f4;
+  --text-2: #b3b8c2;
+  --text-3: #8a909c;
+  --line: #2e3138;
+  --line-strong: #3d414a;
+  --rose-soft: #3b1220;
+  --rose-text: #fb7185;
+  --link: #e28a98;
+  --ready: #4ade80;
+  --ready-soft: #14301f;
+  --on-ready: #052e16;
+  --error: #fb923c;
+  --error-soft: #3a1f0e;
+  --warn: #fbbf24;
+  --warn-soft: #3a2e0e;
+  --screen: #07080b;
+  --shadow-rest: none;
+  --shadow-lift: 0 8px 20px -8px rgba(0, 0, 0, .6);
+  --shadow-overlay: 0 16px 40px -12px rgba(0, 0, 0, .7);
+
+  --muted: rgba(255,255,255,0.20);
+  --grid-dot-color: rgba(255,255,255,0.08);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-well: var(--well);
+  --color-text: var(--text);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--rose);
+  --color-accent-deep: var(--rose-deep);
+  --color-accent-hover: var(--rose-hover);
+  --color-accent-soft: var(--rose-soft);
+  --color-accent-text: var(--rose-text);
+  --color-link: var(--link);
+  --color-ready: var(--ready);
+  --color-ready-soft: var(--ready-soft);
+  --color-on-ready: var(--on-ready);
+  --color-error: var(--error);
+  --color-error-soft: var(--error-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-screen: var(--screen);
+  --font-sans: var(--font-archivo);
   --font-mono: var(--font-geist-mono);
+  --shadow-rest: var(--shadow-rest);
+  --shadow-lift: var(--shadow-lift);
+  --shadow-overlay: var(--shadow-overlay);
+  --radius-card: var(--r-card);
+  --radius-control: var(--r-control);
+  --radius-frame: var(--r-frame);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --muted: rgba(255,255,255,0.20);
-    --border: rgba(255,255,255,0.10);
-    --accent: #f43f5e;
-    --accent-700: #be123c;
-    --accent-foreground: #ffffff;
-    --surface: rgba(255,255,255,0.04);
-    --surface-2: rgba(255,255,255,0.06);
-    --grid-dot-color: rgba(255,255,255,0.08);
-  }
+/* Display type: the body family, semi-condensed and bold. Contrast comes from width and weight, not a second face. */
+@utility font-display {
+  font-stretch: 88%;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
+
+/* Platform cue color: a dot before a base ROM name. */
+[data-platform="GB"]  { --plat: var(--plat-gb); }
+[data-platform="GBC"] { --plat: var(--plat-gbc); }
+[data-platform="GBA"] { --plat: var(--plat-gba); }
+[data-platform="NDS"] { --plat: var(--plat-nds); }
+.plat-dot::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--plat, var(--text-3)); margin-right: 6px; }
+
+/* Green dot meaning exactly one thing: a base ROM is on this device. */
+.ready-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ready); }
+
+/* Text links: muted rose, underline fades in on hover. */
+.text-link-hd { color: var(--link); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: transparent; transition: text-decoration-color 120ms; }
+.text-link-hd:hover { text-decoration-color: currentColor; }
 
 .m-safe {
   margin: env(safe-area-inset-bottom) env(safe-area-inset-right) env(safe-area-inset-top) env(safe-area-inset-left);
@@ -70,10 +183,16 @@
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-archivo), system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
 }
+img { image-rendering: pixelated; }
+img.smooth, img[data-smooth] { image-rendering: auto; }
+:focus-visible { outline: 2px solid var(--rose); outline-offset: 2px; }
 
 /* Stable layout when overlays lock page scrolling. */
 html {
@@ -100,9 +219,10 @@ html { scroll-padding-top: var(--anchor-offset); }
 .bg-grid { background-image: radial-gradient(var(--grid-dot-color) 1px, transparent 1px); background-size: 22px 22px; }
 
 .card {
-  background: linear-gradient(to bottom right, var(--surface-2), var(--surface));
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-rest);
 }
 
 /* Interpolatable ready-ring for homepage hero hack cards (Tailwind ring-* does not transition cleanly) */
@@ -122,9 +242,9 @@ html { scroll-padding-top: var(--anchor-offset); }
   animation: heroHackFadeIn 500ms ease forwards;
 }
 .card-simple {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
 }
 
 .frosted {
@@ -140,18 +260,8 @@ html { scroll-padding-top: var(--anchor-offset); }
   color: transparent;
 }
 
-.aurora {
-  position: absolute;
-  inset: -20% -10% -20% -10%;
-  background: radial-gradient(60% 60% at 20% 20%, rgba(244,63,94,0.20), transparent 60%),
-              radial-gradient(50% 50% at 80% 10%, rgba(249,115,22,0.18), transparent 60%),
-              radial-gradient(40% 40% at 50% 80%, rgba(245,158,11,0.18), transparent 60%);
-  opacity: 0.7;
-  pointer-events: none;
-}
-
 .elevate {
-  box-shadow: 0 10px 30px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.06);
+  box-shadow: var(--shadow-lift);
 }
 
 /* Animations */
@@ -216,13 +326,11 @@ html { scroll-padding-top: var(--anchor-offset); }
     onboardingBeaconScale 1.5s cubic-bezier(0, 0, 0.2, 1) infinite,
     onboardingBeaconFade 1.5s linear infinite;
 }
-@media (prefers-color-scheme: dark) {
-  .onboarding-beacon::after {
+.dark .onboarding-beacon::after {
     background: rgba(244, 63, 94, 0.95);
     animation:
       onboardingBeaconScale 1.5s cubic-bezier(0, 0, 0.2, 1) infinite,
       onboardingBeaconFadeDark 1.5s linear infinite;
-  }
 }
 
 @keyframes heroConnectorDash {
@@ -322,7 +430,7 @@ html { scroll-padding-top: var(--anchor-offset); }
   --tw-prose-body: var(--foreground);
   --tw-prose-headings: var(--foreground);
   --tw-prose-lead: var(--foreground);
-  --tw-prose-links: var(--accent);
+  --tw-prose-links: var(--link);
   --tw-prose-bold: var(--foreground);
   --tw-prose-quotes: var(--foreground);
   --tw-prose-code: var(--foreground);

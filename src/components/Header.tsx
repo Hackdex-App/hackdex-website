@@ -3,55 +3,54 @@
 import Link from "next/link";
 import React from "react";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { FiSearch } from "react-icons/fi";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { createClient } from "@/utils/supabase/client";
 import Avatar from "@/components/Account/Avatar";
+import ThemeToggle from "@/components/ThemeToggle";
 
-function NavLink({ href, label, className = "", onClick }: { href: string; label: React.ReactNode; className?: string; onClick?: () => void }) {
-  const pathname = usePathname();
-  const isActive = pathname === href;
+/** Element id the hack page portals its compact title + action bar into once the patch module scrolls away. */
+export const HEADER_COMPACT_ID = "site-header-compact";
+
+function NavLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
   return (
     <Link
       href={href}
-      data-active={isActive || undefined}
-      onClick={onClick}
-      className={`group rounded-md px-3 py-2 text-sm transition-colors text-foreground/80 hover:bg-[var(--surface-2)] underline-offset-5 decoration-2 decoration-[var(--accent)] ${
-        isActive ? "underline font-semibold" : ""
-      } ${className}`}
+      aria-current={active ? "page" : undefined}
+      className={`inline-flex items-center gap-1.5 border-y-2 border-transparent px-2.5 font-medium transition-colors hover:text-text ${
+        active ? "border-b-accent text-text" : "text-text-2"
+      }`}
     >
-      {label}
+      {children}
     </Link>
   );
 }
 
+/**
+ * Site chrome. Rose appears only as the logo and the active-page indicator;
+ * the rest is quiet so the one patch action owns the color on task pages.
+ * Guests see no login: only creators need an account, and it lives behind Submit.
+ */
 export default function Header() {
   const { countReady } = useBaseRoms();
   const { user } = useAuthContext();
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "/";
+  const router = useRouter();
   const supabase = createClient();
-  const [isAuthenticated, setIsAuthenticated] = React.useState<boolean>(false);
   const [userId, setUserId] = React.useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = React.useState<string | null>(null);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState<boolean>(false);
 
   React.useEffect(() => {
     let isMounted = true;
     (async () => {
       const { data } = await supabase.auth.getUser();
       if (!isMounted) return;
-      const authed = Boolean(data.user);
-      setIsAuthenticated(authed);
       setUserId(data.user?.id ?? null);
-      // Best-effort fetch profile avatar_url for header avatar
-      if (authed && data.user?.id) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('avatar_url')
-          .eq('id', data.user.id)
-          .single();
-        setAvatarUrl(profile?.avatar_url ?? null);
+      if (data.user?.id) {
+        const { data: profile } = await supabase.from("profiles").select("avatar_url").eq("id", data.user.id).single();
+        if (isMounted) setAvatarUrl(profile?.avatar_url ?? null);
       } else {
         setAvatarUrl(null);
       }
@@ -61,157 +60,67 @@ export default function Header() {
     };
   }, [supabase, user]);
 
-  // Close mobile menu on route change for better UX
-  React.useEffect(() => {
-    setIsMobileMenuOpen(false);
-  }, [pathname]);
-
-  // Lock background scroll when mobile menu is open
-  React.useEffect(() => {
-    if (isMobileMenuOpen) {
-      const original = document.body.style.overflow;
-      document.body.style.overflow = "hidden";
-      return () => {
-        document.body.style.overflow = original;
-      };
-    }
-  }, [isMobileMenuOpen]);
-
-  // Close on Escape key
-  React.useEffect(() => {
-    if (!isMobileMenuOpen) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setIsMobileMenuOpen(false);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isMobileMenuOpen]);
+  function onSearch(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const q = new FormData(e.currentTarget).get("q");
+    const query = typeof q === "string" ? q.trim() : "";
+    router.push(query ? `/discover?q=${encodeURIComponent(query)}` : "/discover");
+  }
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-[var(--border)] backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="mx-auto flex h-16 max-w-screen-2xl items-center justify-between px-6">
-        <Link href="/" className="flex items-center gap-2">
-          <Image src="/logo.png" alt="Hackdex Logo" width={32} height={32} />
-          <span className="text-[22px] md:text-[18px] font-semibold tracking-tight hover:opacity-90 transition-opacity">Hackdex</span>
-          <span className="inline-flex items-center rounded-full bg-[var(--accent)]/10 px-2 py-0.5 text-[12px] md:text-[10px] font-semibold uppercase tracking-wide text-[var(--accent)] ring-1 ring-[var(--accent)]/30">Beta</span>
+    <header className="sticky top-0 z-40 w-full border-b border-line bg-surface">
+      <div className="relative mx-auto flex h-14 max-w-[1164px] items-center gap-3 px-6 md:h-[60px] md:gap-7">
+        <Link href="/" className="inline-flex items-center gap-2.5 font-display text-[19px]" aria-label="Hackdex home">
+          <Image src="/logo.png" alt="" width={28} height={28} className="rounded-[7px]" data-smooth />
+          <span>Hackdex</span>
         </Link>
 
-        <div className="flex items-center">
-          <nav className="hidden items-center gap-2 md:flex">
-            <NavLink href="/discover" label="Discover" />
-            <NavLink
-              href="/roms"
-              label={
-                <span className="inline-flex items-center gap-2">
-                  <span className="decoration-2 decoration-[var(--accent)] group-data-active:underline">My Base ROMs</span>
-                  <span className="inline-flex items-center rounded-full bg-emerald-600/60 px-2 py-0.5 text-xs text-white font-semibold ring-1 ring-emerald-700/80 dark:bg-emerald-500/20 dark:text-emerald-300 dark:ring-emerald-400/30">
-                    {countReady}
-                  </span>
-                </span>
-              }
-            />
-            <Link
-              href="/submit"
-              className={`inline-flex h-9 items-center justify-center rounded-md px-3 text-sm font-semibold transition-colors bg-[var(--accent)] text-[var(--accent-foreground)] hover:bg-[var(--accent-700)] ${
-                pathname === "/submit" ? "ring-2 ring-[var(--ring)] ring-offset-2 ring-offset-[var(--background)] brightness-110" : ""
-              }`}
-            >
-              Submit
-            </Link>
-            {isAuthenticated && (
-              <Link
-                href="/dashboard"
-                data-active={pathname === "/dashboard" || undefined}
-                className="ml-1 relative group inline-flex items-center justify-center rounded-full ring-1 ring-[var(--border)] p-[2px] data-active:ring-2 data-active:ring-[var(--ring)]"
-                aria-label="Open dashboard"
-                title="Dashboard"
-              >
-                <Avatar uid={userId} url={avatarUrl} size={36} />
-                <div className="absolute inset-0 rounded-full bg-transparent group-hover:bg-black/30 transition-colors m-[2px]" />
-              </Link>
-            )}
-          </nav>
+        <nav className="hidden self-stretch gap-1 md:flex" aria-label="Primary">
+          <NavLink href="/discover" active={pathname.startsWith("/discover")}>
+            Discover
+          </NavLink>
+          <NavLink href="/roms" active={pathname.startsWith("/roms")}>
+            My ROMs
+            {countReady > 0 && <span className="ready-dot" role="img" aria-label={`${countReady} base ROM${countReady === 1 ? "" : "s"} ready`} />}
+          </NavLink>
+        </nav>
 
-          <button
-            type="button"
-            className="md:hidden inline-flex h-9 w-9 items-center justify-center rounded-md text-foreground/80 hover:bg-[var(--surface-2)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ml-2"
-            aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
-            aria-expanded={isMobileMenuOpen}
-            aria-controls="mobile-nav"
-            onClick={() => setIsMobileMenuOpen((v) => !v)}
+        <form role="search" onSubmit={onSearch} className="relative ml-auto hidden text-text-3 md:block">
+          <FiSearch className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2" />
+          <input
+            type="search"
+            name="q"
+            placeholder="Search hacks"
+            aria-label="Search hacks"
+            className="h-[38px] w-[280px] rounded-control border border-transparent bg-surface-2 pl-[38px] pr-3 text-sm text-text outline-none transition-colors placeholder:text-text-3 focus:border-accent focus:bg-surface lg:w-[320px]"
+          />
+        </form>
+
+        <div className="ml-auto flex items-center gap-2 md:ml-0">
+          <ThemeToggle />
+          <Link
+            href="/submit"
+            className="hidden h-[38px] items-center rounded-control px-2.5 font-medium text-text-2 transition-colors hover:bg-surface-2 hover:text-text md:inline-flex"
           >
-            {isMobileMenuOpen ? (
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5"><path fillRule="evenodd" d="M6.225 4.811a1 1 0 0 1 1.414 0L12 9.172l4.361-4.361a1 1 0 1 1 1.414 1.414L13.414 10.586l4.361 4.361a1 1 0 1 1-1.414 1.414L12 12l-4.361 4.361a1 1 0 0 1-1.414-1.414l4.361-4.361-4.361-4.361a1 1 0 0 1 0-1.414Z" clipRule="evenodd"/></svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5"><path fillRule="evenodd" d="M3.75 6.75A.75.75 0 0 1 4.5 6h15a.75.75 0 0 1 0 1.5h-15a.75.75 0 0 1-.75-.75Zm0 5.25a.75.75 0 0 1 .75-.75h15a.75.75 0 0 1 0 1.5h-15a.75.75 0 0 1-.75-.75Zm.75 4.5a.75.75 0 0 0 0 1.5h15a.75.75 0 0 0 0-1.5h-15Z" clipRule="evenodd"/></svg>
-            )}
-          </button>
+            Submit a hack
+          </Link>
+          {userId && (
+            <Link
+              href="/dashboard"
+              aria-current={pathname.startsWith("/dashboard") ? "page" : undefined}
+              className="group relative inline-flex items-center justify-center rounded-full p-[2px] ring-1 ring-line aria-[current=page]:ring-2 aria-[current=page]:ring-accent"
+              aria-label="Open dashboard"
+              title="Dashboard"
+            >
+              <Avatar uid={userId} url={avatarUrl} size={32} />
+              <div className="absolute inset-0 m-[2px] rounded-full bg-transparent transition-colors group-hover:bg-black/20" />
+            </Link>
+          )}
         </div>
-      </div>
 
-      {/* Mobile menu panel (animated) */}
-      <div
-        className={`md:hidden fixed inset-x-0 top-16 z-40 border-b border-[var(--border)] bg-background shadow-sm overflow-hidden transition-all duration-200 ease-out ${
-          isMobileMenuOpen ? "max-h-[70vh] opacity-100 translate-y-0" : "max-h-0 opacity-0 -translate-y-1"
-        }`}
-        id="mobile-nav"
-        role="menu"
-        aria-label="Main menu"
-        aria-hidden={!isMobileMenuOpen}
-      >
-        <div className="px-4 py-2 mb-4">
-          <div className="flex flex-col gap-1">
-            <NavLink href="/discover" label="Discover" className="text-[15px] py-3" onClick={() => setIsMobileMenuOpen(false)} />
-            <NavLink
-              href="/roms"
-              className="text-[15px] py-3"
-              onClick={() => setIsMobileMenuOpen(false)}
-              label={
-                <span className="inline-flex items-center gap-2">
-                  <span className="decoration-2 decoration-[var(--accent)] group-data-active:underline">My Base ROMs</span>
-                  <span className="inline-flex items-center rounded-full bg-emerald-600/60 px-2 py-0.5 text-xs text-white font-semibold ring-1 ring-emerald-700/80 dark:bg-emerald-500/20 dark:text-emerald-300 dark:ring-emerald-400/30">
-                    {countReady}
-                  </span>
-                </span>
-              }
-            />
-            <NavLink
-              href="/submit"
-              label="Submit"
-              className="text-[15px] py-3 rounded-full font-semibold text-[var(--accent)] ring-2 ring-[var(--accent)]/20 hover:bg-[var(--accent)]/10"
-              onClick={() => setIsMobileMenuOpen(false)}
-            />
-            {isAuthenticated && (
-              <Link
-                href="/dashboard"
-                onClick={() => setIsMobileMenuOpen(false)}
-                data-active={pathname === "/dashboard" || undefined}
-                className="mt-1 inline-flex items-center gap-3 rounded-md px-3 py-3 ring-1 ring-[var(--border)]"
-                aria-label="Open dashboard"
-                title="Dashboard"
-              >
-                <Avatar uid={userId} url={avatarUrl} size={28} />
-                <span className="text-[15px]">Dashboard</span>
-              </Link>
-            )}
-          </div>
-        </div>
+        {/* Hack page portals its compact title + action bar here; hidden while empty. */}
+        <div id={HEADER_COMPACT_ID} className="absolute inset-0 empty:hidden" />
       </div>
-
-      {/* Scrim overlay */}
-      <button
-        type="button"
-        aria-hidden={!isMobileMenuOpen}
-        aria-label="Close menu"
-        title="Close menu"
-        tabIndex={isMobileMenuOpen ? 0 : -1}
-        className={`md:hidden fixed inset-0 top-16 h-screen z-30 bg-black/50 transition-opacity duration-200 ${
-          isMobileMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-        }`}
-        onClick={() => setIsMobileMenuOpen(false)}
-      />
     </header>
   );
 }
-
-
