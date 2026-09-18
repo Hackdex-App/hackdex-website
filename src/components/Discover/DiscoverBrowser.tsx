@@ -492,13 +492,13 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
               {view === "grid" ? (
                 <div className="mt-4 grid grid-cols-1 gap-3 md:mt-5 md:grid-cols-[repeat(auto-fill,minmax(264px,1fr))] md:gap-5" aria-label="Hacks">
                   {paginated.map((hack) => (
-                    <HackCard key={hack.slug} hack={{ ...hack, updatedAt: hack.publishedAt }} fill />
+                    <HackCard key={hack.slug} hack={hack} fill />
                   ))}
                 </div>
               ) : (
                 <div className="mt-4 flex flex-col gap-2.5" aria-label="Hacks">
                   {paginated.map((hack) => (
-                    <HackRow key={hack.slug} hack={{ ...hack, updatedAt: hack.publishedAt }} />
+                    <HackRow key={hack.slug} hack={hack} />
                   ))}
                 </div>
               )}

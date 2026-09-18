@@ -7,7 +7,7 @@ import useEmblaCarousel from "embla-carousel-react";
 import { usePathname } from "next/navigation";
 import { FaRegImages } from "react-icons/fa6";
 import { FiChevronLeft, FiChevronRight, FiDownload } from "react-icons/fi";
-import { formatCompactNumber, formatRelativeDate, OrderedTag } from "@/utils/format";
+import { formatCompactNumber, OrderedTag } from "@/utils/format";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
 import { baseGameLabel, baseRoms, type Platform } from "@/data/baseRoms";
 import type { Database } from "@/types/db";
@@ -26,8 +26,6 @@ export interface HackCardAttributes {
   description?: string;
   is_archive: boolean;
   completion_status?: Database["public"]["Enums"]["Completion Status"] | null;
-  /** ISO date of the latest published patch; shown as "3 hours ago" / "Mar 2025". */
-  updatedAt?: string | null;
 }
 
 interface HackCardProps {
@@ -187,7 +185,6 @@ function Shots({ images, platform, ready, fill, placeholder }: { images: string[
 }
 
 function Facts({ hack, base, ready, version = false, column = false }: { hack: HackCardAttributes; base?: (typeof baseRoms)[number]; ready: boolean; version?: boolean; column?: boolean }) {
-  const updated = formatRelativeDate(hack.updatedAt);
   return (
     <span
       className={`flex items-center gap-2.5 overflow-hidden whitespace-nowrap text-[13px] leading-tight text-text-3 ${
@@ -204,7 +201,6 @@ function Facts({ hack, base, ready, version = false, column = false }: { hack: H
         </span>
       )}
       {version && <span className="truncate">{hack.version}</span>}
-      {updated && <span className={`truncate ${column ? "order-1" : ""}`}>{updated}</span>}
       <span
         className={`inline-flex flex-none items-center gap-[3px] font-medium ${column ? "text-[15px] text-text" : "ml-auto text-text-2"}`}
         aria-label={`${formatCompactNumber(hack.downloads)} downloads`}
@@ -216,7 +212,7 @@ function Facts({ hack, base, ready, version = false, column = false }: { hack: H
   );
 }
 
-/** Grid card: cover carousel, title, author + completion, summary, first two tags, then base / updated / downloads. */
+/** Grid card: cover carousel, title, author + completion, summary, first two tags, then base / downloads. */
 export default function HackCard({ hack, clickable = true, prefetch = false, className = "", fill = false }: HackCardProps) {
   const { base, ready } = useReadiness(hack.baseRomId);
   const images = hack.covers.filter(Boolean);

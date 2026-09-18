@@ -38,7 +38,6 @@ function toCard(h: DiscoverHack): HackCardAttributes {
     summary: h.summary,
     is_archive: h.is_archive,
     completion_status: h.completion_status,
-    updatedAt: h.publishedAt,
   };
 }
 
