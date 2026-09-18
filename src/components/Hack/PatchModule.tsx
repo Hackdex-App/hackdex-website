@@ -72,8 +72,9 @@ function useScrolledBehindHeader(ref: React.RefObject<HTMLElement | null>) {
 /**
  * Patch module: status line, version, the one action, and the facts a player
  * checks before trusting a download. Lives at the top of the hack page rail.
- * Once it scrolls behind the site header the title, version picker, and the
- * same action reappear in a compact bar there, so patching is never far away.
+ * Once the action button scrolls behind the site header the title, version
+ * picker, and the same action reappear in a compact bar there, so patching is
+ * never far away.
  */
 export default function PatchModule({
   title,
@@ -108,7 +109,8 @@ export default function PatchModule({
   const { loading: baseRomsLoading } = useBaseRoms();
   const uploadInputRef = React.useRef<HTMLInputElement | null>(null);
   const moduleRef = React.useRef<HTMLDivElement | null>(null);
-  const scrolledOut = useScrolledBehindHeader(moduleRef);
+  const actionRef = React.useRef<HTMLDivElement | null>(null);
+  const scrolledOut = useScrolledBehindHeader(actionRef);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [patchAgainReady, setPatchAgainReady] = React.useState(true);
   const [versionPickerOpen, setVersionPickerOpen] = React.useState(false);
@@ -291,11 +293,18 @@ export default function PatchModule({
         open: onOnboardingGateClick,
         openFromAfar: () => {
           const el = moduleRef.current;
-          if (el) {
-            const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-            window.scrollTo({ top: window.scrollY + el.getBoundingClientRect().top - 80, behavior: reduce ? "auto" : "smooth" });
-          }
-          onOnboardingGateClick();
+          if (!el) return onOnboardingGateClick();
+          const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+          const top = Math.max(0, window.scrollY + el.getBoundingClientRect().top - 80);
+          window.scrollTo({ top, behavior: reduce ? "auto" : "smooth" });
+          // The tour locks body scroll once open, which would freeze a smooth
+          // scroll midway, so wait until the page has settled at the target.
+          const started = performance.now();
+          const settle = () => {
+            if (Math.abs(window.scrollY - top) < 2 || performance.now() - started > 1000) onOnboardingGateClick();
+            else requestAnimationFrame(settle);
+          };
+          requestAnimationFrame(settle);
         },
       }
     : null;
@@ -348,7 +357,9 @@ export default function PatchModule({
           )}
         </div>
 
-        <ActionButton />
+        <div ref={actionRef}>
+          <ActionButton />
+        </div>
         {gate && <HackOnboardingGate variant="row" label={gate.label} onClick={gate.open} beacon={gate.beacon} />}
 
         <dl className="mt-0.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[13px] leading-[1.45]">
