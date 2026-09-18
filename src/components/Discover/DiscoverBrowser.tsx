@@ -324,7 +324,7 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
     <div className="grid gap-8 md:grid-cols-[240px_minmax(0,1fr)]">
       <aside className="hidden min-w-0 md:block" aria-label="Filters">
         <div className="sticky top-[84px]">
-          <div className="max-h-[calc(100vh-84px)] overflow-y-auto overscroll-contain pb-4 pt-1 [scrollbar-width:thin]">
+          <div className="max-h-[calc(100vh-84px)] overflow-y-auto overscroll-contain pb-4 pr-3 pt-1 [scrollbar-gutter:stable] [scrollbar-width:thin]">
             <div className="flex h-12 items-baseline justify-between">
               <h2 className="text-[15px] font-semibold">Filters</h2>
               {hasFilters && (
