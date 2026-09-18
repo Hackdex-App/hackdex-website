@@ -24,6 +24,8 @@ interface HackTabsProps {
   changes?: { version: string; date: string; body: React.ReactNode } | null;
   versions: HackVersionRow[];
   baseRomName: string | null;
+  /** Draft editing: replaces the About section (heading included) with the description editor. */
+  aboutPanel?: React.ReactNode;
   /** Draft editing: replaces the Gallery panel with the screenshot manager. */
   gallery?: React.ReactNode;
   /** Draft editing: action row under the versions table, e.g. Upload a version. */
@@ -34,7 +36,7 @@ const TAB_IDS = ["about", "gallery", "versions"] as const;
 type TabId = (typeof TAB_IDS)[number];
 
 /** About / Gallery / Versions for the hack page body. The lightbox is shared by both galleries. */
-export default function HackTabs({ slug, title, author, images, about, changes, versions, baseRomName, gallery, versionsAction }: HackTabsProps) {
+export default function HackTabs({ slug, title, author, images, about, changes, versions, baseRomName, aboutPanel, gallery, versionsAction }: HackTabsProps) {
   const [tab, setTab] = React.useState<TabId>("about");
   const [shot, setShot] = React.useState(0);
   const [open, setOpen] = React.useState(false);
@@ -107,10 +109,12 @@ export default function HackTabs({ slug, title, author, images, about, changes, 
             </section>
           )}
 
-          <section>
-            <h2 className="mb-2.5 text-lg font-semibold leading-tight">About</h2>
-            <div className="prose prose-sm max-w-[70ch] text-text-2">{about}</div>
-          </section>
+          {aboutPanel ?? (
+            <section>
+              <h2 className="mb-2.5 text-lg font-semibold leading-tight">About</h2>
+              <div className="prose prose-sm max-w-[70ch] text-text-2">{about}</div>
+            </section>
+          )}
 
           {changes && (
             <section>

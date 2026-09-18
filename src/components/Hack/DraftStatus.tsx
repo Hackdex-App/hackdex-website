@@ -74,14 +74,14 @@ export function DraftStatusStrip({ slug, stage, submittedAt, required, preview =
           {stage === "listed" && <span className="ready-dot" />}
           {c.pill}
         </span>
-        <p className="min-w-0 flex-1 text-text-2">{preview ? "Previewing as a player. This is what the page looks like once listed." : text}</p>
+        <p className="min-w-0 basis-full text-text-2 md:basis-auto md:flex-1">{preview ? "Previewing as a player. This is what the page looks like once listed." : text}</p>
         {editing && !manual && editing.status !== "idle" && (
           <span className={`inline-flex items-center gap-1 text-xs ${editing.status === "error" ? "text-error" : "text-text-3"}`} aria-live="polite">
             {editing.status === "saved" && <FiCheck className="h-3.5 w-3.5 text-ready" />}
             {editing.status === "saving" ? "Saving…" : editing.status === "saved" ? "Saved" : "Couldn't save"}
           </span>
         )}
-        <div className="flex flex-none items-center gap-2">
+        <div className="flex flex-none items-center gap-2 max-md:ml-auto">
           {stage === "listed" ? (
             <>
               <Link

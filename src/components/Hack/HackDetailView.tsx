@@ -11,7 +11,7 @@ import { DraftEditingProvider } from "@/components/Hack/Draft/DraftEditing";
 import DraftHeader from "@/components/Hack/Draft/DraftHeader";
 import DraftAbout from "@/components/Hack/Draft/DraftAbout";
 import DraftGallery from "@/components/Hack/Draft/DraftGallery";
-import DraftDetails from "@/components/Hack/Draft/DraftDetails";
+import DraftDetails, { EditDetailsLink } from "@/components/Hack/Draft/DraftDetails";
 import type { CatalogTagRow } from "@/types/catalogTag";
 import PokeCommunityIcon from "@/components/Icons/PokeCommunityIcon";
 import Markdown from "@/components/Markdown/Markdown";
@@ -263,13 +263,7 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
       <div className="grid items-start gap-6 md:grid-cols-[minmax(0,1fr)_300px] md:grid-rows-[auto_1fr] md:[grid-template-areas:'main_patch'_'main_rail']">
         <div className="order-1 md:order-none md:[grid-area:patch]">
           {editing ? (
-            <div className="flex flex-col gap-3">
-              <DraftChecklist slug={hack.slug} stage={editor.stage} required={editor.checklist.required} recommended={editor.checklist.recommended} />
-              <DraftDetails
-                values={{ base_rom: hack.base_rom, language: hack.language ?? "English", completion_status: hack.completion_status, box_art: hack.box_art, social_links: social }}
-                baseLocked={patchId !== null}
-              />
-            </div>
+            <DraftChecklist slug={hack.slug} stage={editor.stage} required={editor.checklist.required} recommended={editor.checklist.recommended} />
           ) : showPatchModule ? (
             <HackActions
               title={hack.title}
@@ -305,7 +299,8 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
             title={hack.title}
             author={author}
             images={images}
-            about={editing ? <DraftAbout description={hack.description} /> : <Markdown headingLevelOffset={1}>{hack.description}</Markdown>}
+            about={<Markdown headingLevelOffset={1}>{hack.description}</Markdown>}
+            aboutPanel={editing ? <DraftAbout description={hack.description} /> : undefined}
             changes={changes}
             versions={versionRows}
             baseRomName={baseRom ? baseGameLabel(baseRom.name) : null}
@@ -321,7 +316,8 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
         </div>
 
         <aside className="order-3 flex flex-col md:order-none md:[grid-area:rail]">
-          <RailGroup title="Compatibility">
+          <RailEditor editing={editing} values={{ base_rom: hack.base_rom, language: hack.language ?? "English", completion_status: hack.completion_status, box_art: hack.box_art, social_links: social }} baseLocked={patchId !== null}>
+          <RailGroup title="Compatibility" action={editing && <EditDetailsLink />}>
             <Facts
               rows={[
                 ["Base ROM", baseRom ? <span className="plat-dot" data-platform={baseRom.platform}>{baseRom.name}</span> : "Unknown"],
@@ -331,18 +327,21 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
             />
           </RailGroup>
 
-          {hack.box_art && (
-            <RailGroup title="Box art">
+          {(hack.box_art || editing) && (
+            <RailGroup title="Box art" action={editing && <EditDetailsLink />}>
+              {!hack.box_art && <p className="text-sm text-text-3">None yet.</p>}
+              {hack.box_art && (<>
               <a href={hack.box_art} download target="_blank" rel="noreferrer" className="mb-2 block w-[min(100%,200px)] overflow-hidden rounded-frame border border-line shadow-rest transition-shadow hover:shadow-lift">
                 <Image src={hack.box_art} alt={`${hack.title} box art`} width={200} height={200} className="h-auto w-full" unoptimized />
               </a>
               <a href={hack.box_art} download target="_blank" rel="noreferrer" className="text-link-hd text-sm">
                 Download
               </a>
+              </>)}
             </RailGroup>
           )}
 
-          <RailGroup title="Details">
+          <RailGroup title="Details" action={editing && <EditDetailsLink />}>
             <Facts
               rows={[
                 ...(!isArchive ? [["Downloads", <DownloadsBadge key="dl" slug={hack.slug} initialCount={downloads ?? 0} />] as const] : []),
@@ -353,13 +352,14 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
             />
           </RailGroup>
 
-          {social && (social.discord || social.twitter || social.pokecommunity || social.github) && (
-            <RailGroup title="Links">
+          {((social && (social.discord || social.twitter || social.pokecommunity || social.github)) || editing) && (
+            <RailGroup title="Links" action={editing && <EditDetailsLink />}>
+              {!(social && (social.discord || social.twitter || social.pokecommunity || social.github)) && <p className="text-sm text-text-3">None yet.</p>}
               <ul className="flex flex-col gap-1.5 text-sm">
-                {social.discord && <SocialLink href={social.discord} icon={<FaDiscord size={16} />} label="Discord" />}
-                {social.twitter && <SocialLink href={social.twitter} icon={<FaTwitter size={16} />} label="Twitter" />}
-                {social.pokecommunity && <SocialLink href={social.pokecommunity} icon={<PokeCommunityIcon width={16} height={16} color="currentColor" />} label="PokéCommunity" />}
-                {social.github && <SocialLink href={social.github} icon={<FaGithub size={16} />} label="GitHub" />}
+                {social?.discord && <SocialLink href={social.discord} icon={<FaDiscord size={16} />} label="Discord" />}
+                {social?.twitter && <SocialLink href={social.twitter} icon={<FaTwitter size={16} />} label="Twitter" />}
+                {social?.pokecommunity && <SocialLink href={social.pokecommunity} icon={<PokeCommunityIcon width={16} height={16} color="currentColor" />} label="PokéCommunity" />}
+                {social?.github && <SocialLink href={social.github} icon={<FaGithub size={16} />} label="GitHub" />}
               </ul>
             </RailGroup>
           )}
@@ -409,6 +409,7 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
               )}
             </div>
           </RailGroup>
+          </RailEditor>
         </aside>
       </div>
     </div>
@@ -417,10 +418,23 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
   return editing ? <DraftEditingProvider slug={hack.slug} live={!hack.approved}>{page}</DraftEditingProvider> : page;
 }
 
-function RailGroup({ title, children }: { title: string; children: React.ReactNode }) {
+/** In edit mode the rail is wrapped by the details sheet so group headings can open it. */
+function RailEditor({ editing, values, baseLocked, children }: { editing: boolean; values: React.ComponentProps<typeof DraftDetails>["values"]; baseLocked: boolean; children: React.ReactNode }) {
+  if (!editing) return <>{children}</>;
+  return (
+    <DraftDetails values={values} baseLocked={baseLocked}>
+      {children}
+    </DraftDetails>
+  );
+}
+
+function RailGroup({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
     <section className="border-t border-line px-1 pt-[18px] first:border-t-0 first:pt-0 [&+&]:mt-[18px]">
-      <h2 className="mb-2.5 text-[13px] font-semibold tracking-[.01em] text-text-3">{title}</h2>
+      <h2 className="mb-2.5 flex items-baseline justify-between text-[13px] font-semibold tracking-[.01em] text-text-3">
+        {title}
+        {action}
+      </h2>
       {children}
     </section>
   );

@@ -23,6 +23,21 @@ interface DraftDetailsProps {
   values: DraftDetailsValues;
   /** A verified patch pins the base ROM; the field shows locked. */
   baseLocked: boolean;
+  /** The rail. Its groups open the sheet through EditDetailsLink. */
+  children: React.ReactNode;
+}
+
+const OpenCtx = React.createContext<(() => void) | null>(null);
+
+/** "Edit" link for a rail group heading; opens the details sheet on the fields that group shows. */
+export function EditDetailsLink() {
+  const open = React.useContext(OpenCtx);
+  if (!open) return null;
+  return (
+    <button type="button" onClick={open} className="inline-flex items-center gap-1 text-[12px] font-medium text-link hover:underline hover:underline-offset-[3px]">
+      <FiEdit2 className="h-3 w-3" /> Edit
+    </button>
+  );
 }
 
 const LANGUAGES = ["English", "Spanish", "French", "German", "Italian", "Portuguese", "Japanese", "Chinese", "Korean", "Other"];
@@ -36,8 +51,8 @@ const SOCIAL: { key: keyof Social; label: string; placeholder: string }[] = [
 
 const urlLike = (s: string) => !s || /^https?:\/\//i.test(s);
 
-/** "Edit details" button opening a sheet with the fields that are not edited in place. Saves (or stages, on listed hacks) on the footer button. */
-export default function DraftDetails({ values, baseLocked }: DraftDetailsProps) {
+/** Wraps the rail and owns the details sheet for the fields that are not edited in place: base ROM, language, completion, box art, links. Saves (or stages, on listed hacks) on the footer button. */
+export default function DraftDetails({ values, baseLocked, children }: DraftDetailsProps) {
   const { save, live } = useDraftEditing();
   const [open, setOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
@@ -70,15 +85,11 @@ export default function DraftDetails({ values, baseLocked }: DraftDetailsProps) 
 
   const baseRom = baseRoms.find((r) => r.id === base);
 
+  const openSheet = React.useCallback(() => setOpen(true), []);
+
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-control border border-line-strong bg-surface text-sm font-medium text-text transition-colors hover:border-text-3"
-      >
-        <FiEdit2 className="h-4 w-4 text-text-3" /> Edit details
-      </button>
+    <OpenCtx.Provider value={openSheet}>
+      {children}
       {open && (
         <Sheet
           title="Details"
@@ -140,7 +151,7 @@ export default function DraftDetails({ values, baseLocked }: DraftDetailsProps) 
           </div>
         </Sheet>
       )}
-    </>
+    </OpenCtx.Provider>
   );
 }
 
