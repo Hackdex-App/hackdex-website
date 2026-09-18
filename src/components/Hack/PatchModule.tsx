@@ -69,6 +69,24 @@ function useScrolledBehindHeader(ref: React.RefObject<HTMLElement | null>) {
   return out;
 }
 
+const SCROLL_KEYS = new Set(["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "]);
+
+/** Swallows wheel, touch, and key scrolling until the returned release is called. */
+function holdUserScroll() {
+  const block = (event: Event) => event.preventDefault();
+  const blockKeys = (event: KeyboardEvent) => {
+    if (SCROLL_KEYS.has(event.key)) event.preventDefault();
+  };
+  window.addEventListener("wheel", block, { passive: false });
+  window.addEventListener("touchmove", block, { passive: false });
+  window.addEventListener("keydown", blockKeys);
+  return () => {
+    window.removeEventListener("wheel", block);
+    window.removeEventListener("touchmove", block);
+    window.removeEventListener("keydown", blockKeys);
+  };
+}
+
 /**
  * Patch module: status line, version, the one action, and the facts a player
  * checks before trusting a download. Lives at the top of the hack page rail.
@@ -283,26 +301,29 @@ export default function PatchModule({
   const compactTarget = mounted && scrolledOut ? document.getElementById(HEADER_COMPACT_ID) : null;
 
   // The help entry point shows wherever the action is: in the module, beside the
-  // compact action on desktop, and as a floating pill on phones. From the compact
-  // homes it scrolls back to the module first, since the tour spotlights the
-  // full-size controls.
+  // compact action on desktop, and as a floating pill on phones. Every home first
+  // brings the module to a fixed spot under the header, since the tour spotlights
+  // the full-size controls and anchors its card to the module.
   const gate = onboardingGateLabel && onOnboardingGateClick && errorMessage === null && !busy
     ? {
         label: onboardingGateLabel,
         beacon: kind === "needs-rom",
-        open: onOnboardingGateClick,
-        openFromAfar: () => {
+        open: () => {
           const el = moduleRef.current;
           if (!el) return onOnboardingGateClick();
           const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
           const top = Math.max(0, window.scrollY + el.getBoundingClientRect().top - 80);
           window.scrollTo({ top, behavior: reduce ? "auto" : "smooth" });
           // The tour locks body scroll once open, which would freeze a smooth
-          // scroll midway, so wait until the page has settled at the target.
+          // scroll midway, so hold the user's own scrolling until the page has
+          // settled at the target, then open.
+          const release = holdUserScroll();
           const started = performance.now();
           const settle = () => {
-            if (Math.abs(window.scrollY - top) < 2 || performance.now() - started > 1000) onOnboardingGateClick();
-            else requestAnimationFrame(settle);
+            if (Math.abs(window.scrollY - top) < 2 || performance.now() - started > 1000) {
+              release();
+              onOnboardingGateClick();
+            } else requestAnimationFrame(settle);
           };
           requestAnimationFrame(settle);
         },
@@ -394,7 +415,7 @@ export default function PatchModule({
               <div className="flex items-center gap-2 max-md:w-full">
                 {gate && (
                   <div className="hidden md:block">
-                    <HackOnboardingGate variant="icon" label={gate.label} onClick={gate.openFromAfar} beacon={gate.beacon} />
+                    <HackOnboardingGate variant="icon" label={gate.label} onClick={gate.open} beacon={gate.beacon} />
                   </div>
                 )}
                 {hasVersionPicker && (
@@ -408,7 +429,7 @@ export default function PatchModule({
           </div>,
           compactTarget,
         )}
-      {compactTarget && gate && createPortal(<HackOnboardingGate variant="pill" label={gate.label} onClick={gate.openFromAfar} beacon={gate.beacon} />, document.body)}
+      {compactTarget && gate && createPortal(<HackOnboardingGate variant="pill" label={gate.label} onClick={gate.open} beacon={gate.beacon} />, document.body)}
     </div>
   );
 }
