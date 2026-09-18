@@ -54,7 +54,7 @@ export default function StartDraftForm({ disabled = false }: { disabled?: boolea
       setBusy(false);
       return;
     }
-    router.push(`/hack/${res.slug}/edit`);
+    router.push(`/hack/${res.slug}/session`);
   }
 
   return (

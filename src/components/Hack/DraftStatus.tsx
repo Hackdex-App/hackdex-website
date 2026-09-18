@@ -4,8 +4,9 @@ import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { FiAlertCircle, FiCheck, FiEye, FiExternalLink } from "react-icons/fi";
+import { FiAlertCircle, FiCheck, FiEdit3, FiEye, FiExternalLink } from "react-icons/fi";
 import { submitForReview } from "@/app/submit/actions";
+import { useDraftEditingOptional } from "@/components/Hack/Draft/DraftEditing";
 
 export type DraftStage = "draft" | "review" | "listed";
 
@@ -23,6 +24,8 @@ interface DraftStatusProps {
   submittedAt: string | null;
   required: ChecklistItem[];
   recommended: ChecklistItem[];
+  /** Set while the creator is previewing the draft as a player; swaps the preview link for Back to editing. */
+  preview?: boolean;
 }
 
 const COPY: Record<DraftStage, { pill: string; tone: string }> = {
@@ -31,9 +34,10 @@ const COPY: Record<DraftStage, { pill: string; tone: string }> = {
   listed: { pill: "Listed", tone: "bg-ready-soft text-text" },
 };
 
-/** Strip under the page title: where the hack stands, a preview link, and Submit for review when the checklist is clear. */
-export function DraftStatusStrip({ slug, stage, submittedAt, required }: Omit<DraftStatusProps, "recommended">) {
+/** Strip at the top of a draft: where the hack stands, autosave state, preview, and Submit for review when the checklist is clear. */
+export function DraftStatusStrip({ slug, stage, submittedAt, required, preview = false }: Omit<DraftStatusProps, "recommended">) {
   const router = useRouter();
+  const editing = useDraftEditingOptional();
   const [busy, setBusy] = React.useState(false);
   const left = required.filter((r) => !r.done).length;
   const canSubmit = left === 0;
@@ -69,12 +73,27 @@ export function DraftStatusStrip({ slug, stage, submittedAt, required }: Omit<Dr
           {stage === "listed" && <span className="ready-dot" />}
           {c.pill}
         </span>
-        <p className="min-w-0 flex-1 text-text-2">{text}</p>
+        <p className="min-w-0 flex-1 text-text-2">{preview ? "Previewing as a player. This is what the page looks like once listed." : text}</p>
+        {editing && editing.status !== "idle" && (
+          <span className={`inline-flex items-center gap-1 text-xs ${editing.status === "error" ? "text-error" : "text-text-3"}`} aria-live="polite">
+            {editing.status === "saved" && <FiCheck className="h-3.5 w-3.5 text-ready" />}
+            {editing.status === "saving" ? "Saving…" : editing.status === "saved" ? "Saved" : "Couldn't save"}
+          </span>
+        )}
         <div className="flex flex-none items-center gap-2">
-          <Link href={`/hack/${slug}`} className="inline-flex h-[38px] items-center gap-1.5 rounded-control bg-surface-2 px-3 text-sm font-medium text-text transition-colors hover:bg-line">
-            {stage === "listed" ? <FiExternalLink className="h-4 w-4" /> : <FiEye className="h-4 w-4" />}
-            {stage === "listed" ? "View public page" : "Preview as a player"}
-          </Link>
+          {stage === "listed" ? (
+            <Link href={`/hack/${slug}`} className="inline-flex h-[38px] items-center gap-1.5 rounded-control bg-surface-2 px-3 text-sm font-medium text-text transition-colors hover:bg-line">
+              <FiExternalLink className="h-4 w-4" /> View public page
+            </Link>
+          ) : preview ? (
+            <Link href={`/hack/${slug}/session`} className="inline-flex h-[38px] items-center gap-1.5 rounded-control bg-surface-2 px-3 text-sm font-medium text-text transition-colors hover:bg-line">
+              <FiEdit3 className="h-4 w-4" /> Back to editing
+            </Link>
+          ) : (
+            <Link href={`/hack/${slug}/session?preview=1`} className="inline-flex h-[38px] items-center gap-1.5 rounded-control bg-surface-2 px-3 text-sm font-medium text-text transition-colors hover:bg-line">
+              <FiEye className="h-4 w-4" /> Preview as a player
+            </Link>
+          )}
           {stage === "draft" && (
             <button
               type="button"

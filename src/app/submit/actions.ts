@@ -461,7 +461,7 @@ export async function getDraftChecklist(slug: string) {
   const description = hack.description.trim();
   const required = [
     { key: "base", label: "Base ROM chosen", done: !!hack.base_rom },
-    { key: "patch", label: "A patch file uploaded", done: (patches ?? 0) > 0, href: "versions" },
+    { key: "patch", label: "A patch file uploaded", done: (patches ?? 0) > 0, href: "edit/patch" },
     { key: "summary", label: "Summary under 100 characters", done: hack.summary.trim().length > 0 && hack.summary.length <= 100 },
     { key: "description", label: "A description", done: description.length > 0 },
     { key: "completion", label: "Completion status set", done: !!hack.completion_status },

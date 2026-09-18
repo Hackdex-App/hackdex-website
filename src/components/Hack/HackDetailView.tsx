@@ -6,6 +6,13 @@ import HackActions from "@/components/Hack/HackActions";
 import HackOptionsMenu from "@/components/Hack/HackOptionsMenu";
 import HackShareButton from "@/components/Hack/HackShareButton";
 import HackTabs, { type HackVersionRow } from "@/components/Hack/HackTabs";
+import { DraftChecklist, DraftStatusStrip, type ChecklistItem, type DraftStage } from "@/components/Hack/DraftStatus";
+import { DraftEditingProvider } from "@/components/Hack/Draft/DraftEditing";
+import DraftHeader from "@/components/Hack/Draft/DraftHeader";
+import DraftAbout from "@/components/Hack/Draft/DraftAbout";
+import DraftGallery from "@/components/Hack/Draft/DraftGallery";
+import DraftDetails from "@/components/Hack/Draft/DraftDetails";
+import type { CatalogTagRow } from "@/types/catalogTag";
 import PokeCommunityIcon from "@/components/Icons/PokeCommunityIcon";
 import Markdown from "@/components/Markdown/Markdown";
 import { getHackPageUrl } from "@/app/hack/[slug]/hack-page-shared";
@@ -17,10 +24,22 @@ import { MenuItem } from "@headlessui/react";
 import Image from "next/image";
 import Link from "next/link";
 import { FaCircleCheck, FaDiscord, FaGithub, FaTwitter } from "react-icons/fa6";
-import { FiAlertTriangle, FiArrowUpRight, FiInfo, FiMail } from "react-icons/fi";
+import { FiAlertTriangle, FiArrowUpRight, FiInfo, FiMail, FiUpload } from "react-icons/fi";
 import { RiArchiveStackFill } from "react-icons/ri";
 import type { CreativeWork, WithContext } from "schema-dts";
 import serialize from "serialize-javascript";
+
+/** Everything the in-place draft editor needs beyond the page metadata. */
+export interface DraftEditorData {
+  stage: DraftStage;
+  checklist: { required: ChecklistItem[]; recommended: ChecklistItem[] };
+  catalogTags: CatalogTagRow[];
+  tagsUpdatedAt: string;
+  /** Storage keys aligned with metadata.images. */
+  coverKeys: string[];
+  /** Set while the creator previews the draft as a player: the strip stays, the fields go. */
+  preview: boolean;
+}
 
 interface HackDetailViewProps {
   metadata: HackMetadata;
@@ -29,9 +48,11 @@ interface HackDetailViewProps {
   canUploadPatch: boolean;
   isAdmin: boolean;
   hasReviewThread?: boolean;
+  /** Present on the session page when the creator is editing an unlisted hack in place. */
+  editor?: DraftEditorData;
 }
 
-export default function HackDetailView({ metadata, downloads, canEdit, canUploadPatch, isAdmin, hasReviewThread = false }: HackDetailViewProps) {
+export default function HackDetailView({ metadata, downloads, canEdit, canUploadPatch, isAdmin, hasReviewThread = false, editor }: HackDetailViewProps) {
   const { hack, images, tags, profile, otherHacks, patch, displayVersion } = metadata;
   const baseRom = baseRoms.find((rom) => rom.id === hack.base_rom);
   const author = hack.original_author ? hack.original_author : profile?.username ? `@${profile.username}` : "Unknown";
@@ -101,8 +122,10 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
 
   const lastUpdated = formatRelativeDate(patchCreatedAt);
   const showPatchModule = !isInformationalArchive && !hasMissingPatch;
+  const editing = editor !== undefined && !editor.preview;
+  const uploadHref = `/hack/${hack.slug}/edit/patch`;
 
-  return (
+  const page = (
     <div className="mx-auto w-full max-w-[1164px] px-6">
       <div style={{ display: "none" }} aria-hidden="true">
         <a href={`/api/download/${hack.slug}/${hack.slug}.bps`} tabIndex={-1} aria-hidden="true" />
@@ -118,7 +141,13 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
         </Notice>
       )}
 
-      {isDraft && (
+      {editor && (
+        <div className="mt-5">
+          <DraftStatusStrip slug={hack.slug} stage={editor.stage} submittedAt={hack.submitted_at} required={editor.checklist.required} preview={editor.preview} />
+        </div>
+      )}
+
+      {isDraft && !editor && (
         <Notice tone="info" icon={<FiInfo size={22} />} title="This is a private draft.">
           Only you can see this page. Finish the checklist on the{" "}
           <Link href={`/hack/${hack.slug}/edit`} className="text-link-hd">
@@ -128,7 +157,7 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
         </Notice>
       )}
 
-      {!hack.approved && !isDraft && (
+      {!hack.approved && !isDraft && !editor && (
         <>
           {hasMissingPatch &&
             (isAdmin ? (
@@ -170,8 +199,9 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
       )}
 
       <header className="flex flex-col gap-4 pb-6 pt-5 md:flex-row md:items-start md:justify-between md:pb-7 md:pt-8">
-        <div className="min-w-0 max-w-[820px]">
-          <h1 className="font-display text-[28px] leading-[1.1] text-balance md:text-[clamp(32px,3.4vw,40px)]">{hack.title}</h1>
+        <div className={`min-w-0 max-w-[820px] ${editing ? "flex-1" : ""}`}>
+          {!editing && <h1 className="font-display text-[28px] leading-[1.1] text-balance md:text-[clamp(32px,3.4vw,40px)]">{hack.title}</h1>}
+          {editing && <DraftHeader title={hack.title} summary={hack.summary} tags={tags} catalogTags={editor.catalogTags} tagsUpdatedAt={editor.tagsUpdatedAt} />}
           <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[15px] text-text-2 md:text-base">
             {!hack.original_author && <Avatar uid={hack.created_by} url={profile?.avatar_url ?? null} size={24} />}
             <span>
@@ -193,8 +223,12 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
               )
             )}
           </p>
-          <p className="mt-3 max-w-[70ch] text-[14px] text-text-2 md:text-[15px]">{hack.summary}</p>
-          <CollapsibleTags tags={tags} />
+          {!editing && (
+            <>
+              <p className="mt-3 max-w-[70ch] text-[14px] text-text-2 md:text-[15px]">{hack.summary}</p>
+              <CollapsibleTags tags={tags} />
+            </>
+          )}
         </div>
         <div className="flex flex-none items-center gap-2 md:pt-2">
           <HackShareButton title={hack.title} url={pageUrl} author={hack.original_author || profile?.username || null} />
@@ -243,6 +277,11 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
                   </p>
                 )}
               </div>
+              {editing && (
+                <Link href={uploadHref} className="mt-3 inline-flex h-12 w-full items-center justify-center gap-2 rounded-control bg-accent-deep px-5 text-[15px] font-semibold text-white transition-colors hover:bg-accent-hover">
+                  <FiUpload className="h-5 w-5" /> Upload the patch
+                </Link>
+              )}
             </div>
           )}
         </div>
@@ -253,14 +292,31 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
             title={hack.title}
             author={author}
             images={images}
-            about={<Markdown headingLevelOffset={1}>{hack.description}</Markdown>}
+            about={editing ? <DraftAbout description={hack.description} /> : <Markdown headingLevelOffset={1}>{hack.description}</Markdown>}
             changes={changes}
             versions={versionRows}
             baseRomName={baseRom ? baseGameLabel(baseRom.name) : null}
+            gallery={editing ? <DraftGallery covers={editor.coverKeys.map((key, i) => ({ key, url: images[i] }))} platform={baseRom?.platform} /> : undefined}
+            versionsAction={
+              editing ? (
+                <Link href={uploadHref} className="inline-flex h-10 w-fit items-center gap-2 rounded-control border border-line-strong bg-surface px-4 text-sm font-medium transition-colors hover:border-text-3">
+                  <FiUpload className="h-4 w-4 text-text-3" /> {versionRows.length === 0 ? "Upload the patch" : "Upload a new version"}
+                </Link>
+              ) : undefined
+            }
           />
         </div>
 
         <aside className="order-3 flex flex-col md:order-none md:[grid-area:rail]">
+          {editing && (
+            <div className="mb-[18px] flex flex-col gap-3">
+              <DraftChecklist slug={hack.slug} stage={editor.stage} required={editor.checklist.required} recommended={editor.checklist.recommended} />
+              <DraftDetails
+                values={{ base_rom: hack.base_rom, language: hack.language ?? "English", completion_status: hack.completion_status, box_art: hack.box_art, social_links: social }}
+                baseLocked={patchId !== null}
+              />
+            </div>
+          )}
           <RailGroup title="Compatibility">
             <Facts
               rows={[
@@ -353,6 +409,8 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
       </div>
     </div>
   );
+
+  return editing ? <DraftEditingProvider slug={hack.slug}>{page}</DraftEditingProvider> : page;
 }
 
 function RailGroup({ title, children }: { title: string; children: React.ReactNode }) {

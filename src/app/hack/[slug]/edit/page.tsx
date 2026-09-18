@@ -38,6 +38,10 @@ export default async function EditHackPage({ params }: EditPageProps) {
   if (!permission.canEdit) {
     redirect(`/hack/${slug}`);
   }
+  // Unlisted hacks are edited in place on the session page.
+  if (!hack.approved && !isArchive) {
+    redirect(`/hack/${slug}/session`);
+  }
 
   let coverKeys: string[] = [];
   let signedCoverUrls: string[] = [];

@@ -24,13 +24,17 @@ interface HackTabsProps {
   changes?: { version: string; date: string; body: React.ReactNode } | null;
   versions: HackVersionRow[];
   baseRomName: string | null;
+  /** Draft editing: replaces the Gallery panel with the screenshot manager. */
+  gallery?: React.ReactNode;
+  /** Draft editing: action row under the versions table, e.g. Upload a version. */
+  versionsAction?: React.ReactNode;
 }
 
 const TAB_IDS = ["about", "gallery", "versions"] as const;
 type TabId = (typeof TAB_IDS)[number];
 
 /** About / Gallery / Versions for the hack page body. The lightbox is shared by both galleries. */
-export default function HackTabs({ slug, title, author, images, about, changes, versions, baseRomName }: HackTabsProps) {
+export default function HackTabs({ slug, title, author, images, about, changes, versions, baseRomName, gallery, versionsAction }: HackTabsProps) {
   const [tab, setTab] = React.useState<TabId>("about");
   const [shot, setShot] = React.useState(0);
   const [open, setOpen] = React.useState(false);
@@ -124,7 +128,13 @@ export default function HackTabs({ slug, title, author, images, about, changes, 
         </div>
       )}
 
-      {tab === "gallery" && (
+      {tab === "gallery" && gallery && (
+        <div id="panel-gallery" role="tabpanel" aria-labelledby="tab-gallery" className="anim-fade">
+          {gallery}
+        </div>
+      )}
+
+      {tab === "gallery" && !gallery && (
         <div id="panel-gallery" role="tabpanel" aria-labelledby="tab-gallery" className="anim-fade flex flex-col gap-5">
           <p className="max-w-[70ch] text-sm text-text-2">
             {images.length === 0 ? `No screenshots yet from ${author}.` : `${images.length} screenshot${images.length === 1 ? "" : "s"} from ${author}. Open one to see it larger.`}
@@ -172,6 +182,7 @@ export default function HackTabs({ slug, title, author, images, about, changes, 
           ) : (
             <p className="text-text-3">No versions yet.</p>
           )}
+          {versionsAction}
           <p className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
             <Link href={`/hack/${slug}/versions`} className="text-link-hd">
               Full version history

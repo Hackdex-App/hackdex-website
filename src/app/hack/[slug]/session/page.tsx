@@ -3,7 +3,9 @@ import {
   getHackPageMetadata,
   type HackDetailPageProps,
 } from "@/app/hack/[slug]/hack-page-shared";
-import HackDetailView from "@/components/Hack/HackDetailView";
+import HackDetailView, { type DraftEditorData } from "@/components/Hack/HackDetailView";
+import { getDraftChecklist } from "@/app/submit/actions";
+import { getCachedTagsWithUsage } from "@/data/tags";
 import {
   checkEditPermission,
   checkPatchEditPermission,
@@ -26,7 +28,8 @@ export async function generateMetadata({ params }: HackDetailPageProps) {
 
 export default async function HackSessionDetail({
   params,
-}: HackDetailPageProps) {
+  searchParams,
+}: HackDetailPageProps & { searchParams: Promise<{ preview?: string }> }) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -87,6 +90,29 @@ export default async function HackSessionDetail({
       ? Boolean(await getHackReviewThread(hack.slug))
       : false;
 
+  // Creators edit unlisted hacks in place here. Admins reviewing someone else's hack see the plain page.
+  const editsInPlace = canEdit && !hack.approved && !isArchive && hack.created_by === userId;
+  let editor: DraftEditorData | undefined;
+  if (editsInPlace) {
+    const { preview } = await searchParams;
+    const [checklist, catalogTags, { data: covers }, { data: row }] = await Promise.all([
+      getDraftChecklist(slug),
+      getCachedTagsWithUsage(),
+      supabase.from("hack_covers").select("url").eq("hack_slug", slug).order("position", { ascending: true }),
+      supabase.from("hacks").select("tags_updated_at").eq("slug", slug).maybeSingle(),
+    ]);
+    if (checklist) {
+      editor = {
+        stage: hack.submitted_at === null ? "draft" : "review",
+        checklist,
+        catalogTags,
+        tagsUpdatedAt: row?.tags_updated_at ?? new Date(0).toISOString(),
+        coverKeys: (covers ?? []).map((c) => c.url),
+        preview: preview === "1",
+      };
+    }
+  }
+
   return (
     <HackDetailView
       metadata={metadata}
@@ -95,6 +121,7 @@ export default async function HackSessionDetail({
       canUploadPatch={canUploadPatch}
       isAdmin={isAdmin}
       hasReviewThread={hasReviewThread}
+      editor={editor}
     />
   );
 }
