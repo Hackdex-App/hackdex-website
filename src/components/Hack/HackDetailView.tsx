@@ -225,10 +225,16 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
                 <FiAlertTriangle className="h-3 w-3" /> Missing patch
               </span>
             ) : (
-              hack.completion_status &&
-              hack.completion_status !== "Complete" && (
-                <span className="rounded-full border border-line-strong px-[7px] text-[11px] font-semibold leading-[18px] tracking-[.01em] text-text-2">{hack.completion_status}</span>
-              )
+              <>
+                {patchId !== null && !isInformationalArchive && (
+                  <span className="rounded-full bg-surface-2 px-[7px] font-mono text-[11px] font-medium leading-[18px] text-text-2" title="Current version">
+                    {patchVersion || "Pre-release"}
+                  </span>
+                )}
+                {hack.completion_status && hack.completion_status !== "Complete" && (
+                  <span className="rounded-full border border-line-strong px-[7px] text-[11px] font-semibold leading-[18px] tracking-[.01em] text-text-2">{hack.completion_status}</span>
+                )}
+              </>
             )}
           </p>
           {!editing && (
