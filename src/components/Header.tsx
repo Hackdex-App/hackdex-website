@@ -119,7 +119,7 @@ export default function Header() {
         </div>
 
         {/* Hack page portals its compact title + action bar here; hidden while empty. */}
-        <div id={HEADER_COMPACT_ID} className="absolute inset-0 empty:hidden" />
+        <div id={HEADER_COMPACT_ID} className="absolute inset-x-0 top-0 z-[1] empty:hidden max-md:bottom-auto md:inset-0" />
       </div>
     </header>
   );

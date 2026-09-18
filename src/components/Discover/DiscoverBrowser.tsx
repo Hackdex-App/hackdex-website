@@ -18,7 +18,6 @@ import Select, { SelectOption } from "@/components/Primitives/Select";
 import { useDiscoverUrlState } from "./useDiscoverUrlState";
 import DiscoverLastUpdated from "./DiscoverLastUpdated";
 import {
-  baseGameLabel,
   countActive,
   FilterFields,
   FilterSheet,
@@ -27,7 +26,7 @@ import {
   type FilterState,
   type TagGroup,
 } from "./DiscoverFilters";
-import { baseRoms } from "@/data/baseRoms";
+import { baseGameLabel, baseRoms } from "@/data/baseRoms";
 
 const SORT_OPTIONS: SelectOption[] = [
   { value: "trending", label: "Trending", icon: MdWhatshot },

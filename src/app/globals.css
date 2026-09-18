@@ -282,6 +282,8 @@ html { scroll-padding-top: var(--anchor-offset); }
   100% { transform: scale(1); }
 }
 
+/* Indeterminate sweep inside the patch button while the patcher works. */
+@keyframes progressSweep { from { transform: translateX(-100%); } to { transform: translateX(400%); } }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .anim-fade { animation: fadeIn 160ms ease-out; }
 .anim-float { animation: floatY 2.4s ease-in-out infinite; }

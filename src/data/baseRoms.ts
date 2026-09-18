@@ -73,3 +73,8 @@ export const baseRoms: BaseRom[] = [
 ];
 
 
+
+/** Short game label for filters and cards: "FireRed" rather than "Pokémon FireRed (Rev 0)". */
+export function baseGameLabel(name: string) {
+  return name.replace(/^Pokémon\s+/i, "").replace(/\s*\(Rev \d+\)\s*$/i, "");
+}

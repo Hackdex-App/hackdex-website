@@ -3,7 +3,7 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import { FiChevronDown, FiSearch, FiX } from "react-icons/fi";
-import { baseRoms, PLATFORM_NAMES, type Platform } from "@/data/baseRoms";
+import { baseGameLabel, baseRoms, PLATFORM_NAMES, type Platform } from "@/data/baseRoms";
 
 /** Rail order: the platforms with the most hacks first. */
 const RAIL_PLATFORMS: Platform[] = ["GBA", "GBC", "GB", "NDS"];
@@ -19,11 +19,6 @@ export type FilterState = {
 };
 
 export type TagGroup = { name: string; tags: string[] };
-
-/** Base ROM label for filters: "FireRed" rather than "Pokémon FireRed (Rev 0)". */
-export function baseGameLabel(name: string) {
-  return name.replace(/^Pokémon\s+/i, "").replace(/\s*\(Rev \d+\)\s*$/i, "");
-}
 
 /** Unique games from the ROM list. Revisions collapse to one row that toggles all of their ids together. */
 export const ROM_GAMES = (() => {

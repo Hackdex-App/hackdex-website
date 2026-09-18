@@ -2,101 +2,55 @@
 
 import { buildDiscoverSearchParams, DISCOVER_DEFAULT_STATE } from "@/app/discover/search-params";
 import Link from "next/link";
-import { useState, useRef, useLayoutEffect, useEffect, useCallback } from "react";
-import { FaChevronDown } from "react-icons/fa6";
+import { useEffect, useRef, useState } from "react";
+import { FiChevronDown } from "react-icons/fi";
 
-interface CollapsibleTagsProps {
-  tags: string[];
-}
+/**
+ * Tags collapse to one row with the next row peeking under a fade, so the
+ * reader sees there is more before opening it in place. No control when one row fits.
+ */
+export default function CollapsibleTags({ tags }: { tags: string[] }) {
+  const ref = useRef<HTMLUListElement | null>(null);
+  const [overflows, setOverflows] = useState(false);
+  const [open, setOpen] = useState(false);
 
-// Tag height: ~24px (16px height + 8px y-padding), gap: 8px
-// Max height: 1.25 × 24px + 2 × 8px = 46px - 4px (for aesthetic padding)
-const MAX_HEIGHT = 42;
-
-export default function CollapsibleTags({ tags }: CollapsibleTagsProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [needsExpansion, setNeedsExpansion] = useState(false);
-  const [naturalHeight, setNaturalHeight] = useState<number | null>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
-
-  const checkIfExpansionNeeded = useCallback(() => {
-    if (!contentRef.current) return;
-    const height = contentRef.current.scrollHeight + 16; // Add 16px for padding
-    setNaturalHeight(height);
-    setNeedsExpansion(height > MAX_HEIGHT);
-  }, []);
-
-  // Use useLayoutEffect to check synchronously before paint
-  useLayoutEffect(() => {
-    checkIfExpansionNeeded();
-  }, [tags, checkIfExpansionNeeded]);
-
-  // Also check on window resize
   useEffect(() => {
-    window.addEventListener("resize", checkIfExpansionNeeded);
-    return () => {
-      window.removeEventListener("resize", checkIfExpansionNeeded);
+    const el = ref.current;
+    if (!el) return;
+    const check = () => {
+      const row = el.firstElementChild?.clientHeight ?? 0;
+      setOverflows(el.scrollHeight > row + 2);
     };
-  }, [checkIfExpansionNeeded]);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [tags]);
 
   if (tags.length === 0) return null;
-
+  const collapsed = overflows && !open;
   return (
-    <div className="flex flex-col w-full">
+    <div className="mt-3.5">
       <div
-        className="grid transition-all duration-300 ease-in-out"
-        style={
-          !isExpanded
-            ? {
-                gridTemplateRows: `${MAX_HEIGHT}px`,
-                borderBottom: "2px solid var(--border)",
-              }
-            : naturalHeight
-            ? {
-                gridTemplateRows: `${naturalHeight}px`,
-                borderBottom: "0px solid transparent",
-              }
-            : {
-                gridTemplateRows: "1fr",
-                borderBottom: "0px solid transparent",
-              }
-        }
+        className={collapsed ? "max-h-10 overflow-hidden [mask-image:linear-gradient(to_bottom,#000_24px,transparent_40px)]" : ""}
       >
-        <div className="overflow-hidden p-0.5">
-          <div
-            ref={contentRef}
-            className="flex flex-wrap gap-2"
-          >
-            {tags.map((t) => (
+        <ul ref={ref} className="flex flex-wrap gap-1.5" aria-label="Tags">
+          {tags.map((t) => (
+            <li key={t}>
               <Link
-                key={t}
-                href={`/discover?${buildDiscoverSearchParams({
-                  ...DISCOVER_DEFAULT_STATE,
-                  tags: [t],
-                }).toString()}`}
+                href={`/discover?${buildDiscoverSearchParams({ ...DISCOVER_DEFAULT_STATE, tags: [t] }).toString()}`}
                 aria-label={`View hacks tagged ${t}`}
-                className="rounded-full bg-(--surface-2) px-2.5 py-1 text-xs ring-1 ring-(--border) transition-colors md:cursor-pointer md:hover:bg-(--surface-3)"
+                className="inline-block rounded-full bg-surface-2 px-2.5 py-1 text-[13px] leading-tight text-text-2 transition-colors hover:bg-line hover:text-text"
               >
                 {t}
               </Link>
-            ))}
-          </div>
-        </div>
+            </li>
+          ))}
+        </ul>
       </div>
-      {needsExpansion && (
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center justify-center gap-2 w-full md:w-auto md:justify-start md:mt-2 px-4 md:px-0 pt-2 pb-4 md:py-0 text-sm md:text-xs font-medium text-foreground/70 hover:text-foreground transition-colors active:opacity-70 md:active:opacity-100"
-          aria-expanded={isExpanded}
-        >
-          <span>{isExpanded ? "Show less" : "Show more"}</span>
-          <span
-            className={`text-foreground/60 shrink-0 transition-transform duration-300 ease-in-out ${
-              isExpanded ? "rotate-180" : ""
-            }`}
-          >
-            <FaChevronDown className="w-3.5 h-3.5 md:w-3 md:h-3" />
-          </span>
+      {overflows && (
+        <button type="button" aria-expanded={open} onClick={() => setOpen((v) => !v)} className="mt-1.5 inline-flex items-center gap-1 text-[13px] text-text-2 transition-colors hover:text-text">
+          {open ? "Show less" : "Show more"} <FiChevronDown className={`h-4 w-4 transition-transform duration-[160ms] ${open ? "rotate-180" : ""}`} />
         </button>
       )}
     </div>

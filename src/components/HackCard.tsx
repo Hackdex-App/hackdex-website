@@ -9,7 +9,7 @@ import { FaRegImages } from "react-icons/fa6";
 import { FiChevronLeft, FiChevronRight, FiDownload } from "react-icons/fi";
 import { formatCompactNumber, formatRelativeDate, OrderedTag } from "@/utils/format";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
-import { baseRoms, type Platform } from "@/data/baseRoms";
+import { baseGameLabel, baseRoms, type Platform } from "@/data/baseRoms";
 import type { Database } from "@/types/db";
 
 export interface HackCardAttributes {
@@ -44,11 +44,6 @@ function useReadiness(baseRomId?: string) {
   const base = baseRoms.find((r) => r.id === baseRomId);
   const ready = base ? hasPermission(base.id) || hasCached(base.id) : false;
   return { base, ready };
-}
-
-/** Short base ROM label for a card: "FireRed" rather than "Pokémon FireRed (Rev 0)". */
-function shortBaseName(name: string) {
-  return name.replace(/^Pokémon\s+/, "").replace(/\s*\(Rev \d+\)$/, "");
 }
 
 /** Anything short of Complete gets an outline pill so a demo never reads like a finished game. */
@@ -205,7 +200,7 @@ function Facts({ hack, base, ready, version = false, column = false }: { hack: H
         </span>
       ) : (
         <span className="plat-dot flex-none text-text-2" data-platform={base?.platform}>
-          {base ? shortBaseName(base.name) : "Unknown base"}
+          {base ? baseGameLabel(base.name) : "Unknown base"}
         </span>
       )}
       {version && <span className="truncate">{hack.version}</span>}

@@ -3,8 +3,7 @@
 import Link from "next/link";
 import React from "react";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
-import { baseRoms } from "@/data/baseRoms";
-import { baseGameLabel } from "@/components/Discover/DiscoverFilters";
+import { baseGameLabel, baseRoms } from "@/data/baseRoms";
 import type { HackCardAttributes } from "@/components/HackCard";
 import MilestoneCelebration from "@/components/Home/MilestoneCelebration";
 import Shelf from "@/components/Home/Shelf";
