@@ -55,7 +55,6 @@ interface Anchor {
   barLeft: number;
   barRight: number;
   viewportWidth: number;
-  viewportHeight: number;
   desktop: boolean;
 }
 
@@ -66,14 +65,13 @@ function sameAnchor(a: Anchor, b: Anchor) {
     a.barLeft === b.barLeft &&
     a.barRight === b.barRight &&
     a.viewportWidth === b.viewportWidth &&
-    a.viewportHeight === b.viewportHeight &&
     a.desktop === b.desktop
   );
 }
 
 /**
- * Tracks the live geometry of the sticky action bar so the coach card can sit
- * under it on desktop and above the sheet on mobile, whatever height it has.
+ * Tracks the live geometry of the patch module so the coach card can sit
+ * under it, whatever height it has.
  */
 function useBarAnchor(active: boolean): Anchor | null {
   const [anchor, setAnchor] = React.useState<Anchor | null>(null);
@@ -91,7 +89,6 @@ function useBarAnchor(active: boolean): Anchor | null {
         barLeft: rect.left,
         barRight: rect.right,
         viewportWidth: window.innerWidth,
-        viewportHeight: window.innerHeight,
         desktop: window.matchMedia("(min-width: 768px)").matches,
       };
       setAnchor((previous) => (previous && sameAnchor(previous, next) ? previous : next));
@@ -114,7 +111,7 @@ function useBarAnchor(active: boolean): Anchor | null {
 
 function cardPosition(anchor: Anchor, step: HackOnboardingStep): React.CSSProperties {
   if (!anchor.desktop) {
-    return { left: 16, right: 16, bottom: anchor.viewportHeight - anchor.barTop + 12 };
+    return { left: 16, right: 16, top: anchor.barBottom + 12 };
   }
   return {
     top: anchor.barBottom + 14,
@@ -128,7 +125,7 @@ function cardPosition(anchor: Anchor, step: HackOnboardingStep): React.CSSProper
 
 /**
  * Coach mark for the hack page onboarding. The dimmed bar, lit control and rose
- * beacon are drawn by StickyActionBar; this owns the scrim and the card.
+ * beacon are drawn by PatchModule; this owns the scrim and the card.
  */
 export default function HackOnboardingOverlay({
   step,
