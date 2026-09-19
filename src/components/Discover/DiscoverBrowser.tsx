@@ -319,12 +319,13 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
 
   const hasFilters = active > 0;
   const pager = totalPages > 1;
+  const railRef = useRailHeight();
 
   return (
     <div className="grid gap-8 md:grid-cols-[240px_minmax(0,1fr)]">
       <aside className="hidden min-w-0 md:block" aria-label="Filters">
         <div className="sticky top-[84px]">
-          <div className="max-h-[calc(100vh-84px)] overflow-y-auto overscroll-contain pb-4 pr-3 pt-1 [scrollbar-gutter:stable] [scrollbar-width:thin]">
+          <div ref={railRef} className="overflow-y-auto overscroll-contain pb-4 pr-3 pt-1 [scrollbar-gutter:stable] [scrollbar-width:thin]">
             <div className="flex h-12 items-baseline justify-between">
               <h2 className="text-[15px] font-semibold">Filters</h2>
               {hasFilters && (
@@ -394,7 +395,9 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
           </div>
 
           <div className="flex flex-1 items-center gap-3 md:flex-none">
+            <div className="min-w-0 flex-1 md:flex-none">
             <Select
+              id="discover-sort"
               value={sort}
               onChange={(value) => {
                 const nextSort = value as DiscoverSortOption;
@@ -407,6 +410,7 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
               className="!h-10 !w-full !rounded-control !border !border-line-strong !bg-surface !pl-3.5 !text-[15px] !font-medium !ring-0 hover:!border-text-3 focus:!ring-0 md:!h-12 md:!w-auto md:!min-w-[200px]"
               dropdownClassName="!max-w-[min(90vw,320px)]"
             />
+            </div>
             <div role="group" aria-label="View" className="inline-flex h-10 flex-none gap-0.5 rounded-control border border-line-strong bg-surface p-[3px] md:h-12">
               <button
                 type="button"
@@ -439,7 +443,7 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
           </div>
         </div>
 
-        <div ref={listRef} className="scroll-mt-[76px]">
+        <div ref={listRef} className="min-h-[calc(100dvh-160px)] scroll-mt-[76px]">
           {showSkeleton ? (
             <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-[repeat(auto-fill,minmax(264px,1fr))] md:gap-5">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -520,6 +524,36 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
       )}
     </div>
   );
+}
+
+/**
+ * The desktop rail scrolls on its own, so its height has to stop at the
+ * viewport bottom. Until the page has scrolled enough for the rail to stick
+ * its top sits below the sticky offset, so a fixed calc() would overshoot.
+ */
+function useRailHeight() {
+  const ref = React.useRef<HTMLDivElement | null>(null);
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let frame = 0;
+    const fit = () => {
+      frame = 0;
+      el.style.maxHeight = `${window.innerHeight - el.getBoundingClientRect().top}px`;
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(fit);
+    };
+    fit();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+    };
+  }, []);
+  return ref;
 }
 
 /** First, last, current ± `sibling`, with gaps as an ellipsis. */

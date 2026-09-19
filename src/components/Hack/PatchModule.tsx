@@ -384,7 +384,7 @@ export default function PatchModule({
         {gate && <HackOnboardingGate variant="row" label={gate.label} onClick={gate.open} beacon={gate.beacon} />}
 
         <dl className="mt-0.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[13px] leading-[1.45]">
-          <dt className="text-text-3">Version</dt>
+          <dt className={`text-text-3 ${hasVersionPicker ? "self-center" : ""}`}>Version</dt>
           <dd className="flex min-w-0 flex-wrap items-center gap-2 text-text-2">{hasVersionPicker ? picker : <span className="font-medium text-text">{version}</span>}</dd>
           <dt className="text-text-3">Patch</dt>
           <dd className="text-text-2">{format ? `${format} file` : "Patch file"}, applied locally</dd>

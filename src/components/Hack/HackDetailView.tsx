@@ -18,6 +18,8 @@ import Markdown from "@/components/Markdown/Markdown";
 import { getHackPageUrl } from "@/app/hack/[slug]/hack-page-shared";
 import type { HackMetadata } from "@/app/hack/[slug]/actions";
 import { baseGameLabel, baseRoms, PLATFORM_NAMES } from "@/data/baseRoms";
+import { EMULATORS } from "@/data/emulators";
+import Handle from "@/components/Primitives/Handle";
 import { isArchiveHack, isDownloadableArchiveHack, isInformationalArchiveHack } from "@/utils/hack";
 import { formatRelativeDate } from "@/utils/format";
 import { MenuItem } from "@headlessui/react";
@@ -213,7 +215,7 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
           <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[15px] text-text-2 md:text-base">
             {!hack.original_author && <Avatar uid={hack.created_by} url={profile?.avatar_url ?? null} size={24} />}
             <span>
-              by <span className="font-medium text-text">{author}</span>
+              by <Handle name={author} className="font-medium text-text" />
             </span>
             {isAdmin && profile?.verified && !hack.original_author && (
               <span className="inline-flex items-center" title="Creator is verified">
@@ -328,10 +330,32 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
               rows={[
                 ["Base ROM", baseRom ? <span className="plat-dot" data-platform={baseRom.platform}>{baseRom.name}</span> : "Unknown"],
                 ["Platform", baseRom ? PLATFORM_NAMES[baseRom.platform] : "Unknown"],
-                ["Plays on", baseRom ? `Any ${baseRom.platform} emulator, or real hardware with a flash cart` : "Any emulator"],
               ]}
             />
           </RailGroup>
+
+          {!isInformationalArchive && (
+            <RailGroup title="How to play">
+              <p className="mb-2.5 text-[13px] leading-[1.45] text-text-2">
+                Load the patched ROM in {baseRom ? `a ${baseRom.platform} emulator` : "an emulator"}, or on real hardware with a flash cart. Creators recommend:
+              </p>
+              <Facts
+                rows={(baseRom ? EMULATORS[baseRom.platform] : EMULATORS.GBA).map(({ os, picks }) => [
+                  os,
+                  <span key={os} className="flex flex-wrap gap-x-2 gap-y-0.5">
+                    {picks.map((pick) => (
+                      <a key={pick.name} href={pick.url} target="_blank" rel="noreferrer" className="text-link-hd">
+                        {pick.name}
+                      </a>
+                    ))}
+                  </span>,
+                ])}
+              />
+              <Link href="/faq#recommended-emulators" className="text-link-hd mt-2.5 inline-block text-[13px]">
+                More about emulators
+              </Link>
+            </RailGroup>
+          )}
 
           {(hack.box_art || editing) && (
             <RailGroup title="Box art" action={editing && <EditDetailsLink />}>
@@ -371,7 +395,7 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
           )}
 
           {otherHacks.length > 0 && (
-            <RailGroup title={`More from ${author}`}>
+            <RailGroup title={<>More from <Handle name={author} /></>}>
               <ul className="flex flex-col gap-3 text-sm">
                 {otherHacks.map((otherHack) => (
                   <li key={otherHack.slug}>
@@ -434,7 +458,7 @@ function RailEditor({ editing, values, baseLocked, children }: { editing: boolea
   );
 }
 
-function RailGroup({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
+function RailGroup({ title, action, children }: { title: React.ReactNode; action?: React.ReactNode; children: React.ReactNode }) {
   return (
     <section className="border-t border-line px-1 pt-[18px] first:border-t-0 first:pt-0 [&+&]:mt-[18px]">
       <h2 className="mb-2.5 flex items-baseline justify-between text-[13px] font-semibold tracking-[.01em] text-text-3">

@@ -58,7 +58,9 @@ export default function HackTabs({ slug, title, author, images, about, changes, 
 
   return (
     <div className="flex min-w-0 flex-col gap-8">
-      <div ref={tabsRef} role="tablist" aria-label="Hack sections" className="-mx-6 flex gap-1 overflow-x-auto border-b border-line px-6 scroll-mt-[72px] [scrollbar-width:none] md:mx-0 md:px-0">
+      {/* The tab strip sits 1px over the rule so the active underline replaces it; the scroller is outside so that overhang never becomes a scrollbar. */}
+      <div ref={tabsRef} className="-mx-6 border-b border-line px-6 scroll-mt-[72px] md:mx-0 md:px-0">
+        <div role="tablist" aria-label="Hack sections" className="-mb-px flex gap-1 overflow-x-auto overflow-y-hidden [scrollbar-width:none]">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -68,13 +70,14 @@ export default function HackTabs({ slug, title, author, images, about, changes, 
             aria-selected={tab === t.id}
             aria-controls={`panel-${t.id}`}
             onClick={() => setTab(t.id)}
-            className={`-mb-px inline-flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 text-[15px] font-medium transition-colors ${
+            className={`inline-flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 text-[15px] font-medium transition-colors ${
               tab === t.id ? "border-accent text-text" : "border-transparent text-text-2 hover:text-text"
             }`}
           >
             {t.label} {"count" in t && <small className="text-xs font-normal text-text-3">{t.count}</small>}
           </button>
         ))}
+        </div>
       </div>
 
       {tab === "about" && (
@@ -90,7 +93,7 @@ export default function HackTabs({ slug, title, author, images, about, changes, 
                 </button>
               </figure>
               {images.length > 1 && (
-                <div role="tablist" aria-label="Screenshots" className="-mx-6 mt-2 flex gap-2 overflow-x-auto px-6 pb-1 [scrollbar-width:none] md:mx-0 md:flex-wrap md:px-0">
+                <div role="tablist" aria-label="Screenshots" className="-mx-6 mt-1.5 flex gap-2 overflow-x-auto px-6 py-1 [scrollbar-width:none] md:-mx-1 md:flex-wrap md:px-1">
                   {images.map((src, i) => (
                     <button
                       key={`${src}-${i}`}

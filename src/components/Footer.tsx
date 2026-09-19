@@ -1,4 +1,5 @@
 import Link from "next/link";
+import FooterAccountLink from "@/components/FooterAccountLink";
 
 const LINKS = [
   { href: "/discover", label: "Discover" },
@@ -14,7 +15,8 @@ const LINKS = [
 export default function Footer() {
   return (
     <footer className="mt-16 border-t border-line text-[13px] text-text-2">
-      <div className="mx-auto flex max-w-[1164px] flex-col gap-4 px-6 pb-10 pt-6 md:flex-row md:items-baseline md:justify-between md:gap-10">
+      {/* Phones: extra bottom room so the floating "How do I download?" pill on hack pages never covers the links. */}
+      <div className="mx-auto flex max-w-[1164px] flex-col gap-4 px-6 pb-24 pt-6 md:flex-row md:items-baseline md:justify-between md:gap-10 md:pb-10">
         <div className="max-w-[62ch]">
           <p>© 2025-{new Date().getFullYear()} Hackdex</p>
           <p className="mt-2 text-xs text-text-3">
@@ -34,6 +36,7 @@ export default function Footer() {
               {l.label}
             </Link>
           ))}
+          <FooterAccountLink />
         </nav>
       </div>
     </footer>

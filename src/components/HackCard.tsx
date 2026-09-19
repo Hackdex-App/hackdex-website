@@ -11,6 +11,7 @@ import { formatCompactNumber, OrderedTag } from "@/utils/format";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
 import { baseGameLabel, baseRoms, type Platform } from "@/data/baseRoms";
 import type { Database } from "@/types/db";
+import Handle from "@/components/Primitives/Handle";
 
 export interface HackCardAttributes {
   slug: string;
@@ -48,11 +49,14 @@ function useReadiness(baseRomId?: string) {
 function CompletionBadge({ status }: { status?: HackCardAttributes["completion_status"] }) {
   if (!status || status === "Complete") return null;
   return (
-    <span className="ml-auto flex-none rounded-full border border-line-strong px-[7px] text-[11px] font-semibold leading-[18px] tracking-[.01em] text-text-2">
+    <span className="flex-none rounded-full border border-line-strong px-[7px] text-[11px] font-semibold leading-[18px] tracking-[.01em] text-text-2">
       {status}
     </span>
   );
 }
+
+/** Ready hacks wear the green on the whole card: a 2px outline in place of the usual hairline. */
+const READY_OUTLINE = "border-ready ring-1 ring-ready";
 
 /** Pixel art only stays crisp at whole-number scales; anything else is smoothed. */
 function snapRendering(img: HTMLImageElement) {
@@ -66,7 +70,7 @@ function snapRendering(img: HTMLImageElement) {
  * chevrons on hover, since dots are small targets. DS shots are 4:3 per screen;
  * a portrait 256×384 shot crops to its top screen here and opens whole in the lightbox.
  */
-function Shots({ images, platform, ready, fill, placeholder }: { images: string[]; platform?: Platform; ready: boolean; fill?: boolean; placeholder: boolean }) {
+function Shots({ images, platform, fill, placeholder }: { images: string[]; platform?: Platform; fill?: boolean; placeholder: boolean }) {
   const many = images.length > 1;
   const [viewportRef, api] = useEmblaCarousel({ loop: true, active: many });
   const [index, setIndex] = useState(0);
@@ -114,9 +118,7 @@ function Shots({ images, platform, ready, fill, placeholder }: { images: string[
       ) : (
         <span
           ref={viewportRef}
-          className={`block overflow-hidden rounded-frame ring-2 transition-shadow duration-400 ${many ? "cursor-grab active:cursor-grabbing" : ""} ${
-            ready ? "ring-ready" : "ring-transparent"
-          } ${shotWidth}`}
+          className={`block overflow-hidden rounded-frame ${many ? "cursor-grab active:cursor-grabbing" : ""} ${shotWidth}`}
         >
           <span className="flex">
             {images.map((src, i) => (
@@ -222,12 +224,15 @@ export default function HackCard({ hack, clickable = true, prefetch = false, cla
 
   const body = (
     <>
-      <Shots images={images} platform={base?.platform} ready={ready} fill={fill} placeholder={placeholder} />
+      <Shots images={images} platform={base?.platform} fill={fill} placeholder={placeholder} />
       <span className="flex flex-col gap-[3px] px-3.5 pb-3.5 pt-3">
         <span className="line-clamp-2 text-[15px] font-semibold leading-tight">{hack.title}</span>
         <span className="flex items-center gap-2 text-[13px] text-text-2">
-          <span className="min-w-0 truncate">{hack.author}</span>
-          <CompletionBadge status={hack.completion_status} />
+          <Handle name={hack.author} className="min-w-0 truncate" />
+          <span className="ml-auto inline-flex flex-none items-center gap-1.5">
+            <CompletionBadge status={hack.completion_status} />
+            {hack.version && <span className="font-mono text-[11px] text-text-3" title="Current version">{hack.version}</span>}
+          </span>
         </span>
         {hack.summary && (
           <span className="mt-1 line-clamp-2 text-[13px] leading-[1.4] text-text-2">{hack.summary}</span>
@@ -246,9 +251,9 @@ export default function HackCard({ hack, clickable = true, prefetch = false, cla
     </>
   );
 
-  const shell = `group/card block overflow-hidden rounded-card border border-line bg-surface shadow-rest transition-[transform,box-shadow,border-color] duration-150 ease-out ${
-    clickable ? `hover:-translate-y-0.5 hover:border-line-strong hover:shadow-lift active:scale-[.99] ${pressed ? "anim-float" : ""}` : ""
-  } ${className}`.trim();
+  const shell = `group/card block overflow-hidden rounded-card border bg-surface shadow-rest transition-[transform,box-shadow,border-color] duration-150 ease-out ${
+    ready ? READY_OUTLINE : "border-line"
+  } ${clickable ? `hover:-translate-y-0.5 hover:shadow-lift active:scale-[.99] ${ready ? "" : "hover:border-line-strong"} ${pressed ? "anim-float" : ""}` : ""} ${className}`.trim();
 
   if (!clickable) return <div className={shell}>{body}</div>;
   return (
@@ -274,14 +279,16 @@ export function HackRow({ hack, prefetch = false }: { hack: HackCardAttributes; 
     <Link
       href={`/hack/${hack.slug}`}
       prefetch={prefetch}
-      className="grid grid-cols-[120px_minmax(0,1fr)] items-center gap-4 rounded-card border border-line bg-surface p-3 shadow-rest transition-[box-shadow,border-color] duration-150 hover:border-line-strong hover:shadow-lift md:grid-cols-[120px_minmax(0,1fr)_auto]"
+      className={`grid grid-cols-[120px_minmax(0,1fr)] items-center gap-4 rounded-card border bg-surface p-3 shadow-rest transition-[box-shadow,border-color] duration-150 hover:shadow-lift md:grid-cols-[120px_minmax(0,1fr)_auto] ${
+        ready ? READY_OUTLINE : "border-line hover:border-line-strong"
+      }`}
     >
-      <span className={`block h-20 w-[120px] overflow-hidden rounded-frame bg-well ring-2 transition-shadow duration-400 ${ready ? "ring-ready" : "ring-transparent"}`}>
+      <span className="block h-20 w-[120px] overflow-hidden rounded-frame bg-well">
         {cover && <img src={cover} alt="" width={120} height={80} loading="lazy" className="h-full w-full object-cover object-top" />}
       </span>
       <span className="flex min-w-0 flex-col gap-1">
         <span className="truncate text-[15px] font-semibold leading-tight">
-          {hack.title} <span className="text-[13px] font-normal text-text-2">by {hack.author}</span>
+          {hack.title} <span className="text-[13px] font-normal text-text-2">by <Handle name={hack.author} /></span>
         </span>
         {hack.summary && <span className="truncate text-sm text-text-2">{hack.summary}</span>}
         {hack.tags.length > 0 && (
