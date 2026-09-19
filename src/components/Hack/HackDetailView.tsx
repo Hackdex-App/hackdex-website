@@ -210,7 +210,7 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
         <div className={`min-w-0 max-w-[820px] ${editing ? "flex-1" : ""}`}>
           {!editing && <h1 className="font-display text-[28px] leading-[1.1] text-balance md:text-[clamp(32px,3.4vw,40px)]">{hack.title}</h1>}
           {editing && <DraftHeader title={hack.title} summary={hack.summary} tags={tags} catalogTags={editor.catalogTags} tagsUpdatedAt={editor.tagsUpdatedAt} />}
-          <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[15px] text-text-2 md:text-base">
+          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[15px] text-text-2 md:text-base">
             {!hack.original_author && <Avatar uid={hack.created_by} url={profile?.avatar_url ?? null} size={24} />}
             <span>
               by <span className="font-medium text-text">{author}</span>
@@ -236,7 +236,7 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
                 )}
               </>
             )}
-          </p>
+          </div>
           {!editing && (
             <>
               <p className="mt-3 max-w-[70ch] text-[14px] text-text-2 md:text-[15px]">{hack.summary}</p>
