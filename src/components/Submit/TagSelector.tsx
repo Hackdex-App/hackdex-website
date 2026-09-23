@@ -70,7 +70,7 @@ function SortableSelectedTag({
         "relative inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px] sm:text-xs ring-1",
         isPrimary
           ? "bg-[var(--accent-soft,rgba(16,185,129,0.08))] ring-[var(--accent-border,rgba(16,185,129,0.4))]"
-          : "bg-[var(--surface-2)] ring-[var(--border)]",
+          : "bg-surface-2 ring-line",
         isDragging && !isGhost ? "opacity-80 shadow-lg shadow-black/20 dark:shadow-black/40" : "",
       ]
         .filter(Boolean)
@@ -84,7 +84,7 @@ function SortableSelectedTag({
       )}
       <button
         type="button"
-        className="mr-0.5 inline-flex h-5 w-5 sm:h-4 sm:w-4 items-center justify-center rounded-full text-foreground/40 hover:text-foreground/80 cursor-grab active:cursor-grabbing touch-none"
+        className="mr-0.5 inline-flex h-5 w-5 sm:h-4 sm:w-4 items-center justify-center rounded-full text-text-3 hover:text-text-2 cursor-grab active:cursor-grabbing touch-none"
         aria-label={`Reorder tag ${name}`}
         {...attributes}
         {...listeners}
@@ -94,7 +94,7 @@ function SortableSelectedTag({
       {Icon ? <Icon className="h-3.5 w-3.5 opacity-80" /> : null}
       <span className="truncate max-w-[9.5rem] sm:max-w-[12rem]">{name}</span>
       {isPrimary && (
-        <span className="ml-0.5 rounded-full bg-black/5 px-1.5 py-0.5 text-[9px] sm:text-[8px] uppercase tracking-wide text-foreground/60 dark:bg-white/5">
+        <span className="ml-0.5 rounded-full bg-surface-2 px-1.5 py-0.5 text-[9px] sm:text-[8px] uppercase tracking-wide text-text-3">
           {index === 0 ? "First" : "Second"}
         </span>
       )}
@@ -104,7 +104,7 @@ function SortableSelectedTag({
           e.stopPropagation();
           onRemove();
         }}
-        className="ml-1 inline-flex h-5 w-5 sm:h-4 sm:w-4 items-center justify-center rounded-full text-foreground/70 hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10"
+        className="ml-1 inline-flex h-5 w-5 sm:h-4 sm:w-4 items-center justify-center rounded-full text-text-2 hover:text-text hover:bg-surface-2"
         aria-label={`Remove tag ${name}`}
       >
         <FaTimes className="h-3.5 w-3.5 sm:h-3 sm:w-3" />
@@ -306,7 +306,7 @@ export default function TagSelector({ value, onChange, catalogTags, newTagsCutof
   return (
     <div className="grid gap-2">
       {/* Selected tag pills */}
-      <div className="text-[11px] text-foreground/60">
+      <div className="text-[11px] text-text-3">
         The first two tags appear as badges on your hack card preview.
       </div>
       <div className="flex max-h-24 flex-wrap gap-2 overflow-auto p-1">
@@ -362,11 +362,11 @@ export default function TagSelector({ value, onChange, catalogTags, newTagsCutof
                 const Icon = (getCategoryIcon(cat === "Advanced" ? null : cat) ?? null) as CategoryIconType;
                 const isPrimary = activeIndex === 0 || activeIndex === 1;
                 return (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-2)] px-2 py-1 text-xs ring-1 ring-[var(--border)] shadow-lg shadow-black/30 dark:shadow-black/60">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2 py-1 text-xs ring-1 ring-line shadow-lg shadow-black/30 dark:shadow-black/60">
                     {Icon ? <Icon className="h-3.5 w-3.5 opacity-80" /> : null}
                     <span className="truncate max-w-[9rem] sm:max-w-[12rem]">{t}</span>
                     {isPrimary && (
-                      <span className="ml-0.5 rounded-full bg-black/5 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-foreground/60 dark:bg-white/5">
+                      <span className="ml-0.5 rounded-full bg-surface-2 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-text-3">
                         {activeIndex === 0 ? "First" : "Second"}
                       </span>
                     )}
@@ -376,14 +376,14 @@ export default function TagSelector({ value, onChange, catalogTags, newTagsCutof
             </DragOverlay>
           </DndContext>
         ) : (
-          <div className="px-2 py-0.5 text-sm text-foreground/60">No tags selected</div>
+          <div className="px-2 py-0.5 text-sm text-text-3">No tags selected</div>
         )}
       </div>
 
       {/* Persistent selector */}
-      <div className="overflow-hidden rounded-md border border-[var(--border)] bg-[var(--surface-2)]/80">
+      <div className="overflow-hidden rounded-control border border-line bg-surface-2/80">
         {/* Search input */}
-        <div className="border-b border-[var(--border)] p-2">
+        <div className="border-b border-line p-2">
           <input
             ref={searchInputRef}
             value={query}
@@ -397,11 +397,11 @@ export default function TagSelector({ value, onChange, catalogTags, newTagsCutof
               }
             }}
             placeholder={value.length ? "Search tags" : "Search tags (e.g. QoL, Challenge)"}
-            className="w-full bg-transparent px-2 text-sm placeholder:text-foreground/50 focus:outline-none"
+            className="w-full bg-transparent px-2 text-sm placeholder:text-text-3 focus:outline-none"
           />
         </div>
 
-        <div className="flex h-74 divide-x divide-[var(--border)]">
+        <div className="flex h-74 divide-x divide-line">
           {/* Categories */}
           <div
             ref={categoriesContainerRef}
@@ -442,7 +442,7 @@ export default function TagSelector({ value, onChange, catalogTags, newTagsCutof
             aria-label="Tag categories"
             className="w-52 max-w-[60vw] overflow-auto p-2 outline-none"
           >
-            <div className="mb-1 px-1 text-xs uppercase tracking-wider text-foreground/60">Categories</div>
+            <div className="mb-1 px-1 text-xs uppercase tracking-wider text-text-3">Categories</div>
             <div className="flex flex-col">
               {filtered.categories.map((cat) => {
                 const Icon = CATEGORY_ICONS[cat];
@@ -456,15 +456,15 @@ export default function TagSelector({ value, onChange, catalogTags, newTagsCutof
                   onClick={() => setActiveCategory(cat)}
                   className={`flex items-center justify-between rounded px-2 py-1.5 text-left text-sm ${
                     activeCategory === cat
-                      ? (categoriesPaneFocused ? 'bg-black/5 dark:bg-white/10' : 'bg-zinc-800/5 dark:bg-zinc-200/5 ring-1 ring-black/10 dark:ring-white/20')
-                      : 'hover:bg-black/5 dark:hover:bg-white/10'
+                      ? (categoriesPaneFocused ? 'bg-surface-2' : 'bg-zinc-800/5 dark:bg-zinc-200/5 ring-1 ring-black/10 dark:ring-white/20')
+                      : 'hover:bg-surface-2'
                   }`}
                 >
                   <span className="truncate inline-flex items-center gap-2">
                     {Icon ? <Icon className="h-4 w-4 opacity-80" /> : null}
                     {cat}
                     {newTagsCutoff && categoriesWithNewTags.includes(cat) && (
-                      <span className="ml-1 rounded-full bg-black/5 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-foreground/60 dark:bg-white/5">New</span>
+                      <span className="ml-1 rounded-full bg-surface-2 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-text-3">New</span>
                     )}
                   </span>
                 </div>
@@ -478,8 +478,8 @@ export default function TagSelector({ value, onChange, catalogTags, newTagsCutof
                   onClick={() => setActiveCategory('advanced')}
                   className={`mt-1 flex items-center justify-between rounded px-2 py-1.5 text-left text-sm ${
                     activeCategory === 'advanced'
-                      ? (categoriesPaneFocused ? 'bg-black/5 dark:bg-white/10' : 'bg-zinc-800/5 dark:bg-zinc-200/5 ring-1 ring-black/10 dark:ring-white/20')
-                      : 'hover:bg-black/5 dark:hover:bg-white/10'
+                      ? (categoriesPaneFocused ? 'bg-surface-2' : 'bg-zinc-800/5 dark:bg-zinc-200/5 ring-1 ring-black/10 dark:ring-white/20')
+                      : 'hover:bg-surface-2'
                   }`}
                 >
                   <span className="inline-flex items-center gap-2"><MdTune className="h-4 w-4" />Advanced</span>
@@ -518,7 +518,7 @@ export default function TagSelector({ value, onChange, catalogTags, newTagsCutof
             aria-label="Tags"
             className="min-w-[18rem] flex-1 overflow-auto p-2 outline-none"
           >
-            <div className="mb-1 px-1 text-xs uppercase tracking-wider text-foreground/60">{activeCategory === "advanced" ? "Advanced" : (activeCategory || "Pick a category")}</div>
+            <div className="mb-1 px-1 text-xs uppercase tracking-wider text-text-3">{activeCategory === "advanced" ? "Advanced" : (activeCategory || "Pick a category")}</div>
             <div className="grid gap-1 pr-1">
               {(activeCategory
                 ? (activeCategory === "advanced" ? filtered.advanced : (filtered.byCat.get(activeCategory) || []))
@@ -531,26 +531,26 @@ export default function TagSelector({ value, onChange, catalogTags, newTagsCutof
                   aria-selected={activeTagIndex === idx}
                   onMouseEnter={() => setActiveTagIndex(idx)}
                   onClick={() => toggleTag(t.name)}
-                  className={`flex items-center justify-between rounded px-2 py-1.5 text-sm ${activeTagIndex === idx ? 'bg-black/5 dark:bg-white/10' : 'hover:bg-black/5 dark:hover:bg-white/10'}`}
+                  className={`flex items-center justify-between rounded px-2 py-1.5 text-sm ${activeTagIndex === idx ? 'bg-surface-2' : 'hover:bg-surface-2'}`}
                 >
                   <span className="truncate">{t.name}</span>
                   {t.created_at && newTagsCutoff && new Date(t.created_at) > newTagsCutoff && (
-                    <span className="ml-auto mr-2 rounded-full bg-black/5 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-foreground/60 dark:bg-white/5">New</span>
+                    <span className="ml-auto mr-2 rounded-full bg-surface-2 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-text-3">New</span>
                   )}
                   <input type="checkbox" readOnly checked={value.includes(t.name)} className="h-4 w-4 accent-[var(--accent)]" />
                 </div>
               ))}
               {!activeCategory && (
-                <div className="px-2 py-1.5 text-sm text-foreground/60">Select a category</div>
+                <div className="px-2 py-1.5 text-sm text-text-3">Select a category</div>
               )}
               {activeCategory && (activeCategory === "advanced" ? filtered.advanced.length === 0 : (filtered.byCat.get(activeCategory)?.length || 0) === 0) && (
-                <div className="px-2 py-1.5 text-sm text-foreground/60">No results</div>
+                <div className="px-2 py-1.5 text-sm text-text-3">No results</div>
               )}
             </div>
           </div>
         </div>
       </div>
-      {loading && <div className="text-xs text-foreground/60">Loading tags…</div>}
+      {loading && <div className="text-xs text-text-3">Loading tags…</div>}
     </div>
   );
 }

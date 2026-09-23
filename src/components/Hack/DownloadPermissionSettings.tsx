@@ -111,12 +111,12 @@ export default function DownloadPermissionSettings({
 
   const summary = (
     <>
-      <span className="text-foreground/45">Live: </span>
-      <span className="text-foreground/80 font-medium">{optionLabel(savedPermission)}</span>
+      <span className="text-text-3">Live: </span>
+      <span className="text-text-2 font-medium">{optionLabel(savedPermission)}</span>
       {hasUnsavedChanges && (
         <>
-          <span className="text-foreground/40"> · Draft: </span>
-          <span className="text-foreground/70 font-medium">{optionLabel(selectedPermission)}</span>
+          <span className="text-text-3"> · Draft: </span>
+          <span className="text-text-2 font-medium">{optionLabel(selectedPermission)}</span>
         </>
       )}
     </>
@@ -128,13 +128,13 @@ export default function DownloadPermissionSettings({
       titleId="patch-download-permissions-heading"
       leading={<FaUserGear size={20} />}
       summary={summary}
-      className="mb-6 rounded-lg border border-[var(--border)]/70 border-l-[3px] border-l-[var(--accent)]/40 bg-[var(--surface-2)]"
+      className="mb-6 rounded-card border border-line/70 border-l-[3px] border-l-[var(--accent)]/40 bg-surface-2"
     >
       <div>
-        <p className="text-xs sm:text-sm text-foreground/60 leading-snug md:-mt-4 mb-6">
+        <p className="text-xs sm:text-sm text-text-3 leading-snug md:-mt-4 mb-6">
           Changing this setting will allow users to download the patch file directly from this page as an alternative to using the built-in patcher.
           {isCustomPatcherActive && (
-            <> With <strong className="font-medium text-foreground/70">Custom</strong> patcher versions active, "Current only" applies to every version in your Custom patcher list—not the Current badge alone.</>
+            <> With <strong className="font-medium text-text-2">Custom</strong> patcher versions active, "Current only" applies to every version in your Custom patcher list—not the Current badge alone.</>
           )}
         </p>
         <RadioCardsBody
@@ -149,7 +149,7 @@ export default function DownloadPermissionSettings({
             type="button"
             onClick={handleSave}
             disabled={saving || !hasUnsavedChanges}
-            className="inline-flex items-center justify-center min-w-20 h-8 px-3 text-xs font-semibold rounded-md bg-[var(--accent)] text-[var(--accent-foreground)] hover:bg-[var(--accent-700)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[var(--accent)] shrink-0"
+            className="inline-flex items-center justify-center min-w-20 h-8 px-3 text-xs font-semibold rounded-control bg-accent-deep text-white hover:bg-accent-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-accent-deep shrink-0"
           >
             {saving ? "Saving…" : "Save"}
           </button>
@@ -159,14 +159,14 @@ export default function DownloadPermissionSettings({
           >
             {showSaved ? (
               <span
-                className={`text-emerald-600 dark:text-emerald-400 font-medium transition-opacity duration-[450ms] ease-out ${
+                className={`text-ready dark:text-ready font-medium transition-opacity duration-[450ms] ease-out ${
                   savedFadeOut ? "opacity-0" : "opacity-100"
                 }`}
               >
                 Setting updated.
               </span>
             ) : error ? (
-              <span className="text-red-400">{error}</span>
+              <span className="text-error">{error}</span>
             ) : null}
           </div>
         </div>
@@ -201,27 +201,27 @@ function RadioCardsBody({
             role="radio"
             aria-checked={isUiSelected}
             onClick={() => onSelect(opt.value)}
-            className={`w-full text-left rounded-md border-2 px-3 py-2.5 sm:px-2 sm:py-1.5 transition-colors flex gap-3 sm:gap-2 items-center touch-manipulation min-h-[2.75rem] sm:min-h-[2.25rem] ${
+            className={`w-full text-left rounded-control border-2 px-3 py-2.5 sm:px-2 sm:py-1.5 transition-colors flex gap-3 sm:gap-2 items-center touch-manipulation min-h-[2.75rem] sm:min-h-[2.25rem] ${
               isUiSelected
-                ? "border-[var(--accent)] bg-[var(--surface-2)]"
-                : "border-[var(--border)] bg-[var(--surface-2)]/50 hover:bg-[var(--surface-2)]"
+                ? "border-accent bg-surface-2"
+                : "border-line bg-surface-2/50 hover:bg-surface-2"
             }`}
           >
             <span
               className={`shrink-0 h-3.5 w-3.5 rounded-full border-2 flex items-center justify-center ${
-                isUiSelected ? "border-[var(--accent)]" : "border-[var(--border)]"
+                isUiSelected ? "border-accent" : "border-line"
               }`}
               aria-hidden
             >
-              {isUiSelected && <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />}
+              {isUiSelected && <span className="h-1.5 w-1.5 rounded-full bg-accent-deep" />}
             </span>
             <span className="min-w-0 flex-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 sm:gap-x-1.5 sm:gap-y-0 leading-tight">
               <span className="text-sm font-semibold sm:text-xs">{opt.label}</span>
-              <span className="text-xs text-foreground/55 sm:text-[11px]">
+              <span className="text-xs text-text-3 sm:text-[11px]">
                 {patchDownloadOptionDescription(opt.value, isCustomPatcherActive)}
               </span>
               {showSavedBadge && (
-                <span className="inline-flex items-center rounded px-1 py-px text-[10px] font-medium uppercase tracking-wide text-foreground/60 bg-foreground/5 ring-1 ring-[var(--border)]">
+                <span className="inline-flex items-center rounded px-1 py-px text-[10px] font-medium uppercase tracking-wide text-text-3 bg-foreground/5 ring-1 ring-line">
                   Saved
                 </span>
               )}

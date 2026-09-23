@@ -74,10 +74,10 @@ export default async function ApprovePage({ params }: ApprovePageProps) {
         {hack.approved ? (
           <div className="card p-6">
             <div className="flex items-center gap-3 mb-4">
-              <FaCircleCheck className="text-green-500 flex-shrink-0" size={24} />
+              <FaCircleCheck className="text-ready flex-shrink-0" size={24} />
               <h1 className="text-2xl">{hack.title}</h1>
             </div>
-            <p className="text-foreground/75">
+            <p className="text-text-2">
               This hack has already been approved
               {hack.approved_by && approverUsername
                 ? <span> by <span className="font-semibold">@{approverUsername}</span></span>
@@ -95,19 +95,19 @@ export default async function ApprovePage({ params }: ApprovePageProps) {
         ) : (
           <div className="card p-6">
             <div className="flex items-center gap-4 mb-4">
-              <FaTriangleExclamation className="text-yellow-500 flex-shrink-0" size={24} />
+              <FaTriangleExclamation className="text-warn flex-shrink-0" size={24} />
               <h1 className="text-2xl">
                 Are you sure you want to approve <span className="font-semibold">{hack.title}</span>?
               </h1>
             </div>
-            <p className="text-foreground/75 mb-6">
+            <p className="text-text-2 mb-6">
               By approving this hack, it will become visible to the public.
             </p>
             <form action={handleApprove} className="flex flex-col gap-3 justify-center md:justify-start">
               {/* Checkbox to verify the hack creator */}
               <div className="flex items-center gap-2">
                 {creatorProfile.verified ? (
-                  <p className="text-foreground/75"><span className="font-semibold">@{creatorProfile.username}</span> is already verified.</p>
+                  <p className="text-text-2"><span className="font-semibold">@{creatorProfile.username}</span> is already verified.</p>
                 ) : (
                   <>
                     <input type="checkbox" name="verified" id="verified" />

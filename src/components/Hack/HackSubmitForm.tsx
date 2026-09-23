@@ -37,25 +37,25 @@ function SortableCoverItem({ id, index, url, filename, onRemove }: { id: string;
     transition,
   };
   return (
-    <div ref={setNodeRef} style={style} className="rounded-md">
-      <div className={`h-16 flex items-center justify-between gap-3 p-2 bg-[var(--surface-2)] ring-1 ring-inset ring-[var(--border)] ${isDragging ? "opacity-60" : ""}`}>
+    <div ref={setNodeRef} style={style} className="rounded-control">
+      <div className={`h-16 flex items-center justify-between gap-3 p-2 bg-surface-2 ring-1 ring-inset ring-line ${isDragging ? "opacity-60" : ""}`}>
         <div className="flex items-center gap-3">
-          <div className="cursor-grab select-none pr-1 text-foreground/60" title="Drag to reorder" {...attributes} {...listeners}>
+          <div className="cursor-grab select-none pr-1 text-text-3" title="Drag to reorder" {...attributes} {...listeners}>
             <RxDragHandleDots2 size={24} />
           </div>
           <div className="relative h-12 w-20 overflow-hidden rounded">
             <Image src={url} alt={`Cover ${index + 1}`} fill className="object-cover" unoptimized />
           </div>
           <div className="min-w-0">
-            <div className="truncate max-w-[260px] text-xs text-foreground/80">{filename}</div>
-            {index === 0 && <div className="text-[10px] text-emerald-400/90">Primary</div>}
+            <div className="truncate max-w-[260px] text-xs text-text-2">{filename}</div>
+            {index === 0 && <div className="text-[10px] text-ready">Primary</div>}
           </div>
         </div>
         <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={onRemove}
-            className="inline-flex h-8 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2 text-xs text-red-600 transition-colors hover:bg-black/5 dark:text-red-300 dark:hover:bg-white/10"
+            className="inline-flex h-8 items-center justify-center rounded-control border border-line bg-surface-2 px-2 text-xs text-error transition-colors hover:bg-surface-2"
           >
             Remove
           </button>
@@ -719,15 +719,15 @@ export default function HackSubmitForm({
     <div className="flex flex-col gap-8 lg:flex-row w-full">
       <div className="flex-1">
         <form className="grid gap-5">
-          <div className="text-xs italic text-foreground/60">* Required</div>
+          <div className="text-xs italic text-text-3">* Required</div>
           {isHydrating && (
-            <div className="flex items-center gap-2 text-[13px] text-foreground/70 animate-pulse">
+            <div className="flex items-center gap-2 text-[13px] text-text-2 animate-pulse">
               <span className="inline-block h-2 w-2 rounded-full bg-foreground/50"></span>
               Checking for existing draft…
             </div>
           )}
           {customCreator && permissionFrom && (
-            <div className="flex items-center gap-3 rounded-md border border-blue-500/30 bg-blue-500/10 p-3 text-sm text-blue-900 dark:text-blue-100">
+            <div className="flex items-center gap-3 rounded-control border border-blue-500/30 bg-blue-500/10 p-3 text-sm text-blue-900 dark:text-blue-100">
               <div className="flex items-center justify-center w-2 h-full">
                 <div className="inline-block h-2 w-2 rounded-full bg-blue-400" />
               </div>
@@ -746,9 +746,9 @@ export default function HackSubmitForm({
             </div>
           )}
           {!isHydrating && restoredDraft && (
-            <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-100 flex items-center justify-between">
+            <div className="rounded-control border border-warn/40 bg-warn-soft p-3 text-sm text-warn flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="inline-block h-2 w-2 rounded-full bg-amber-400"></span>
+                <span className="inline-block h-2 w-2 rounded-full bg-warn"></span>
                 Restored a previously saved draft.
               </div>
               <button
@@ -790,7 +790,7 @@ export default function HackSubmitForm({
                   if (modifiedRomInputRef.current) modifiedRomInputRef.current.value = "";
                   setRestoredDraft(false);
                 }}
-                className="inline-flex h-8 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 text-xs font-medium text-foreground/80 transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                className="inline-flex h-8 items-center justify-center rounded-control border border-line bg-surface-2 px-3 text-xs font-medium text-text-2 transition-colors hover:bg-surface-2"
               >
                 Clear saved draft
               </button>
@@ -801,28 +801,28 @@ export default function HackSubmitForm({
             {step === 1 && (
               <>
                 <div className="grid gap-2">
-                  <label className="text-sm text-foreground/80">Title <span className="text-red-500">*</span></label>
+                  <label className="text-sm text-text-2">Title <span className="text-error">*</span></label>
                   {!isDummy ? (
                     <input
                       ref={titleInputRef}
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
-                      className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+                      className="h-11 rounded-control bg-surface-2 px-3 text-sm ring-1 ring-inset ring-line focus:outline-none focus:ring-2 focus:ring-accent/40"
                     />
                   ) : (
                     <div
                       role="textbox"
                       aria-disabled
-                      className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none"
+                      className="h-11 rounded-control bg-surface-2 px-3 text-sm ring-1 ring-inset ring-line flex items-center text-text-3 select-none"
                     >
                       Your hack title
                     </div>
                   )}
-                  <div className="mt-1 text-xs text-foreground/60">URL preview: <span className="text-foreground/80">/hack/{slug || "your-title"}</span></div>
+                  <div className="mt-1 text-xs text-text-3">URL preview: <span className="text-text-2">/hack/{slug || "your-title"}</span></div>
                 </div>
 
                 <div className="grid gap-2">
-                  <label className="text-sm text-foreground/80">Platform <span className="text-red-500">*</span></label>
+                  <label className="text-sm text-text-2">Platform <span className="text-error">*</span></label>
                   {!isDummy ? (
                     <Select
                       value={platform}
@@ -835,15 +835,15 @@ export default function HackSubmitForm({
                       }))}
                     />
                   ) : (
-                    <div className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none">{platform || ""}</div>
+                    <div className="h-11 rounded-control bg-surface-2 px-3 text-sm ring-1 ring-inset ring-line flex items-center text-text-3 select-none">{platform || ""}</div>
                   )}
                   {newCoverFiles.length > 0 && (
-                    <div className="text-xs text-red-500">Please remove all screenshots before changing the platform.</div>
+                    <div className="text-xs text-error">Please remove all screenshots before changing the platform.</div>
                   )}
                 </div>
 
                 <div className="grid gap-2">
-                  <label className="text-sm text-foreground/80">Base ROM <span className="text-red-500">*</span></label>
+                  <label className="text-sm text-text-2">Base ROM <span className="text-error">*</span></label>
                   {!isDummy ? (
                     <Select
                       enableFilter
@@ -854,15 +854,15 @@ export default function HackSubmitForm({
                       options={baseRomOptions}
                     />
                   ) : (
-                    <div className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none">{baseRoms.find(r=>r.id===baseRom)?.name || baseRom}</div>
+                    <div className="h-11 rounded-control bg-surface-2 px-3 text-sm ring-1 ring-inset ring-line flex items-center text-text-3 select-none">{baseRoms.find(r=>r.id===baseRom)?.name || baseRom}</div>
                   )}
-                  <p className="text-xs text-foreground/60">
+                  <p className="text-xs text-text-3">
                     Missing a base ROM?{" "}
                     <a
                       href="https://github.com/Hackdex-App/hackdex-website/issues/new?template=add-base-rom.yml"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="underline underline-offset-2 hover:text-foreground/80 transition-colors"
+                      className="underline underline-offset-2 hover:text-text-2 transition-colors"
                     >
                       Request it on GitHub
                       <FiExternalLink className="inline-block h-3 w-3 ml-1" />
@@ -871,7 +871,7 @@ export default function HackSubmitForm({
                 </div>
 
                 <div className="grid gap-2">
-                  <label className="text-sm text-foreground/80">Language <span className="text-red-500">*</span></label>
+                  <label className="text-sm text-text-2">Language <span className="text-error">*</span></label>
                   {!isDummy ? (
                     <Select
                       value={language}
@@ -883,12 +883,12 @@ export default function HackSubmitForm({
                       }))}
                     />
                   ) : (
-                    <div role="textbox" aria-disabled className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none">{language}</div>
+                    <div role="textbox" aria-disabled className="h-11 rounded-control bg-surface-2 px-3 text-sm ring-1 ring-inset ring-line flex items-center text-text-3 select-none">{language}</div>
                   )}
                 </div>
 
                 <div className="grid gap-2">
-                  <label className="text-sm text-foreground/80">Completion Status <span className="text-red-500">*</span></label>
+                  <label className="text-sm text-text-2">Completion Status <span className="text-error">*</span></label>
                   {!isDummy ? (
                     <Select
                       value={completionStatus}
@@ -900,25 +900,25 @@ export default function HackSubmitForm({
                       }))}
                     />
                   ) : (
-                    <div role="textbox" aria-disabled className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none">{completionStatus || "Select completion status"}</div>
+                    <div role="textbox" aria-disabled className="h-11 rounded-control bg-surface-2 px-3 text-sm ring-1 ring-inset ring-line flex items-center text-text-3 select-none">{completionStatus || "Select completion status"}</div>
                   )}
                 </div>
 
                 {isArchive && (
                   <div className="grid gap-2">
-                    <label className="text-sm text-foreground/80">Original Author <span className="text-red-500">*</span></label>
+                    <label className="text-sm text-text-2">Original Author <span className="text-error">*</span></label>
                     {!isDummy ? (
                       <input
                         value={originalAuthor}
                         onChange={(e) => setOriginalAuthor(e.target.value)}
                         disabled={!!customCreator}
                         placeholder="Name of the original hack creator"
-                        className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="h-11 rounded-control bg-surface-2 px-3 text-sm ring-1 ring-inset ring-line focus:outline-none focus:ring-2 focus:ring-accent/40 disabled:opacity-50 disabled:cursor-not-allowed"
                       />
                     ) : (
-                      <div role="textbox" aria-disabled className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none">Original author name</div>
+                      <div role="textbox" aria-disabled className="h-11 rounded-control bg-surface-2 px-3 text-sm ring-1 ring-inset ring-line flex items-center text-text-3 select-none">Original author name</div>
                     )}
-                    <div className="text-xs text-foreground/60">The name of the person or team who originally created this hack</div>
+                    <div className="text-xs text-text-3">The name of the person or team who originally created this hack</div>
                   </div>
                 )}
               </>
@@ -928,43 +928,43 @@ export default function HackSubmitForm({
               <>
                 {!isArchive && (
                   <div className="grid gap-2">
-                    <label className="text-sm text-foreground/80">Version <span className="text-red-500">*</span></label>
+                    <label className="text-sm text-text-2">Version <span className="text-error">*</span></label>
                     {!isDummy ? (
                       <input
                         ref={versionInputRef}
                         value={version}
                         onChange={(e) => setVersion(e.target.value)}
                         placeholder="e.g. v1.2.0"
-                        className={`h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]`}
+                        className={`h-11 rounded-control bg-surface-2 px-3 text-sm ring-1 ring-inset ring-line focus:outline-none focus:ring-2 focus:ring-accent/40`}
                       />
                     ) : (
-                      <div role="textbox" aria-disabled className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none">v0.1.0</div>
+                      <div role="textbox" aria-disabled className="h-11 rounded-control bg-surface-2 px-3 text-sm ring-1 ring-inset ring-line flex items-center text-text-3 select-none">v0.1.0</div>
                     )}
                   </div>
                 )}
 
                 <div className="grid gap-2">
-                  <label className="text-sm text-foreground/80">Tags <span className="text-red-500">*</span></label>
+                  <label className="text-sm text-text-2">Tags <span className="text-error">*</span></label>
                   <TagSelector value={tags} onChange={setTags} catalogTags={catalogTags} newTagsCutoff={null} />
                 </div>
 
                 <div className="grid gap-1">
                   <div className="flex items-center justify-between">
-                    <label className="text-sm text-foreground/80">Summary <span className="text-red-500">*</span></label>
-                    <span className={`text-[11px] ${summaryTooLong ? "text-red-300" : "text-foreground/60"}`}>{summary.length}/{summaryLimit}</span>
+                    <label className="text-sm text-text-2">Summary <span className="text-error">*</span></label>
+                    <span className={`text-[11px] ${summaryTooLong ? "text-error" : "text-text-3"}`}>{summary.length}/{summaryLimit}</span>
                   </div>
                   {!isDummy ? (
                     <input
                       value={summary}
                       onChange={(e) => setSummary(e.target.value)}
                       placeholder="<= 100 characters"
-                      className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${summaryTooLong ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
+                      className={`h-11 rounded-control px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-accent/40 ${summaryTooLong ? "ring-error/40 bg-error-soft dark:ring-error/40 dark:bg-error-soft" : "bg-surface-2 ring-line"}`}
                     />
                   ) : (
                     <div
                       role="textbox"
                       aria-disabled
-                      className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center text-foreground/60 select-none ${summaryTooLong ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
+                      className={`h-11 rounded-control px-3 text-sm ring-1 ring-inset flex items-center text-text-3 select-none ${summaryTooLong ? "ring-error/40 bg-error-soft dark:ring-error/40 dark:bg-error-soft" : "bg-surface-2 ring-line"}`}
                     >
                       Short description, max 100 characters.
                     </div>
@@ -973,20 +973,20 @@ export default function HackSubmitForm({
 
                 <div className="grid gap-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-sm text-foreground/80">Description <span className="text-red-500">*</span></label>
+                    <label className="text-sm text-text-2">Description <span className="text-error">*</span></label>
                     {!isDummy && (
                       <div className="flex items-center gap-1 text-xs">
-                        <button type="button" onClick={() => setShowMdPreview(false)} className={`px-2 py-1 rounded ${!showMdPreview ? "bg-[var(--surface-2)] ring-1 ring-[var(--border)]" : "text-foreground/70"}`}>Write</button>
-                        <button type="button" onClick={() => setShowMdPreview(true)} className={`px-2 py-1 rounded ${showMdPreview ? "bg-[var(--surface-2)] ring-1 ring-[var(--border)]" : "text-foreground/70"}`}>Preview</button>
+                        <button type="button" onClick={() => setShowMdPreview(false)} className={`px-2 py-1 rounded ${!showMdPreview ? "bg-surface-2 ring-1 ring-line" : "text-text-2"}`}>Write</button>
+                        <button type="button" onClick={() => setShowMdPreview(true)} className={`px-2 py-1 rounded ${showMdPreview ? "bg-surface-2 ring-1 ring-line" : "text-text-2"}`}>Preview</button>
                       </div>
                     )}
                   </div>
-                  <p className="text-xs text-foreground/60">
+                  <p className="text-xs text-text-3">
                     A credits section is required.{" "}
-                    <a href="https://www.markdownguide.org/basic-syntax/" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground/80 transition-colors">Supports Markdown <FiExternalLink className="inline-block h-3 w-3" /></a>
+                    <a href="https://www.markdownguide.org/basic-syntax/" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-text-2 transition-colors">Supports Markdown <FiExternalLink className="inline-block h-3 w-3" /></a>
                   </p>
                   {isDummy ? (
-                    <div className="prose max-w-none h-36 rounded-md bg-[var(--surface-2)] px-3 py-2 ring-1 ring-inset ring-[var(--border)] text-foreground/60 select-none">
+                    <div className="prose max-w-none h-36 rounded-control bg-surface-2 px-3 py-2 ring-1 ring-inset ring-line text-text-3 select-none">
                       <Markdown headingLevelOffset={1}>{description || "Write a longer markdown description here."}</Markdown>
                     </div>
                   ) : !showMdPreview ? (
@@ -995,10 +995,10 @@ export default function HackSubmitForm({
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       placeholder={HACK_FORM_DESCRIPTION_PLACEHOLDER}
-                      className={`rounded-md bg-[var(--surface-2)] px-3 py-2 min-h-[14rem] text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]`}
+                      className={`rounded-control bg-surface-2 px-3 py-2 min-h-[14rem] text-sm ring-1 ring-inset ring-line focus:outline-none focus:ring-2 focus:ring-accent/40`}
                     />
                   ) : (
-                    <div className={`prose max-w-none rounded-md bg-[var(--surface-2)] min-h-[14rem] px-3 py-2 ring-1 ring-inset ring-[var(--border)] ${description ? "" : "text-foreground/60 text-sm"}`}>
+                    <div className={`prose max-w-none rounded-control bg-surface-2 min-h-[14rem] px-3 py-2 ring-1 ring-inset ring-line ${description ? "" : "text-text-3 text-sm"}`}>
                       <Markdown headingLevelOffset={1}>{description || "Nothing to preview yet."}</Markdown>
                     </div>
                   )}
@@ -1009,18 +1009,18 @@ export default function HackSubmitForm({
             {step === 3 && (
               <>
                 <div className="grid gap-2">
-                  <label className="text-sm text-foreground/80">Screenshots <span className="text-red-500">*</span></label>
+                  <label className="text-sm text-text-2">Screenshots <span className="text-error">*</span></label>
                   {allowedSizes.length > 0 && (
-                    <p className="text-xs text-foreground/60">Upload screenshots of your game. Allowed sizes: <span className="font-bold">{allowedSizes.map((s) => `${s.w}x${s.h}`).join(", ")}</span>.</p>
+                    <p className="text-xs text-text-3">Upload screenshots of your game. Allowed sizes: <span className="font-bold">{allowedSizes.map((s) => `${s.w}x${s.h}`).join(", ")}</span>.</p>
                   )}
                   {tutorialInfo && (
-                    <p className="text-xs text-foreground/60">
+                    <p className="text-xs text-text-3">
                       Need help taking screenshots? Watch our{" "}
                       <a
                         href={tutorialInfo.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 underline underline-offset-2 hover:text-foreground/80 transition-colors"
+                        className="inline-flex items-center gap-1 underline underline-offset-2 hover:text-text-2 transition-colors"
                       >
                         {tutorialInfo.emulatorName} tutorial
                         <FiExternalLink className="h-3 w-3" />
@@ -1050,10 +1050,10 @@ export default function HackSubmitForm({
                         const nextFiles = [...newCoverFiles, ...accepted];
                         setNewCoverFiles(nextFiles);
                         }}
-                        className={`w-full rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none ${!hasBaseRom ? 'pointer-events-none opacity-50 blur-[1px]' : ''}`}
+                        className={`w-full rounded-control bg-surface-2 px-3 py-2 text-sm ring-1 ring-inset ring-line focus:outline-none ${!hasBaseRom ? 'pointer-events-none opacity-50 blur-[1px]' : ''}`}
                       />
                     ) : (
-                      <div className="w-full h-14 rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm ring-1 ring-inset ring-[var(--border)] text-foreground/60 select-none">
+                      <div className="w-full h-14 rounded-control bg-surface-2 px-3 py-2 text-sm ring-1 ring-inset ring-line text-text-3 select-none">
                         Choose images to upload
                       </div>
                     )}
@@ -1063,34 +1063,34 @@ export default function HackSubmitForm({
                           <button
                             type="button"
                             onClick={() => { setNewCoverFiles([]); try { if (draftKey) deleteDraftCovers(draftKey); } catch {} }}
-                            className="inline-flex h-9 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 text-xs font-medium text-foreground/80 transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                            className="inline-flex h-9 items-center justify-center rounded-control border border-line bg-surface-2 px-3 text-xs font-medium text-text-2 transition-colors hover:bg-surface-2"
                           >
                             Clear
                           </button>
                         </>
                       ) : (
                         <>
-                          <button type="button" disabled className="inline-flex h-9 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 text-xs font-medium text-foreground/70 disabled:opacity-40">
+                          <button type="button" disabled className="inline-flex h-9 items-center justify-center rounded-control border border-line bg-surface-2 px-3 text-xs font-medium text-text-2 disabled:opacity-40">
                             Add
                           </button>
-                          <button type="button" disabled className="inline-flex h-9 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 text-xs font-medium text-foreground/60 disabled:opacity-40">
+                          <button type="button" disabled className="inline-flex h-9 items-center justify-center rounded-control border border-line bg-surface-2 px-3 text-xs font-medium text-text-3 disabled:opacity-40">
                             Clear
                           </button>
                         </>
                       )}
                     </div>
-                    <div className="text-xs text-foreground/60 flex justify-between">
-                      <p>Images: <span className={overLimit ? "text-red-300 font-bold" : "text-foreground/60"}>{newCoverFiles.length}</span>/{MAX_COVERS}</p>
-                      {overLimit && <p className="text-red-300/80 italic">Remove some to submit.</p>}
+                    <div className="text-xs text-text-3 flex justify-between">
+                      <p>Images: <span className={overLimit ? "text-error font-bold" : "text-text-3"}>{newCoverFiles.length}</span>/{MAX_COVERS}</p>
+                      {overLimit && <p className="text-error italic">Remove some to submit.</p>}
                     </div>
                     {coverErrors.length > 0 && (
-                      <div className="text-xs text-red-400">
+                      <div className="text-xs text-error">
                         Rejected (wrong size): {coverErrors.join(", ")}
                       </div>
                     )}
                     <div className="grid gap-2">
                       {newCoverFiles.length === 0 ? (
-                        <p className="text-xs text-foreground/60">No images added yet. Add at least one to preview.</p>
+                        <p className="text-xs text-text-3">No images added yet. Add at least one to preview.</p>
                       ) : (
                         !isDummy ? (
                           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
@@ -1117,86 +1117,86 @@ export default function HackSubmitForm({
                 </div>
 
                 <div className="grid gap-2">
-                  <label className="text-sm text-foreground/80">Box art URL</label>
+                  <label className="text-sm text-text-2">Box art URL</label>
                   {!isDummy ? (
                     <input
                       value={boxArt}
                       onChange={(e) => setBoxArt(e.target.value)}
                       placeholder="https://..."
-                      className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${boxArt && !urlLike(boxArt) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
+                      className={`h-11 rounded-control px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-accent/40 ${boxArt && !urlLike(boxArt) ? "ring-error/40 bg-error-soft dark:ring-error/40 dark:bg-error-soft" : "bg-surface-2 ring-line"}`}
                     />
                   ) : (
-                    <div className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center text-foreground/60 select-none ${boxArt && !urlLike(boxArt) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}>https://...</div>
+                    <div className={`h-11 rounded-control px-3 text-sm ring-1 ring-inset flex items-center text-text-3 select-none ${boxArt && !urlLike(boxArt) ? "ring-error/40 bg-error-soft dark:ring-error/40 dark:bg-error-soft" : "bg-surface-2 ring-line"}`}>https://...</div>
                   )}
                 </div>
 
                 <div className="grid gap-2">
-                  <label className="text-sm text-foreground/80">Social links</label>
-                  <p className="text-xs text-foreground/60">Use full URLs starting with http:// or https://</p>
+                  <label className="text-sm text-text-2">Social links</label>
+                  <p className="text-xs text-text-3">Use full URLs starting with http:// or https://</p>
                   <div className="grid gap-2">
                     {!isDummy ? (
                       <>
                         <div className="flex items-center gap-2">
                           <div className="flex items-center justify-center w-10 h-11 shrink-0">
-                            <FaDiscord size={20} className="text-foreground/70" />
+                            <FaDiscord size={20} className="text-text-2" />
                           </div>
                           <input
                             value={discord}
                             onChange={(e) => setDiscord(e.target.value)}
                             placeholder="Discord invite URL"
-                            className={`flex-1 h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${discord && !urlLike(discord) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
+                            className={`flex-1 h-11 rounded-control px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-accent/40 ${discord && !urlLike(discord) ? "ring-error/40 bg-error-soft dark:ring-error/40 dark:bg-error-soft" : "bg-surface-2 ring-line"}`}
                           />
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="flex items-center justify-center w-10 h-11 shrink-0">
-                            <FaTwitter size={20} className="text-foreground/70" />
+                            <FaTwitter size={20} className="text-text-2" />
                           </div>
                           <input
                             value={twitter}
                             onChange={(e) => setTwitter(e.target.value)}
                             placeholder="Twitter/X profile URL"
-                            className={`flex-1 h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${twitter && !urlLike(twitter) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
+                            className={`flex-1 h-11 rounded-control px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-accent/40 ${twitter && !urlLike(twitter) ? "ring-error/40 bg-error-soft dark:ring-error/40 dark:bg-error-soft" : "bg-surface-2 ring-line"}`}
                           />
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="flex items-center justify-center w-10 h-11 shrink-0">
-                            <PokeCommunityIcon width={20} height={20} color="currentColor" className="text-foreground/70" />
+                            <PokeCommunityIcon width={20} height={20} color="currentColor" className="text-text-2" />
                           </div>
                           <input
                             value={pokecommunity}
                             onChange={(e) => setPokecommunity(e.target.value)}
                             placeholder="PokeCommunity thread URL"
-                            className={`flex-1 h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${pokecommunity && !urlLike(pokecommunity) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
+                            className={`flex-1 h-11 rounded-control px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-accent/40 ${pokecommunity && !urlLike(pokecommunity) ? "ring-error/40 bg-error-soft dark:ring-error/40 dark:bg-error-soft" : "bg-surface-2 ring-line"}`}
                           />
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="flex items-center justify-center w-10 h-11 shrink-0">
-                            <FaGithub size={20} className="text-foreground/70" />
+                            <FaGithub size={20} className="text-text-2" />
                           </div>
                           <input
                             value={github}
                             onChange={(e) => setGithub(e.target.value)}
                             placeholder="GitHub repository URL"
-                            className={`flex-1 h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${github && !urlLike(github) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}
+                            className={`flex-1 h-11 rounded-control px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-accent/40 ${github && !urlLike(github) ? "ring-error/40 bg-error-soft dark:ring-error/40 dark:bg-error-soft" : "bg-surface-2 ring-line"}`}
                           />
                         </div>
                       </>
                     ) : (
                       <>
-                        <div className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center gap-2 text-foreground/60 select-none ${discord && !urlLike(discord) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}>
-                          <FaDiscord size={20} className="text-foreground/50" />
+                        <div className={`h-11 rounded-control px-3 text-sm ring-1 ring-inset flex items-center gap-2 text-text-3 select-none ${discord && !urlLike(discord) ? "ring-error/40 bg-error-soft dark:ring-error/40 dark:bg-error-soft" : "bg-surface-2 ring-line"}`}>
+                          <FaDiscord size={20} className="text-text-3" />
                           <span>Discord invite URL</span>
                         </div>
-                        <div className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center gap-2 text-foreground/60 select-none ${twitter && !urlLike(twitter) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}>
-                          <FaTwitter size={20} className="text-foreground/50" />
+                        <div className={`h-11 rounded-control px-3 text-sm ring-1 ring-inset flex items-center gap-2 text-text-3 select-none ${twitter && !urlLike(twitter) ? "ring-error/40 bg-error-soft dark:ring-error/40 dark:bg-error-soft" : "bg-surface-2 ring-line"}`}>
+                          <FaTwitter size={20} className="text-text-3" />
                           <span>Twitter/X profile URL</span>
                         </div>
-                        <div className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center gap-2 text-foreground/60 select-none ${pokecommunity && !urlLike(pokecommunity) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}>
-                          <PokeCommunityIcon width={20} height={20} color="currentColor" className="text-foreground/50" />
+                        <div className={`h-11 rounded-control px-3 text-sm ring-1 ring-inset flex items-center gap-2 text-text-3 select-none ${pokecommunity && !urlLike(pokecommunity) ? "ring-error/40 bg-error-soft dark:ring-error/40 dark:bg-error-soft" : "bg-surface-2 ring-line"}`}>
+                          <PokeCommunityIcon width={20} height={20} color="currentColor" className="text-text-3" />
                           <span>PokeCommunity thread URL</span>
                         </div>
-                        <div className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset flex items-center gap-2 text-foreground/60 select-none ${github && !urlLike(github) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "bg-[var(--surface-2)] ring-[var(--border)]"}`}>
-                          <FaGithub size={20} className="text-foreground/50" />
+                        <div className={`h-11 rounded-control px-3 text-sm ring-1 ring-inset flex items-center gap-2 text-text-3 select-none ${github && !urlLike(github) ? "ring-error/40 bg-error-soft dark:ring-error/40 dark:bg-error-soft" : "bg-surface-2 ring-line"}`}>
+                          <FaGithub size={20} className="text-text-3" />
                           <span>GitHub repository URL</span>
                         </div>
                       </>
@@ -1206,8 +1206,8 @@ export default function HackSubmitForm({
 
                 {!profile?.verified && (
                   <div className="grid gap-2">
-                    <label className="text-sm text-foreground/80">Verification Contact Information <span className="text-foreground/60">(Recommended)</span></label>
-                    <p className="text-xs text-foreground/60">
+                    <label className="text-sm text-text-2">Verification Contact Information <span className="text-text-3">(Recommended)</span></label>
+                    <p className="text-xs text-text-3">
                       Help us verify your account by providing contact information from a platform where your message/post history can be verified (e.g., Discord, PokéCommunity). This information will only be visible to admins during the approval process.
                     </p>
                     {!isDummy ? (
@@ -1221,16 +1221,16 @@ Team Aqua's Hideout, RH Hideout, pret
 Here is an invite to my development server:
 https://discord.gg/example`}
                         rows={6}
-                        className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] resize-y"
+                        className="rounded-control bg-surface-2 px-3 py-2 text-sm ring-1 ring-inset ring-line focus:outline-none focus:ring-2 focus:ring-accent/40 resize-y"
                       />
                     ) : (
-                      <div className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm ring-1 ring-inset ring-[var(--border)] text-foreground/60 select-none min-h-[6rem]">
+                      <div className="rounded-control bg-surface-2 px-3 py-2 text-sm ring-1 ring-inset ring-line text-text-3 select-none min-h-[6rem]">
                         Discord: @example<br />
                         I am active in the following servers: Team Aqua's Hideout, pret, and PokéDev School<br />
                         Here is an invite to my development server: https://discord.gg/example_server_invite
                       </div>
                     )}
-                    <p className="text-xs text-foreground/60">Optional but recommended for faster account verification. Please be detailed.</p>
+                    <p className="text-xs text-text-3">Optional but recommended for faster account verification. Please be detailed.</p>
                   </div>
                 )}
               </>
@@ -1238,7 +1238,7 @@ https://discord.gg/example`}
 
             {step === 4 && !isArchive && (
               <div className="grid gap-3">
-                <label className="text-sm text-foreground/80">Provide patch <span className="text-red-500">*</span></label>
+                <label className="text-sm text-text-2">Provide patch <span className="text-error">*</span></label>
                 {!isDummy ? (
                   <div className="flex flex-col gap-3">
                     {patchMode === "bps" && (
@@ -1248,20 +1248,20 @@ https://discord.gg/example`}
                           onChange={onUploadPatch}
                           type="file"
                           accept=".bps,.xdelta"
-                          className="cursor-pointer rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] file:bg-black/10 dark:file:bg-[var(--surface-2)] file:text-foreground/80 file:text-sm file:font-medium file:not-italic file:rounded-md file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer"
+                          className="cursor-pointer rounded-control bg-surface-2 px-3 py-2 text-sm italic text-text-3 ring-1 ring-inset ring-line file:bg-black/10 dark:file:bg-surface-2 file:text-text-2 file:text-sm file:font-medium file:not-italic file:rounded-control file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer"
                         />
-                        <p className="flex items-center gap-1.5 text-xs text-foreground/60">
-                          <FiAlertTriangle className="h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" />
+                        <p className="flex items-center gap-1.5 text-xs text-text-3">
+                          <FiAlertTriangle className="h-3 w-3 shrink-0 text-warn" />
                           <span>Patch file upload is a fallback. Hackdex cannot always guarantee that an uploaded patch is compatible with the chosen base ROM. Auto-generating from a modified ROM is recommended.</span>
                         </p>
-                        {checksumStatus === "validating" && <div className="text-xs text-foreground/70">Validating checksum…</div>}
-                        {checksumStatus === "valid" && <div className="text-xs text-emerald-400/90">Checksum valid.</div>}
-                        {checksumStatus === "invalid" && !!checksumError && <div className="text-xs text-red-400">{checksumError}</div>}
-                        {checksumStatus === "unknown" && !!checksumError && <div className="text-xs text-amber-400/90">{checksumError}</div>}
+                        {checksumStatus === "validating" && <div className="text-xs text-text-2">Validating checksum…</div>}
+                        {checksumStatus === "valid" && <div className="text-xs text-ready">Checksum valid.</div>}
+                        {checksumStatus === "invalid" && !!checksumError && <div className="text-xs text-error">{checksumError}</div>}
+                        {checksumStatus === "unknown" && !!checksumError && <div className="text-xs text-warn">{checksumError}</div>}
                         <button
                           type="button"
                           onClick={() => setPatchMode("rom")}
-                          className="w-fit cursor-pointer text-xs text-foreground/60 underline underline-offset-2 transition-colors hover:text-foreground/80"
+                          className="w-fit cursor-pointer text-xs text-text-3 underline underline-offset-2 transition-colors hover:text-text-2"
                         >
                           Generate from a modified ROM instead (Recommended)
                         </button>
@@ -1270,45 +1270,45 @@ https://discord.gg/example`}
 
                     {patchMode === "rom" && (
                       <div className="grid gap-3">
-                        <div className="rounded-md border border-[var(--border)] p-3 bg-[var(--surface-2)]/50">
-                          <div className="text-xs text-foreground/75">Required base ROM</div>
+                        <div className="rounded-control border border-line p-3 bg-surface-2/50">
+                          <div className="text-xs text-text-2">Required base ROM</div>
                           <div className="mt-1 text-sm font-medium">{baseRomEntry ? `${baseRomEntry.name} (${baseRomEntry.platform})` : "Select a base ROM in Step 1"}</div>
                           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                            <span className={`rounded-full px-2 py-0.5 ring-1 ${baseRomReady ? "bg-emerald-600/60 text-white ring-emerald-700/80 dark:bg-emerald-500/25 dark:text-emerald-100 dark:ring-emerald-400/90" : baseRomNeedsPermission ? "bg-amber-600/60 text-white ring-amber-700/80 dark:bg-amber-500/50 dark:text-amber-100 dark:ring-amber-400/90" : "bg-red-600/60 text-white ring-red-700/80 dark:bg-red-500/50 dark:text-red-100 dark:ring-red-400/90"}`}>
+                            <span className={`rounded-full px-2 py-0.5 ring-1 ${baseRomReady ? "bg-ready-soft text-white ring-ready/40 dark:bg-ready-soft dark:text-ready dark:ring-ready/40" : baseRomNeedsPermission ? "bg-warn-soft text-white ring-warn/40 dark:bg-warn-soft dark:text-warn dark:ring-warn/40" : "bg-error-soft text-white ring-error/40 dark:bg-error-soft dark:text-error dark:ring-error/40"}`}>
                               {baseRomReady ? "Ready" : baseRomNeedsPermission ? "Permission needed" : "Base ROM needed"}
                             </span>
                             {baseRomNeedsPermission && (
-                              <button type="button" onClick={onGrantPermission} disabled={!supported} className="rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2 py-1 disabled:opacity-60 disabled:cursor-not-allowed">Grant permission</button>
+                              <button type="button" onClick={onGrantPermission} disabled={!supported} className="rounded-control border border-line bg-surface-2 px-2 py-1 disabled:opacity-60 disabled:cursor-not-allowed">Grant permission</button>
                             )}
                             {baseRomMissing && (
-                              <label className="inline-flex items-center gap-2 text-xs text-foreground/80">
-                                <input type="file" onChange={onUploadBaseRom} className="cursor-pointer rounded-md bg-[var(--surface-2)] px-2 py-1 text-xs italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] file:bg-black/10 dark:file:bg-[var(--surface-2)] file:text-foreground/80 file:text-xs file:font-medium file:not-italic file:rounded-md file:border-0 file:px-2 file:py-1 file:mr-2 file:cursor-pointer" />
+                              <label className="inline-flex items-center gap-2 text-xs text-text-2">
+                                <input type="file" onChange={onUploadBaseRom} className="cursor-pointer rounded-control bg-surface-2 px-2 py-1 text-xs italic text-text-3 ring-1 ring-inset ring-line file:bg-black/10 dark:file:bg-surface-2 file:text-text-2 file:text-xs file:font-medium file:not-italic file:rounded-control file:border-0 file:px-2 file:py-1 file:mr-2 file:cursor-pointer" />
                                 <span>Upload base ROM</span>
                               </label>
                             )}
                           </div>
-                          {!!genError && <div className="mt-2 text-xs text-red-400">{genError}</div>}
+                          {!!genError && <div className="mt-2 text-xs text-error">{genError}</div>}
                         </div>
 
                         <div className="grid gap-2">
-                          <label className="text-sm text-foreground/80">Modified ROM <span className="text-foreground/60">(Recommended)</span></label>
+                          <label className="text-sm text-text-2">Modified ROM <span className="text-text-3">(Recommended)</span></label>
                           <input
                             ref={modifiedRomInputRef}
                             type="file"
                             accept={baseRomPlatform ? platformAccept(baseRomPlatform) : "*/*"}
                             disabled={!baseRomEntry || !baseRomReady || !baseRomPlatform}
                             onChange={onUploadModifiedRom}
-                            className="cursor-pointer rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] file:bg-black/10 dark:file:bg-[var(--surface-2)] file:text-foreground/80 file:text-sm file:font-medium file:not-italic file:rounded-md file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="cursor-pointer rounded-control bg-surface-2 px-3 py-2 text-sm italic text-text-3 ring-1 ring-inset ring-line file:bg-black/10 dark:file:bg-surface-2 file:text-text-2 file:text-sm file:font-medium file:not-italic file:rounded-control file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                           />
-                          <p className="text-xs text-foreground/60">We'll generate a .xdelta patch on-device. No ROMs are uploaded.</p>
-                          {genStatus === "generating" && <div className="text-xs text-foreground/70">Generating patch…</div>}
-                          {genStatus === "ready" && patchFile && <div className="text-xs text-emerald-400/90">Patch ready: {patchFile.name}</div>}
-                          {genStatus === "error" && !!genError && <div className="text-xs text-red-400">{genError}</div>}
+                          <p className="text-xs text-text-3">We'll generate a .xdelta patch on-device. No ROMs are uploaded.</p>
+                          {genStatus === "generating" && <div className="text-xs text-text-2">Generating patch…</div>}
+                          {genStatus === "ready" && patchFile && <div className="text-xs text-ready">Patch ready: {patchFile.name}</div>}
+                          {genStatus === "error" && !!genError && <div className="text-xs text-error">{genError}</div>}
                         </div>
                         <button
                           type="button"
                           onClick={() => setPatchMode("bps")}
-                          className="w-fit cursor-pointer text-xs text-foreground/60 underline underline-offset-2 transition-colors hover:text-foreground/80"
+                          className="w-fit cursor-pointer text-xs text-text-3 underline underline-offset-2 transition-colors hover:text-text-2"
                         >
                           Already have a .bps or .xdelta file?
                         </button>
@@ -1316,23 +1316,23 @@ https://discord.gg/example`}
                     )}
                   </div>
                 ) : (
-                  <div className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] select-none">Choose file</div>
+                  <div className="rounded-control bg-surface-2 px-3 py-2 text-sm italic text-text-3 ring-1 ring-inset ring-line select-none">Choose file</div>
                 )}
               </div>
             )}
 
             {!isDummy && (
-              <div className="flex items-center justify-between gap-3 border-t border-[var(--border)] pt-4 mt-4">
+              <div className="flex items-center justify-between gap-3 border-t border-line pt-4 mt-4">
                 <button
                   type="button"
                   onClick={() => setStep((s) => Math.max(1, s - 1))}
                   disabled={step === 1 || submitting}
-                  className="inline-flex h-11 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-4 text-sm font-semibold text-foreground transition-colors hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex h-11 items-center justify-center rounded-control border border-line bg-surface-2 px-4 text-sm font-semibold text-text transition-colors hover:bg-surface-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Back
                 </button>
                 <div className="flex items-center gap-3">
-                  <span className="text-sm text-foreground/60">Step {step} of {maxSteps}</span>
+                  <span className="text-sm text-text-3">Step {step} of {maxSteps}</span>
                 </div>
                 {step < maxSteps ? (
                   <button
@@ -1344,7 +1344,7 @@ https://discord.gg/example`}
                       (step === 2 && !step2Valid) ||
                       (step === 3 && !step3Valid)
                     }
-                    className="inline-flex h-11 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-4 text-sm font-semibold text-foreground transition-colors hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex h-11 items-center justify-center rounded-control border border-line bg-surface-2 px-4 text-sm font-semibold text-text transition-colors hover:bg-surface-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Next
                   </button>
@@ -1353,7 +1353,7 @@ https://discord.gg/example`}
                     type="button"
                     onClick={onSubmit}
                     disabled={!isValid || submitting}
-                    className="shine-wrap btn-premium h-11 min-w-[7.5rem] text-sm font-semibold dark:disabled:opacity-70 disabled:cursor-not-allowed disabled:[box-shadow:0_0_0_1px_var(--border)]"
+                    className="inline-flex items-center justify-center rounded-control bg-accent-deep px-5 text-white transition-colors hover:enabled:bg-accent-hover disabled:opacity-60 h-11 min-w-[7.5rem] text-sm font-semibold disabled:cursor-not-allowed"
                   >
                     <span>{submitting ? 'Submitting…' : 'Submit'}</span>
                   </button>
@@ -1368,7 +1368,7 @@ https://discord.gg/example`}
         <HackCard hack={preview} clickable={false} />
         <div className="card h-max p-5">
           <div className="text-[15px] font-semibold tracking-tight">Submission tips</div>
-          <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-foreground/75">
+          <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-text-2">
             <li>Use a reliable image URL (e.g. `imgur`).</li>
             <li>Include the exact expected base ROM name.</li>
             <li>Describe notable features, difficulty, and target players.</li>

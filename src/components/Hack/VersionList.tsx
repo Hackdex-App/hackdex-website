@@ -66,7 +66,7 @@ function PublicPatchDownloadButton({ patchId }: { patchId: number }) {
       type="button"
       onClick={handleClick}
       disabled={loading}
-      className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-3)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
+      className="inline-flex items-center gap-1.5 rounded-control border border-line bg-surface-2 px-2 py-1 text-xs font-medium hover:bg-surface-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
       title="Download patch file"
     >
       <FaDownload size={12} aria-hidden />
@@ -165,7 +165,7 @@ export default function VersionList({
   if (patches.length === 0 && (!showArchived || archivedPatches.length === 0)) {
     return (
       <div className="card p-8 text-center">
-        <p className="text-foreground/60">No versions available yet.</p>
+        <p className="text-text-3">No versions available yet.</p>
       </div>
     );
   }
@@ -178,7 +178,7 @@ export default function VersionList({
             type="checkbox"
             checked={showArchived}
             onChange={(e) => setShowArchived(e.target.checked)}
-            className="rounded border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent)]"
+            className="rounded border-line text-accent-text focus:ring-accent/40"
           />
           <span className="text-sm font-medium">Show archived versions</span>
         </label>
@@ -228,7 +228,7 @@ export default function VersionList({
                 {canEdit && (
                   <button
                     onClick={() => setEditingVersion(patch.id)}
-                    className="inline-flex items-center justify-center rounded-md p-1.5 text-foreground/60 hover:text-foreground hover:bg-[var(--surface-2)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--accent)] touch-manipulation"
+                    className="inline-flex items-center justify-center rounded-control p-1.5 text-text-3 hover:text-text hover:bg-surface-2 transition-colors focus:outline-none focus:ring-2 focus:ring-accent/40 touch-manipulation"
                     title="Edit version"
                     aria-label="Edit version"
                   >
@@ -238,25 +238,25 @@ export default function VersionList({
               </>
             )}
             {!isCustomPatcherActive && isCurrent && editingVersion !== patch.id && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+              <span className="inline-flex items-center gap-1 rounded-full bg-ready-soft px-2 py-0.5 text-xs font-medium text-ready">
                 <FaStar size={10} />
                 Current
               </span>
             )}
             {isCustomPatcherActive && isDefaultPatcherPatch && editingVersion !== patch.id && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+              <span className="inline-flex items-center gap-1 rounded-full bg-ready-soft px-2 py-0.5 text-xs font-medium text-ready">
                 <FaStar size={10} />
                 Default
               </span>
             )}
             {isCustomPatcherActive && isPatchable && !isDefaultPatcherPatch && editingVersion !== patch.id && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+              <span className="inline-flex items-center gap-1 rounded-full bg-ready-soft px-2 py-0.5 text-xs font-medium text-ready">
                 <FaStar size={10} />
                 Patchable
               </span>
             )}
             {!patch.published && (
-              <span className="inline-flex items-center rounded-full bg-amber-500/20 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+              <span className="inline-flex items-center rounded-full bg-warn-soft px-2 py-0.5 text-xs font-medium text-warn">
                 Unpublished
               </span>
             )}
@@ -272,7 +272,7 @@ export default function VersionList({
         );
 
         const datesBlock = (
-          <div className="text-xs sm:text-sm text-foreground/60 mt-4 sm:mt-0">
+          <div className="text-xs sm:text-sm text-text-3 mt-4 sm:mt-0">
             <p>
               Created: {new Date(patch.created_at).toLocaleDateString("en-US", {
                 year: "numeric",
@@ -304,13 +304,13 @@ export default function VersionList({
                   <div className="flex flex-wrap items-center gap-2 mb-2">
                     <h3 className="text-base sm:text-lg font-semibold">{patch.version}</h3>
                     {isCurrent && !isCustomPatcherActive && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-ready-soft px-2 py-0.5 text-xs font-medium text-ready">
                         <FaStar size={10} />
                         Current
                       </span>
                     )}
                     {!patch.published && (
-                      <span className="inline-flex items-center rounded-full bg-amber-500/20 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+                      <span className="inline-flex items-center rounded-full bg-warn-soft px-2 py-0.5 text-xs font-medium text-warn">
                         Unpublished
                       </span>
                     )}
@@ -325,10 +325,10 @@ export default function VersionList({
                 <span
                   className={`mt-1 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold ${
                     selectedForPatcher
-                      ? "border-emerald-500/70 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                      ? "border-ready/40 bg-ready-soft text-ready dark:text-ready"
                       : canSelectForPatcher
-                        ? "border-[var(--border)] text-foreground/35"
-                        : "border-[var(--border)] text-foreground/25"
+                        ? "border-line text-text-3"
+                        : "border-line text-text-3"
                   }`}
                   aria-hidden
                 >
@@ -342,7 +342,7 @@ export default function VersionList({
             return (
               <div
                 key={patch.id}
-                className="card p-4 sm:p-5 border border-[var(--border)] opacity-65 cursor-not-allowed"
+                className="card p-4 sm:p-5 border border-line opacity-65 cursor-not-allowed"
               >
                 {minimalBody}
               </div>
@@ -357,8 +357,8 @@ export default function VersionList({
               aria-pressed={selectedForPatcher}
               className={`card block p-4 sm:p-5 cursor-pointer transition-colors border ${
                 selectedForPatcher
-                  ? "ring-2 ring-emerald-500/50 border-emerald-500/50"
-                  : "border-[var(--border)] hover:border-[var(--accent)]/60"
+                  ? "ring-2 ring-ready/40 border-ready/40"
+                  : "border-line hover:border-[var(--accent)]/60"
               } w-full text-left`}
             >
               {minimalBody}
@@ -369,7 +369,7 @@ export default function VersionList({
         return (
           <div
             key={patch.id}
-            className={`card p-4 sm:p-5 ${isHighlighted ? "ring-2 ring-emerald-500/50" : ""}`}
+            className={`card p-4 sm:p-5 ${isHighlighted ? "ring-2 ring-ready/40" : ""}`}
           >
             <div className="space-y-3 sm:space-y-4">
               {showPublicPatchDownload ? (
@@ -413,15 +413,15 @@ export default function VersionList({
               )}
 
               {hasChangelog ? (
-                <div className="border-t border-[var(--border)] pt-2">
+                <div className="border-t border-line pt-2">
                   <div className="flex items-center justify-between gap-2">
                     <button
                       onClick={() => toggleChangelog(patch.id)}
                       disabled={isEditing}
-                      className="flex-1 flex items-center justify-between gap-3 py-2 text-left text-sm font-medium text-foreground/80 enabled:hover:text-foreground transition-colors group"
+                      className="flex-1 flex items-center justify-between gap-3 py-2 text-left text-sm font-medium text-text-2 enabled:hover:text-text transition-colors group"
                     >
                       <span className="flex items-center gap-2">
-                        <span className="text-foreground/60 group-hover:text-foreground/80 transition-colors group-disabled:hidden" aria-hidden={isEditing}>
+                        <span className="text-text-3 group-hover:text-text-2 transition-colors group-disabled:hidden" aria-hidden={isEditing}>
                           {isExpanded ? <FaChevronUp size={12} /> : <FaChevronDown size={12} />}
                         </span>
                         <span>{isEditing ? "Edit Changelog" : "Changelog"}</span>
@@ -436,7 +436,7 @@ export default function VersionList({
                             toggleChangelog(patch.id);
                           }
                         }}
-                        className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-3)] transition-colors"
+                        className="inline-flex items-center gap-1.5 rounded-control border border-line bg-surface-2 px-2 py-1 text-xs font-medium hover:bg-surface-3 transition-colors"
                         title="Edit changelog"
                       >
                         <FiEdit2 size={12} />
@@ -458,7 +458,7 @@ export default function VersionList({
                           onCancel={() => setEditingChangelog(null)}
                         />
                       ) : (
-                        <div className="prose prose-sm max-w-none text-foreground/80">
+                        <div className="prose prose-sm max-w-none text-text-2">
                           <Markdown headingLevelOffset={1}>{patch.changelog || ""}</Markdown>
                         </div>
                       )}
@@ -467,7 +467,7 @@ export default function VersionList({
                 </div>
               ) : (
                 canEdit && (
-                  <div className="border-t border-[var(--border)] pt-3">
+                  <div className="border-t border-line pt-3">
                     {isEditing ? (
                       <ChangelogEditor
                         patchId={patch.id}
@@ -482,7 +482,7 @@ export default function VersionList({
                     ) : (
                       <button
                         onClick={() => setEditingChangelog(patch.id)}
-                        className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2 py-1 text-sm font-medium hover:bg-[var(--surface-3)] transition-colors"
+                        className="inline-flex items-center gap-1.5 rounded-control border border-line bg-surface-2 px-2 py-1 text-sm font-medium hover:bg-surface-3 transition-colors"
                       >
                         <FaPlus size={12} />
                         <span>Add Changelog</span>
@@ -540,15 +540,15 @@ function ChangelogEditor({
         value={changelog}
         onChange={(e) => setChangelog(e.target.value)}
         rows={8}
-        className="w-full rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+        className="w-full rounded-control bg-surface-2 px-3 py-2 text-sm ring-1 ring-inset ring-line focus:outline-none focus:ring-2 focus:ring-accent/40"
         placeholder="Enter changelog in Markdown format..."
       />
-      {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
+      {error && <p className="mt-2 text-sm text-error">{error}</p>}
       <div className="mt-3 flex gap-2">
         <button
           onClick={handleSave}
           disabled={saving}
-          className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-2 rounded-control bg-ready px-3 py-1.5 text-sm font-medium text-white hover:bg-ready disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <FaCheck size={12} />
           Save
@@ -556,7 +556,7 @@ function ChangelogEditor({
         <button
           onClick={onCancel}
           disabled={saving}
-          className="inline-flex items-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 py-1.5 text-sm font-medium hover:bg-[var(--surface-3)] disabled:opacity-50"
+          className="inline-flex items-center rounded-control border border-line bg-surface-2 px-3 py-1.5 text-sm font-medium hover:bg-surface-3 disabled:opacity-50"
         >
           Cancel
         </button>
@@ -640,14 +640,14 @@ function VersionEditor({
           }}
           onKeyDown={handleKeyDown}
           disabled={saving}
-          className="w-auto min-w-[90px] rounded-md bg-[var(--surface-2)] px-2.5 py-1.5 text-base sm:text-lg font-semibold ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-auto min-w-[90px] rounded-control bg-surface-2 px-2.5 py-1.5 text-base sm:text-lg font-semibold ring-1 ring-inset ring-line focus:outline-none focus:ring-2 focus:ring-accent/40 disabled:opacity-50 disabled:cursor-not-allowed"
           placeholder="Version name"
         />
         <div className="flex items-center gap-1.5 shrink-0">
           <button
             onClick={handleSave}
             disabled={saving || !version.trim()}
-            className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-2.5 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
+            className="inline-flex items-center justify-center rounded-control bg-ready px-2.5 py-1.5 text-sm font-medium text-white hover:bg-ready disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
             title="Save version"
             aria-label="Save version"
           >
@@ -656,7 +656,7 @@ function VersionEditor({
           <button
             onClick={onCancel}
             disabled={saving}
-            className="inline-flex items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1.5 text-sm font-medium hover:bg-[var(--surface-3)] disabled:opacity-50 touch-manipulation"
+            className="inline-flex items-center justify-center rounded-control border border-line bg-surface-2 px-2.5 py-1.5 text-sm font-medium hover:bg-surface-3 disabled:opacity-50 touch-manipulation"
             title="Cancel editing"
             aria-label="Cancel editing"
           >
@@ -664,7 +664,7 @@ function VersionEditor({
           </button>
         </div>
       </div>
-      {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
+      {error && <p className="mt-1 text-xs text-error">{error}</p>}
     </div>
   );
 }

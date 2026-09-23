@@ -123,7 +123,7 @@ export default async function DashboardPage() {
               View all archives
             </Link>
           </div>
-          <p className="text-sm text-foreground/60">
+          <p className="text-sm text-text-3">
             Archive hacks are informational entries preserved for historical reference. They do not include patch files.
           </p>
         </div>

@@ -34,7 +34,7 @@ function ModalPanel({ title, children, onClose, className = "max-w-md" }: Omit<M
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={`anim-pop relative max-h-[90dvh] w-full overflow-y-auto overscroll-contain rounded-frame border border-line bg-surface p-5 text-text shadow-overlay outline-none md:p-6 ${className}`}
+        className={`anim-pop relative max-h-[90dvh] w-full overflow-y-auto overscroll-contain rounded-[20px] border border-line bg-surface p-5 text-text shadow-overlay outline-none md:p-6 ${className}`}
       >
         <div className="mb-4 flex items-start justify-between gap-3">
           <h2 id={titleId} className="pt-1.5 text-[17px] font-semibold">

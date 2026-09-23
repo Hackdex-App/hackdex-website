@@ -39,7 +39,7 @@ const STEP_COPY: Record<HackOnboardingStep, { title: string; body: React.ReactNo
           href="/terms"
           target="_blank"
           rel="noopener noreferrer"
-          className="underline text-foreground/85 hover:text-foreground"
+          className="underline text-text-2 hover:text-text"
         >
           the Terms
         </Link>{" "}
@@ -212,14 +212,14 @@ export default function HackOnboardingOverlay({
           aria-labelledby={titleId}
           tabIndex={-1}
           style={cardPosition(anchor, step)}
-          className="anim-pop elevate fixed z-[80] rounded-xl border border-[var(--border)] bg-white p-3.5 outline-none dark:bg-[#141414]"
+          className="anim-pop elevate fixed z-[80] rounded-card border border-line bg-white p-3.5 outline-none dark:bg-[#141414]"
         >
           {(step === "selectRom" || !isLastStep) && (
             <button
               type="button"
               onClick={onDismiss}
               aria-label="Close"
-              className="absolute right-2 top-2 cursor-pointer rounded-md p-1 text-foreground/50 transition-colors hover:bg-[var(--surface-2)] hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+              className="absolute right-2 top-2 cursor-pointer rounded-control p-1 text-text-3 transition-colors hover:bg-surface-2 hover:text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
             >
               <FiX size={14} aria-hidden />
             </button>
@@ -227,9 +227,9 @@ export default function HackOnboardingOverlay({
           <h4 id={titleId} className={`text-[13px] font-semibold ${step === "selectRom" || !isLastStep ? "pr-7" : ""}`}>
             {copy.title}
           </h4>
-          <p className="mt-1 text-xs leading-relaxed text-foreground/70">{copy.body}</p>
+          <p className="mt-1 text-xs leading-relaxed text-text-2">{copy.body}</p>
           {step === "selectRom" ? (
-            <p className="mt-3 text-xs font-semibold text-foreground/75">
+            <p className="mt-3 text-xs font-semibold text-text-2">
               Select a clean {baseRomName || "base"} ROM to continue.
             </p>
           ) : (
@@ -237,7 +237,7 @@ export default function HackOnboardingOverlay({
               <button
                 type="button"
                 onClick={isLastStep ? onGotIt : onNext}
-                className="inline-flex h-7 cursor-pointer items-center rounded-full bg-[var(--accent)] px-3 text-xs font-bold text-[var(--accent-foreground)] transition-[background-color,transform] hover:bg-[var(--accent-700)] active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)]"
+                className="inline-flex h-7 cursor-pointer items-center rounded-full bg-accent-deep px-3 text-xs font-bold text-white transition-[background-color,transform] hover:bg-accent-hover active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)]"
               >
                 {isLastStep ? "Got it" : "Next"}
               </button>

@@ -60,11 +60,11 @@ export default function HackStatsCharts({ series, insights, activeTab }: HackSta
     return (
       <div className="space-y-6 md:space-y-0 md:grid md:grid-cols-3 md:gap-6">
         {activeTab === "overview" ? (
-          <div className="md:col-span-3 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-3">
+          <div className="md:col-span-3 rounded-card border border-line bg-surface-2 p-3">
             <div className="mb-2 text-sm font-medium">Downloads over time (last 30 days, UTC)</div>
             <div className="h-[60vh] sm:h-72 max-w-full overflow-hidden">
               {series.datasets.length === 0 ? (
-                <div className="flex h-full items-center justify-center text-sm text-foreground/70">No data yet.</div>
+                <div className="flex h-full items-center justify-center text-sm text-text-2">No data yet.</div>
               ) : (
                 <Line data={lineData} options={lineOptions} className="!w-full !h-full block" style={{ width: "100%", height: "100%" }} />
               )}
@@ -72,22 +72,22 @@ export default function HackStatsCharts({ series, insights, activeTab }: HackSta
           </div>
         ) : (
           <>
-            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-3">
+            <div className="rounded-card border border-line bg-surface-2 p-3">
               <div className="mb-2 text-sm font-medium">Latest-version adoption</div>
               {insights.isNewToday ? (
-                <div className="text-sm text-foreground/70">New upload today—please check back tomorrow (UTC) for analytics.</div>
+                <div className="text-sm text-text-2">New upload today—please check back tomorrow (UTC) for analytics.</div>
               ) : (
                 <div>
                   <div className="text-4xl font-semibold">{Math.round(insights.adoptionRate * 100)}%</div>
-                  <div className="mt-1 text-xs text-foreground/70">{insights.latestUniqueDevices} of {insights.totalUniqueDevices} unique devices on latest</div>
+                  <div className="mt-1 text-xs text-text-2">{insights.latestUniqueDevices} of {insights.totalUniqueDevices} unique devices on latest</div>
                 </div>
               )}
             </div>
-            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-3">
+            <div className="rounded-card border border-line bg-surface-2 p-3">
               <div className="mb-2 text-sm font-medium">Downloads per version (all-time)</div>
               <div className="h-[50vh] sm:h-64">
                 {insights.versionCounts.length === 0 ? (
-                  <div className="flex h-full items-center justify-center text-sm text-foreground/70">No downloads yet.</div>
+                  <div className="flex h-full items-center justify-center text-sm text-text-2">No downloads yet.</div>
                 ) : (
                   <Bar data={barData} options={{ responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }} />
                 )}
@@ -101,32 +101,32 @@ export default function HackStatsCharts({ series, insights, activeTab }: HackSta
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-      <div className="lg:col-span-2 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-3">
+      <div className="lg:col-span-2 rounded-card border border-line bg-surface-2 p-3">
         <div className="mb-2 text-sm font-medium">Downloads over time (last 30 days, UTC)</div>
         <div className="h-72 max-w-full overflow-hidden">
           {series.datasets.length === 0 ? (
-            <div className="flex h-full items-center justify-center text-sm text-foreground/70">No data yet.</div>
+            <div className="flex h-full items-center justify-center text-sm text-text-2">No data yet.</div>
           ) : (
             <Line data={lineData} options={lineOptions} className="!w-full !h-full block" style={{ width: "100%", height: "100%" }} />
           )}
         </div>
       </div>
-      <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-3">
+      <div className="rounded-card border border-line bg-surface-2 p-3">
         <div className="mb-2 text-sm font-medium">Latest-version adoption</div>
         {insights.isNewToday ? (
-          <div className="text-sm text-foreground/70">New upload today—please check back tomorrow (UTC) for analytics.</div>
+          <div className="text-sm text-text-2">New upload today—please check back tomorrow (UTC) for analytics.</div>
         ) : (
           <div>
             <div className="text-4xl font-semibold">{Math.round(insights.adoptionRate * 100)}%</div>
-            <div className="mt-1 text-xs text-foreground/70">{insights.latestUniqueDevices} of {insights.totalUniqueDevices} unique devices on latest</div>
+            <div className="mt-1 text-xs text-text-2">{insights.latestUniqueDevices} of {insights.totalUniqueDevices} unique devices on latest</div>
           </div>
         )}
       </div>
-      <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-3 lg:col-span-3">
+      <div className="rounded-card border border-line bg-surface-2 p-3 lg:col-span-3">
         <div className="mb-2 text-sm font-medium">Downloads per version (all-time)</div>
         <div className="h-64">
           {insights.versionCounts.length === 0 ? (
-            <div className="flex h-full items-center justify-center text-sm text-foreground/70">No downloads yet.</div>
+            <div className="flex h-full items-center justify-center text-sm text-text-2">No downloads yet.</div>
           ) : (
             <Bar data={barData} options={{ responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }} />
           )}

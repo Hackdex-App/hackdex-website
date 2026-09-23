@@ -103,9 +103,9 @@ export default function MilestoneCelebration({ milestone }: { milestone: string 
     <button
       type="button"
       onClick={() => void fireConfetti()}
-      className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm ring-1 ring-[var(--accent)]/30 bg-[var(--accent)]/10 text-foreground/90 elevate hover:ring-[var(--accent)]/50 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+      className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm ring-1 ring-[var(--accent)]/30 bg-accent-deep/10 text-text elevate hover:ring-[var(--accent)]/50 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
     >
-      <PiConfettiBold size={16} className="text-[var(--accent)]" aria-hidden="true" />
+      <PiConfettiBold size={16} className="text-accent-text" aria-hidden="true" />
       <span className="font-semibold gradient-text">{formatMilestone(milestone)} downloads</span>
       <span className="-ml-0.5">Thank you!</span>
       <span className="sr-only">. Activate to replay the celebration confetti.</span>

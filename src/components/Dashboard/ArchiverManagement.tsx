@@ -104,47 +104,47 @@ export default function ArchiverManagement() {
   return (
     <div className="mt-12">
       <h2 className="text-xl font-semibold mb-4">Archiver Role Management</h2>
-      <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-5">
+      <div className="rounded-card border border-line bg-surface-2 p-5">
         {error && (
-          <div className="mb-4 rounded-md border border-red-600/30 bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-400">
+          <div className="mb-4 rounded-control border border-error/40 bg-error-soft p-3 text-sm text-error">
             {error}
           </div>
         )}
 
         {/* Search for users */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-foreground/80 mb-2">Add archiver</label>
+          <label className="block text-sm font-medium text-text-2 mb-2">Add archiver</label>
           <div className="relative">
-            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/50" />
+            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-3" />
             <input
               type="text"
               value={searchQuery}
               onChange={handleSearchChange}
               placeholder="Search by username or user ID..."
-              className="w-full rounded-md bg-[var(--background)] px-10 py-2 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+              className="w-full rounded-control bg-[var(--background)] px-10 py-2 text-sm ring-1 ring-inset ring-line focus:outline-none focus:ring-2 focus:ring-accent/40"
             />
             {searching && (
-              <FiLoader className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/50 animate-spin" />
+              <FiLoader className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-3 animate-spin" />
             )}
           </div>
           {searchResults.length > 0 && (
-            <div className="mt-2 rounded-md border border-[var(--border)] bg-[var(--background)] max-h-48 overflow-y-auto">
+            <div className="mt-2 rounded-control border border-line bg-[var(--background)] max-h-48 overflow-y-auto">
               {searchResults.map((user) => (
                 <div
                   key={user.id}
-                  className="flex items-center justify-between px-3 py-2 hover:bg-[var(--surface-2)] border-b border-[var(--border)] last:border-b-0"
+                  className="flex items-center justify-between px-3 py-2 hover:bg-surface-2 border-b border-line last:border-b-0"
                 >
                   <div className="flex flex-col">
                     <span className="text-sm font-medium">{user.username ? `@${user.username}` : "No username"}</span>
-                    <span className="text-xs text-foreground/60">{user.id}</span>
+                    <span className="text-xs text-text-3">{user.id}</span>
                   </div>
                   {isArchiver(user.id) ? (
-                    <span className="text-xs text-foreground/60">Already archiver</span>
+                    <span className="text-xs text-text-3">Already archiver</span>
                   ) : (
                     <button
                       type="button"
                       onClick={() => addArchiver(user.id)}
-                      className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2 py-1 text-xs font-medium hover:bg-black/5 dark:hover:bg-white/10"
+                      className="inline-flex items-center gap-1 rounded-control border border-line bg-surface-2 px-2 py-1 text-xs font-medium hover:bg-surface-2"
                     >
                       <FiPlus className="h-3 w-3" />
                       Add
@@ -158,28 +158,28 @@ export default function ArchiverManagement() {
 
         {/* Current archivers list */}
         <div>
-          <label className="block text-sm font-medium text-foreground/80 mb-2">
+          <label className="block text-sm font-medium text-text-2 mb-2">
             Current archivers ({archivers.length})
           </label>
           {loading ? (
-            <div className="text-sm text-foreground/60">Loading...</div>
+            <div className="text-sm text-text-3">Loading...</div>
           ) : archivers.length === 0 ? (
-            <div className="text-sm text-foreground/60">No archivers assigned</div>
+            <div className="text-sm text-text-3">No archivers assigned</div>
           ) : (
             <div className="space-y-2">
               {archivers.map((archiver) => (
                 <div
                   key={archiver.id}
-                  className="flex items-center justify-between rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2"
+                  className="flex items-center justify-between rounded-control border border-line bg-[var(--background)] px-3 py-2"
                 >
                   <div className="flex flex-col">
                     <span className="text-sm font-medium">{archiver.username ? `@${archiver.username}` : "No username"}</span>
-                    <span className="text-xs text-foreground/60">{archiver.id}</span>
+                    <span className="text-xs text-text-3">{archiver.id}</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => removeArchiver(archiver.id)}
-                    className="inline-flex items-center gap-1 rounded-md border border-red-600/40 bg-red-600/5 dark:border-red-400/40 dark:bg-red-400/5 px-2 py-1 text-xs font-medium text-red-600/90 dark:text-red-400/80 hover:bg-red-600/10 dark:hover:bg-red-400/10"
+                    className="inline-flex items-center gap-1 rounded-control border border-error/40 bg-error-soft px-2 py-1 text-xs font-medium text-error hover:bg-error-soft"
                   >
                     <FiX className="h-3 w-3" />
                     Remove

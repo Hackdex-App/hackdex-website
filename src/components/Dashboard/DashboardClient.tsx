@@ -133,8 +133,8 @@ function SlugMultiSelect({
             onClick={() => onChange(selected ? values.filter((s) => s !== h.slug) : [...values, h.slug])}
             className={`shrink-0 rounded-full px-3 py-2 text-sm ring-1 ring-inset transition-colors hover:cursor-pointer ${
               selected
-                ? "bg-[var(--accent)]/15 text-[var(--foreground)] ring-[var(--accent)]/35"
-                : "bg-[var(--surface-2)] text-foreground/80 ring-[var(--border)] hover:bg-black/5 dark:hover:bg-white/10"
+                ? "bg-accent-deep/15 text-[var(--foreground)] ring-[var(--accent)]/35"
+                : "bg-surface-2 text-text-2 ring-line hover:bg-surface-2"
             }`}
           >
             {h.title}
@@ -145,7 +145,7 @@ function SlugMultiSelect({
         <button
           type="button"
           onClick={() => onChange(hacks.map((h) => h.slug))}
-          className="shrink-0 rounded-full ml-auto px-3 py-2 text-sm ring-1 ring-inset transition-colors bg-[var(--surface-2)] text-foreground/80 ring-[var(--border)] hover:bg-black/5 dark:hover:bg-white/10 hover:cursor-pointer"
+          className="shrink-0 rounded-full ml-auto px-3 py-2 text-sm ring-1 ring-inset transition-colors bg-surface-2 text-text-2 ring-line hover:bg-surface-2 hover:cursor-pointer"
         >
           Select all
         </button>
@@ -154,7 +154,7 @@ function SlugMultiSelect({
         <button
           type="button"
           onClick={() => onChange([])}
-          className={`shrink-0 rounded-full px-3 py-2 text-sm ring-1 ring-inset transition-colors bg-[var(--surface-2)] text-foreground/80 ring-[var(--border)] hover:bg-black/5 dark:hover:bg-white/10 hover:cursor-pointer ${values.length === 0 ? "ml-auto" : ""}`}
+          className={`shrink-0 rounded-full px-3 py-2 text-sm ring-1 ring-inset transition-colors bg-surface-2 text-text-2 ring-line hover:bg-surface-2 hover:cursor-pointer ${values.length === 0 ? "ml-auto" : ""}`}
         >
           Clear
         </button>

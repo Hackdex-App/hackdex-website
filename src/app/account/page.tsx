@@ -31,16 +31,16 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
       <div className="flex flex-row justify-between items-end">
         <div className="flex flex-col">
           <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold tracking-tight">{needsInitialSetup ? 'Finish setting up your account' : 'Your account'}</h1>
+            <h1 className="font-display text-[28px] leading-[1.1] md:text-[32px]">{needsInitialSetup ? 'Finish setting up your account' : 'Your account'}</h1>
           </div>
-          <p className="mt-2 text-[15px] text-foreground/80 max-w-md">
+          <p className="mt-2 text-[15px] text-text-2 max-w-md">
             {needsInitialSetup ? 'Choose a unique username to get started. You can update other details later.' : 'Manage profile details and avatar.'}
           </p>
         </div>
         {!needsInitialSetup && <AccountOptionsMenu />}
       </div>
       {passwordUpdated && (
-        <div className="mt-8 rounded-md bg-green-500/10 ring-1 ring-green-600/40 px-3 py-2 text-sm text-green-300">
+        <div className="mt-8 rounded-control bg-ready-soft ring-1 ring-ready/40 px-3 py-2 text-sm text-ready">
           Your password was updated successfully.
         </div>
       )}

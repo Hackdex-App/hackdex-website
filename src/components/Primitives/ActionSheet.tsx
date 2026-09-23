@@ -46,24 +46,24 @@ export default function ActionSheet({ open, onClose, title, actions }: ActionShe
               leaveTo="translate-y-full"
             >
               <DialogPanel className="w-full">
-                <div className="mx-auto w-full max-w-screen-sm rounded-t-2xl bg-background ring-1 ring-[var(--border)]">
+                <div className="mx-auto w-full max-w-screen-sm rounded-t-2xl bg-background ring-1 ring-line">
                   <div className="mx-auto mt-2 mb-1 h-1 w-10 rounded-full bg-foreground/20" />
                   {title && (
-                    <div className="px-4 pb-2 pt-1 text-center text-sm font-medium text-foreground/90">{title}</div>
+                    <div className="px-4 pb-2 pt-1 text-center text-sm font-medium text-text">{title}</div>
                   )}
                   <div className="px-2 pb-2">
-                    <div className="overflow-hidden rounded-xl border border-[var(--border)]">
-                      <ul className="divide-y divide-[var(--border)]">
+                    <div className="overflow-hidden rounded-card border border-line">
+                      <ul className="divide-y divide-line">
                         {actions.map((a) => (
                           <li key={a.key}>
                             {a.href ? (
                               <a
                                 href={a.href}
                                 onClick={onClose}
-                                className="flex items-center gap-3 px-4 py-3 text-[15px] hover:bg-[var(--surface-2)]"
+                                className="flex items-center gap-3 px-4 py-3 text-[15px] hover:bg-surface-2"
                               >
-                                <span className="text-foreground/80">{a.icon}</span>
-                                <span className="text-foreground">{a.label}</span>
+                                <span className="text-text-2">{a.icon}</span>
+                                <span className="text-text">{a.label}</span>
                               </a>
                             ) : (
                               <button
@@ -71,10 +71,10 @@ export default function ActionSheet({ open, onClose, title, actions }: ActionShe
                                 onClick={() => {
                                   try { a.onClick?.(); } finally { onClose(); }
                                 }}
-                                className="flex w-full items-center gap-3 px-4 py-3 text-left text-[15px] hover:bg-[var(--surface-2)]"
+                                className="flex w-full items-center gap-3 px-4 py-3 text-left text-[15px] hover:bg-surface-2"
                               >
-                                <span className="text-foreground/80">{a.icon}</span>
-                                <span className="text-foreground">{a.label}</span>
+                                <span className="text-text-2">{a.icon}</span>
+                                <span className="text-text">{a.label}</span>
                               </button>
                             )}
                           </li>
@@ -84,7 +84,7 @@ export default function ActionSheet({ open, onClose, title, actions }: ActionShe
                     <button
                       type="button"
                       onClick={onClose}
-                      className="mt-2 mb-4 flex w-full items-center justify-center rounded-xl bg-[var(--surface-2)] px-4 py-3 text-[15px] ring-1 ring-[var(--border)] hover:bg-[var(--surface-3)]"
+                      className="mt-2 mb-4 flex w-full items-center justify-center rounded-card bg-surface-2 px-4 py-3 text-[15px] ring-1 ring-line hover:bg-surface-3"
                     >
                       Cancel
                     </button>

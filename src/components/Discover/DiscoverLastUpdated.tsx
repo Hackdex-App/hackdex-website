@@ -24,7 +24,7 @@ export default function DiscoverLastUpdated({
   }, [generatedAt]);
 
   return (
-    <p className="mt-4 text-center text-xs text-foreground/60">
+    <p className="mt-4 text-center text-xs text-text-3">
       Last updated{" "}
       <time dateTime={generatedAt}>
         {minutesAgo} {minutesAgo === 1 ? "minute" : "minutes"} ago

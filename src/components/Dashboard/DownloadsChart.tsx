@@ -125,9 +125,9 @@ export default function DownloadsChart({ selectedSlugs }: { selectedSlugs: strin
   );
 
   return (
-    <div className="h-[40vh] sm:h-72 w-full max-w-full overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-3">
+    <div className="h-[40vh] sm:h-72 w-full max-w-full overflow-hidden rounded-card border border-line bg-surface-2 p-3">
       {datasets.length === 0 ? (
-        <div className="flex h-full items-center justify-center text-sm text-foreground/70">Select at least one hack to display.</div>
+        <div className="flex h-full items-center justify-center text-sm text-text-2">Select at least one hack to display.</div>
       ) : (
         <Line data={data} options={options} className="!w-full !h-full block" style={{ width: "100%", height: "100%" }} />
       )}

@@ -34,26 +34,26 @@ function Row({ id, index, url, filename, isNew, onRemove }: { id: string; index:
     onRemove();
   }
   return (
-    <div ref={setNodeRef} style={style} className="rounded-md">
-      <div className={`h-16 flex items-center justify-between gap-3 p-2 bg-[var(--surface-2)] ring-1 ring-inset ring-[var(--border)] ${isDragging ? "opacity-60" : ""}`}>
+    <div ref={setNodeRef} style={style} className="rounded-control">
+      <div className={`h-16 flex items-center justify-between gap-3 p-2 bg-surface-2 ring-1 ring-inset ring-line ${isDragging ? "opacity-60" : ""}`}>
         <div className="flex items-center gap-3">
-          <div className="cursor-grab select-none pr-1 text-foreground/60" title="Drag to reorder" {...attributes} {...listeners}>
+          <div className="cursor-grab select-none pr-1 text-text-3" title="Drag to reorder" {...attributes} {...listeners}>
             <RxDragHandleDots2 size={24} />
           </div>
           <div className="relative h-12 w-20 overflow-hidden rounded">
             <Image src={url} alt={`Cover ${index + 1}`} fill className="object-cover" unoptimized />
           </div>
           <div className="min-w-0">
-            <div className="truncate max-w-[260px] text-xs text-foreground/80">{filename}</div>
-            {index === 0 && <div className="text-[10px] text-emerald-400/90">Primary</div>}
-            {isNew && <div className="text-[10px] text-amber-400/90">New</div>}
+            <div className="truncate max-w-[260px] text-xs text-text-2">{filename}</div>
+            {index === 0 && <div className="text-[10px] text-ready">Primary</div>}
+            {isNew && <div className="text-[10px] text-warn">New</div>}
           </div>
         </div>
         <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={handleRemove}
-            className="inline-flex h-8 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2 text-xs text-red-600 transition-colors hover:bg-black/5 dark:text-red-300 dark:hover:bg-white/10"
+            className="inline-flex h-8 items-center justify-center rounded-control border border-line bg-surface-2 px-2 text-xs text-error transition-colors hover:bg-surface-2"
           >
             {isNew ? 'Remove' : 'Delete'}
           </button>

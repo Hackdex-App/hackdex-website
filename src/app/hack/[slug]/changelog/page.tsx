@@ -38,20 +38,20 @@ export default async function ChangelogPage({ params }: ChangelogPageProps) {
       <div className="mb-6">
         <Link 
           href={`/hack/${slug}`}
-          className="inline-flex items-center text-sm text-foreground/60 hover:text-foreground mb-2"
+          className="inline-flex items-center text-sm text-text-3 hover:text-text mb-2"
         >
           <FaChevronLeft size={14} className="mr-1" />
           Back to hack
         </Link>
-        <h1 className="text-3xl font-bold tracking-tight">Changelog</h1>
-        <p className="mt-1 text-sm text-foreground/60">
+        <h1 className="font-display text-[28px] leading-[1.1] md:text-[32px]">Changelog</h1>
+        <p className="mt-1 text-sm text-text-3">
           {hack.title}
         </p>
       </div>
 
       {patchesWithChangelogs.length === 0 ? (
         <div className="card p-8 text-center">
-          <p className="text-foreground/60">No changelogs available yet.</p>
+          <p className="text-text-3">No changelogs available yet.</p>
         </div>
       ) : (
         <div className="space-y-6">
@@ -62,12 +62,12 @@ export default async function ChangelogPage({ params }: ChangelogPageProps) {
                   <h2 className="text-xl font-semibold">
                     {patch.version}
                     {hack.current_patch === patch.id && (
-                      <span className="ml-2 inline-flex items-center rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                      <span className="ml-2 inline-flex items-center rounded-full bg-ready-soft px-2 py-0.5 text-xs font-medium text-ready">
                         Current
                       </span>
                     )}
                   </h2>
-                  <p className="mt-1 text-sm text-foreground/60">
+                  <p className="mt-1 text-sm text-text-3">
                     {new Date(patch.created_at).toLocaleDateString("en-US", {
                       year: "numeric",
                       month: "long",
@@ -76,7 +76,7 @@ export default async function ChangelogPage({ params }: ChangelogPageProps) {
                   </p>
                 </div>
               </div>
-              <div className="prose prose-sm max-w-none text-foreground/80">
+              <div className="prose prose-sm max-w-none text-text-2">
                 <Markdown headingLevelOffset={1}>{patch.changelog || ""}</Markdown>
               </div>
             </div>

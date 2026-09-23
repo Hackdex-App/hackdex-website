@@ -418,7 +418,7 @@ export default function VersionActions({
         <div className="hidden sm:flex flex-wrap gap-1.5">
           <button
             onClick={handleDownload}
-            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-3)] transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-control border border-line bg-surface-2 px-2 py-1 text-xs font-medium hover:bg-surface-3 transition-colors"
             title="Download"
           >
             <FaDownload size={12} />
@@ -427,7 +427,7 @@ export default function VersionActions({
 
           <button
             onClick={() => setShowRestoreModal(true)}
-            className="inline-flex items-center gap-1.5 rounded-md border border-emerald-600/50 bg-emerald-600/10 px-2 py-1 text-xs font-medium text-emerald-600 hover:bg-emerald-600/20 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-control border border-ready/40 bg-ready-soft px-2 py-1 text-xs font-medium text-ready hover:bg-ready-soft transition-colors"
             title="Restore version"
           >
             <FaRotateLeft size={12} />
@@ -440,19 +440,19 @@ export default function VersionActions({
           <MenuButton
             id={`version-actions-menu-archived-${patch.id}`}
             aria-label="Version actions"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md ring-1 ring-[var(--border)] bg-[var(--surface-2)] text-foreground/80 hover:bg-[var(--surface-3)] hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border)]"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-control ring-1 ring-line bg-surface-2 text-text-2 hover:bg-surface-3 hover:text-text transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line"
           >
             <FiMoreVertical size={16} />
           </MenuButton>
 
           <MenuItems
             transition
-            className="absolute right-0 z-10 mt-2 w-48 origin-top-right overflow-hidden rounded-md border border-[var(--border)] bg-[var(--surface-2)] backdrop-blur-lg shadow-lg focus:outline-none transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
+            className="absolute right-0 z-10 mt-2 w-48 origin-top-right overflow-hidden rounded-control border border-line bg-surface-2 backdrop-blur-lg shadow-lg focus:outline-none transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
           >
             <MenuItem
               as="button"
               onClick={handleDownload}
-              className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm data-focus:bg-black/5 dark:data-focus:bg-white/10"
+              className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm data-focus:bg-surface-2"
             >
               <FaDownload size={14} />
               Download
@@ -461,7 +461,7 @@ export default function VersionActions({
             <MenuItem
               as="button"
               onClick={() => setShowRestoreModal(true)}
-              className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm text-emerald-600 data-focus:bg-emerald-600/10"
+              className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm text-ready data-focus:bg-ready-soft"
             >
               <FaRotateLeft size={14} />
               Restore
@@ -475,21 +475,21 @@ export default function VersionActions({
           visible={showRestoreModal}
           onClose={() => !actionLoading && setShowRestoreModal(false)}
         >
-          <p className="text-foreground/80 mb-4">
+          <p className="text-text-2 mb-4">
             Restore version <strong>{patch.version}</strong>? This will make it visible again.
           </p>
           <div className="flex gap-2">
             <button
               onClick={handleRestore}
               disabled={actionLoading}
-              className="flex-1 rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 rounded-control bg-ready px-4 py-2 text-sm font-medium text-white hover:bg-ready disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {actionLoading ? "Restoring..." : "Restore"}
             </button>
             <button
               onClick={() => setShowRestoreModal(false)}
               disabled={actionLoading}
-              className="flex-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-4 py-2 text-sm font-medium hover:bg-[var(--surface-3)] disabled:opacity-50"
+              className="flex-1 rounded-control border border-line bg-surface-2 px-4 py-2 text-sm font-medium hover:bg-surface-3 disabled:opacity-50"
             >
               Cancel
             </button>
@@ -507,7 +507,7 @@ export default function VersionActions({
         {!patch.published && (
           <button
             onClick={() => setShowPublishModal(true)}
-            className="inline-flex items-center gap-1.5 rounded-md border border-emerald-600/50 bg-emerald-600/10 px-2 py-1 text-xs font-medium text-emerald-600 hover:bg-emerald-600/20 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-control border border-ready/40 bg-ready-soft px-2 py-1 text-xs font-medium text-ready hover:bg-ready-soft transition-colors"
             title="Publish"
           >
             <FaCheck size={12} />
@@ -517,7 +517,7 @@ export default function VersionActions({
 
         <button
           onClick={handleDownload}
-          className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-3)] transition-colors"
+          className="inline-flex items-center gap-1.5 rounded-control border border-line bg-surface-2 px-2 py-1 text-xs font-medium hover:bg-surface-3 transition-colors"
           title="Download"
         >
           <FaDownload size={12} />
@@ -526,7 +526,7 @@ export default function VersionActions({
 
         <button
           onClick={() => setShowReuploadModal(true)}
-          className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-3)] transition-colors"
+          className="inline-flex items-center gap-1.5 rounded-control border border-line bg-surface-2 px-2 py-1 text-xs font-medium hover:bg-surface-3 transition-colors"
           title="Re-upload patch file"
         >
           <FaUpload size={12} />
@@ -536,7 +536,7 @@ export default function VersionActions({
         {shouldShowRollback && (
           <button
             onClick={() => setShowRollbackModal(true)}
-            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-3)] transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-control border border-line bg-surface-2 px-2 py-1 text-xs font-medium hover:bg-surface-3 transition-colors"
             title="Rollback to this version"
           >
             <FaRotateLeft size={12} />
@@ -547,7 +547,7 @@ export default function VersionActions({
         {!isCurrent && (
           <button
             onClick={() => setShowDeleteModal(true)}
-            className="inline-flex items-center gap-1.5 rounded-md border border-red-600/50 bg-red-600/10 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-600/20 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-control border border-error/40 bg-error-soft px-2 py-1 text-xs font-medium text-error hover:bg-error-soft transition-colors"
             title="Archive version"
           >
             <FaTrash size={12} />
@@ -561,20 +561,20 @@ export default function VersionActions({
         <MenuButton
           id={`version-actions-menu-active-${patch.id}`}
           aria-label="Version actions"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md ring-1 ring-[var(--border)] bg-[var(--surface-2)] text-foreground/80 hover:bg-[var(--surface-3)] hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border)]"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-control ring-1 ring-line bg-surface-2 text-text-2 hover:bg-surface-3 hover:text-text transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line"
         >
           <FiMoreVertical size={16} />
         </MenuButton>
 
         <MenuItems
           transition
-          className="absolute right-0 z-10 mt-2 w-48 origin-top-right overflow-hidden rounded-md border border-[var(--border)] bg-[var(--surface-2)] backdrop-blur-lg shadow-lg focus:outline-none transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
+          className="absolute right-0 z-10 mt-2 w-48 origin-top-right overflow-hidden rounded-control border border-line bg-surface-2 backdrop-blur-lg shadow-lg focus:outline-none transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
         >
           {!patch.published && (
             <MenuItem
               as="button"
               onClick={() => setShowPublishModal(true)}
-              className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm text-emerald-600 data-focus:bg-emerald-600/10"
+              className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm text-ready data-focus:bg-ready-soft"
             >
               <FaCheck size={14} />
               Publish
@@ -584,7 +584,7 @@ export default function VersionActions({
           <MenuItem
             as="button"
             onClick={handleDownload}
-            className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm data-focus:bg-black/5 dark:data-focus:bg-white/10"
+            className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm data-focus:bg-surface-2"
           >
             <FaDownload size={14} />
             Download
@@ -593,7 +593,7 @@ export default function VersionActions({
           <MenuItem
             as="button"
             onClick={() => setShowReuploadModal(true)}
-            className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm data-focus:bg-black/5 dark:data-focus:bg-white/10"
+            className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm data-focus:bg-surface-2"
           >
             <FaUpload size={14} />
             Re-upload
@@ -606,7 +606,7 @@ export default function VersionActions({
                 <MenuItem
                   as="button"
                   onClick={() => setShowRollbackModal(true)}
-                  className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm data-focus:bg-black/5 dark:data-focus:bg-white/10"
+                  className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm data-focus:bg-surface-2"
                 >
                   <FaRotateLeft size={14} />
                   Rollback
@@ -617,7 +617,7 @@ export default function VersionActions({
                 <MenuItem
                   as="button"
                   onClick={() => setShowDeleteModal(true)}
-                  className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm text-red-600 data-focus:bg-red-600/10"
+                  className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm text-error data-focus:bg-error-soft"
                 >
                   <FaTrash size={14} />
                   Archive
@@ -635,16 +635,16 @@ export default function VersionActions({
         onClose={() => !actionLoading && setShowDeleteModal(false)}
       >
         {archiveWouldRemoveLastCustomPatch ? (
-          <p className="text-foreground/80 mb-4">
+          <p className="text-text-2 mb-4">
             Version <strong>{patch.version}</strong> is one of the last 2 versions in the <strong>Custom</strong> patcher list. Switch to <strong>Latest published patch</strong> or add another Custom version before archiving it.
           </p>
         ) : (
           <>
-            <p className="text-foreground/80 mb-4">
+            <p className="text-text-2 mb-4">
               Are you sure you want to archive version <strong>{patch.version}</strong>? This will hide it from public view, but it can be restored later.
             </p>
             {isInCustomPatcherList && (
-              <p className="text-sm text-foreground/60 mb-4">
+              <p className="text-sm text-text-3 mb-4">
                 This version will also be removed from the Custom patcher list.
               </p>
             )}
@@ -655,7 +655,7 @@ export default function VersionActions({
             <button
               onClick={handleDelete}
               disabled={actionLoading}
-              className="flex-1 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 rounded-control bg-error px-4 py-2 text-sm font-medium text-white hover:bg-error disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {actionLoading ? "Archiving..." : "Archive"}
             </button>
@@ -663,7 +663,7 @@ export default function VersionActions({
           <button
             onClick={() => setShowDeleteModal(false)}
             disabled={actionLoading}
-            className="flex-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-4 py-2 text-sm font-medium hover:bg-[var(--surface-3)] disabled:opacity-50"
+            className="flex-1 rounded-control border border-line bg-surface-2 px-4 py-2 text-sm font-medium hover:bg-surface-3 disabled:opacity-50"
           >
             Cancel
           </button>
@@ -676,21 +676,21 @@ export default function VersionActions({
         visible={showRollbackModal}
         onClose={() => !actionLoading && setShowRollbackModal(false)}
       >
-        <p className="text-foreground/80 mb-4">
+        <p className="text-text-2 mb-4">
           Rollback to version <strong>{patch.version}</strong>? This will set this version as the current patch and unpublish all newer versions.
         </p>
         <div className="flex gap-2">
           <button
             onClick={handleRollback}
             disabled={actionLoading}
-            className="flex-1 rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 rounded-control bg-ready px-4 py-2 text-sm font-medium text-white hover:bg-ready disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {actionLoading ? "Rolling back..." : "Rollback"}
           </button>
           <button
             onClick={() => setShowRollbackModal(false)}
             disabled={actionLoading}
-            className="flex-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-4 py-2 text-sm font-medium hover:bg-[var(--surface-3)] disabled:opacity-50"
+            className="flex-1 rounded-control border border-line bg-surface-2 px-4 py-2 text-sm font-medium hover:bg-surface-3 disabled:opacity-50"
           >
             Cancel
           </button>
@@ -703,10 +703,10 @@ export default function VersionActions({
         visible={showPublishModal}
         onClose={() => !actionLoading && setShowPublishModal(false)}
       >
-        <p className="text-foreground/80 mb-4">
+        <p className="text-text-2 mb-4">
           Publish version <strong>{patch.version}</strong>? This will make it viewable to the public along with its changelog.
         </p>
-        <p className="text-sm text-foreground/60 mb-4">
+        <p className="text-sm text-text-3 mb-4">
           {isCustomPatcherActive
             ? "This will not add the version to the Custom patcher list. Add it through Patcher Version Settings if you want it available in the homepage downloader."
             : "If this version is newer than the current patch, it will become the primary download used for all users."}
@@ -715,14 +715,14 @@ export default function VersionActions({
           <button
             onClick={handlePublish}
             disabled={actionLoading}
-            className="flex-1 rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 rounded-control bg-ready px-4 py-2 text-sm font-medium text-white hover:bg-ready disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {actionLoading ? "Publishing..." : "Publish"}
           </button>
           <button
             onClick={() => setShowPublishModal(false)}
             disabled={actionLoading}
-            className="flex-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-4 py-2 text-sm font-medium hover:bg-[var(--surface-3)] disabled:opacity-50"
+            className="flex-1 rounded-control border border-line bg-surface-2 px-4 py-2 text-sm font-medium hover:bg-surface-3 disabled:opacity-50"
           >
             Cancel
           </button>
@@ -749,7 +749,7 @@ export default function VersionActions({
       >
         <div className="mb-4">
           <label className="block text-sm font-medium mb-2">
-            Provide patch <span className="text-red-500">*</span>
+            Provide patch <span className="text-error">*</span>
           </label>
           <div className="flex flex-col gap-3">
             {patchMode === "bps" && (
@@ -759,20 +759,20 @@ export default function VersionActions({
                   onChange={onUploadPatch}
                   type="file"
                   accept=".bps,.xdelta"
-                  className="cursor-pointer rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] file:bg-black/10 dark:file:bg-[var(--surface-2)] file:text-foreground/80 file:text-sm file:font-medium file:not-italic file:rounded-md file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer"
+                  className="cursor-pointer rounded-control bg-surface-2 px-3 py-2 text-sm italic text-text-3 ring-1 ring-inset ring-line file:bg-black/10 dark:file:bg-surface-2 file:text-text-2 file:text-sm file:font-medium file:not-italic file:rounded-control file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer"
                 />
-                <p className="flex items-center gap-1.5 text-xs text-foreground/60">
-                  <FiAlertTriangle className="h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" />
+                <p className="flex items-center gap-1.5 text-xs text-text-3">
+                  <FiAlertTriangle className="h-3 w-3 shrink-0 text-warn" />
                   <span>Patch file upload is a fallback. Hackdex cannot always guarantee that an uploaded patch is compatible with the chosen base ROM. Auto-generating from a modified ROM is recommended.</span>
                 </p>
-                {checksumStatus === "validating" && <div className="text-xs text-foreground/70">Validating checksum…</div>}
-                {checksumStatus === "valid" && <div className="text-xs text-emerald-400/90">Checksum valid.</div>}
-                {checksumStatus === "invalid" && !!checksumError && <div className="text-xs text-red-400">{checksumError}</div>}
-                {checksumStatus === "unknown" && !!checksumError && <div className="text-xs text-amber-400/90">{checksumError}</div>}
+                {checksumStatus === "validating" && <div className="text-xs text-text-2">Validating checksum…</div>}
+                {checksumStatus === "valid" && <div className="text-xs text-ready">Checksum valid.</div>}
+                {checksumStatus === "invalid" && !!checksumError && <div className="text-xs text-error">{checksumError}</div>}
+                {checksumStatus === "unknown" && !!checksumError && <div className="text-xs text-warn">{checksumError}</div>}
                 <button
                   type="button"
                   onClick={() => setPatchMode("rom")}
-                  className="w-fit cursor-pointer text-xs text-foreground/60 underline underline-offset-2 transition-colors hover:text-foreground/80"
+                  className="w-fit cursor-pointer text-xs text-text-3 underline underline-offset-2 transition-colors hover:text-text-2"
                 >
                   Generate from a modified ROM instead (Recommended)
                 </button>
@@ -781,51 +781,51 @@ export default function VersionActions({
 
             {patchMode === "rom" && (
               <div className="grid gap-3">
-                <div className="rounded-md border border-[var(--border)] p-3 bg-[var(--surface-2)]/50">
-                  <div className="text-xs text-foreground/75">Required base ROM</div>
+                <div className="rounded-control border border-line p-3 bg-surface-2/50">
+                  <div className="text-xs text-text-2">Required base ROM</div>
                   <div className="mt-1 text-sm font-medium">{baseRomEntry ? `${baseRomEntry.name} (${baseRomEntry.platform})` : "Unknown base ROM"}</div>
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                    <span className={`rounded-full px-2 py-0.5 ring-1 ${baseRomReady ? "bg-emerald-600/60 text-white ring-emerald-700/80 dark:bg-emerald-500/25 dark:text-emerald-100 dark:ring-emerald-400/90" : baseRomNeedsPermission ? "bg-amber-600/60 text-white ring-amber-700/80 dark:bg-amber-500/50 dark:text-amber-100 dark:ring-amber-400/90" : "bg-red-600/60 text-white ring-red-700/80 dark:bg-red-500/50 dark:text-red-100 dark:ring-red-400/90"}`}>
+                    <span className={`rounded-full px-2 py-0.5 ring-1 ${baseRomReady ? "bg-ready-soft text-white ring-ready/40 dark:bg-ready-soft dark:text-ready dark:ring-ready/40" : baseRomNeedsPermission ? "bg-warn-soft text-white ring-warn/40 dark:bg-warn-soft dark:text-warn dark:ring-warn/40" : "bg-error-soft text-white ring-error/40 dark:bg-error-soft dark:text-error dark:ring-error/40"}`}>
                       {baseRomReady ? "Ready" : baseRomNeedsPermission ? "Permission needed" : "Base ROM needed"}
                     </span>
                     {baseRomNeedsPermission && (
-                      <button type="button" onClick={onGrantPermission} disabled={!supported} className="rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2 py-1 disabled:opacity-60 disabled:cursor-not-allowed">Grant permission</button>
+                      <button type="button" onClick={onGrantPermission} disabled={!supported} className="rounded-control border border-line bg-surface-2 px-2 py-1 disabled:opacity-60 disabled:cursor-not-allowed">Grant permission</button>
                     )}
                     {baseRomMissing && (
-                      <label className="inline-flex items-center gap-2 text-xs text-foreground/80">
+                      <label className="inline-flex items-center gap-2 text-xs text-text-2">
                         <input
                           ref={baseRomInputRef}
                           type="file"
                           onChange={onUploadBaseRom}
                           accept={baseRomPlatform ? platformAccept(baseRomPlatform) : "*/*"}
-                          className="cursor-pointer rounded-md bg-[var(--surface-2)] px-2 py-1 text-xs italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] file:bg-black/10 dark:file:bg-[var(--surface-2)] file:text-foreground/80 file:text-xs file:font-medium file:not-italic file:rounded-md file:border-0 file:px-2 file:py-1 file:mr-2 file:cursor-pointer"
+                          className="cursor-pointer rounded-control bg-surface-2 px-2 py-1 text-xs italic text-text-3 ring-1 ring-inset ring-line file:bg-black/10 dark:file:bg-surface-2 file:text-text-2 file:text-xs file:font-medium file:not-italic file:rounded-control file:border-0 file:px-2 file:py-1 file:mr-2 file:cursor-pointer"
                         />
                         <span>Upload base ROM</span>
                       </label>
                     )}
                   </div>
-                  {!!genError && <div className="mt-2 text-xs text-red-400">{genError}</div>}
+                  {!!genError && <div className="mt-2 text-xs text-error">{genError}</div>}
                 </div>
 
                 <div className="grid gap-2">
-                  <label className="text-sm text-foreground/80">Modified ROM <span className="text-foreground/60">(Recommended)</span></label>
+                  <label className="text-sm text-text-2">Modified ROM <span className="text-text-3">(Recommended)</span></label>
                   <input
                     ref={modifiedRomInputRef}
                     type="file"
                     accept={baseRomPlatform ? platformAccept(baseRomPlatform) : "*/*"}
                     disabled={!baseRomEntry || !baseRomReady || !baseRomPlatform}
                     onChange={onUploadModifiedRom}
-                    className="cursor-pointer rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] file:bg-black/10 dark:file:bg-[var(--surface-2)] file:text-foreground/80 file:text-sm file:font-medium file:not-italic file:rounded-md file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="cursor-pointer rounded-control bg-surface-2 px-3 py-2 text-sm italic text-text-3 ring-1 ring-inset ring-line file:bg-black/10 dark:file:bg-surface-2 file:text-text-2 file:text-sm file:font-medium file:not-italic file:rounded-control file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   />
-                  <p className="text-xs text-foreground/60">We'll generate a .xdelta patch on-device. No ROMs are uploaded.</p>
-                  {genStatus === "generating" && <div className="text-xs text-foreground/70">Generating patch…</div>}
-                  {genStatus === "ready" && reuploadFile && <div className="text-xs text-emerald-400/90">Patch ready: {reuploadFile.name}</div>}
-                  {genStatus === "error" && !!genError && <div className="text-xs text-red-400">{genError}</div>}
+                  <p className="text-xs text-text-3">We'll generate a .xdelta patch on-device. No ROMs are uploaded.</p>
+                  {genStatus === "generating" && <div className="text-xs text-text-2">Generating patch…</div>}
+                  {genStatus === "ready" && reuploadFile && <div className="text-xs text-ready">Patch ready: {reuploadFile.name}</div>}
+                  {genStatus === "error" && !!genError && <div className="text-xs text-error">{genError}</div>}
                 </div>
                 <button
                   type="button"
                   onClick={() => setPatchMode("bps")}
-                  className="w-fit cursor-pointer text-xs text-foreground/60 underline underline-offset-2 transition-colors hover:text-foreground/80"
+                  className="w-fit cursor-pointer text-xs text-text-3 underline underline-offset-2 transition-colors hover:text-text-2"
                 >
                   Already have a .bps or .xdelta file?
                 </button>
@@ -833,14 +833,14 @@ export default function VersionActions({
             )}
           </div>
           {reuploadError && (
-            <p className="mt-2 text-sm text-red-400">{reuploadError}</p>
+            <p className="mt-2 text-sm text-error">{reuploadError}</p>
           )}
         </div>
         <div className="flex gap-2">
           <button
             onClick={handleReupload}
             disabled={actionLoading || !reuploadFile || checksumStatus === "invalid" || checksumStatus === "validating"}
-            className="flex-1 rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 rounded-control bg-ready px-4 py-2 text-sm font-medium text-white hover:bg-ready disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {actionLoading ? "Uploading..." : "Upload"}
           </button>
@@ -857,7 +857,7 @@ export default function VersionActions({
               setPatchMode("rom");
             }}
             disabled={actionLoading}
-            className="flex-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-4 py-2 text-sm font-medium hover:bg-[var(--surface-3)] disabled:opacity-50"
+            className="flex-1 rounded-control border border-line bg-surface-2 px-4 py-2 text-sm font-medium hover:bg-surface-3 disabled:opacity-50"
           >
             Cancel
           </button>
