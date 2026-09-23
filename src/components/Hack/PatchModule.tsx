@@ -2,7 +2,6 @@
 
 import React from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { createPortal } from "react-dom";
 import { FiCheck, FiChevronDown, FiDownload, FiX } from "react-icons/fi";
 import { platformAccept } from "@/utils/idb";
@@ -397,14 +396,11 @@ export default function PatchModule({
 
       {compactTarget &&
         createPortal(
-          <div className="anim-fade flex items-center gap-3 bg-surface px-6 max-md:flex-wrap max-md:gap-x-3 max-md:gap-y-2 max-md:border-b max-md:border-line max-md:py-2 max-md:shadow-lift md:h-full md:gap-4">
-            <Link href="/" aria-label="Hackdex home" className="hidden flex-none md:inline-flex">
-              <Image src="/logo.png" alt="" width={28} height={28} className="rounded-[7px]" />
-            </Link>
+          <div className="anim-fade flex items-center gap-3 bg-surface px-6 max-md:flex-wrap max-md:gap-x-3 max-md:gap-y-2 max-md:border-b max-md:border-line max-md:py-2 max-md:shadow-lift md:h-full md:gap-4 md:border-l md:border-line md:px-5">
             <strong className="min-w-0 flex-1 text-[15px] font-semibold leading-tight max-md:line-clamp-2 md:truncate md:text-base">{title}</strong>
             <div className="flex items-center gap-3 max-md:flex-[1_1_100%] max-md:flex-col-reverse max-md:items-stretch max-md:gap-1.5">
               {kind === "ready" && (
-                <small className="text-xs text-text-3 max-md:text-center md:max-w-[220px] md:text-right">
+                <small className="text-xs text-text-3 max-md:text-center md:max-w-[220px] md:text-right md:max-lg:hidden">
                   By patching, you agree to the{" "}
                   <Link href="/terms" target="_blank" className="underline underline-offset-2">
                     terms

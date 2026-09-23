@@ -85,7 +85,11 @@ export default function Header() {
           </NavLink>
         </nav>
 
-        <form role="search" onSubmit={onSearch} className="relative ml-auto hidden text-text-3 md:block">
+        {/* Hack page portals its compact title + action bar here, hidden while empty. It covers the
+            top of the header on phones; on desktop it takes the search box's place beside the nav (and Submit's, below lg). */}
+        <div id={HEADER_COMPACT_ID} className="absolute inset-x-0 top-0 z-[1] empty:hidden md:static md:z-auto md:min-w-0 md:flex-1 md:self-stretch" />
+
+        <form role="search" onSubmit={onSearch} className="relative ml-auto hidden text-text-3 md:block [:not(:empty)+&]:hidden">
           <FiSearch className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2" />
           <input
             type="search"
@@ -100,7 +104,7 @@ export default function Header() {
           <ThemeToggle />
           <Link
             href="/submit"
-            className="hidden h-[38px] items-center rounded-control px-2.5 font-medium text-text-2 transition-colors hover:bg-surface-2 hover:text-text md:inline-flex"
+            className="hidden h-[38px] items-center rounded-control px-2.5 font-medium text-text-2 transition-colors hover:bg-surface-2 hover:text-text md:inline-flex max-lg:[#site-header-compact:not(:empty)~div_&]:hidden"
           >
             Submit a hack
           </Link>
@@ -117,9 +121,6 @@ export default function Header() {
             </Link>
           )}
         </div>
-
-        {/* Hack page portals its compact title + action bar here; hidden while empty. */}
-        <div id={HEADER_COMPACT_ID} className="absolute inset-x-0 top-0 z-[1] empty:hidden max-md:bottom-auto md:inset-0" />
       </div>
     </header>
   );
