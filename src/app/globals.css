@@ -193,6 +193,8 @@ body {
 /* Opt-in nearest-neighbor scaling for pixel art shown at an integer multiple of its native size. */
 .pixelated { image-rendering: pixelated; }
 :focus-visible { outline: 2px solid var(--rose); outline-offset: 2px; }
+/* Containers that take focus programmatically (dialogs, sheets, option lists) do not show it. */
+[tabindex="-1"]:focus-visible, [role="listbox"]:focus-visible, [role="menu"]:focus-visible { outline: none; }
 
 /* Stable layout when overlays lock page scrolling. */
 html {

@@ -407,7 +407,7 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
               }}
               options={SORT_OPTIONS}
               dropdownAlign="right"
-              className="!h-10 !w-full !rounded-control !border !border-line-strong !bg-surface !pl-3.5 !text-[15px] !font-medium !ring-0 hover:!border-text-3 focus:!ring-0 md:!h-12 md:!w-auto md:!min-w-[200px]"
+              className="border-line-strong! bg-surface! pl-3.5! text-[15px]! font-medium hover:border-text-3! md:h-12! md:w-auto! md:min-w-[200px]"
               dropdownClassName="!max-w-[min(90vw,320px)]"
             />
             </div>

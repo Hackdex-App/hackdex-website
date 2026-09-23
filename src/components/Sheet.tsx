@@ -3,6 +3,7 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import { FiX } from "react-icons/fi";
+import { useDialog } from "@/hooks/useDialog";
 
 interface SheetProps {
   title: string;
@@ -18,11 +19,10 @@ interface SheetProps {
  */
 export default function Sheet({ title, onClose, children, footer }: SheetProps) {
   const panelRef = React.useRef<HTMLDivElement>(null);
-  const onCloseRef = React.useRef(onClose);
   const titleId = React.useId();
   const [mounted, setMounted] = React.useState(false);
   const [inView, setInView] = React.useState(false);
-  onCloseRef.current = onClose;
+  useDialog(panelRef, onClose, mounted);
 
   React.useEffect(() => {
     setMounted(true);
@@ -31,35 +31,7 @@ export default function Sheet({ title, onClose, children, footer }: SheetProps) 
   React.useEffect(() => {
     if (!mounted) return;
     const enter = requestAnimationFrame(() => requestAnimationFrame(() => setInView(true)));
-    panelRef.current?.focus({ preventScroll: true });
-    const html = document.documentElement;
-    const prevOverflow = html.style.overflow;
-    html.style.overflow = "hidden";
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onCloseRef.current();
-        return;
-      }
-      if (e.key !== "Tab" || !panelRef.current) return;
-      const nodes = [...panelRef.current.querySelectorAll<HTMLElement>("button, input, [href], select, textarea")].filter((el) => !el.hasAttribute("disabled"));
-      if (nodes.length === 0) return;
-      const first = nodes[0];
-      const last = nodes[nodes.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => {
-      cancelAnimationFrame(enter);
-      document.removeEventListener("keydown", onKey);
-      html.style.overflow = prevOverflow;
-    };
+    return () => cancelAnimationFrame(enter);
   }, [mounted]);
 
   if (!mounted) return null;
