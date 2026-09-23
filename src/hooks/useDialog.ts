@@ -2,7 +2,8 @@ import React from "react";
 
 /**
  * Modal plumbing shared by Sheet and Modal: focuses the panel, locks page
- * scroll, traps Tab inside the panel, and closes on Escape. Runs while `active`.
+ * scroll, traps Tab inside the panel, closes on Escape, and hands focus back to
+ * whatever had it before. Runs while `active`.
  */
 export function useDialog(panelRef: React.RefObject<HTMLElement | null>, onClose: () => void, active = true) {
   const onCloseRef = React.useRef(onClose);
@@ -10,6 +11,7 @@ export function useDialog(panelRef: React.RefObject<HTMLElement | null>, onClose
 
   React.useEffect(() => {
     if (!active) return;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     panelRef.current?.focus({ preventScroll: true });
     const html = document.documentElement;
     const prevOverflow = html.style.overflow;
@@ -37,6 +39,7 @@ export function useDialog(panelRef: React.RefObject<HTMLElement | null>, onClose
     return () => {
       document.removeEventListener("keydown", onKey);
       html.style.overflow = prevOverflow;
+      opener?.focus({ preventScroll: true });
     };
   }, [active, panelRef]);
 }

@@ -10,6 +10,7 @@ import { useAuthContext } from "@/contexts/AuthContext";
 import { createClient } from "@/utils/supabase/client";
 import Avatar from "@/components/Account/Avatar";
 import ThemeToggle from "@/components/ThemeToggle";
+import MobileMenu from "@/components/MobileMenu";
 
 /** Element id the hack page portals its compact title + action bar into once the patch module scrolls away. */
 export const HEADER_COMPACT_ID = "site-header-compact";
@@ -31,7 +32,8 @@ function NavLink({ href, active, children }: { href: string; active: boolean; ch
 /**
  * Site chrome. Rose appears only as the logo and the active-page indicator;
  * the rest is quiet so the one patch action owns the color on task pages.
- * Guests see no login: only creators need an account, and it lives behind Submit.
+ * Guests see no login in the bar: only creators need an account. It lives in the
+ * phone menu, the footer, and behind Submit.
  */
 export default function Header() {
   const { countReady } = useBaseRoms();
@@ -120,6 +122,7 @@ export default function Header() {
               <div className="absolute inset-0 m-[2px] rounded-full bg-transparent transition-colors group-hover:bg-black/20" />
             </Link>
           )}
+          <MobileMenu signedIn={userId !== null} />
         </div>
       </div>
     </header>
