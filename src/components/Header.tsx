@@ -4,7 +4,8 @@ import Link from "next/link";
 import React from "react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { FiSearch } from "react-icons/fi";
+import { FiChevronDown, FiSearch } from "react-icons/fi";
+import { CloseButton, Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { createClient } from "@/utils/supabase/client";
@@ -71,13 +72,13 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-line bg-surface">
-      <div className="relative mx-auto flex h-14 max-w-[1164px] items-center gap-3 px-6 md:h-[60px] md:gap-7">
+      <div className="group/header relative mx-auto flex h-14 max-w-[1164px] items-center gap-3 px-6 md:h-[60px] md:gap-7">
         <Link href="/" className="inline-flex items-center gap-2.5 font-display text-[19px]" aria-label="Hackdex home">
           <Image src="/logo.png" alt="" width={28} height={28} className="rounded-[7px]" />
           <span>Hackdex</span>
         </Link>
 
-        <nav className="hidden self-stretch gap-1 md:flex" aria-label="Primary">
+        <nav className="hidden self-stretch gap-1 md:flex md:group-has-[#site-header-compact:not(:empty)]/header:hidden" aria-label="Primary">
           <NavLink href="/discover" active={pathname.startsWith("/discover")}>
             Discover
           </NavLink>
@@ -87,8 +88,10 @@ export default function Header() {
           </NavLink>
         </nav>
 
+        <CompactMenu countReady={countReady} onSearch={onSearch} />
+
         {/* Hack page portals its compact title + action bar here, hidden while empty. It covers the
-            top of the header on phones; on desktop it takes the search box's place beside the nav (and Submit's, below lg). */}
+            top of the header on phones; on desktop the nav, search, and Submit fold into CompactMenu to make room. */}
         <div id={HEADER_COMPACT_ID} className="absolute inset-x-0 top-0 z-[1] empty:hidden md:static md:z-auto md:min-w-0 md:flex-1 md:self-stretch" />
 
         <form role="search" onSubmit={onSearch} className="relative ml-auto hidden text-text-3 md:block [:not(:empty)+&]:hidden">
@@ -106,7 +109,7 @@ export default function Header() {
           <ThemeToggle />
           <Link
             href="/submit"
-            className="hidden h-[38px] items-center rounded-control px-2.5 font-medium text-text-2 transition-colors hover:bg-surface-2 hover:text-text md:inline-flex max-lg:[#site-header-compact:not(:empty)~div_&]:hidden"
+            className="hidden h-[38px] items-center rounded-control px-2.5 font-medium text-text-2 transition-colors hover:bg-surface-2 hover:text-text md:inline-flex md:group-has-[#site-header-compact:not(:empty)]/header:hidden"
           >
             Submit a hack
           </Link>
@@ -126,5 +129,55 @@ export default function Header() {
         </div>
       </div>
     </header>
+  );
+}
+
+/**
+ * Desktop only, while the hack page's compact bar is up: Discover, My ROMs,
+ * search, and Submit in one dropdown so the title and patch button get the room.
+ */
+function CompactMenu({ countReady, onSearch }: { countReady: number; onSearch: (e: React.FormEvent<HTMLFormElement>) => void }) {
+  const item = "flex h-9 items-center gap-2 rounded-[6px] px-2.5 text-sm text-text hover:bg-surface-2 data-focus:bg-surface-2";
+  return (
+    <Popover className="relative hidden md:group-has-[#site-header-compact:not(:empty)]/header:block">
+      <PopoverButton className="group inline-flex h-9 items-center gap-1.5 rounded-control px-2.5 font-medium text-text-2 transition-colors hover:bg-surface-2 hover:text-text data-open:bg-surface-2 data-open:text-text">
+        Menu
+        <FiChevronDown className="h-4 w-4 transition-transform group-data-open:rotate-180" />
+      </PopoverButton>
+      <PopoverPanel modal={false} className="anim-pop absolute left-0 top-full z-50 mt-2 w-[248px] rounded-card border border-line bg-surface p-1 shadow-overlay outline-none">
+        {({ close }) => (
+          <>
+            <form
+              role="search"
+              onSubmit={(e) => {
+                onSearch(e);
+                close();
+              }}
+              className="relative m-1 text-text-3"
+            >
+              <FiSearch className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2" />
+              <input
+                type="search"
+                name="q"
+                placeholder="Search hacks"
+                aria-label="Search hacks"
+                className="h-9 w-full rounded-control border border-transparent bg-surface-2 pl-8 pr-2.5 text-sm text-text outline-none placeholder:text-text-3 focus:border-accent focus:bg-surface"
+              />
+            </form>
+            <CloseButton as={Link} href="/discover" className={item}>
+              Discover
+            </CloseButton>
+            <CloseButton as={Link} href="/roms" className={item}>
+              My ROMs
+              {countReady > 0 && <span className="ready-dot" role="img" aria-label={`${countReady} base ROM${countReady === 1 ? "" : "s"} ready`} />}
+            </CloseButton>
+            <div className="mx-1.5 my-1 border-t border-line" />
+            <CloseButton as={Link} href="/submit" className={item}>
+              Submit a hack
+            </CloseButton>
+          </>
+        )}
+      </PopoverPanel>
+    </Popover>
   );
 }
