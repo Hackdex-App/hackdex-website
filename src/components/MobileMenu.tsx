@@ -53,9 +53,10 @@ export default function MobileMenu({ signedIn }: { signedIn: boolean }) {
   const close = React.useCallback(() => setOpen(false), []);
   useDialog(panelRef, close, mounted && open);
 
+  // Only creators need an account, so the guest links say so; players should never read them as a gate.
   const account = signedIn
-    ? [{ href: "/dashboard", label: "Dashboard" }, { href: "/account", label: "Account settings" }]
-    : [{ href: "/login", label: "Log in" }, { href: "/signup", label: "Create an account" }];
+    ? { label: "Your account", links: [{ href: "/dashboard", label: "Dashboard" }, { href: "/account", label: "Account settings" }] }
+    : { label: "For creators", links: [{ href: "/signup", label: "Become a creator" }, { href: "/login", label: "Creator log in" }] };
 
   let step = 0;
   const item = (href: string, label: string, className: string) => {
@@ -127,7 +128,8 @@ export default function MobileMenu({ signedIn }: { signedIn: boolean }) {
               <nav aria-label="Menu" className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-2 py-3">
                 {PAGES.map((p) => item(p.href, p.label, row))}
                 <div className="mx-3 my-3 border-t border-line" />
-                {account.map((a) => item(a.href, a.label, row))}
+                <p className="px-3 pb-0.5 pt-1 text-xs font-semibold tracking-[.01em] text-text-3">{account.label}</p>
+                {account.links.map((a) => item(a.href, a.label, row))}
                 <div className="mt-auto flex flex-wrap gap-x-4 gap-y-2 px-3 pb-[max(16px,env(safe-area-inset-bottom))] pt-6">
                   {SMALL.map((s) => item(s.href, s.label, "text-[13px] text-text-3 hover:text-text"))}
                 </div>
