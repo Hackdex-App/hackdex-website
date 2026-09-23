@@ -7,6 +7,7 @@ import useEmblaCarousel from "embla-carousel-react";
 import { usePathname } from "next/navigation";
 import { FaRegImages } from "react-icons/fa6";
 import { FiChevronLeft, FiChevronRight, FiDownload } from "react-icons/fi";
+import { RiArchiveStackFill } from "react-icons/ri";
 import { formatCompactNumber, OrderedTag } from "@/utils/format";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
 import { baseGameLabel, baseRoms, type Platform } from "@/data/baseRoms";
@@ -38,11 +39,24 @@ interface HackCardProps {
   fill?: boolean;
 }
 
-function useReadiness(baseRomId?: string) {
-  const { hasPermission, hasCached } = useBaseRoms();
-  const base = baseRoms.find((r) => r.id === baseRomId);
-  const ready = base ? hasPermission(base.id) || hasCached(base.id) : false;
-  return { base, ready };
+/**
+ * Whether the player can patch this hack right now. "permission" means the ROM
+ * is linked but the browser needs file access granted again. Archives have no
+ * download, so they are never either.
+ */
+function useReadiness(hack: HackCardAttributes) {
+  const { isLinked, hasPermission, hasCached } = useBaseRoms();
+  const base = baseRoms.find((r) => r.id === hack.baseRomId);
+  const ready = base && !hack.is_archive ? hasPermission(base.id) || hasCached(base.id) : false;
+  const needsPermission = base && !hack.is_archive && !ready ? isLinked(base.id) : false;
+  return { base, ready, needsPermission };
+}
+
+/** Summary, or the start of the description for hacks that never got one. */
+function blurb(hack: HackCardAttributes) {
+  if (hack.summary) return hack.summary;
+  const text = hack.description?.trim() ?? "";
+  return text.length > 120 ? text.slice(0, 120).trimEnd() + "…" : text;
 }
 
 /** Anything short of Complete gets an outline pill so a demo never reads like a finished game. */
@@ -186,7 +200,8 @@ function Shots({ images, platform, fill, placeholder }: { images: string[]; plat
   );
 }
 
-function Facts({ hack, base, ready, version = false, column = false }: { hack: HackCardAttributes; base?: (typeof baseRoms)[number]; ready: boolean; version?: boolean; column?: boolean }) {
+function Facts({ hack, version = false, column = false, ...readiness }: ReturnType<typeof useReadiness> & { hack: HackCardAttributes; version?: boolean; column?: boolean }) {
+  const { base, ready, needsPermission } = readiness;
   return (
     <span
       className={`flex items-center gap-2.5 overflow-hidden whitespace-nowrap text-[13px] leading-tight text-text-3 ${
@@ -197,26 +212,38 @@ function Facts({ hack, base, ready, version = false, column = false }: { hack: H
         <span className="inline-flex flex-none items-center gap-1.5 text-text-2">
           <span className="ready-dot" /> Ready
         </span>
+      ) : needsPermission ? (
+        <span className="inline-flex flex-none items-center gap-1.5 text-text-2" title="Your ROM is linked. Allow access again to patch.">
+          <span className="h-2 w-2 rounded-full bg-warn" /> Permission needed
+        </span>
       ) : (
         <span className="plat-dot flex-none text-text-2" data-platform={base?.platform}>
           {base ? baseGameLabel(base.name) : "Unknown base"}
         </span>
       )}
       {version && <span className="truncate">{hack.version}</span>}
-      <span
-        className={`inline-flex flex-none items-center gap-[3px] font-medium ${column ? "text-[15px] text-text" : "ml-auto text-text-2"}`}
-        aria-label={`${formatCompactNumber(hack.downloads)} downloads`}
-      >
-        <FiDownload className="h-3.5 w-3.5 text-text-3" />
-        {formatCompactNumber(hack.downloads)}
-      </span>
+      {hack.is_archive ? (
+        <span className={`inline-flex flex-none items-center gap-1 font-medium text-text-2 ${column ? "" : "ml-auto"}`} title="Listed for the record. No download.">
+          <RiArchiveStackFill className="h-3.5 w-3.5 text-text-3" /> Archive
+        </span>
+      ) : (
+        <span
+          className={`inline-flex flex-none items-center gap-[3px] font-medium ${column ? "text-[15px] text-text" : "ml-auto text-text-2"}`}
+          aria-label={`${formatCompactNumber(hack.downloads)} downloads`}
+        >
+          <FiDownload className="h-3.5 w-3.5 text-text-3" />
+          {formatCompactNumber(hack.downloads)}
+        </span>
+      )}
     </span>
   );
 }
 
 /** Grid card: cover carousel, title, author + completion, summary, first two tags, then base / downloads. */
 export default function HackCard({ hack, clickable = true, prefetch = false, className = "", fill = false }: HackCardProps) {
-  const { base, ready } = useReadiness(hack.baseRomId);
+  const readiness = useReadiness(hack);
+  const { base, ready } = readiness;
+  const summary = blurb(hack);
   const images = hack.covers.filter(Boolean);
   const pathname = usePathname();
   const placeholder = (pathname || "").startsWith("/submit") && images.length === 0;
@@ -234,9 +261,7 @@ export default function HackCard({ hack, clickable = true, prefetch = false, cla
             {hack.version && <span className="font-mono text-[11px] text-text-3" title="Current version">{hack.version}</span>}
           </span>
         </span>
-        {hack.summary && (
-          <span className="mt-1 line-clamp-2 text-[13px] leading-[1.4] text-text-2">{hack.summary}</span>
-        )}
+        {summary && <span className="mt-1 line-clamp-2 text-[13px] leading-[1.4] text-text-2">{summary}</span>}
         {hack.tags.length > 0 && (
           <span className="mt-2 flex gap-1.5 overflow-hidden" aria-label="Tags">
             {hack.tags.slice(0, 2).map((t) => (
@@ -246,7 +271,7 @@ export default function HackCard({ hack, clickable = true, prefetch = false, cla
             ))}
           </span>
         )}
-        <Facts hack={hack} base={base} ready={ready} />
+        <Facts hack={hack} {...readiness} />
       </span>
     </>
   );
@@ -273,14 +298,15 @@ export default function HackCard({ hack, clickable = true, prefetch = false, cla
 
 /** List row: 120×80 thumb, title + author, one-line summary, four tags, facts stacked at the right on desktop. */
 export function HackRow({ hack, prefetch = false }: { hack: HackCardAttributes; prefetch?: LinkProps["prefetch"] }) {
-  const { base, ready } = useReadiness(hack.baseRomId);
+  const readiness = useReadiness(hack);
+  const summary = blurb(hack);
   const cover = hack.covers.find(Boolean);
   return (
     <Link
       href={`/hack/${hack.slug}`}
       prefetch={prefetch}
       className={`grid grid-cols-[120px_minmax(0,1fr)] items-center gap-4 rounded-card border bg-surface p-3 shadow-rest transition-[box-shadow,border-color] duration-150 hover:shadow-lift md:grid-cols-[120px_minmax(0,1fr)_auto] ${
-        ready ? READY_OUTLINE : "border-line hover:border-line-strong"
+        readiness.ready ? READY_OUTLINE : "border-line hover:border-line-strong"
       }`}
     >
       <span className="block h-20 w-[120px] overflow-hidden rounded-frame bg-well">
@@ -290,7 +316,7 @@ export function HackRow({ hack, prefetch = false }: { hack: HackCardAttributes; 
         <span className="truncate text-[15px] font-semibold leading-tight">
           {hack.title} <span className="text-[13px] font-normal text-text-2">by <Handle name={hack.author} /></span>
         </span>
-        {hack.summary && <span className="truncate text-sm text-text-2">{hack.summary}</span>}
+        {summary && <span className="truncate text-sm text-text-2">{summary}</span>}
         {hack.tags.length > 0 && (
           <span className="flex gap-1.5 overflow-hidden">
             {hack.tags.slice(0, 4).map((t) => (
@@ -302,7 +328,7 @@ export function HackRow({ hack, prefetch = false }: { hack: HackCardAttributes; 
         )}
       </span>
       <span className="hidden md:block">
-        <Facts hack={hack} base={base} ready={ready} version column />
+        <Facts hack={hack} {...readiness} version column />
       </span>
     </Link>
   );
