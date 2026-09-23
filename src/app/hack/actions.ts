@@ -36,6 +36,10 @@ export async function updateHack(args: {
     github?: string;
   } | null;
   tags?: string[];
+  /** Only for hacks uploaded on someone else's behalf; neither may be cleared. */
+  original_author?: string;
+  permission_from?: string;
+  verification_contact_info?: string | null;
 }) {
   const supabase = await createClient();
   const {
@@ -71,6 +75,19 @@ export async function updateHack(args: {
   if (args.version !== undefined) updatePayload.version = args.version;
   if (args.box_art !== undefined) updatePayload.box_art = args.box_art;
   if (args.social_links !== undefined) updatePayload.social_links = args.social_links;
+  if (args.original_author !== undefined || args.permission_from !== undefined) {
+    if (!hack.original_author) {
+      return { ok: false, error: "This hack was not uploaded on someone else's behalf" } as const;
+    }
+    if (args.original_author?.trim() === "" || args.permission_from?.trim() === "") {
+      return { ok: false, error: "Name the creator and where they gave permission" } as const;
+    }
+    if (args.original_author !== undefined) updatePayload.original_author = args.original_author.trim();
+    if (args.permission_from !== undefined) updatePayload.permission_from = args.permission_from.trim();
+  }
+  if (args.verification_contact_info !== undefined) {
+    updatePayload.verification_contact_info = args.verification_contact_info?.trim() || null;
+  }
 
   if (Object.keys(updatePayload).length > 0) {
     const { error: uErr } = await supabase

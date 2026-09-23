@@ -17,6 +17,11 @@ export interface DraftDetailsValues {
   completion_status: Completion | null;
   box_art: string | null;
   social_links: Social | null;
+  /** Set on hacks uploaded on someone else's behalf; shows the creator fields. */
+  original_author: string | null;
+  permission_from: string | null;
+  /** Left out once the hack is listed, since admins only read it during review. */
+  verification_contact_info?: string | null;
 }
 
 interface DraftDetailsProps {
@@ -51,7 +56,7 @@ const SOCIAL: { key: keyof Social; label: string; placeholder: string }[] = [
 
 const urlLike = (s: string) => !s || /^https?:\/\//i.test(s);
 
-/** Wraps the rail and owns the details sheet for the fields that are not edited in place: base ROM, language, completion, box art, links. Saves (or stages, on listed hacks) on the footer button. */
+/** Wraps the rail and owns the details sheet for the fields that are not edited in place: base ROM, language, completion, box art, links, and the creator and review fields. Saves (or stages, on listed hacks) on the footer button. */
 export default function DraftDetails({ values, baseLocked, children }: DraftDetailsProps) {
   const { save, live } = useDraftEditing();
   const [open, setOpen] = React.useState(false);
@@ -66,8 +71,13 @@ export default function DraftDetails({ values, baseLocked, children }: DraftDeta
     pokecommunity: values.social_links?.pokecommunity ?? "",
     github: values.social_links?.github ?? "",
   });
+  const behalf = values.original_author !== null;
+  const [creator, setCreator] = React.useState(values.original_author ?? "");
+  const [permission, setPermission] = React.useState(values.permission_from ?? "");
+  const askContact = values.verification_contact_info !== undefined;
+  const [contact, setContact] = React.useState(values.verification_contact_info ?? "");
 
-  const invalid = !urlLike(boxArt) || SOCIAL.some((s) => !urlLike(social[s.key]));
+  const invalid = !urlLike(boxArt) || SOCIAL.some((s) => !urlLike(social[s.key])) || (behalf && (!creator.trim() || !permission.trim()));
 
   async function done() {
     const links = Object.fromEntries(Object.entries(social).filter(([, v]) => v.trim())) as Social;
@@ -78,6 +88,8 @@ export default function DraftDetails({ values, baseLocked, children }: DraftDeta
       ...(completion ? { completion_status: completion } : {}),
       box_art: boxArt.trim() || null,
       social_links: Object.keys(links).length ? links : null,
+      ...(behalf ? { original_author: creator, permission_from: permission } : {}),
+      ...(askContact ? { verification_contact_info: contact } : {}),
     });
     setSaving(false);
     if (ok) setOpen(false);
@@ -148,6 +160,27 @@ export default function DraftDetails({ values, baseLocked, children }: DraftDeta
                 </Field>
               ))}
             </fieldset>
+            {behalf && (
+              <fieldset className="flex flex-col gap-3">
+                <legend className="mb-1 text-sm font-medium">Creator</legend>
+                <Field label="Creator’s name" small>
+                  <input value={creator} onChange={(e) => setCreator(e.target.value)} className={`${FIELD} h-10 ${creator.trim() ? "" : "border-error"}`} />
+                </Field>
+                <Field label="Where they gave permission" small>
+                  <input
+                    value={permission}
+                    onChange={(e) => setPermission(e.target.value)}
+                    placeholder="Discord DM, PokéCommunity thread, email…"
+                    className={`${FIELD} h-10 ${permission.trim() ? "" : "border-error"}`}
+                  />
+                </Field>
+              </fieldset>
+            )}
+            {askContact && (
+              <Field label="Verification contact" hint="Optional. Only admins see this, while they review the hack. Name a place where your post history shows you made it, like a Discord username and the servers you are active in.">
+                <textarea value={contact} onChange={(e) => setContact(e.target.value)} rows={4} placeholder={"Discord: @example\nActive in RH Hideout and pret"} className={`${FIELD} resize-y py-2`} />
+              </Field>
+            )}
           </div>
         </Sheet>
       )}

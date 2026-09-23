@@ -325,7 +325,7 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
         </div>
 
         <aside className="order-3 flex flex-col md:order-none md:[grid-area:rail]">
-          <RailEditor editing={editing} values={{ base_rom: hack.base_rom, language: hack.language ?? "English", completion_status: hack.completion_status, box_art: hack.box_art, social_links: social }} baseLocked={patchId !== null}>
+          <RailEditor editing={editing} values={{ base_rom: hack.base_rom, language: hack.language ?? "English", completion_status: hack.completion_status, box_art: hack.box_art, social_links: social, original_author: hack.original_author, permission_from: hack.permission_from, ...(hack.approved ? {} : { verification_contact_info: hack.verification_contact_info }) }} baseLocked={patchId !== null}>
           <RailGroup title="Compatibility" action={editing && <EditDetailsLink />}>
             <Facts
               rows={[
