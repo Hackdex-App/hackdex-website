@@ -39,7 +39,7 @@ export default function HackOptionsMenu({
           <FiMoreVertical size={18} />
         </MenuButton>
 
-        <MenuItems
+        <MenuItems modal={false}
           transition
           className="absolute right-0 z-10 mt-2 w-44 origin-top-right overflow-hidden rounded-card border border-line bg-surface shadow-overlay focus:outline-none transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
         >

@@ -112,7 +112,7 @@ export default function Select({
               leaveFrom="opacity-100"
               leaveTo="opacity-0"
             >
-              <ComboboxOptions className={`absolute z-50 mt-1 max-h-60 min-w-full max-w-[400px] w-max overflow-auto rounded-card border border-line bg-surface p-1 text-sm text-text shadow-overlay focus:outline-none ${dropdownAlign === "right" ? "right-0" : ""} ${dropdownClassName}`}>
+              <ComboboxOptions modal={false} className={`absolute z-50 mt-1 max-h-60 min-w-full max-w-[400px] w-max overflow-auto rounded-card border border-line bg-surface p-1 text-sm text-text shadow-overlay focus:outline-none ${dropdownAlign === "right" ? "right-0" : ""} ${dropdownClassName}`}>
                 {(() => {
                   const displayItems = filterOptions(query);
 
@@ -193,7 +193,7 @@ export default function Select({
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <ListboxOptions className={`absolute z-50 mt-1 max-h-60 min-w-full max-w-[400px] w-max overflow-auto rounded-card border border-line bg-surface p-1 text-sm text-text shadow-overlay focus:outline-none ${dropdownAlign === "right" ? "right-0" : ""} ${dropdownClassName}`}>
+            <ListboxOptions modal={false} className={`absolute z-50 mt-1 max-h-60 min-w-full max-w-[400px] w-max overflow-auto rounded-card border border-line bg-surface p-1 text-sm text-text shadow-overlay focus:outline-none ${dropdownAlign === "right" ? "right-0" : ""} ${dropdownClassName}`}>
               {options.map((item, index) => {
                 if ("type" in item && item.type === "divider") {
                   return <DividerContent key={`divider-${index}`} divider={item} index={index} />;

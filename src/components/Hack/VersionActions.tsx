@@ -445,7 +445,7 @@ export default function VersionActions({
             <FiMoreVertical size={16} />
           </MenuButton>
 
-          <MenuItems
+          <MenuItems modal={false}
             transition
             className="absolute right-0 z-10 mt-2 w-48 origin-top-right overflow-hidden rounded-control border border-line bg-surface-2 backdrop-blur-lg shadow-lg focus:outline-none transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
           >
@@ -566,7 +566,7 @@ export default function VersionActions({
           <FiMoreVertical size={16} />
         </MenuButton>
 
-        <MenuItems
+        <MenuItems modal={false}
           transition
           className="absolute right-0 z-10 mt-2 w-48 origin-top-right overflow-hidden rounded-control border border-line bg-surface-2 backdrop-blur-lg shadow-lg focus:outline-none transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
         >
