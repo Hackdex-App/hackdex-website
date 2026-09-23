@@ -90,10 +90,12 @@ export default async function HackSessionDetail({
       ? Boolean(await getHackReviewThread(hack.slug))
       : false;
 
-  // Hacks are edited in place here. Unlisted ones open in edit mode (?preview=1
-  // shows the player view); listed ones show the player view until ?edit=1.
+  // Hacks are edited in place here. Unlisted ones open in edit mode for their
+  // creator (?preview=1 shows the player view); listed ones, and anyone else's
+  // (an admin reviewing), show the player view until ?edit=1.
   const { preview, edit } = await searchParams;
-  const editsInPlace = canEdit && !isArchive && (!hack.approved || edit === "1");
+  const isOwner = hack.created_by === userId;
+  const editsInPlace = canEdit && !isArchive && ((isOwner && !hack.approved) || edit === "1");
   let editor: DraftEditorData | undefined;
   if (editsInPlace) {
     const [checklist, catalogTags, { data: covers }, { data: row }] = await Promise.all([
@@ -105,7 +107,7 @@ export default async function HackSessionDetail({
     if (checklist) {
       editor = {
         stage: hack.approved ? "listed" : hack.submitted_at === null ? "draft" : "review",
-        notOwner: hack.created_by !== userId,
+        notOwner: !isOwner,
         checklist,
         catalogTags,
         tagsUpdatedAt: row?.tags_updated_at ?? new Date(0).toISOString(),
