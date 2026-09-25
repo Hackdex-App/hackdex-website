@@ -129,6 +129,37 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
   const editing = editor !== undefined && !editor.preview;
   const uploadHref = `/hack/${hack.slug}/edit/patch`;
 
+  // Shared by both headers; the editor slots it between title and summary, as published.
+  const byline = (
+    <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[15px] text-text-2 md:text-base">
+      {!hack.original_author && <Avatar uid={hack.created_by} url={profile?.avatar_url ?? null} size={24} />}
+      <span>
+        by <Handle name={author} className="font-medium text-text" />
+      </span>
+      {isAdmin && profile?.verified && !hack.original_author && (
+        <span className="inline-flex items-center" title="Creator is verified">
+          <FaCircleCheck className="text-text-3" size={14} />
+        </span>
+      )}
+      {hasMissingPatch ? (
+        <span className="inline-flex items-center gap-1 rounded-full bg-warn-soft px-2 py-0.5 text-xs font-medium text-warn">
+          <FiAlertTriangle className="h-3 w-3" /> Missing patch
+        </span>
+      ) : (
+        <>
+          {patchId !== null && !isInformationalArchive && (
+            <span className="rounded-full bg-surface-2 px-[7px] font-mono text-[11px] font-medium leading-[18px] text-text-2" title="Current version">
+              {patchVersion || "Pre-release"}
+            </span>
+          )}
+          {hack.completion_status && hack.completion_status !== "Complete" && (
+            <span className="rounded-full border border-line-strong px-[7px] text-[11px] font-semibold leading-[18px] tracking-[.01em] text-text-2">{hack.completion_status}</span>
+          )}
+        </>
+      )}
+    </div>
+  );
+
   const page = (
     <div className="mx-auto w-full max-w-[1164px] px-6">
       <div style={{ display: "none" }} aria-hidden="true">
@@ -211,34 +242,12 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
       <header className="flex flex-col gap-4 pb-6 pt-5 md:flex-row md:items-start md:justify-between md:pb-7 md:pt-8">
         <div className={`min-w-0 max-w-[820px] ${editing ? "flex-1" : ""}`}>
           {!editing && <h1 className="font-display text-[28px] leading-[1.1] text-balance md:text-[clamp(32px,3.4vw,40px)]">{hack.title}</h1>}
-          {editing && <DraftHeader title={hack.title} summary={hack.summary} tags={tags} catalogTags={editor.catalogTags} tagsUpdatedAt={editor.tagsUpdatedAt} />}
-          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[15px] text-text-2 md:text-base">
-            {!hack.original_author && <Avatar uid={hack.created_by} url={profile?.avatar_url ?? null} size={24} />}
-            <span>
-              by <Handle name={author} className="font-medium text-text" />
-            </span>
-            {isAdmin && profile?.verified && !hack.original_author && (
-              <span className="inline-flex items-center" title="Creator is verified">
-                <FaCircleCheck className="text-text-3" size={14} />
-              </span>
-            )}
-            {hasMissingPatch ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-warn-soft px-2 py-0.5 text-xs font-medium text-warn">
-                <FiAlertTriangle className="h-3 w-3" /> Missing patch
-              </span>
-            ) : (
-              <>
-                {patchId !== null && !isInformationalArchive && (
-                  <span className="rounded-full bg-surface-2 px-[7px] font-mono text-[11px] font-medium leading-[18px] text-text-2" title="Current version">
-                    {patchVersion || "Pre-release"}
-                  </span>
-                )}
-                {hack.completion_status && hack.completion_status !== "Complete" && (
-                  <span className="rounded-full border border-line-strong px-[7px] text-[11px] font-semibold leading-[18px] tracking-[.01em] text-text-2">{hack.completion_status}</span>
-                )}
-              </>
-            )}
-          </div>
+          {editing && (
+            <DraftHeader title={hack.title} summary={hack.summary} tags={tags} catalogTags={editor.catalogTags} tagsUpdatedAt={editor.tagsUpdatedAt}>
+              {byline}
+            </DraftHeader>
+          )}
+          {!editing && byline}
           {!editing && (
             <>
               <p className="mt-3 max-w-[70ch] text-[14px] text-text-2 md:text-[15px]">{hack.summary}</p>

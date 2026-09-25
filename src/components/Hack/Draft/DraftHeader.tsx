@@ -1,9 +1,9 @@
 "use client";
 
 import React from "react";
-import TagSelector from "@/components/Submit/TagSelector";
 import type { CatalogTagRow } from "@/types/catalogTag";
 import { FIELD, useAutosave, useDraftEditing } from "./DraftEditing";
+import DraftTags from "./DraftTags";
 
 interface DraftHeaderProps {
   title: string;
@@ -11,13 +11,15 @@ interface DraftHeaderProps {
   tags: string[];
   catalogTags: CatalogTagRow[];
   tagsUpdatedAt: string;
+  /** The byline, placed under the title as on the published page. */
+  children: React.ReactNode;
 }
 
 const SUMMARY_MAX = 100;
 const TITLE_MAX = 64;
 
 /** Title, summary and tags edited in place of the hack page header. Each field autosaves once typing pauses. */
-export default function DraftHeader({ title: initialTitle, summary: initialSummary, tags: initialTags, catalogTags, tagsUpdatedAt }: DraftHeaderProps) {
+export default function DraftHeader({ title: initialTitle, summary: initialSummary, tags: initialTags, catalogTags, tagsUpdatedAt, children }: DraftHeaderProps) {
   const { save } = useDraftEditing();
   const [title, setTitle] = React.useState(initialTitle);
   const [summary, setSummary] = React.useState(initialSummary);
@@ -42,6 +44,7 @@ export default function DraftHeader({ title: initialTitle, summary: initialSumma
         placeholder="Hack title"
         className="-mx-2 w-[calc(100%+16px)] rounded-control border border-transparent bg-transparent px-2 font-display text-[28px] leading-[1.1] text-text outline-none transition-colors hover:border-line focus:border-line-strong focus:bg-surface md:text-[clamp(32px,3.4vw,40px)]"
       />
+      {children}
       <label className="relative mt-3 block max-w-[70ch]">
         <span className="sr-only">Summary</span>
         <textarea
@@ -60,9 +63,7 @@ export default function DraftHeader({ title: initialTitle, summary: initialSumma
           </span>
         )}
       </label>
-      <div className="mt-4">
-        <TagSelector value={tags} onChange={setTags} catalogTags={catalogTags} newTagsCutoff={new Date(tagsUpdatedAt)} />
-      </div>
+      <DraftTags tags={tags} onChange={setTags} catalogTags={catalogTags} tagsUpdatedAt={tagsUpdatedAt} />
     </>
   );
 }

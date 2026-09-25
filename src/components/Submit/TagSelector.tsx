@@ -30,6 +30,9 @@ export interface TagSelectorProps {
   newTagsCutoff: Date | null;
 }
 
+/** Category row on desktop, a chip in the phone row. */
+const CAT_ROW = "flex flex-none cursor-pointer items-center justify-between whitespace-nowrap rounded-full border border-line-strong px-3 py-1 text-left text-sm md:rounded-[6px] md:border-0 md:px-2 md:py-1.5";
+
 type CategoryIconType = React.ComponentType<React.SVGProps<SVGSVGElement>> | null;
 
 function SortableSelectedTag({
@@ -69,7 +72,7 @@ function SortableSelectedTag({
       className={[
         "relative inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px] sm:text-xs ring-1",
         isPrimary
-          ? "bg-[var(--accent-soft,rgba(16,185,129,0.08))] ring-[var(--accent-border,rgba(16,185,129,0.4))]"
+          ? "bg-accent-soft ring-accent/40"
           : "bg-surface-2 ring-line",
         isDragging && !isGhost ? "opacity-80 shadow-lg shadow-black/20 dark:shadow-black/40" : "",
       ]
@@ -77,10 +80,10 @@ function SortableSelectedTag({
         .join(" ")}
     >
       {insertSide === "left" && (
-        <div className="pointer-events-none absolute -left-1 top-1 bottom-1 w-px bg-[var(--accent,#16a34a)]" />
+        <div className="pointer-events-none absolute -left-1 top-1 bottom-1 w-px bg-accent" />
       )}
       {insertSide === "right" && (
-        <div className="pointer-events-none absolute -right-1 top-1 bottom-1 w-px bg-[var(--accent,#16a34a)]" />
+        <div className="pointer-events-none absolute -right-1 top-1 bottom-1 w-px bg-accent" />
       )}
       <button
         type="button"
@@ -306,8 +309,8 @@ export default function TagSelector({ value, onChange, catalogTags, newTagsCutof
   return (
     <div className="grid gap-2">
       {/* Selected tag pills */}
-      <div className="text-[11px] text-text-3">
-        The first two tags appear as badges on your hack card preview.
+      <div className="text-xs text-text-3">
+        Drag to reorder. The first two show on your hack&rsquo;s card.
       </div>
       <div className="flex max-h-24 flex-wrap gap-2 overflow-auto p-1">
         {value.length > 0 ? (
@@ -381,9 +384,9 @@ export default function TagSelector({ value, onChange, catalogTags, newTagsCutof
       </div>
 
       {/* Persistent selector */}
-      <div className="overflow-hidden rounded-control border border-line bg-surface-2/80">
+      <div className="overflow-hidden rounded-card border border-line-strong bg-surface">
         {/* Search input */}
-        <div className="border-b border-line p-2">
+        <div className="border-b border-line px-1.5 py-2.5">
           <input
             ref={searchInputRef}
             value={query}
@@ -397,11 +400,12 @@ export default function TagSelector({ value, onChange, catalogTags, newTagsCutof
               }
             }}
             placeholder={value.length ? "Search tags" : "Search tags (e.g. QoL, Challenge)"}
-            className="w-full bg-transparent px-2 text-sm placeholder:text-text-3 focus:outline-none"
+            className="w-full bg-transparent px-2 text-[15px] placeholder:text-text-3 focus:outline-none"
           />
         </div>
 
-        <div className="flex h-74 divide-x divide-line">
+        {/* Phones stack the panes: categories become a row of chips above the tag list. */}
+        <div className="flex h-[min(24rem,55dvh)] flex-col divide-y divide-line md:h-74 md:flex-row md:divide-x md:divide-y-0">
           {/* Categories */}
           <div
             ref={categoriesContainerRef}
@@ -440,10 +444,10 @@ export default function TagSelector({ value, onChange, catalogTags, newTagsCutof
             }}
             role="listbox"
             aria-label="Tag categories"
-            className="w-52 max-w-[60vw] overflow-auto p-2 outline-none"
+            className="flex-none overflow-x-auto p-2 outline-none md:w-52 md:overflow-auto"
           >
-            <div className="mb-1 px-1 text-xs uppercase tracking-wider text-text-3">Categories</div>
-            <div className="flex flex-col">
+            <div className="mb-1 hidden px-1 text-xs uppercase tracking-wider text-text-3 md:block">Categories</div>
+            <div className="flex gap-1.5 md:flex-col md:gap-0">
               {filtered.categories.map((cat) => {
                 const Icon = CATEGORY_ICONS[cat];
                 return (
@@ -454,9 +458,9 @@ export default function TagSelector({ value, onChange, catalogTags, newTagsCutof
                   aria-selected={activeCategory === cat}
                   onMouseEnter={() => setActiveCategory(cat)}
                   onClick={() => setActiveCategory(cat)}
-                  className={`flex items-center justify-between rounded px-2 py-1.5 text-left text-sm ${
+                  className={`${CAT_ROW} ${
                     activeCategory === cat
-                      ? (categoriesPaneFocused ? 'bg-surface-2' : 'bg-zinc-800/5 dark:bg-zinc-200/5 ring-1 ring-black/10 dark:ring-white/20')
+                      ? (categoriesPaneFocused ? 'bg-surface-2 max-md:border-text-3' : 'bg-surface-2 max-md:border-text-3 md:bg-surface-2/60 md:ring-1 md:ring-line')
                       : 'hover:bg-surface-2'
                   }`}
                 >
@@ -476,9 +480,9 @@ export default function TagSelector({ value, onChange, catalogTags, newTagsCutof
                   aria-selected={activeCategory === 'advanced'}
                   onMouseEnter={() => setActiveCategory('advanced')}
                   onClick={() => setActiveCategory('advanced')}
-                  className={`mt-1 flex items-center justify-between rounded px-2 py-1.5 text-left text-sm ${
+                  className={`${CAT_ROW} md:mt-1 ${
                     activeCategory === 'advanced'
-                      ? (categoriesPaneFocused ? 'bg-surface-2' : 'bg-zinc-800/5 dark:bg-zinc-200/5 ring-1 ring-black/10 dark:ring-white/20')
+                      ? (categoriesPaneFocused ? 'bg-surface-2 max-md:border-text-3' : 'bg-surface-2 max-md:border-text-3 md:bg-surface-2/60 md:ring-1 md:ring-line')
                       : 'hover:bg-surface-2'
                   }`}
                 >
@@ -516,7 +520,7 @@ export default function TagSelector({ value, onChange, catalogTags, newTagsCutof
             }}
             role="listbox"
             aria-label="Tags"
-            className="min-w-[18rem] flex-1 overflow-auto p-2 outline-none"
+            className="min-h-0 flex-1 overflow-auto p-2 outline-none md:min-w-[18rem]"
           >
             <div className="mb-1 px-1 text-xs uppercase tracking-wider text-text-3">{activeCategory === "advanced" ? "Advanced" : (activeCategory || "Pick a category")}</div>
             <div className="grid gap-1 pr-1">
@@ -531,13 +535,13 @@ export default function TagSelector({ value, onChange, catalogTags, newTagsCutof
                   aria-selected={activeTagIndex === idx}
                   onMouseEnter={() => setActiveTagIndex(idx)}
                   onClick={() => toggleTag(t.name)}
-                  className={`flex items-center justify-between rounded px-2 py-1.5 text-sm ${activeTagIndex === idx ? 'bg-surface-2' : 'hover:bg-surface-2'}`}
+                  className={`flex cursor-pointer items-center justify-between rounded-[6px] px-2 py-1.5 text-sm ${activeTagIndex === idx ? 'bg-surface-2' : 'hover:bg-surface-2'}`}
                 >
                   <span className="truncate">{t.name}</span>
                   {t.created_at && newTagsCutoff && new Date(t.created_at) > newTagsCutoff && (
                     <span className="ml-auto mr-2 rounded-full bg-surface-2 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-text-3">New</span>
                   )}
-                  <input type="checkbox" readOnly checked={value.includes(t.name)} className="h-4 w-4 accent-[var(--accent)]" />
+                  <input type="checkbox" readOnly tabIndex={-1} checked={value.includes(t.name)} className="h-4 w-4 accent-[var(--rose-deep)]" />
                 </div>
               ))}
               {!activeCategory && (

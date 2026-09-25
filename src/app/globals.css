@@ -291,6 +291,9 @@ html { scroll-padding-top: var(--anchor-offset); }
 .anim-float { animation: floatY 2.4s ease-in-out infinite; }
 .anim-pulse { animation: pulseSoft 2.4s ease-in-out infinite; }
 .anim-pop { animation: popIn 220ms cubic-bezier(0.16, 1, 0.3, 1); }
+/* A tag just added in the picker: pops in with a rose ring that fades. */
+@keyframes tagRingFade { from { box-shadow: 0 0 0 2px var(--rose-soft); } to { box-shadow: 0 0 0 2px transparent; } }
+.anim-tag-new { animation: popIn 220ms cubic-bezier(0.16, 1, 0.3, 1), tagRingFade 1.2s ease-out 200ms both; }
 
 /* Onboarding beacon: rose dot ringed against the page, breathing halo behind it.
    The halo's static look is the reduced-motion resting state. */
@@ -353,6 +356,7 @@ html { scroll-padding-top: var(--anchor-offset); }
   .anim-float,
   .anim-pulse,
   .anim-pop,
+  .anim-tag-new,
   .onboarding-beacon::after,
   .hero-connector-path,
   .hero-hack-image {
