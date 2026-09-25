@@ -4,6 +4,7 @@ import React from "react";
 import type { CatalogTagRow } from "@/types/catalogTag";
 import { createClient } from "@/utils/supabase/client";
 import { MdTune } from "react-icons/md";
+import { FiArrowDown, FiArrowLeft, FiArrowUp } from "react-icons/fi";
 import { CATEGORY_ICONS } from "@/components/Icons/tagCategories";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 
@@ -189,7 +190,7 @@ export default function TagSelector({ value, onChange, catalogTags, newTagsCutof
     onChange(value.includes(name) ? value.filter((v) => v !== name) : [...value, name]);
   }
 
-  if (reviewing) return <TagReview value={value} onChange={onChange} onBack={() => setReviewing(false)} minHeight={height} />;
+  if (reviewing) return <TagReview value={value} onChange={onChange} onBack={() => setReviewing(false)} height={height} />;
 
   return (
     <div ref={rootRef} className="grid gap-3">
@@ -397,11 +398,26 @@ const MENU_ITEM = "block w-full rounded-[6px] px-2.5 py-2 text-left text-sm data
  * unchecked here stay listed, crossed out, until the view closes, so rows
  * never jump under a finger and a mis-tap is one tap to undo.
  */
-function TagReview({ value, onChange, onBack, minHeight }: { value: string[]; onChange: (next: string[]) => void; onBack: () => void; minHeight?: number }) {
+function TagReview({ value, onChange, onBack, height }: { value: string[]; onChange: (next: string[]) => void; onBack: () => void; height?: number }) {
   const [card0, card1] = value;
   // Display order for "Also tagged", including crossed-out rows.
   const [also, setAlso] = React.useState(() => value.slice(2));
   const [flash, setFlash] = React.useState<string | null>(null);
+  // Only "Also tagged" scrolls; its bottom fades while more rows sit below.
+  const listRef = React.useRef<HTMLUListElement>(null);
+  const [more, setMore] = React.useState(false);
+  const checkMore = React.useCallback(() => {
+    const el = listRef.current;
+    setMore(!!el && el.scrollHeight - el.scrollTop - el.clientHeight > 1);
+  }, []);
+  React.useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    checkMore();
+    const ro = new ResizeObserver(checkMore);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [checkMore, also.length]);
 
   const commit = (card: (string | undefined)[], nextAlso: string[], keep: (t: string) => boolean) => {
     setAlso(nextAlso);
@@ -421,8 +437,8 @@ function TagReview({ value, onChange, onBack, minHeight }: { value: string[]; on
   }
 
   return (
-    <div className="flex flex-col gap-3" style={{ minHeight }}>
-      <section>
+    <div className="flex flex-col gap-3" style={{ height }}>
+      <section className="flex-none">
         <h3 className="mb-1.5 flex items-baseline justify-between text-xs font-semibold text-text-2">
           On your card <span className="font-medium text-text-3">Players see these two first</span>
         </h3>
@@ -433,7 +449,15 @@ function TagReview({ value, onChange, onBack, minHeight }: { value: string[]; on
               <span key={tag} className="anim-pop min-w-0 flex-1 truncate">{tag ?? "Pick another tag to fill this spot"}</span>
               {card0 && card1 && (
                 <button type="button" onClick={() => onChange([card1, card0, ...value.slice(2)])} className={QUIET_BTN}>
-                  {i === 0 ? "Make 2nd ↓" : "Make 1st ↑"}
+                  {i === 0 ? (
+                    <>
+                      Make 2nd <FiArrowDown className="h-3.5 w-3.5" />
+                    </>
+                  ) : (
+                    <>
+                      Make 1st <FiArrowUp className="h-3.5 w-3.5" />
+                    </>
+                  )}
                 </button>
               )}
             </li>
@@ -442,11 +466,15 @@ function TagReview({ value, onChange, onBack, minHeight }: { value: string[]; on
       </section>
 
       {also.length > 0 && (
-        <section>
+        <section className="flex min-h-0 flex-1 flex-col">
           <h3 className="mb-1.5 flex items-baseline justify-between text-xs font-semibold text-text-2">
             Also tagged <span className="font-medium text-text-3">{also.filter(listed).length}</span>
           </h3>
-          <ul className="overflow-hidden rounded-card border border-line">
+          <ul
+            ref={listRef}
+            onScroll={checkMore}
+            className={`min-h-0 overflow-y-auto overscroll-contain rounded-card border border-line ${more ? "[mask-image:linear-gradient(to_bottom,#000_calc(100%-32px),transparent)]" : ""}`}
+          >
             {also.map((tag) => {
               const on = listed(tag);
               return (
@@ -479,9 +507,9 @@ function TagReview({ value, onChange, onBack, minHeight }: { value: string[]; on
         </section>
       )}
 
-      <div className="mt-auto flex justify-end pt-1">
-        <button type="button" onClick={onBack} className="inline-flex h-10 items-center rounded-control bg-surface-2 px-[18px] text-sm font-semibold text-text transition-colors hover:bg-line">
-          Back to all tags
+      <div className="mt-auto flex flex-none justify-end pt-1">
+        <button type="button" onClick={onBack} className="group inline-flex h-10 items-center gap-2 rounded-control bg-surface-2 pl-3.5 pr-[18px] text-sm font-semibold text-text transition-colors hover:bg-line">
+          <FiArrowLeft className="h-4 w-4 transition-transform duration-150 group-hover:-translate-x-0.5" /> Back to all tags
         </button>
       </div>
     </div>
