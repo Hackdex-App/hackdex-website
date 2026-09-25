@@ -1,6 +1,6 @@
 # Hackdex Terms of Service
 
-Version 1.0.2 • Effective: 2025-11-30
+Version 1.1.0 • Effective: 2026-10-01
 
 Canonical URL: https://www.hackdex.app/terms
 
@@ -15,7 +15,7 @@ By accessing or using Hackdex (the "Service"), you agree to this Terms of Servic
 
 ## 2. Definitions
 
-- "User Content": files (including .bps and .png) and text uploaded to Hackdex by users.
+- "User Content": files and text uploaded to Hackdex by users, including patches, content introduced into a game by those patches, screenshots, cover images, descriptions, and other hack page material.
 - "Creators": users who upload User Content (collectively "hacks," e.g., patches, screenshots, descriptions).
 - "Users": consumers who browse and/or download and apply patches.
 
@@ -52,22 +52,48 @@ Creators must:
 - promptly address takedown notices and remove or update infringing or unlawful content upon request;
 - indemnify Hackdex as set out in Section 12.
 
+### Credits
+
+Every hack must have a clearly labeled Credits section on its public Hackdex page. This section must name the hack's contributors and credit the creators or sources of reused assets and code, or link to a complete, publicly accessible credits page. Creators must keep credits accurate as the hack is updated and comply with any attribution requirements attached to material they use. Credits do not replace permission or other rights required to use that material.
+
+### AI-generated content disclosure
+
+Creators must clearly disclose AI-generated content included in their hack or its public Hackdex page. The disclosure must appear in a labeled section of the hack's description, identify the types of content affected, and remain accurate as the hack or page is updated. This requirement applies to content generated in whole or in part by AI, including generated content that is later edited or supplied by another contributor.
+
+Content requiring disclosure includes graphics, music, sound effects, story, dialogue, translations, and event scripts. Event scripts include instructions that control NPC actions, cutscenes, dialogue, item interactions, and other in-game events, even when those scripts contain no generated dialogue.
+
+AI assistance with general programming, such as engine changes, bug fixes, development tools, or implementing game systems, does not require disclosure. This exception does not cover AI-generated event scripts or other content listed above. Brainstorming and experiments that do not result in AI-generated content being included in the hack or its page do not require disclosure.
+
+Disclosing AI use does not exempt content from the credits requirement, other provisions of these Terms, or third-party rights.
+
 ## 7. Content Moderation
 
-Hackdex may or may not pre‑screen User Content. Hackdex reserves the right, but not the obligation, to move, remove, block, edit, or refuse any User Content or suspend accounts at any time and for any reason (including suspected infringement or violations of these Terms). Hackdex endeavors to apply best‑effort moderation but cannot monitor all content. All User Content is the sole responsibility of the Creator who provided it.
+Hackdex is primarily a hosting and distribution platform for creator-submitted hacks. Hosting, submission approval, or placement on Discover does not constitute a recommendation, endorsement of a hack's views, or guarantee of its quality. Discover listings are ordered automatically rather than selected as staff recommendations.
+
+Hackdex may review submissions for compliance with these Terms, but approval does not mean every part of a hack has been reviewed. Hackdex cannot monitor all content. All User Content is the sole responsibility of the Creator who provided it.
+
+Hacks or hack pages found to contain content prohibited by Section 8 will be removed. Responsible accounts may also be suspended or banned. When credits or AI disclosures are missing or incomplete, Hackdex may request corrections, refuse publication, or remove the listing until it complies. Deliberate misrepresentation or repeated violations may also result in account suspension or a ban.
+
+Hackdex otherwise reserves the right, but not the obligation, to move, remove, block, edit, or refuse any User Content or suspend accounts at any time and for any reason, including suspected infringement or violations of these Terms. Suspected violations may be reported through the [contact form](https://www.hackdex.app/contact) or on individual hack pages through the Report option.
 
 ## 8. Prohibited Content and Conduct
+
+These restrictions apply to content within hacks as well as hack titles, descriptions, screenshots, cover images, and other material posted on Hackdex.
 
 Do not, and do not allow or encourage others to:
 - upload, post, or link to ROMs, ROM extracts, copyrighted game assets, or other materials you do not have rights to share;
 - upload or share decryption keys, DRM‑circumvention tools, or instructions designed to obtain or unlock copyrighted materials unlawfully;
 - upload malware, malicious code, or content that interferes with the Service or others' devices;
 - upload personal data of others without permission;
+- publish targeted harassment, threats, or derogatory attacks against real people or groups;
+- publish hate speech or discriminatory abuse, including content that dehumanizes people or promotes hatred, discrimination, or violence against them based on characteristics such as race, ethnicity, nationality, religion, disability, sex, sexual orientation, or gender identity;
 - engage in illegal, infringing, misleading, defamatory, hateful, harassing, or otherwise unlawful conduct;
 - attempt to access accounts or systems without authorization or to disrupt or degrade the Service;
 - use automated tools (including bots, scrapers, crawlers, scripts, or similar software) to access, scrape, crawl, or systematically download content from the Service without Hackdex's prior written permission;
 - engage in excessive, systematic, or bulk downloading of patch files or other content in a manner that could disrupt, overload, or degrade the Service or its infrastructure;
 - redistribute, republish, or commercially exploit patch files or other content downloaded from the Service without authorization from the respective Creator or Hackdex, as applicable.
+
+Hackdex considers context when reviewing fictional depictions of harmful behavior. Depicting conflict or prejudice in a story does not by itself mean a hack promotes it. Describing content as fiction, humor, or satire does not excuse targeted harassment, discriminatory abuse, or the promotion of hatred or violence.
 
 ## 9. IP Infringement and DMCA
 
