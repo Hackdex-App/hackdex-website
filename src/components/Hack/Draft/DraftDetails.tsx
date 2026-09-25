@@ -177,8 +177,8 @@ export default function DraftDetails({ values, baseLocked, children }: DraftDeta
               </fieldset>
             )}
             {askContact && (
-              <Field label="Verification contact" hint="Optional. Only admins see this, while they review the hack. Name a place where your post history shows you made it, like a Discord username and the servers you are active in.">
-                <textarea value={contact} onChange={(e) => setContact(e.target.value)} rows={4} placeholder={"Discord: @example\nActive in RH Hideout and pret"} className={`${FIELD} resize-y py-2`} />
+              <Field label="Verification contact" hint="Optional, but speeds up verification. Only admins see it, while they review the hack. Name where your post history shows you made it, like one of your socials and the communities you’re active in, or link a public post where you mention submitting to Hackdex.">
+                <textarea value={contact} onChange={(e) => setContact(e.target.value)} rows={4} placeholder={"@yourname, active in RH Hideout\nor a link to your post about it"} className={`${FIELD} resize-y py-2`} />
               </Field>
             )}
           </div>

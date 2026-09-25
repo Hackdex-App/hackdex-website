@@ -178,7 +178,7 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
 
       {editor && (
         <div className="mt-5">
-          <DraftStatusStrip slug={hack.slug} stage={editor.stage} submittedAt={hack.submitted_at} required={editor.checklist.required} preview={editor.preview} />
+          <DraftStatusStrip slug={hack.slug} stage={editor.stage} submittedAt={hack.submitted_at} required={editor.checklist.required} contact={hack.verification_contact_info} preview={editor.preview} />
         </div>
       )}
 
@@ -278,10 +278,12 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
         )}
       </header>
 
+      {/* Wraps the whole body so the review card can open the details sheet too. */}
+      <RailEditor editing={editing} values={{ base_rom: hack.base_rom, language: hack.language ?? "English", completion_status: hack.completion_status, box_art: hack.box_art, social_links: social, original_author: hack.original_author, permission_from: hack.permission_from, ...(hack.approved ? {} : { verification_contact_info: hack.verification_contact_info }) }} baseLocked={patchId !== null}>
       <div className="grid items-start gap-6 md:grid-cols-[minmax(0,1fr)_300px] md:grid-rows-[auto_1fr] md:[grid-template-areas:'main_patch'_'main_rail']">
         <div className="order-1 md:order-none md:[grid-area:patch]">
           {editing ? (
-            <DraftChecklist slug={hack.slug} stage={editor.stage} required={editor.checklist.required} recommended={editor.checklist.recommended} />
+            <DraftChecklist slug={hack.slug} stage={editor.stage} required={editor.checklist.required} recommended={editor.checklist.recommended} contact={hack.verification_contact_info} />
           ) : showPatchModule ? (
             <HackActions
               title={hack.title}
@@ -334,7 +336,6 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
         </div>
 
         <aside className="order-3 flex flex-col md:order-none md:[grid-area:rail]">
-          <RailEditor editing={editing} values={{ base_rom: hack.base_rom, language: hack.language ?? "English", completion_status: hack.completion_status, box_art: hack.box_art, social_links: social, original_author: hack.original_author, permission_from: hack.permission_from, ...(hack.approved ? {} : { verification_contact_info: hack.verification_contact_info }) }} baseLocked={patchId !== null}>
           <RailGroup title="Compatibility" action={editing && <EditDetailsLink />}>
             <Facts
               rows={[
@@ -449,9 +450,9 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
               )}
             </div>
           </RailGroup>
-          </RailEditor>
         </aside>
       </div>
+      </RailEditor>
     </div>
   );
 

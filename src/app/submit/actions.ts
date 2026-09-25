@@ -15,6 +15,7 @@ import {
   postHackReviewMessage,
 } from "@/utils/hack-review";
 import { revalidateDiscoverCatalog } from "@/app/discover/revalidate";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 type HackInsert = TablesInsert<"hacks">;
 
@@ -485,8 +486,9 @@ export async function getDraftChecklist(slug: string) {
 /**
  * Moves a draft into the review queue: stamps submitted_at, opens the Discord
  * review thread, and tells the admins. Refuses while required items are open.
+ * Pass `contact` to save the verification contact in the same step.
  */
-export async function submitForReview(slug: string) {
+export async function submitForReview(slug: string, contact?: string) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -509,15 +511,19 @@ export async function submitForReview(slug: string) {
   if (open.length > 0) return { ok: false, error: `Still needed: ${open.map((i) => i.label.toLowerCase()).join(", ")}.` } as const;
 
   const submittedAt = new Date().toISOString();
-  const { error: uErr } = await supabase.from("hacks").update({ submitted_at: submittedAt }).eq("slug", slug);
+  const verification = contact === undefined ? hack.verification_contact_info : contact.trim() || null;
+  const { error: uErr } = await supabase.from("hacks").update({ submitted_at: submittedAt, verification_contact_info: verification }).eq("slug", slug);
   if (uErr) return { ok: false, error: uErr.message } as const;
+  // The page reads cached metadata; without this it keeps showing "Draft".
+  revalidateTag(`hack:${slug}:metadata`);
+  revalidatePath(`/hack/${slug}`);
 
   const { data: profile } = await supabase.from("profiles").select("username").eq("id", hack.created_by).single();
   const displayName = profile?.username ? `@${profile.username}` : hack.created_by;
   const embed: APIEmbed = {
     title: hack.title,
     description: `A new hack by **${displayName}** is pending approval by an admin.`
-      + (hack.verification_contact_info ? `\n\n**Verification contact info:**\n${hack.verification_contact_info}` : ""),
+      + (verification ? `\n\n**Verification contact info:**\n${verification}` : ""),
     color: 0x40f56a,
     url: `${process.env.NEXT_PUBLIC_SITE_URL}/hack/${slug}`,
     footer: { text: "This message brought to you by Hackdex" },

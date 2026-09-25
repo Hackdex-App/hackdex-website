@@ -293,6 +293,9 @@ html { scroll-padding-top: var(--anchor-offset); }
 .anim-pop { animation: popIn 220ms cubic-bezier(0.16, 1, 0.3, 1); }
 /* A tag just added in the picker: pops in with a rose ring that fades. */
 @keyframes tagRingFade { from { box-shadow: 0 0 0 2px var(--rose-soft); } to { box-shadow: 0 0 0 2px transparent; } }
+/* A checkmark stroke drawing itself in (path length under 30). */
+@keyframes drawStroke { from { stroke-dashoffset: 30; } to { stroke-dashoffset: 0; } }
+.anim-draw { stroke-dasharray: 30; animation: drawStroke 500ms 150ms ease-out both; }
 /* A row that just moved in a list. */
 @keyframes rowFlash { from { background-color: var(--rose-soft); } to { background-color: transparent; } }
 .anim-row-flash { animation: rowFlash 1s ease-out; }
@@ -361,6 +364,7 @@ html { scroll-padding-top: var(--anchor-offset); }
   .anim-pop,
   .anim-tag-new,
   .anim-row-flash,
+  .anim-draw,
   .onboarding-beacon::after,
   .hero-connector-path,
   .hero-hack-image {
