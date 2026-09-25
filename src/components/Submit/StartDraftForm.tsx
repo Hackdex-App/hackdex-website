@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createDraft } from "@/app/submit/actions";
 import { baseRoms, PLATFORM_NAMES, type Platform } from "@/data/baseRoms";
@@ -24,7 +25,7 @@ const hint = "text-xs text-text-3";
  * Three things to begin. Creates a private draft and sends the creator to
  * its edit page; nothing is public until a reviewer has looked at it.
  */
-export default function StartDraftForm({ disabled = false }: { disabled?: boolean }) {
+export default function StartDraftForm({ disabled = false, canSubmitForOthers = false }: { disabled?: boolean; canSubmitForOthers?: boolean }) {
   const router = useRouter();
   const [title, setTitle] = React.useState("");
   const [baseRom, setBaseRom] = React.useState("");
@@ -32,6 +33,7 @@ export default function StartDraftForm({ disabled = false }: { disabled?: boolea
   const [who, setWho] = React.useState<"mine" | "behalf">("mine");
   const [originalAuthor, setOriginalAuthor] = React.useState("");
   const [permissionFrom, setPermissionFrom] = React.useState("");
+  const [madeIt, setMadeIt] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -41,6 +43,7 @@ export default function StartDraftForm({ disabled = false }: { disabled?: boolea
     !baseRom && "a base ROM",
     summary.trim().length < 10 && "a summary",
     who === "behalf" && (!originalAuthor.trim() || !permissionFrom.trim()) && "the creator's permission",
+    !canSubmitForOthers && !madeIt && "your confirmation",
   ].filter((m): m is string => Boolean(m));
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -110,33 +113,47 @@ export default function StartDraftForm({ disabled = false }: { disabled?: boolea
         </span>
       </label>
 
-      <fieldset className="flex flex-col gap-1">
-        <legend className={`${label} mb-1.5`}>I am submitting</legend>
-        {(
-          [
-            ["mine", "My own hack"],
-            ["behalf", "Someone else's hack, with their permission"],
-          ] as const
-        ).map(([value, text]) => (
-          <label key={value} className="flex min-h-[30px] cursor-pointer items-center gap-2.5 text-sm">
-            <input type="radio" name="who" value={value} checked={who === value} onChange={() => setWho(value)} className="h-4 w-4 accent-[var(--rose-deep)]" disabled={disabled} />
-            {text}
-          </label>
-        ))}
-        {who === "behalf" && (
-          <div className="ml-7 mt-2 flex flex-col gap-3">
-            <p className={hint}>Hackdex only lists hacks the creator has agreed to. Name them and say where they gave permission.</p>
-            <label className="flex flex-col gap-1.5">
-              <span className={label}>Creator&rsquo;s name</span>
-              <input name="original_author" value={originalAuthor} onChange={(e) => setOriginalAuthor(e.target.value)} placeholder="Skeli" className={field} />
+      {/* Only admins may list someone else's hack for now; everyone else confirms it's theirs. */}
+      {canSubmitForOthers ? (
+        <fieldset className="flex flex-col gap-1">
+          <legend className={`${label} mb-1.5`}>I am submitting</legend>
+          {(
+            [
+              ["mine", "My own hack"],
+              ["behalf", "Someone else's hack, with their permission"],
+            ] as const
+          ).map(([value, text]) => (
+            <label key={value} className="flex min-h-[30px] cursor-pointer items-center gap-2.5 text-sm">
+              <input type="radio" name="who" value={value} checked={who === value} onChange={() => setWho(value)} className="h-4 w-4 accent-[var(--rose-deep)]" disabled={disabled} />
+              {text}
             </label>
-            <label className="flex flex-col gap-1.5">
-              <span className={label}>Where they gave permission</span>
-              <input name="permission_from" value={permissionFrom} onChange={(e) => setPermissionFrom(e.target.value)} placeholder="Discord DM, PokéCommunity thread, email…" className={field} />
-            </label>
-          </div>
-        )}
-      </fieldset>
+          ))}
+          {who === "behalf" && (
+            <div className="ml-7 mt-2 flex flex-col gap-3">
+              <p className={hint}>Hackdex only lists hacks the creator has agreed to. Name them and say where they gave permission.</p>
+              <label className="flex flex-col gap-1.5">
+                <span className={label}>Creator&rsquo;s name</span>
+                <input name="original_author" value={originalAuthor} onChange={(e) => setOriginalAuthor(e.target.value)} placeholder="Skeli" className={field} />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className={label}>Where they gave permission</span>
+                <input name="permission_from" value={permissionFrom} onChange={(e) => setPermissionFrom(e.target.value)} placeholder="Discord DM, PokéCommunity thread, email…" className={field} />
+              </label>
+            </div>
+          )}
+        </fieldset>
+      ) : (
+        <label className="flex cursor-pointer items-start gap-2.5 rounded-control border border-line-strong px-3.5 py-3 text-sm transition-colors has-[:checked]:border-accent-deep has-[:checked]:bg-accent-soft">
+          <input type="checkbox" checked={madeIt} onChange={(e) => setMadeIt(e.target.checked)} className="mt-0.5 h-4 w-4 flex-none accent-[var(--rose-deep)]" disabled={disabled} />
+          <span>
+            I made this hack, or I&rsquo;m part of the team that did
+            <span className={`${hint} mt-0.5 block`}>
+              Hackdex doesn&rsquo;t accept reuploads of other people&rsquo;s hacks, and every hack must comply with the{" "}
+              <Link href="/terms" className="text-link-hd">Terms of Service</Link>. Submissions that don&rsquo;t are rejected and may get your account banned.
+            </span>
+          </span>
+        </label>
+      )}
 
       {error && <p className="rounded-control bg-error-soft px-3 py-2 text-sm text-error">{error}</p>}
 
@@ -149,8 +166,11 @@ export default function StartDraftForm({ disabled = false }: { disabled?: boolea
         >
           {busy ? "Creating…" : "Create private draft"}
         </button>
-        {missing.length > 0 && <span className="text-[13px] text-text-3">Add {missing.join(", ")} to continue.</span>}
+        <span className="text-xs text-text-3">
+          By continuing, you agree to the <Link href="/terms" className="text-link-hd">Terms of Service</Link>.
+        </span>
       </div>
+      {missing.length > 0 && <p className="-mt-3 text-[13px] text-text-3">Add {missing.join(", ")} to continue.</p>}
     </form>
   );
 }

@@ -422,6 +422,11 @@ export async function createDraft(formData: FormData) {
   if (!title || !base_rom || summary.length < 10) return { ok: false, error: "Add a title, a base ROM, and a summary to continue." } as const;
   if (summary.length > 100) return { ok: false, error: "Keep the summary under 100 characters." } as const;
   if (behalf && (!original_author || !permission_from)) return { ok: false, error: "Name the creator and where they gave permission." } as const;
+  if (behalf) {
+    // Listing someone else's hack is admin-only for now.
+    const { data: isAdmin } = await supabase.rpc("is_admin");
+    if (!isAdmin) return { ok: false, error: "Only admins can submit someone else's hack." } as const;
+  }
 
   const slug = await ensureUniqueSlug(slugify(title), supabase);
   const insertPayload: HackInsert = {

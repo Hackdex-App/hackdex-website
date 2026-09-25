@@ -22,6 +22,7 @@ export default async function SubmitPage({ searchParams }: SubmitPageProps) {
   const { data: { user } } = await supabase.auth.getUser();
   let needsInitialSetup = false;
   let canCreateArchive = false;
+  let isAdmin = false;
   if (user) {
     const { data: profile } = await supabase
       .from('profiles')
@@ -33,6 +34,8 @@ export default async function SubmitPage({ searchParams }: SubmitPageProps) {
     // Check if user is archiver (or admin)
     const { data: isArchiver } = await supabase.rpc("is_archiver");
     canCreateArchive = !!isArchiver;
+    const { data: admin } = await supabase.rpc("is_admin");
+    isAdmin = !!admin;
   }
   const dummy = !user || needsInitialSetup;
   // Archives still go through the one-shot wizard; everyone else starts a draft.
@@ -49,13 +52,7 @@ export default async function SubmitPage({ searchParams }: SubmitPageProps) {
         </div>
       ) : (
         <div className="flex flex-col items-center gap-5">
-          <StartDraftForm disabled={dummy} />
-          <div className="max-w-[560px] rounded-card border border-warn/40 bg-warn-soft px-4 py-3 text-[13px] text-text-2">
-            <p>
-              Hackdex only accepts hacks that <b className="font-semibold text-text">you own</b> or have permission to share. All hacks must comply with the{" "}
-              <Link href="/terms" className="text-link-hd">Terms of Service</Link>. Attempts to circumvent this policy are rejected and may get your account banned.
-            </p>
-          </div>
+          <StartDraftForm disabled={dummy} canSubmitForOthers={isAdmin} />
           {canCreateArchive && (
             <p className="text-[13px] text-text-3">
               Submitting an archive entry?{" "}
