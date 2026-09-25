@@ -327,11 +327,13 @@ export async function approveHack(slug: string, verified?: boolean) {
   // Check if hack exists
   const { data: hack, error: hErr } = await serviceClient
     .from("hacks")
-    .select("slug, approved, title, created_by")
+    .select("slug, approved, title, created_by, submitted_at")
     .eq("slug", slug)
     .maybeSingle();
   if (hErr) return { ok: false, error: hErr.message } as const;
   if (!hack) return { ok: false, error: "Hack not found" } as const;
+  // Only the creator can submit; a draft isn't in the queue yet.
+  if (hack.submitted_at === null) return { ok: false, error: "This hack hasn't been submitted for review yet." } as const;
 
   if (verified === true) {
     const { error: updateErr } = await serviceClient

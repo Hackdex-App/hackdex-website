@@ -117,6 +117,10 @@ export default async function HackSessionDetail({
     }
   }
 
+  // Admins looking at someone else's unsubmitted draft see how far along it is.
+  const adminDraftChecklist = isAdmin && !editor && !hack.approved && hack.submitted_at === null ? await getDraftChecklist(slug) : null;
+  const draftProgress = adminDraftChecklist ? { done: adminDraftChecklist.required.filter((r) => r.done).length, total: adminDraftChecklist.required.length } : undefined;
+
   return (
     <HackDetailView
       metadata={metadata}
@@ -126,6 +130,7 @@ export default async function HackSessionDetail({
       isAdmin={isAdmin}
       hasReviewThread={hasReviewThread}
       editor={editor}
+      draftProgress={draftProgress}
     />
   );
 }

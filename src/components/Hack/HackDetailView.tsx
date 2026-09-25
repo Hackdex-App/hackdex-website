@@ -54,9 +54,11 @@ interface HackDetailViewProps {
   hasReviewThread?: boolean;
   /** Present on the session page when the creator is editing an unlisted hack in place. */
   editor?: DraftEditorData;
+  /** Required checklist progress, for an admin viewing someone else's unsubmitted draft. */
+  draftProgress?: { done: number; total: number };
 }
 
-export default function HackDetailView({ metadata, downloads, canEdit, canUploadPatch, isAdmin, hasReviewThread = false, editor }: HackDetailViewProps) {
+export default function HackDetailView({ metadata, downloads, canEdit, canUploadPatch, isAdmin, hasReviewThread = false, editor, draftProgress }: HackDetailViewProps) {
   const { hack, images, tags, profile, otherHacks, patch, displayVersion } = metadata;
   const baseRom = baseRoms.find((rom) => rom.id === hack.base_rom);
   const author = hack.original_author ? hack.original_author : profile?.username ? `@${profile.username}` : "Unknown";
@@ -178,7 +180,7 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
 
       {editor && (
         <div className="mt-5">
-          <DraftStatusStrip slug={hack.slug} stage={editor.stage} submittedAt={hack.submitted_at} required={editor.checklist.required} contact={hack.verification_contact_info} preview={editor.preview} />
+          <DraftStatusStrip slug={hack.slug} stage={editor.stage} submittedAt={hack.submitted_at} required={editor.checklist.required} contact={hack.verification_contact_info} preview={editor.preview} notOwner={editor.notOwner} />
         </div>
       )}
 
@@ -188,7 +190,42 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
         </Notice>
       )}
 
-      {isDraft && !editor && (
+      {isDraft && !editor && isAdmin && (
+        <Notice
+          tone="warn"
+          icon={<FiAlertTriangle size={22} />}
+          title="Unsubmitted draft"
+          details={
+            <>
+              <div className="mt-2.5 flex flex-wrap gap-x-[18px] gap-y-1.5 text-[13px] text-text-2">
+                <span>
+                  Created <b className="font-semibold text-text">{shortDate(hack.created_at)}</b>
+                </span>
+                {hack.updated_at && (
+                  <span>
+                    Last edited <b className="font-semibold text-text">{shortDate(hack.updated_at)}</b>
+                  </span>
+                )}
+                {draftProgress && (
+                  <span>
+                    Required checklist <b className="font-semibold tabular-nums text-text">{draftProgress.done}/{draftProgress.total}</b>
+                  </span>
+                )}
+              </div>
+              {hack.verification_contact_info && (
+                <div className="mt-2.5 rounded-control bg-surface/60 px-2.5 py-2 text-[13.5px]">
+                  <small className="block text-[11.5px] font-semibold text-text-3">Verification contact</small>
+                  <span className="whitespace-pre-line">{hack.verification_contact_info}</span>
+                </div>
+              )}
+            </>
+          }
+        >
+          {author} hasn&rsquo;t submitted this for review yet, so it can&rsquo;t be approved.
+        </Notice>
+      )}
+
+      {isDraft && !editor && !isAdmin && (
         <Notice tone="info" icon={<FiInfo size={22} />} title="This is a private draft.">
           Only you can see this page. Finish the checklist on the{" "}
           <Link href={`/hack/${hack.slug}/edit`} className="text-link-hd">
@@ -260,7 +297,7 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
           <div className="flex flex-none items-center gap-2 md:pt-2">
           <HackShareButton title={hack.title} url={pageUrl} author={hack.original_author || profile?.username || null} />
           <HackOptionsMenu slug={hack.slug} canEdit={canEdit} canUploadPatch={canUploadPatch} editHref={isArchive ? `/hack/${hack.slug}/edit` : `/hack/${hack.slug}?edit=1`}>
-            {isAdmin && !hack.approved && (
+            {isAdmin && !hack.approved && !isDraft && (
               <MenuItem as="a" href={`/hack/${hack.slug}/approve`} className="block w-full px-3 py-2 text-left text-sm font-medium text-ready data-focus:bg-surface-2">
                 <FaCircleCheck className="mb-0.5 mr-2 inline-block align-middle" size={12} />
                 Approve
@@ -272,7 +309,7 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
                 Contact creator
               </MenuItem>
             )}
-            {isAdmin && !isArchive && !hasReviewThread && <CreateReviewThreadMenuItem slug={hack.slug} />}
+            {isAdmin && !isArchive && !isDraft && !hasReviewThread && <CreateReviewThreadMenuItem slug={hack.slug} />}
           </HackOptionsMenu>
           </div>
         )}
@@ -506,13 +543,19 @@ function SocialLink({ href, icon, label }: { href: string; icon: React.ReactNode
   );
 }
 
-function Notice({ tone, icon, title, children }: { tone: "warn" | "info"; icon: React.ReactNode; title: string; children: React.ReactNode }) {
+/** "Sep 4": server-rendered, so no locale or timezone mismatch on hydration. */
+function shortDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function Notice({ tone, icon, title, children, details }: { tone: "warn" | "info"; icon: React.ReactNode; title: string; children: React.ReactNode; details?: React.ReactNode }) {
   return (
     <div className={`mt-5 flex items-start gap-3.5 rounded-card border px-4 py-3.5 ${tone === "warn" ? "border-warn/40 bg-warn-soft" : "border-line-strong bg-surface-2"}`}>
       <span className={`mt-0.5 flex-none ${tone === "warn" ? "text-warn" : "text-text-2"}`}>{icon}</span>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <h3 className="text-[15px] font-semibold">{title}</h3>
         <p className="mt-0.5 text-sm text-text-2">{children}</p>
+        {details}
       </div>
     </div>
   );

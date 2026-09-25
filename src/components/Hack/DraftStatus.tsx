@@ -30,6 +30,8 @@ interface DraftStatusProps {
   preview?: boolean;
   /** Verification contact the reviewers see; the submit modal and the review card show it. */
   contact: string | null;
+  /** An admin in someone else's draft: only the creator can submit it. */
+  notOwner?: boolean;
 }
 
 const COPY: Record<DraftStage, { pill: string; tone: string }> = {
@@ -39,7 +41,7 @@ const COPY: Record<DraftStage, { pill: string; tone: string }> = {
 };
 
 /** Strip at the top of a draft: where the hack stands, autosave state, preview, and Submit for review when the checklist is clear. */
-export function DraftStatusStrip({ slug, stage, submittedAt, required, contact, preview = false }: Omit<DraftStatusProps, "recommended">) {
+export function DraftStatusStrip({ slug, stage, submittedAt, required, contact, preview = false, notOwner = false }: Omit<DraftStatusProps, "recommended">) {
   const editing = useDraftEditingOptional();
   const [confirming, setConfirming] = React.useState(false);
   const manual = editing !== null && !editing.live;
@@ -48,7 +50,9 @@ export function DraftStatusStrip({ slug, stage, submittedAt, required, contact, 
   const c = COPY[stage];
 
   const text =
-    stage === "draft" ? (
+    stage === "draft" && notOwner ? (
+      <>Not submitted yet. Only the creator can submit it for review.</>
+    ) : stage === "draft" ? (
       <>Only you can see this page. {canSubmit ? "Everything required is in place." : `${left} required ${left === 1 ? "item" : "items"} left before you can submit.`}</>
     ) : stage === "review" ? (
       <>Submitted {submittedAt ? new Date(submittedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : ""}.</>
@@ -102,7 +106,7 @@ export function DraftStatusStrip({ slug, stage, submittedAt, required, contact, 
               <FiEye className="h-4 w-4" /> Preview as a player
             </Link>
           )}
-          {stage === "draft" && (
+          {stage === "draft" && !notOwner && (
             <button
               type="button"
               disabled={!canSubmit}

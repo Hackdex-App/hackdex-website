@@ -1,5 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { approveHack } from "@/app/hack/actions";
 import Button from "@/components/Button";
 import Link from "next/link";
@@ -25,11 +25,13 @@ export default async function ApprovePage({ params }: ApprovePageProps) {
   // Fetch hack data
   const { data: hack, error } = await supabase
     .from("hacks")
-    .select("title, approved, approved_at, approved_by, created_by")
+    .select("title, approved, approved_at, approved_by, created_by, submitted_at")
     .eq("slug", slug)
     .maybeSingle();
 
   if (error || !hack) return notFound();
+  // Drafts can't be approved until the creator submits them.
+  if (!hack.approved && hack.submitted_at === null) redirect(`/hack/${slug}`);
 
   const { data: creatorProfile, error: creatorProfileError } = await supabase
     .from("profiles")
