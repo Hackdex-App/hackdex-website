@@ -53,15 +53,22 @@ export default function DraftTags({ tags, onChange, catalogTags, tagsUpdatedAt }
       </ul>
 
       <Modal title="Tags" visible={open} onClose={closePicker} className="max-w-2xl">
-        <TagSelector value={tags} onChange={onChange} catalogTags={catalogTags} newTagsCutoff={new Date(tagsUpdatedAt)} />
-        <div className="mt-4 flex items-center justify-between gap-3">
-          <span className="text-xs text-text-3" aria-live="polite">
-            {live && SAVE_LABEL[status]}
-          </span>
-          <button type="button" onClick={closePicker} className="inline-flex h-10 items-center rounded-control bg-accent-deep px-[18px] text-sm font-semibold text-white transition-colors hover:bg-accent-hover">
-            Done
-          </button>
-        </div>
+        <TagSelector
+          value={tags}
+          onChange={onChange}
+          catalogTags={catalogTags}
+          newTagsCutoff={new Date(tagsUpdatedAt)}
+          done={
+            <>
+              <span className="mr-auto text-xs text-text-3" aria-live="polite">
+                {live && SAVE_LABEL[status]}
+              </span>
+              <button type="button" onClick={closePicker} className="inline-flex h-10 items-center rounded-control bg-accent-deep px-[18px] text-sm font-semibold text-white transition-colors hover:bg-accent-hover">
+                Done
+              </button>
+            </>
+          }
+        />
       </Modal>
     </div>
   );

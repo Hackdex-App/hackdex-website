@@ -4,21 +4,8 @@ import React from "react";
 import type { CatalogTagRow } from "@/types/catalogTag";
 import { createClient } from "@/utils/supabase/client";
 import { MdTune } from "react-icons/md";
-import { CATEGORY_ICONS, getCategoryIcon } from "@/components/Icons/tagCategories";
-import { FaTimes } from "react-icons/fa";
-import {
-  DndContext,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragStartEvent,
-  DragOverEvent,
-  DragEndEvent,
-  DragCancelEvent,
-  DragOverlay,
-} from "@dnd-kit/core";
-import { SortableContext, arrayMove, useSortable, rectSortingStrategy } from "@dnd-kit/sortable";
-import { RxDragHandleDots2 } from "react-icons/rx";
+import { CATEGORY_ICONS } from "@/components/Icons/tagCategories";
+import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 
 type TagRow = CatalogTagRow;
 
@@ -28,93 +15,15 @@ export interface TagSelectorProps {
   /** When set, skips client Supabase fetch (use server-cached catalog). */
   catalogTags?: CatalogTagRow[];
   newTagsCutoff: Date | null;
+  /** Closing control shown at the end of the picker's footer (the modal's Done). */
+  done?: React.ReactNode;
 }
 
 /** Category row on desktop, a chip in the phone row. */
 const CAT_ROW = "flex flex-none cursor-pointer items-center justify-between whitespace-nowrap rounded-full border border-line-strong px-3 py-1 text-left text-sm md:rounded-[6px] md:border-0 md:px-2 md:py-1.5";
 
-type CategoryIconType = React.ComponentType<React.SVGProps<SVGSVGElement>> | null;
-
-function SortableSelectedTag({
-  id,
-  index,
-  name,
-  categoryIcon: Icon,
-  onRemove,
-  isPrimary,
-  isGhost,
-  insertSide,
-}: {
-  id: string;
-  index: number;
-  name: string;
-  categoryIcon: CategoryIconType;
-  onRemove: () => void;
-  isPrimary: boolean;
-  isGhost: boolean;
-  insertSide: "left" | "right" | null;
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    isDragging,
-  } = useSortable({ id });
-
-  const style: React.CSSProperties = {
-    opacity: isGhost ? 0.5 : undefined,
-  };
-
-  return (
-    <span
-      ref={setNodeRef}
-      style={style}
-      className={[
-        "relative inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px] sm:text-xs ring-1",
-        isPrimary
-          ? "bg-accent-soft ring-accent/40"
-          : "bg-surface-2 ring-line",
-        isDragging && !isGhost ? "opacity-80 shadow-lg shadow-black/20 dark:shadow-black/40" : "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
-    >
-      {insertSide === "left" && (
-        <div className="pointer-events-none absolute -left-1 top-1 bottom-1 w-px bg-accent" />
-      )}
-      {insertSide === "right" && (
-        <div className="pointer-events-none absolute -right-1 top-1 bottom-1 w-px bg-accent" />
-      )}
-      <button
-        type="button"
-        className="mr-0.5 inline-flex h-5 w-5 sm:h-4 sm:w-4 items-center justify-center rounded-full text-text-3 hover:text-text-2 cursor-grab active:cursor-grabbing touch-none"
-        aria-label={`Reorder tag ${name}`}
-        {...attributes}
-        {...listeners}
-      >
-        <RxDragHandleDots2 className="h-3.5 w-3.5 sm:h-3 sm:w-3" />
-      </button>
-      {Icon ? <Icon className="h-3.5 w-3.5 opacity-80" /> : null}
-      <span className="truncate max-w-[9.5rem] sm:max-w-[12rem]">{name}</span>
-      {isPrimary && (
-        <span className="ml-0.5 rounded-full bg-surface-2 px-1.5 py-0.5 text-[9px] sm:text-[8px] uppercase tracking-wide text-text-3">
-          {index === 0 ? "First" : "Second"}
-        </span>
-      )}
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onRemove();
-        }}
-        className="ml-1 inline-flex h-5 w-5 sm:h-4 sm:w-4 items-center justify-center rounded-full text-text-2 hover:text-text hover:bg-surface-2"
-        aria-label={`Remove tag ${name}`}
-      >
-        <FaTimes className="h-3.5 w-3.5 sm:h-3 sm:w-3" />
-      </button>
-    </span>
-  );
-}
+const QUIET_BTN = "inline-flex h-8 flex-none items-center gap-1 whitespace-nowrap rounded-control px-2.5 text-[13px] font-medium text-text-2 transition-colors hover:bg-surface-2 hover:text-text";
+const OUTLINE_BTN = "inline-flex h-8 flex-none items-center whitespace-nowrap rounded-control border border-line-strong bg-surface px-2.5 text-[13px] font-medium text-text-2 transition-colors hover:border-text-3 hover:text-text data-open:border-text-3 data-open:text-text";
 
 function compareTags(a: TagRow, b: TagRow, newTagsCutoff: Date | null): number {
   const aNew = !!(a.created_at && newTagsCutoff && new Date(a.created_at) > newTagsCutoff);
@@ -124,7 +33,7 @@ function compareTags(a: TagRow, b: TagRow, newTagsCutoff: Date | null): number {
   return (b.popularity - a.popularity) || a.name.localeCompare(b.name);
 }
 
-export default function TagSelector({ value, onChange, catalogTags, newTagsCutoff }: TagSelectorProps) {
+export default function TagSelector({ value, onChange, catalogTags, newTagsCutoff, done }: TagSelectorProps) {
   const supabase = createClient();
   const [query, setQuery] = React.useState("");
   const [allTags, setAllTags] = React.useState<TagRow[]>(() => catalogTags ?? []);
@@ -137,14 +46,10 @@ export default function TagSelector({ value, onChange, catalogTags, newTagsCutof
   const tagItemRefs = React.useRef<(HTMLDivElement | null)[]>([]);
   const [activeTagIndex, setActiveTagIndex] = React.useState<number | null>(null);
   const [categoriesPaneFocused, setCategoriesPaneFocused] = React.useState(false);
-  const [activeId, setActiveId] = React.useState<string | null>(null);
-  const [overId, setOverId] = React.useState<string | null>(null);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 5 },
-    }),
-  );
+  const [reviewing, setReviewing] = React.useState(false);
+  // The review view keeps the picker's height so the modal doesn't jump between views.
+  const [height, setHeight] = React.useState<number>();
+  const rootRef = React.useRef<HTMLDivElement>(null);
 
   const setActiveCategory = React.useCallback((cat: string | "advanced" | null) => {
     _setActiveCategory(cat);
@@ -246,6 +151,11 @@ export default function TagSelector({ value, onChange, catalogTags, newTagsCutof
     }
   }, [filtered, activeCategory, categoriesPaneFocused]);
 
+  // Open on the first category rather than an empty pane.
+  React.useEffect(() => {
+    if (activeCategory === null && grouped.categories.length > 0) _setActiveCategory(grouped.categories[0]);
+  }, [activeCategory, grouped.categories]);
+
   // Scroll category into view when active changes
   React.useEffect(() => {
     const el = activeCategory ? categoryRefs.current[activeCategory] : null;
@@ -264,125 +174,25 @@ export default function TagSelector({ value, onChange, catalogTags, newTagsCutof
     }
   }, [activeTagIndex]);
 
-  const selectedTagIds = React.useMemo(
-    () => value.map((t, i) => `${t}__${i}`),
-    [value],
-  );
+  // How many picks sit in each category, so the list shows where they are.
+  const pickedByCat = React.useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const t of allTags) {
+      if (!value.includes(t.name)) continue;
+      const key = t.category ?? "advanced";
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return counts;
+  }, [allTags, value]);
 
   function toggleTag(name: string) {
     onChange(value.includes(name) ? value.filter((v) => v !== name) : [...value, name]);
   }
 
-  const handleDragStart = (event: DragStartEvent) => {
-    const id = event.active.id as string;
-    setActiveId(id);
-    setOverId(id);
-  };
-
-  const handleDragOver = (event: DragOverEvent) => {
-    if (event.over) {
-      setOverId(event.over.id as string);
-    }
-  };
-
-  const handleSelectedDragEnd = (event: DragEndEvent | DragCancelEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) {
-      setActiveId(null);
-      setOverId(null);
-      return;
-    }
-    const oldIndex = selectedTagIds.indexOf(active.id as string);
-    const newIndex = selectedTagIds.indexOf(over.id as string);
-    if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
-    const next = arrayMove(value, oldIndex, newIndex);
-    onChange(next);
-    setActiveId(null);
-    setOverId(null);
-  };
-
-  const handleDragCancel = () => {
-    setActiveId(null);
-    setOverId(null);
-  };
+  if (reviewing) return <TagReview value={value} onChange={onChange} onBack={() => setReviewing(false)} minHeight={height} />;
 
   return (
-    <div className="grid gap-2">
-      {/* Selected tag pills */}
-      <div className="text-xs text-text-3">
-        Drag to reorder. The first two show on your hack&rsquo;s card.
-      </div>
-      <div className="flex max-h-24 flex-wrap gap-2 overflow-auto p-1">
-        {value.length > 0 ? (
-          <DndContext
-            id="selected-tags"
-            sensors={sensors}
-            onDragStart={handleDragStart}
-            onDragOver={handleDragOver}
-            onDragEnd={handleSelectedDragEnd}
-            onDragCancel={handleDragCancel}
-          >
-            <SortableContext items={selectedTagIds} strategy={rectSortingStrategy}>
-              {value.map((t, index) => {
-                const cat =
-                  grouped.categories.find((c) => (grouped.byCat.get(c) || []).some((r) => r.name === t)) ||
-                  (grouped.advanced.some((r) => r.name === t) ? "Advanced" : undefined);
-                const Icon = (getCategoryIcon(cat === "Advanced" ? null : cat) ?? null) as CategoryIconType;
-                const id = selectedTagIds[index];
-                const isPrimary = index === 0 || index === 1;
-                const isGhost = activeId === id;
-                const overIndex = overId ? selectedTagIds.indexOf(overId) : -1;
-                const activeIndex = activeId ? selectedTagIds.indexOf(activeId) : -1;
-                let insertSide: "left" | "right" | null = null;
-                if (activeId && overIndex === index && activeIndex !== index && activeIndex !== -1) {
-                  insertSide = overIndex > activeIndex ? "right" : "left";
-                }
-
-                return (
-                  <React.Fragment key={id}>
-                    <SortableSelectedTag
-                      id={id}
-                      index={index}
-                      name={t}
-                      categoryIcon={Icon}
-                      onRemove={() => toggleTag(t)}
-                      isPrimary={isPrimary}
-                      isGhost={isGhost}
-                      insertSide={insertSide}
-                    />
-                  </React.Fragment>
-                );
-              })}
-            </SortableContext>
-            <DragOverlay>
-              {activeId ? (() => {
-                const activeIndex = selectedTagIds.indexOf(activeId);
-                if (activeIndex === -1) return null;
-                const t = value[activeIndex];
-                const cat =
-                  grouped.categories.find((c) => (grouped.byCat.get(c) || []).some((r) => r.name === t)) ||
-                  (grouped.advanced.some((r) => r.name === t) ? "Advanced" : undefined);
-                const Icon = (getCategoryIcon(cat === "Advanced" ? null : cat) ?? null) as CategoryIconType;
-                const isPrimary = activeIndex === 0 || activeIndex === 1;
-                return (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2 py-1 text-xs ring-1 ring-line shadow-lg shadow-black/30 dark:shadow-black/60">
-                    {Icon ? <Icon className="h-3.5 w-3.5 opacity-80" /> : null}
-                    <span className="truncate max-w-[9rem] sm:max-w-[12rem]">{t}</span>
-                    {isPrimary && (
-                      <span className="ml-0.5 rounded-full bg-surface-2 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-text-3">
-                        {activeIndex === 0 ? "First" : "Second"}
-                      </span>
-                    )}
-                  </span>
-                );
-              })() : null}
-            </DragOverlay>
-          </DndContext>
-        ) : (
-          <div className="px-2 py-0.5 text-sm text-text-3">No tags selected</div>
-        )}
-      </div>
-
+    <div ref={rootRef} className="grid gap-3">
       {/* Persistent selector */}
       <div className="overflow-hidden rounded-card border border-line-strong bg-surface">
         {/* Search input */}
@@ -471,6 +281,7 @@ export default function TagSelector({ value, onChange, catalogTags, newTagsCutof
                       <span className="ml-1 rounded-full bg-surface-2 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-text-3">New</span>
                     )}
                   </span>
+                  {pickedByCat.get(cat) ? <span className="rounded-full bg-accent-soft px-1.5 text-[11px] font-bold leading-[18px] text-accent-text">{pickedByCat.get(cat)}</span> : null}
                 </div>
               );})}
               {filtered.advanced.length > 0 && (
@@ -487,6 +298,7 @@ export default function TagSelector({ value, onChange, catalogTags, newTagsCutof
                   }`}
                 >
                   <span className="inline-flex items-center gap-2"><MdTune className="h-4 w-4" />Advanced</span>
+                  {pickedByCat.get("advanced") ? <span className="rounded-full bg-accent-soft px-1.5 text-[11px] font-bold leading-[18px] text-accent-text">{pickedByCat.get("advanced")}</span> : null}
                 </div>
               )}
             </div>
@@ -555,8 +367,123 @@ export default function TagSelector({ value, onChange, catalogTags, newTagsCutof
         </div>
       </div>
       {loading && <div className="text-xs text-text-3">Loading tags…</div>}
+      <div className="flex items-center gap-3 rounded-card bg-surface-2 py-2 pl-3.5 pr-2">
+        <div className="min-w-0 flex-1 text-sm">
+          <b className="block font-semibold">{value.length === 0 ? "No tags yet" : `${value.length} selected`}</b>
+          <span className="block truncate text-xs text-text-3">{value.length ? `On card: ${value.slice(0, 2).join(", ")}` : "The first two you pick show on your card."}</span>
+        </div>
+        {value.length > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              setHeight(rootRef.current?.offsetHeight);
+              setReviewing(true);
+            }}
+            className={OUTLINE_BTN}
+          >
+            Review
+          </button>
+        )}
+      </div>
+      {done && <div className="mt-1 flex items-center justify-end gap-3">{done}</div>}
     </div>
   );
 }
 
+const MENU_ITEM = "block w-full rounded-[6px] px-2.5 py-2 text-left text-sm data-focus:bg-surface-2";
 
+/**
+ * Selected tags, split into the two shown on the card and the rest. Tags
+ * unchecked here stay listed, crossed out, until the view closes, so rows
+ * never jump under a finger and a mis-tap is one tap to undo.
+ */
+function TagReview({ value, onChange, onBack, minHeight }: { value: string[]; onChange: (next: string[]) => void; onBack: () => void; minHeight?: number }) {
+  const [card0, card1] = value;
+  // Display order for "Also tagged", including crossed-out rows.
+  const [also, setAlso] = React.useState(() => value.slice(2));
+  const [flash, setFlash] = React.useState<string | null>(null);
+
+  const commit = (card: (string | undefined)[], nextAlso: string[], keep: (t: string) => boolean) => {
+    setAlso(nextAlso);
+    onChange([...card.filter((t): t is string => !!t), ...nextAlso.filter(keep)]);
+  };
+  const listed = (t: string) => value.includes(t);
+
+  function putOnCard(tag: string, slot: 0 | 1) {
+    const replaced = value[slot];
+    const card = slot === 0 ? [tag, card1] : [card0, tag];
+    commit(card, [replaced, ...also.filter((t) => t !== tag)], listed);
+    setFlash(replaced);
+  }
+  function toggle(tag: string) {
+    const on = listed(tag);
+    commit([card0, card1], also, (t) => (t === tag ? !on : listed(t)));
+  }
+
+  return (
+    <div className="flex flex-col gap-3" style={{ minHeight }}>
+      <section>
+        <h3 className="mb-1.5 flex items-baseline justify-between text-xs font-semibold text-text-2">
+          On your card <span className="font-medium text-text-3">Players see these two first</span>
+        </h3>
+        <ol className="flex flex-col gap-1.5">
+          {[card0, card1].map((tag, i) => (
+            <li key={i} className={`flex h-12 items-center gap-2.5 rounded-control border pl-2.5 pr-1.5 text-sm font-medium ${tag ? "border-line-strong" : "border-dashed border-line-strong text-text-3"}`}>
+              <span className="grid h-[22px] w-[22px] flex-none place-items-center rounded-full bg-accent-soft text-xs font-bold text-accent-text">{i + 1}</span>
+              <span key={tag} className="anim-pop min-w-0 flex-1 truncate">{tag ?? "Pick another tag to fill this spot"}</span>
+              {card0 && card1 && (
+                <button type="button" onClick={() => onChange([card1, card0, ...value.slice(2)])} className={QUIET_BTN}>
+                  {i === 0 ? "Make 2nd ↓" : "Make 1st ↑"}
+                </button>
+              )}
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      {also.length > 0 && (
+        <section>
+          <h3 className="mb-1.5 flex items-baseline justify-between text-xs font-semibold text-text-2">
+            Also tagged <span className="font-medium text-text-3">{also.filter(listed).length}</span>
+          </h3>
+          <ul className="overflow-hidden rounded-card border border-line">
+            {also.map((tag) => {
+              const on = listed(tag);
+              return (
+                <li key={tag} className={`flex h-12 items-center gap-2.5 border-t border-line pl-3 pr-1.5 text-sm first:border-t-0 ${tag === flash ? "anim-row-flash" : ""}`}>
+                  <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 self-stretch">
+                    <input type="checkbox" checked={on} onChange={() => toggle(tag)} className="h-4 w-4 flex-none accent-[var(--rose-deep)]" />
+                    <span className={`truncate ${on ? "" : "text-text-3 line-through"}`}>{tag}</span>
+                  </label>
+                  {on ? (
+                    <Menu>
+                      <MenuButton className={OUTLINE_BTN}>Put on card</MenuButton>
+                      <MenuItems modal={false} anchor="bottom end" className="anim-pop z-[110] w-52 rounded-card border border-line bg-surface p-1 shadow-overlay [--anchor-gap:4px] focus:outline-none">
+                        <p className="px-2.5 pb-0.5 pt-1.5 text-xs text-text-3">Replace which?</p>
+                        {([card0, card1] as const).map((c, i) => (
+                          <MenuItem key={i}>
+                            <button type="button" onClick={() => putOnCard(tag, i as 0 | 1)} className={MENU_ITEM}>
+                              <span className="text-text-3">{i + 1} ·</span> {c}
+                            </button>
+                          </MenuItem>
+                        ))}
+                      </MenuItems>
+                    </Menu>
+                  ) : (
+                    <span className="px-2.5 text-[13px] text-text-3">Removed</span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
+      <div className="mt-auto flex justify-end pt-1">
+        <button type="button" onClick={onBack} className="inline-flex h-10 items-center rounded-control bg-surface-2 px-[18px] text-sm font-semibold text-text transition-colors hover:bg-line">
+          Back to all tags
+        </button>
+      </div>
+    </div>
+  );
+}

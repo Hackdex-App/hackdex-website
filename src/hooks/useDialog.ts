@@ -18,6 +18,8 @@ export function useDialog(panelRef: React.RefObject<HTMLElement | null>, onClose
     html.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        // A menu inside the dialog handled it (and closed itself).
+        if (e.defaultPrevented) return;
         e.preventDefault();
         onCloseRef.current();
         return;
