@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/utils/supabase/server";
+import { createClient, createServiceClient } from "@/utils/supabase/server";
 import type { TablesInsert, Database } from "@/types/db";
 import { getMinioClient, PATCHES_BUCKET } from "@/utils/minio/server";
 import { sendDiscordMessageEmbed } from "@/utils/discord";
@@ -37,6 +37,29 @@ async function ensureUniqueSlug(base: string, supabase: Awaited<ReturnType<typeo
     if (!data) return candidate;
     candidate = `${base}-${suffix++}`;
   }
+}
+
+const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+/**
+ * Whether any hack already uses this slug. Uses the service client because RLS
+ * hides other creators' drafts, which still own their slugs.
+ */
+async function isSlugTaken(slug: string) {
+  const service = await createServiceClient();
+  const { count, error } = await service.from("hacks").select("slug", { count: "exact", head: true }).eq("slug", slug);
+  if (error) throw error;
+  return (count ?? 0) > 0;
+}
+
+/** Live availability check for the start form's page address. */
+export async function checkSlugAvailable(slug: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user || !SLUG_PATTERN.test(slug) || slug.length > 64) return false;
+  return !(await isSlugTaken(slug));
 }
 
 export async function prepareSubmission(formData: FormData) {
@@ -429,7 +452,11 @@ export async function createDraft(formData: FormData) {
     if (!isAdmin) return { ok: false, error: "Only admins can submit someone else's hack." } as const;
   }
 
-  const slug = await ensureUniqueSlug(slugify(title), supabase);
+  // The form sends the address it showed, so a taken one is an error rather than a silent "-2".
+  const slug = (formData.get("slug") as string | null)?.trim() || slugify(title);
+  if (!SLUG_PATTERN.test(slug) || slug.length > 64) return { ok: false, error: "Use lowercase letters, numbers, and dashes for the page address." } as const;
+  if (await isSlugTaken(slug)) return { ok: false, error: "Another hack already uses this page address." } as const;
+
   const insertPayload: HackInsert = {
     slug,
     title,
