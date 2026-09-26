@@ -25,7 +25,7 @@ export default async function ApprovePage({ params }: ApprovePageProps) {
   // Fetch hack data
   const { data: hack, error } = await supabase
     .from("hacks")
-    .select("title, approved, approved_at, approved_by, created_by, submitted_at")
+    .select("title, approved, approved_at, approved_by, created_by, submitted_at, ai_disclosed_at")
     .eq("slug", slug)
     .maybeSingle();
 
@@ -105,6 +105,15 @@ export default async function ApprovePage({ params }: ApprovePageProps) {
             <p className="text-text-2 mb-6">
               By approving this hack, it will become visible to the public.
             </p>
+            {/* Hacks submitted before the label existed skipped the checklist item; the grace period lets them through. */}
+            {!hack.ai_disclosed_at && (
+              <p className="mb-6 flex items-start gap-2 rounded-control bg-warn-soft px-3 py-2 text-sm text-text-2">
+                <FaTriangleExclamation className="mt-0.5 flex-none text-warn" size={14} />
+                <span>
+                  <b className="font-semibold text-text">No AI label yet.</b> You can ask the creator to add one, or approve anyway.
+                </span>
+              </p>
+            )}
             <form action={handleApprove} className="flex flex-col gap-3 justify-center md:justify-start">
               {/* Checkbox to verify the hack creator */}
               <div className="flex items-center gap-2">
