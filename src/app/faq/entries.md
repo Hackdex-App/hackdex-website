@@ -39,7 +39,7 @@ Use the [Discover page](/discover) to search for hacks or filter by tags, base R
 Download activity is the only input to popularity and trending rankings. Placement does not represent a staff recommendation.
 
 ### Does Hackdex allow AI-generated content?
-Yes, with disclosure. Creators must identify AI-generated content in a labeled section of their hack's description so you can decide whether you want to play it. This includes graphics, music, dialogue, and event scripts. AI assistance with general programming does not require disclosure.
+Yes, with disclosure. Creators must disclose AI use in both content and code through Hackdex's AI disclosure form. Their disclosure appears on the hack's page to help you decide whether you want to play it.
 
 We believe a blanket ban can encourage creators to hide AI use. Requiring disclosure gives creators room to be honest and helps players make an informed choice. Disclosed content must still follow our credits and content rules. See [what creators need to disclose](#ai-disclosure) for details.
 
@@ -124,23 +124,17 @@ Yes. Every hack must have a clearly labeled Credits section in its Hackdex descr
 Keep your credits up to date and follow any attribution requirements for material you use. Giving credit does not replace permission to use someone else's work. This requirement is part of [Section 6 of the Terms of Service](/terms#6-creator-responsibilities).
 
 ### What AI use do I need to disclose? {#ai-disclosure}
-Add a clearly labeled "AI disclosure" section to your hack's description if the hack or its Hackdex page includes AI-generated content. State which types of content were generated, such as graphics, music, sound effects, story, dialogue, translations, or event scripts. This includes content generated in part by AI, content you edited after generation, and generated content supplied by contributors.
+Complete Hackdex's AI disclosure form for each hack, even if you have no AI use to declare. Follow the guidance in the form to describe the extent of AI use, and keep your answers up to date. You do not need an AI disclosure section in your description, but a description note does not replace the form.
 
-Event scripting counts even though it is written as code. For example, an AI-generated event script that makes an NPC walk toward the player, displays an exclamation mark, and gives an item requires disclosure, even if it contains no generated dialogue.
+Disclose content and code generated or modified with AI that is included in your hack or its Hackdex page. This includes graphics, music, writing, translations, event scripts, and general programming, even a single bug fix. Count work you edited afterward or received from contributors.
 
-AI assistance with general programming, such as engine changes, bug fixes, development tools, or implementing game systems, does not require disclosure. Brainstorming and unused experiments do not require disclosure when no generated content is included in the hack or its page.
-
-A useful disclosure names the affected content. For example:
-
-> AI was used to generate the title screen artwork and event scripts for some NPC interactions.
-
-Keep this section accurate as you update your hack or page. A disclosure does not exempt the content from our credits or content rules. See [Section 6 of the Terms of Service](/terms#6-creator-responsibilities) for the full requirement.
+Disclosure of AI use for brainstorming and unused experiments is optional when no AI-generated or AI-modified content or code is included in the hack or its page. Disclosure does not replace credits or exempt your hack from our content rules. See [Section 6 of the Terms of Service](/terms#6-creator-responsibilities) for the full requirement.
 
 ### Who retains ownership of submitted hacks?
 Creators retain ownership of their work. Hackdex serves as a distribution and discovery platform. Specific rights and responsibilities are outlined in the Terms of Service available on the platform.
 
 ### Are there content guidelines for submissions? {#content-guidelines}
-Yes. Submit Pokémon ROM hack patches that you have the right to share, include credits, and disclose AI-generated content as described above. Hacks are subject to approval before they become public, and must continue to follow the rules after approval.
+Yes. Submit Pokémon ROM hack patches that you have the right to share, include credits, and disclose AI use through the dedicated form as described above. Hacks are subject to approval before they become public, and must continue to follow the rules after approval.
 
 We prohibit targeted harassment, threats, derogatory attacks against real people or groups, hate speech, and discriminatory abuse. This includes dehumanizing people or promoting hatred, discrimination, or violence based on characteristics such as race, ethnicity, nationality, religion, disability, sex, sexual orientation, or gender identity. These rules cover content inside the hack as well as its title, description, screenshots, cover images, and other page material.
 
