@@ -14,6 +14,7 @@ const ABOUT = [
   { href: "https://github.com/Hackdex-App/hackdex-website", label: "GitHub" },
 ];
 
+// Footer links render on every page, so they skip viewport prefetch (it showed up as Edge Requests far above page views).
 const FOOTER_LINK = "w-fit whitespace-nowrap py-[3px] hover:text-text hover:underline hover:underline-offset-[3px]";
 
 function Column({ title, children }: { title: string; children: React.ReactNode }) {
@@ -33,28 +34,28 @@ export default function Footer() {
       <div className="mx-auto max-w-[1164px] px-6 pb-24 pt-8 md:pb-10">
         <div className="grid grid-cols-[repeat(3,auto)] justify-between gap-x-4 gap-y-7 md:grid-cols-[1.4fr_1fr_1fr_1fr] md:gap-x-6">
           <div className="col-span-3 md:col-span-1">
-            <Link href="/" className="inline-flex items-center gap-2 font-display text-[16px] text-text">
-              <Image src="/logo.png" alt="" width={22} height={22} className="rounded-[6px]" />
+            <Link href="/" prefetch={false} className="inline-flex items-center gap-2 font-display text-[16px] text-text">
+              <Image src="/logo.png" alt="" width={22} height={22} className="rounded-[6px]" unoptimized />
               Hackdex
             </Link>
             <p className="mt-2 max-w-[34ch] text-text-3">Patch Pokémon ROM hacks in your browser. We host only patch files, never ROMs, and your ROMs never leave your device.</p>
           </div>
           <Column title="Play">
             {PLAY.map((l) => (
-              <Link key={l.href} href={l.href} className={FOOTER_LINK}>
+              <Link key={l.href} href={l.href} prefetch={false} className={FOOTER_LINK}>
                 {l.label}
               </Link>
             ))}
           </Column>
           <Column title="Create">
-            <Link href="/submit" className={FOOTER_LINK}>
+            <Link href="/submit" prefetch={false} className={FOOTER_LINK}>
               Submit a hack
             </Link>
             <FooterAccountLinks className={FOOTER_LINK} />
           </Column>
           <Column title="Hackdex">
             {ABOUT.map((l) => (
-              <Link key={l.href} href={l.href} className={FOOTER_LINK}>
+              <Link key={l.href} href={l.href} prefetch={false} className={FOOTER_LINK}>
                 {l.label}
               </Link>
             ))}
@@ -64,10 +65,10 @@ export default function Footer() {
         <div className="mt-8 border-t border-line pt-5">
           <p className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
             <span>© 2025-{new Date().getFullYear()} Hackdex</span>
-            <Link href="/terms" className={FOOTER_LINK}>
+            <Link href="/terms" prefetch={false} className={FOOTER_LINK}>
               Terms
             </Link>
-            <Link href="/privacy" className={FOOTER_LINK}>
+            <Link href="/privacy" prefetch={false} className={FOOTER_LINK}>
               Privacy
             </Link>
           </p>

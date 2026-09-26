@@ -6,7 +6,9 @@
 ## Players
 
 ### What is Hackdex?
-Hackdex is a community hub for discovering and playing Pokémon romhacks. The platform centralizes romhack discovery and provides an in-browser patching system to make playing hacks straightforward and accessible.
+Hackdex is a hosting platform for creators to share their Pokémon romhacks and for players to discover and play them. It hosts patches and lets you apply them to your own base ROM in your browser.
+
+Hackdex does not handpick hacks based on staff taste or recommendations. Submissions are subject to approval and content rules, but hosting a hack does not mean we endorse its views or guarantee its quality.
 
 ### Do I need my own ROM file?
 Yes. Hackdex distributes patches, not complete, pre-patched ROM files. You must provide your own legally obtained base ROM of the original Pokémon game. You'll link your base ROM once, then easily apply patches directly in your browser.
@@ -26,7 +28,23 @@ Some users have reported issues with their Internet Service Provider (ISP) block
 If the problem is not related to your ISP, try clearing your browser's cache and reloading the page or using a different browser or device. If the error persists, please contact us.
 
 ### How do I find ROM hacks that interest me?
-The Discover page features curated sections including "Trending", "Most Popular," "Newest," and "Recently Updated" to help you find active and trending hacks quickly. You can also search or filter by tags, base ROM, and more.
+Use the [Discover page](/discover) to search for hacks or filter by tags, base ROM, and more. Listings are ordered automatically using the sorting option you choose:
+
+- "Trending" uses downloads from the past three days along with total downloads.
+- "Most popular" uses total downloads.
+- "Newest" uses the date a hack was approved.
+- "Recently updated" uses the publication date of the hack's current patch.
+- "Alphabetical" sorts by title.
+
+Download activity is the only input to popularity and trending rankings. Placement does not represent a staff recommendation.
+
+### Does Hackdex allow AI-generated content?
+Yes, with disclosure. Creators must disclose AI use in both content and code through Hackdex's AI disclosure form. Their disclosure appears on the hack's page to help you decide whether you want to play it.
+
+We believe a blanket ban can encourage creators to hide AI use. Requiring disclosure gives creators room to be honest and helps players make an informed choice. Disclosed content must still follow our credits and content rules. See [what creators need to disclose](#ai-disclosure) for details.
+
+### How do I report a hack or page that breaks the rules?
+There is a Report option on each hack page. Or you can use the [contact form](/contact). Include the hack's page URL and enough detail for us to locate the issue. For content inside a hack, include the version and where it appears in the game. See our [content guidelines](#content-guidelines) for a summary of what is prohibited.
 
 ### What types of ROM hacks are available?
 Hackdex is specifically focused on Pokémon ROM hack patches across different generations of Pokémon games. Creators must submit and upload their own ROM hacks. We do not steal the work of other creators without their explicit permission.
@@ -89,7 +107,7 @@ Both formats support checksum verification so the patch is linked to the correct
 ### How does my hack gain visibility?
 We highly recommend linking to your romhack's Hackdex page from PokéCommunity, Reddit, or other social media platforms. Doing so can help boost your hack's visibility and outrank those sketchy ROM sharing sites that steal many creators' hard work.
 
-Once submitted on Hackdex, your hack can appear in the Discover page's curated sections, including "Newest" hacks for recent submissions and "Recently Updated" when you post updates. Popular hacks gain visibility in the "Most Popular" section based on number of downloads.
+Once approved, your hack can appear on Discover. "Newest" sorts by approval date, and "Recently updated" sorts by the publication date of your current patch. "Most popular" and "Trending" use download activity. These listings are ordered automatically and do not reflect staff preferences.
 
 Here are some helpful tips for improving your hack's page to help increase visibility:
 - Include at least 3 screenshots that help make your hack stand out, with the first one being the most eye-catching.
@@ -98,10 +116,30 @@ Here are some helpful tips for improving your hack's page to help increase visib
 - Use [Markdown formatting](https://github.com/adam-p/markdown-here/wiki/markdown-cheatsheet) for your description to make it more readable and visually appealing.
 
 ### Can I update my romhack after submitting?
-Yes. Hackdex supports updates to submitted hacks, which will be reflected in the "Recently Updated" section of the Discover page, giving your hack renewed visibility.
+Yes. When you publish a new current patch, its publication date determines your hack's position when players sort Discover by "Recently updated". Editing your description alone does not move your hack up that list. Keep your credits and any AI disclosure accurate when you update your hack or page.
+
+### Do I need to include credits? {#credits}
+Yes. Every hack must have a clearly labeled Credits section in its Hackdex description. List the hack's contributors and the creators or sources of reused assets and code, or link to a complete, publicly accessible credits page. Credits available only inside the game are not enough.
+
+Keep your credits up to date and follow any attribution requirements for material you use. Giving credit does not replace permission to use someone else's work. This requirement is part of [Section 6 of the Terms of Service](/terms#6-creator-responsibilities).
+
+### What AI use do I need to disclose? {#ai-disclosure}
+Complete Hackdex's AI disclosure form for each hack, even if you have no AI use to declare. Follow the guidance in the form to describe the extent of AI use, and keep your answers up to date. You do not need an AI disclosure section in your description, but a description note does not replace the form.
+
+Disclose content and code generated or modified with AI that is included in your hack or its Hackdex page. This includes graphics, music, writing, translations, event scripts, and general programming, even a single bug fix. Count work you edited afterward or received from contributors.
+
+Disclosure of AI use for brainstorming and unused experiments is optional when no AI-generated or AI-modified content or code is included in the hack or its page. Disclosure does not replace credits or exempt your hack from our content rules. See [Section 6 of the Terms of Service](/terms#6-creator-responsibilities) for the full requirement.
 
 ### Who retains ownership of submitted hacks?
 Creators retain ownership of their work. Hackdex serves as a distribution and discovery platform. Specific rights and responsibilities are outlined in the Terms of Service available on the platform.
 
-### Are there content guidelines for submissions?
-As a platform focused on Pokémon ROM hack patches, your submission should be a patch file for a Pokémon game. Detailed guidelines and restrictions are available in the Hackdex Terms of Service and on the Submit page. Your hack will be subject to approval before it can be viewed publicly.
+### Are there content guidelines for submissions? {#content-guidelines}
+Yes. Submit Pokémon ROM hack patches that you have the right to share, include credits, and disclose AI use through the dedicated form as described above. Hacks are subject to approval before they become public, and must continue to follow the rules after approval.
+
+We prohibit targeted harassment, threats, derogatory attacks against real people or groups, hate speech, and discriminatory abuse. This includes dehumanizing people or promoting hatred, discrimination, or violence based on characteristics such as race, ethnicity, nationality, religion, disability, sex, sexual orientation, or gender identity. These rules cover content inside the hack as well as its title, description, screenshots, cover images, and other page material.
+
+We consider narrative context. A story depicting conflict or prejudice does not automatically promote it, but calling something fiction, humor, or satire does not excuse targeted harassment, discriminatory abuse, or the promotion of hatred or violence.
+
+Hacks or hack pages found to contain prohibited content will be removed. Responsible accounts may also be suspended or banned. For missing or incomplete credits or AI disclosures, we may request corrections, refuse publication, or remove the listing until it complies. Deliberate misrepresentation or repeated violations may also lead to suspension or a ban.
+
+The full restrictions, including rules against ROM sharing, infringement, malware, and sharing personal data without permission, are in [Section 8 of the Terms of Service](/terms#8-prohibited-content-and-conduct). To report a suspected violation, use the [contact form](/contact) or the hack page's Report option.

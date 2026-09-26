@@ -20,6 +20,7 @@ function NavLink({ href, active, children }: { href: string; active: boolean; ch
   return (
     <Link
       href={href}
+      prefetch={false}
       aria-current={active ? "page" : undefined}
       className={`inline-flex items-center gap-1.5 border-y-2 border-transparent px-2.5 font-medium transition-colors hover:text-text ${
         active ? "border-b-accent text-text" : "text-text-2"
@@ -73,8 +74,8 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-line bg-surface">
       <div className="group/header relative mx-auto flex h-14 max-w-[1164px] items-center gap-3 px-6 md:h-[60px] md:gap-7">
-        <Link href="/" className="inline-flex items-center gap-2.5 font-display text-[19px]" aria-label="Hackdex home">
-          <Image src="/logo.png" alt="" width={28} height={28} className="rounded-[7px]" />
+        <Link href="/" prefetch={false} className="inline-flex items-center gap-2.5 font-display text-[19px]" aria-label="Hackdex home">
+          <Image src="/logo.png" alt="" width={28} height={28} className="rounded-[7px]" unoptimized />
           <span>Hackdex</span>
         </Link>
 
@@ -109,6 +110,7 @@ export default function Header() {
           <ThemeToggle />
           <Link
             href="/submit"
+            prefetch={false}
             className="hidden h-[38px] items-center rounded-control px-2.5 font-medium text-text-2 transition-colors hover:bg-surface-2 hover:text-text md:inline-flex md:group-has-[#site-header-compact:not(:empty)]/header:hidden"
           >
             Submit a hack
@@ -116,6 +118,7 @@ export default function Header() {
           {userId && (
             <Link
               href="/dashboard"
+              prefetch={false}
               aria-current={pathname.startsWith("/dashboard") ? "page" : undefined}
               className="group relative inline-flex items-center justify-center rounded-full p-[2px] ring-1 ring-line aria-[current=page]:ring-2 aria-[current=page]:ring-accent"
               aria-label="Open dashboard"

@@ -288,7 +288,7 @@ export default function PatchModule({
   const termsLine = kind === "ready" || kind === "done" ? (
     <>
       Patching means you agree to the{" "}
-      <Link href="/terms" target="_blank" className="underline underline-offset-2">
+      <Link href="/terms" prefetch={false} target="_blank" className="underline underline-offset-2">
         terms
       </Link>
       .
@@ -402,7 +402,7 @@ export default function PatchModule({
               {kind === "ready" && (
                 <small className="text-xs text-text-3 max-md:text-center md:max-w-[220px] md:text-right md:max-lg:hidden">
                   By patching, you agree to the{" "}
-                  <Link href="/terms" target="_blank" className="underline underline-offset-2">
+                  <Link href="/terms" prefetch={false} target="_blank" className="underline underline-offset-2">
                     terms
                   </Link>
                   .

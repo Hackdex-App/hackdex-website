@@ -38,6 +38,7 @@ export default function CollapsibleTags({ tags }: { tags: string[] }) {
           {tags.map((t) => (
             <li key={t}>
               <Link
+                prefetch={false}
                 href={`/discover?${buildDiscoverSearchParams({ ...DISCOVER_DEFAULT_STATE, tags: [t] }).toString()}`}
                 aria-label={`View hacks tagged ${t}`}
                 className="inline-block rounded-full bg-surface-2 px-2.5 py-1 text-[13px] leading-tight text-text-2 transition-colors hover:bg-line hover:text-text"

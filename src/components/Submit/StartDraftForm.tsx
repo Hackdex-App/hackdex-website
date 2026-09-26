@@ -186,7 +186,7 @@ export default function StartDraftForm({ disabled = false, canSubmitForOthers = 
             I made this hack, or I&rsquo;m part of the team that did
             <span className={`${hint} mt-0.5 block`}>
               Hackdex doesn&rsquo;t accept reuploads of other people&rsquo;s hacks, and every hack must comply with the{" "}
-              <Link href="/terms" className="text-link-hd">Terms of Service</Link>. Submissions that don&rsquo;t are rejected and may get your account banned.
+              <Link href="/terms" prefetch={false} className="text-link-hd">Terms of Service</Link>. Submissions that don&rsquo;t are rejected and may get your account banned.
             </span>
           </span>
         </label>
@@ -204,7 +204,7 @@ export default function StartDraftForm({ disabled = false, canSubmitForOthers = 
           {busy ? "Creating…" : "Create private draft"}
         </button>
         <span className="text-xs text-text-3">
-          By continuing, you agree to the <Link href="/terms" className="text-link-hd">Terms of Service</Link>.
+          By continuing, you agree to the <Link href="/terms" prefetch={false} className="text-link-hd">Terms of Service</Link>.
         </span>
       </div>
       {missing.length > 0 && <p className="-mt-3 text-[13px] text-text-3">Add {missing.join(", ")} to continue.</p>}

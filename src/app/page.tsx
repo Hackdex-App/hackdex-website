@@ -83,6 +83,7 @@ export default async function Home() {
           <p className="mt-6 flex justify-center md:mt-8">
             <Link
               href="/faq"
+              prefetch={false}
               className="inline-flex items-center gap-1 rounded-full border border-line-strong bg-surface px-3.5 py-1.5 text-sm shadow-rest transition-colors hover:border-text-3 hover:bg-surface-2"
             >
               <span className="mr-0.5 font-medium">New to ROM hacks?</span> Read the FAQ <FiArrowRight className="h-3.5 w-3.5" />
@@ -94,6 +95,7 @@ export default async function Home() {
       <p className="mt-7 flex justify-center md:mt-10">
         <Link
           href="/discover"
+          prefetch={false}
           className="inline-flex h-12 w-full items-center justify-center rounded-control bg-surface-2 px-6 text-[15px] font-semibold text-text transition-colors hover:bg-line md:w-auto"
         >
           Browse all {catalog.length.toLocaleString()} hacks

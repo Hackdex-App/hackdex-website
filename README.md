@@ -96,6 +96,8 @@ RESEND_FROM=
 
 Register Discord guild commands locally with `npm run discord:register`; in production, an admin can visit `/api/discord/register`.
 
+For creator service notices, see [Creator announcements](docs/announcements/README.md) for the reusable email template and preview, recipient preparation, test, and send commands. The announcement script requires Node 22.18 or newer.
+
 ### Supabase (local)
 
 Follow the official guide to run Supabase locally with the CLI (includes Studio):

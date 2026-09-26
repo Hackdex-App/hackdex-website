@@ -17,6 +17,18 @@ const nextConfig: NextConfig = {
       }
     ],
   },
+  headers: async () => {
+    const longBrowserCache = [
+      {
+        key: "Cache-Control",
+        value: "public, max-age=604800, stale-while-revalidate=2592000",
+      },
+    ];
+    return [
+      { source: "/logo.png", headers: longBrowserCache },
+      { source: "/favicon.ico", headers: longBrowserCache },
+    ];
+  },
   redirects: async () => {
     return [
       {

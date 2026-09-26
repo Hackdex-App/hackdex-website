@@ -54,7 +54,7 @@ export function HomeHero({ catalog, milestone }: HeroProps) {
           Your ROM never left your browser. Pick a hack and the patched file is yours in seconds.
         </p>
         <div className="mt-5 flex flex-wrap items-center gap-3 md:mt-6 md:gap-5">
-          <Link href="/discover?r=1" className="inline-flex h-12 w-full items-center justify-center rounded-control bg-accent-deep px-6 text-[15px] font-semibold text-white transition-colors hover:bg-accent-hover active:scale-[.98] md:w-auto">
+          <Link href="/discover?r=1" prefetch={false} className="inline-flex h-12 w-full items-center justify-center rounded-control bg-accent-deep px-6 text-[15px] font-semibold text-white transition-colors hover:bg-accent-hover active:scale-[.98] md:w-auto">
             Browse ready hacks
           </Link>
         </div>
@@ -73,7 +73,7 @@ export function HomeHero({ catalog, milestone }: HeroProps) {
         built for it, right in your browser, without ever re-uploading. Your files never leave your device.
       </p>
       <div className="mt-5 flex flex-wrap items-center gap-3 md:mt-6 md:gap-5">
-        <Link href="/discover" className="inline-flex h-12 w-full items-center justify-center rounded-control bg-accent-deep px-6 text-[15px] font-semibold text-white transition-colors hover:bg-accent-hover active:scale-[.98] md:w-auto">
+        <Link href="/discover" prefetch={false} className="inline-flex h-12 w-full items-center justify-center rounded-control bg-accent-deep px-6 text-[15px] font-semibold text-white transition-colors hover:bg-accent-hover active:scale-[.98] md:w-auto">
           Browse {catalog.length.toLocaleString()} hacks
         </Link>
         <a href="#how" className="text-link-hd">

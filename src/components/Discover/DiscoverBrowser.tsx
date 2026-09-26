@@ -479,7 +479,7 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
               </div>
               <p className="mt-6 text-sm text-text-3">
                 Can&apos;t find the hack you want? Try asking the dev to{" "}
-                <Link href="/faq#creators" className="text-link-hd">
+                <Link href="/faq#creators" prefetch={false} className="text-link-hd">
                   submit it to Hackdex
                 </Link>
                 .

@@ -51,7 +51,7 @@ export default function Shelf({ title, blurb, href, hacks }: ShelfProps) {
       <header className="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h2 className="font-display text-[22px]">{title}</h2>
         {blurb && <p className="order-3 min-w-0 flex-[1_1_100%] text-sm text-text-2 md:order-none md:flex-1 md:truncate">{blurb}</p>}
-        <Link href={href} className="text-link-hd ml-auto whitespace-nowrap text-sm md:ml-0">
+        <Link href={href} prefetch={false} className="text-link-hd ml-auto whitespace-nowrap text-sm md:ml-0">
           See all
         </Link>
       </header>

@@ -19,7 +19,7 @@ export default function ContactPage() {
           Have a question, feedback, or need help? Use this form to reach out to us.
         </p>
         <p className="mt-1 text-sm text-text-3">
-          For intellectual property concerns (DMCA), please see our <Link className="text-accent-text hover:underline" href="/terms">Terms of Service</Link>.
+          For intellectual property concerns (DMCA), please see our <Link className="text-accent-text hover:underline" href="/terms" prefetch={false}>Terms of Service</Link>.
         </p>
         <div className="mt-6">
           <Suspense fallback={<div>Loading...</div>}>
