@@ -5,6 +5,7 @@ import { fetchInChunks } from "@/utils/array";
 import type { Tables } from "@/types/db";
 import type { DiscoverData } from "@/types/discover";
 import { resolveHackDisplayVersion } from "@/utils/patches/hack-display-version";
+import { AI_SELECT, aiDisclosureFromRow, aiKind } from "@/utils/aiDisclosure";
 
 const TRENDING_WINDOW_DAYS = 3;
 const DISCOVER_REVALIDATE_SECONDS = 1800;
@@ -44,7 +45,7 @@ async function generateDiscoverData(): Promise<DiscoverData> {
   const { data: rows, error: hacksError } = await supabase
     .from("hacks")
     .select(
-      "slug,title,summary,base_rom,downloads,created_by,current_patch,custom_version_name,original_author,approved_at,is_archive,completion_status",
+      `slug,title,summary,base_rom,downloads,created_by,current_patch,custom_version_name,original_author,approved_at,is_archive,completion_status,${AI_SELECT}`,
     )
     .eq("approved", true)
     .eq("is_archive", false);
@@ -242,6 +243,7 @@ async function generateDiscoverData(): Promise<DiscoverData> {
       approvedAt: row.approved_at,
       publishedAt: currentPatch?.published_at ?? null,
       trendingScore: recentDownloads + 8 * Math.log(downloads + 1),
+      ai: aiKindOf(row),
     };
   });
 
@@ -251,6 +253,11 @@ async function generateDiscoverData(): Promise<DiscoverData> {
     tagGroups,
     ungroupedTags,
   };
+}
+
+function aiKindOf(row: Parameters<typeof aiDisclosureFromRow>[0]) {
+  const disclosure = aiDisclosureFromRow(row);
+  return disclosure ? aiKind(disclosure.levels) : null;
 }
 
 const getCachedDiscoverData = cache(

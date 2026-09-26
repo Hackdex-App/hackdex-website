@@ -9,6 +9,7 @@ import { baseGameLabel, baseRoms, PLATFORM_NAMES, type Platform } from "@/data/b
 const RAIL_PLATFORMS: Platform[] = ["GBA", "GBC", "GB", "NDS"];
 import { DISCOVER_COMPLETION_STATUSES } from "@/app/discover/search-params";
 import type { DiscoverHack } from "@/types/discover";
+import { AI_FILTERS, matchesAiFilter, type AiFilter } from "@/utils/aiDisclosure";
 
 /** The filterable part of the Discover URL state. The sheet edits a draft copy of this. */
 export type FilterState = {
@@ -16,7 +17,10 @@ export type FilterState = {
   baseRoms: string[];
   completionStatuses: string[];
   onlyReady: boolean;
+  ai: AiFilter;
 };
+
+export const EMPTY_FILTERS: FilterState = { tags: [], baseRoms: [], completionStatuses: [], onlyReady: false, ai: "any" };
 
 export type TagGroup = { name: string; tags: string[] };
 
@@ -47,7 +51,7 @@ export const ROM_GAMES: RomGame[] = (() => {
 })();
 
 export function countActive(f: FilterState) {
-  return f.tags.length + f.baseRoms.length + f.completionStatuses.length + (f.onlyReady ? 1 : 0);
+  return f.tags.length + f.baseRoms.length + f.completionStatuses.length + (f.onlyReady ? 1 : 0) + (f.ai !== "any" ? 1 : 0);
 }
 
 export function toggleValue(list: string[], value: string) {
@@ -70,6 +74,7 @@ export function useFacetCounts(catalog: DiscoverHack[]) {
       base: (ids: string[]) => ids.reduce((n, id) => n + (byBase.get(id) ?? 0), 0),
       completion: (c: string) => byCompletion.get(c) ?? 0,
       tag: (t: string) => byTag.get(t) ?? 0,
+      ai: (f: AiFilter) => catalog.filter((h) => matchesAiFilter(h.ai, f)).length,
     };
   }, [catalog]);
 }
@@ -196,6 +201,23 @@ export function FilterFields({ value, onChange, tagGroups, counts, readyCount, o
         ))}
       </Group>
 
+      <Group title="AI use">
+        <div role="radiogroup" aria-label="AI use">
+          {AI_FILTERS.map((f) => (
+            <Radio
+              key={f.value}
+              name="discover-ai"
+              className={rowH}
+              label={f.label}
+              hint={"hint" in f ? f.hint : undefined}
+              count={counts.ai(f.value)}
+              checked={value.ai === f.value}
+              onChange={() => onChange({ ...value, ai: f.value })}
+            />
+          ))}
+        </div>
+      </Group>
+
       <Group title="Tags">
         <Find value={tagQ} onChange={setTagQ} placeholder="Find a tag" />
         {visibleGroups.map((group) => {
@@ -304,6 +326,21 @@ function Check({ label, count, checked, onChange, className = "", ready = false 
       <span className={`${BOX} ${ready ? "peer-checked:border-ready peer-checked:bg-ready" : "peer-checked:border-accent-deep peer-checked:bg-accent-deep"}`} />
       <span className="min-w-0 flex-1 truncate">{label}</span>
       <small className="text-xs tabular-nums text-text-3">{count}</small>
+    </label>
+  );
+}
+
+/** Radio row for single-choice groups, same layout as Check. The hint wraps under the label. */
+function Radio({ name, label, hint, count, checked, onChange, className = "" }: { name: string; label: string; hint?: string; count: number; checked: boolean; onChange: () => void; className?: string }) {
+  return (
+    <label className={`group/check flex cursor-pointer select-none items-start gap-2.5 rounded-md py-1.5 text-sm ${className}`}>
+      <input type="radio" name={name} checked={checked} onChange={onChange} className="peer sr-only" />
+      <span className="relative mt-px h-[18px] w-[18px] flex-none rounded-full border-[1.5px] border-line-strong bg-surface transition-[border-color,border-width] duration-[120ms] group-hover/check:border-text-3 peer-checked:border-[5px] peer-checked:border-accent-deep peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent" />
+      <span className="min-w-0 flex-1">
+        {label}
+        {hint && <small className="mt-0.5 block text-xs leading-[1.35] text-text-3">{hint}</small>}
+      </span>
+      <small className="mt-0.5 text-xs tabular-nums text-text-3">{count}</small>
     </label>
   );
 }

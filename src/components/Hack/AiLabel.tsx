@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import type { IconType } from "react-icons";
 import { FiChevronDown, FiCode, FiFlag, FiGlobe, FiImage, FiMessageSquare, FiMusic } from "react-icons/fi";
-import { AI_AREAS, AI_LEVEL_LABEL, AI_LEVEL_STEP, aiHeadline, type AiArea, type AiDisclosure } from "@/utils/aiDisclosure";
+import { AI_AREAS, AI_HEADLINES, AI_LEVEL_LABEL, AI_LEVEL_STEP, aiKind, type AiArea, type AiDisclosure } from "@/utils/aiDisclosure";
 
 export const AI_AREA_ICONS: Record<AiArea, IconType> = {
   graphics: FiImage,
@@ -43,7 +43,7 @@ export default function AiLabel({ disclosure, defaultOpen = false }: { disclosur
   return (
     <div className="rounded-card border border-line bg-surface px-3.5 py-3 shadow-rest">
       <div className="flex items-baseline justify-between gap-2.5">
-        <b className="font-display text-[20px] font-extrabold leading-[1.1] tracking-[-.015em]">{aiHeadline(levels)}</b>
+        <b className="font-display text-[20px] font-extrabold leading-[1.1] tracking-[-.015em]">{AI_HEADLINES[aiKind(levels)]}</b>
         <span className="whitespace-nowrap text-[12.5px] text-text-2">Updated {shortDate(disclosure.disclosedAt)}</span>
       </div>
 

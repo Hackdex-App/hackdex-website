@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import Modal from "@/components/Primitives/Modal";
 import AiLabel, { AI_AREA_ICONS } from "@/components/Hack/AiLabel";
-import { AI_AREAS, AI_HEADLINES, AI_LEVEL_LABEL, aiHeadline, type AiDisclosure, type AiLevel, type AiLevels } from "@/utils/aiDisclosure";
+import { AI_AREAS, AI_FILTERS, AI_LEVEL_LABEL, aiKind, matchesAiFilter, type AiDisclosure, type AiLevel, type AiLevels } from "@/utils/aiDisclosure";
 
 const NOTE_MAX = 1000;
 
@@ -37,7 +37,7 @@ function AiDisclosureForm({ initial, onCancel, onSave }: { initial: AiDisclosure
   const [busy, setBusy] = React.useState(false);
   const complete = AI_AREAS.every((a) => levels[a.key] !== undefined);
   const preview: AiLevels = Object.fromEntries(AI_AREAS.map((a) => [a.key, levels[a.key] ?? "none"])) as AiLevels;
-  const headline = aiHeadline(preview);
+  const kind = aiKind(preview);
 
   async function save() {
     if (!complete || busy) return;
@@ -119,9 +119,11 @@ function AiDisclosureForm({ initial, onCancel, onSave }: { initial: AiDisclosure
         <AiLabel disclosure={{ levels: preview, note: note.trim() || null, disclosedAt: new Date().toISOString() }} defaultOpen />
         <p className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-text-3">
           Shows under
-          <FilterChip on>Any</FilterChip>
-          <FilterChip on={headline !== AI_HEADLINES.content}>No AI content</FilterChip>
-          <FilterChip on={headline === AI_HEADLINES.none}>No direct AI usage</FilterChip>
+          {AI_FILTERS.map((f) => (
+            <FilterChip key={f.value} on={matchesAiFilter(kind, f.value)}>
+              {f.label}
+            </FilterChip>
+          ))}
         </p>
       </div>
 

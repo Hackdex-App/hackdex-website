@@ -54,7 +54,8 @@ type AiRow = Pick<Tables<"hacks">, `ai_${AiArea}` | "ai_note" | "ai_disclosed_at
 export const AI_SELECT = "ai_graphics,ai_music,ai_story,ai_translation,ai_events,ai_code,ai_note,ai_disclosed_at";
 
 export const AI_HEADLINES = { content: "Contains AI", code: "AI in code only", none: "No direct AI usage" } as const;
-export type AiHeadline = (typeof AI_HEADLINES)[keyof typeof AI_HEADLINES];
+/** Which headline a disclosure gets; Discover filters on this. */
+export type AiKind = keyof typeof AI_HEADLINES;
 
 /** null until the creator has filled in the form (all six columns are set together). */
 export function aiDisclosureFromRow(row: AiRow): AiDisclosure | null {
@@ -64,9 +65,23 @@ export function aiDisclosureFromRow(row: AiRow): AiDisclosure | null {
 }
 
 /** Any content area with AI outranks code; the headline describes the hack as a whole. */
-export function aiHeadline(levels: AiLevels): AiHeadline {
-  if (AI_AREAS.some((a) => a.key !== "code" && levels[a.key] !== "none")) return AI_HEADLINES.content;
-  return levels.code !== "none" ? AI_HEADLINES.code : AI_HEADLINES.none;
+export function aiKind(levels: AiLevels): AiKind {
+  if (AI_AREAS.some((a) => a.key !== "code" && levels[a.key] !== "none")) return "content";
+  return levels.code !== "none" ? "code" : "none";
+}
+
+/** Discover's AI filter. Hacks without a disclosure pass the strict options too; most use no AI, and reports catch the rest. */
+export const AI_FILTERS = [
+  { value: "any", label: "Any" },
+  { value: "no-content", label: "No AI content" },
+  { value: "none", label: "No direct AI usage", hint: "Nothing AI-generated was intentionally added by the creator" },
+] as const;
+export type AiFilter = (typeof AI_FILTERS)[number]["value"];
+
+export function matchesAiFilter(kind: AiKind | null, filter: AiFilter) {
+  if (filter === "no-content") return kind !== "content";
+  if (filter === "none") return kind === null || kind === "none";
+  return true;
 }
 
 /** Validates untrusted input (server actions) against each area's allowed levels. */

@@ -25,8 +25,10 @@ import {
   useFacetCounts,
   type FilterState,
   type TagGroup,
+  EMPTY_FILTERS,
 } from "./DiscoverFilters";
 import { baseGameLabel, baseRoms } from "@/data/baseRoms";
+import { AI_FILTERS, matchesAiFilter, type AiFilter } from "@/utils/aiDisclosure";
 
 const SORT_OPTIONS: SelectOption[] = [
   { value: "trending", label: "Trending", icon: MdWhatshot },
@@ -55,6 +57,7 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
   const [selectedCompletionStatuses, setSelectedCompletionStatuses] = React.useState<string[]>(() => [...initialState.completionStatuses]);
   const [sort, setSort] = React.useState<DiscoverSortOption>(initialState.sort);
   const [onlyReady, setOnlyReady] = React.useState(initialState.onlyReady);
+  const [ai, setAi] = React.useState<AiFilter>(initialState.ai);
   const [currentPage, setCurrentPage] = React.useState(initialState.page);
   const [view, setView] = React.useState<View>("grid");
   const listRef = React.useRef<HTMLDivElement | null>(null);
@@ -93,8 +96,9 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
       baseRoms: onlyReady ? [] : selectedBaseRoms,
       completionStatuses: selectedCompletionStatuses,
       onlyReady,
+      ai,
     }),
-    [currentPage, onlyReady, query, selectedBaseRoms, selectedCompletionStatuses, selectedTags, sort]
+    [ai, currentPage, onlyReady, query, selectedBaseRoms, selectedCompletionStatuses, selectedTags, sort]
   );
 
   const applyUrlState = React.useCallback((nextState: DiscoverUrlState) => {
@@ -104,6 +108,7 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
     setSelectedCompletionStatuses([...nextState.completionStatuses]);
     setSort(nextState.sort);
     setOnlyReady(nextState.onlyReady);
+    setAi(nextState.ai);
     setCurrentPage(nextState.page);
   }, []);
 
@@ -160,6 +165,7 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
     if (onlyReady) {
       out = out.filter((h) => !h.is_archive && h.baseRomId && readyBaseRomIds.has(h.baseRomId));
     }
+    if (ai !== "any") out = out.filter((h) => matchesAiFilter(h.ai, ai));
     return [...out].sort((a, b) => {
       if (sort === "popular") return b.downloads - a.downloads;
       if (sort === "new") return (b.approvedAt ? Date.parse(b.approvedAt) : 0) - (a.approvedAt ? Date.parse(a.approvedAt) : 0);
@@ -172,7 +178,7 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
       if (sort === "alpha") return a.title.localeCompare(b.title);
       return b.trendingScore - a.trendingScore;
     });
-  }, [catalog, groups, onlyReady, query, readyBaseRomIds, selectedBaseRoms, selectedCompletionStatuses, selectedTags, sort]);
+  }, [ai, catalog, groups, onlyReady, query, readyBaseRomIds, selectedBaseRoms, selectedCompletionStatuses, selectedTags, sort]);
 
   const showSkeleton = !initialUrlStateApplied || (onlyReady && baseRomsLoading);
   const totalPages = Math.max(1, Math.ceil(filtered.length / HACKS_PER_PAGE));
@@ -204,7 +210,7 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
   );
 
   // ---- filters (rail applies live; the phone sheet edits a draft) ----
-  const filterState: FilterState = { tags: selectedTags, baseRoms: selectedBaseRoms, completionStatuses: selectedCompletionStatuses, onlyReady };
+  const filterState: FilterState = { tags: selectedTags, baseRoms: selectedBaseRoms, completionStatuses: selectedCompletionStatuses, onlyReady, ai };
   const active = countActive(filterState);
   const counts = useFacetCounts(catalog);
   const readyCount = React.useMemo(
@@ -218,12 +224,13 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
       setSelectedBaseRoms(next.baseRoms);
       setSelectedCompletionStatuses(next.completionStatuses);
       setOnlyReady(next.onlyReady);
+      setAi(next.ai);
       setCurrentPage(1);
       syncUrlWith({ ...next, baseRoms: next.onlyReady ? [] : next.baseRoms, page: 1 });
     },
     [syncUrlWith]
   );
-  const clearFilters = () => applyFilters({ tags: [], baseRoms: [], completionStatuses: [], onlyReady: false });
+  const clearFilters = () => applyFilters(EMPTY_FILTERS);
 
   const [open, setOpen] = React.useState<Set<string>>(() => new Set(["rom:GBA"]));
   const toggleOpen = (id: string) =>
@@ -245,7 +252,8 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
         wanted.every((picked) => picked.some((t) => h.tags.some((tag) => tag.name === t))) &&
         (draft.baseRoms.length === 0 || (h.baseRomId && draft.baseRoms.includes(h.baseRomId))) &&
         (draft.completionStatuses.length === 0 || draft.completionStatuses.includes(h.completion_status ?? "Complete")) &&
-        (!draft.onlyReady || (h.baseRomId && readyBaseRomIds.has(h.baseRomId)))
+        (!draft.onlyReady || (h.baseRomId && readyBaseRomIds.has(h.baseRomId))) &&
+        matchesAiFilter(h.ai, draft.ai)
     ).length;
   }, [catalog, draft, groups, readyBaseRomIds, sheet]);
 
@@ -302,6 +310,7 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
     chips.push({ key: `b-${id}`, label: baseGameLabel(name), onRemove: () => applyFilters({ ...filterState, baseRoms: selectedBaseRoms.filter((v) => v !== id) }) });
   }
   for (const c of selectedCompletionStatuses) chips.push({ key: `c-${c}`, label: c, onRemove: () => applyFilters({ ...filterState, completionStatuses: selectedCompletionStatuses.filter((v) => v !== c) }) });
+  if (ai !== "any") chips.push({ key: "ai", label: AI_FILTERS.find((f) => f.value === ai)!.label, onRemove: () => applyFilters({ ...filterState, ai: "any" }) });
   for (const t of selectedTags) chips.push({ key: `t-${t}`, label: t, onRemove: () => applyFilters({ ...filterState, tags: selectedTags.filter((v) => v !== t) }) });
 
   const fields = (mode: "rail" | "sheet") => (
@@ -518,7 +527,7 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
       </div>
 
       {sheet && (
-        <FilterSheet active={countActive(draft)} total={draftTotal} onClose={() => closeSheet(false)} onCommit={() => closeSheet(true)} onClear={() => setDraft({ tags: [], baseRoms: [], completionStatuses: [], onlyReady: false })}>
+        <FilterSheet active={countActive(draft)} total={draftTotal} onClose={() => closeSheet(false)} onCommit={() => closeSheet(true)} onClear={() => setDraft(EMPTY_FILTERS)}>
           {fields("sheet")}
         </FilterSheet>
       )}
