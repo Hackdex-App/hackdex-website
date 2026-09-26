@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import mjml from "mjml";
-import { MJMLParseError } from "mjml-core";
+import type { MJMLParseError } from "mjml-core";
 
 const EMAILS_DIR = path.join(process.cwd(), "src/emails");
 const TEMPLATES_DIR = path.join(EMAILS_DIR, "templates");
@@ -21,6 +21,7 @@ export type HackReviewReplyEmailVars = {
 };
 
 export type EmailTemplateVars = {
+  announcement: { title: string; message: string };
   "hack-approved": HackApprovedEmailVars;
   "hack-review-reply": HackReviewReplyEmailVars;
 };
@@ -46,9 +47,22 @@ function substituteVars(template: string, vars: Record<string, string>): string 
   });
 }
 
+// Announcement bodies are plain text. Preserve line breaks and link HTTP URLs.
+function formatAnnouncementMessage(message: string): string {
+  return message.split(/(https?:\/\/[^\s<>"']+)/g).map((part, index) => {
+    if (index % 2 === 0) return escapeHtml(part);
+    const url = part.replace(/[.,;!?)]+$/, "");
+    return `<a href="${escapeHtml(url)}">${escapeHtml(url)}</a>${escapeHtml(part.slice(url.length))}`;
+  }).join("").replace(/\r?\n/g, "<br />");
+}
+
 const templateNormalizers: {
   [K in EmailTemplate]: (vars: EmailTemplateVars[K]) => Record<string, string>;
 } = {
+  announcement: ({ title, message }) => ({
+    title: escapeHtml(title),
+    message: formatAnnouncementMessage(message),
+  }),
   "hack-approved": ({ title, slug }) => ({
     title: escapeHtml(title),
     slug: encodeURIComponent(slug),

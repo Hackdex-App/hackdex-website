@@ -10,6 +10,8 @@
     "db:reset": "supabase db reset && docker exec -i supabase_db_pokemon-romhack-platform psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/seed.sql && npm run seed:storage",
     "seed:storage": "node --env-file=.env.local --env-file=.env.development.local scripts/seed-storage.mjs",
     "discord:register": "node scripts/register-discord-commands.mjs",
+    "email:announcement": "node --env-file-if-exists=.env.local --env-file-if-exists=.env.announcements scripts/send-announcement.mts",
+    "test:announcement": "node --test scripts/send-announcement.test.mts",
     "postinstall": "patch-package"
   },
   "dependencies": {
