@@ -24,6 +24,8 @@ import {
 } from "@/utils/patches/download-telemetry";
 import { downloadPatch, DownloadPatchError } from "@/utils/patches/download-patch";
 import type { SelectablePatch } from "@/types/patcher";
+import { patchDisplayName } from "@/utils/patches/patch-variant";
+import { baseRomName } from "@/utils/hacks/base-roms";
 import { applyPatch, patchFormatFromFilename, type PatchFormat } from "@/utils/patching";
 import { createOutputSink, SaveCancelledError, type OutputSink } from "@/utils/patching/save";
 
@@ -96,18 +98,29 @@ const HackActions: React.FC<HackActionsProps> = ({
   const [termsAgreed, setTermsAgreed] = React.useState(false);
   const [romErrorModal, setRomErrorModal] = React.useState<BaseRomErrorModalState | null>(null);
   const [isVerifyingRom, setIsVerifyingRom] = React.useState(false);
-  const [selectedPatchId, setSelectedPatchId] = React.useState<number | null>(patcherSelector.defaultPatchId);
+  const requiresPatchChoice = patcherSelector.selectablePatches.length > 1;
+  const [selectedPatchId, setSelectedPatchId] = React.useState<number | null>(
+    requiresPatchChoice ? null : patcherSelector.defaultPatchId,
+  );
   const [versionPickerOpen, setVersionPickerOpen] = React.useState(false);
   const selectedPatchIdRef = React.useRef(selectedPatchId);
   const fetchSessionIdRef = React.useRef<string | null | undefined>(undefined);
   const linkInteractionPendingRef = React.useRef(false);
   selectedPatchIdRef.current = selectedPatchId;
-  const romReady = hasPermission(baseRomId) || hasCached(baseRomId);
+  const selectedPatch = React.useMemo(
+    () => patcherSelector.selectablePatches.find((patch) => patch.id === selectedPatchId) ?? null,
+    [patcherSelector.selectablePatches, selectedPatchId],
+  );
+  const effectiveBaseRomId = selectedPatch
+    ? (selectedPatch.base_rom || baseRomId)
+    : (requiresPatchChoice ? "" : baseRomId);
+  const romReady = Boolean(effectiveBaseRomId) && (hasPermission(effectiveBaseRomId) || hasCached(effectiveBaseRomId));
   const onboarding = useHackOnboarding({
     hasVersionPicker: patcherSelector.selectablePatches.length > 1,
     romReady,
     romReadyKnown: !baseRomsLoading,
     versionPickerOpen,
+    patchChosen: !requiresPatchChoice || selectedPatch != null,
   });
 
   function getFetchSessionId(): string | null {
@@ -118,27 +131,19 @@ const HackActions: React.FC<HackActionsProps> = ({
     fetchSessionIdRef.current = id;
     return id;
   }
-  const baseRomName = React.useMemo(() => baseRoms.find(r => r.id === baseRomId)?.name || null, [baseRomId]);
+  const selectedBaseRomName = React.useMemo(() => baseRomName(effectiveBaseRomId), [effectiveBaseRomId]);
   const effectivePlatform = React.useMemo(
-    () => platform ?? baseRoms.find(r => r.id === baseRomId)?.platform,
-    [platform, baseRomId],
+    () => platform ?? baseRoms.find(r => r.id === effectiveBaseRomId)?.platform,
+    [platform, effectiveBaseRomId],
   );
-  const selectedPatch = React.useMemo(
-    () => patcherSelector.selectablePatches.find((patch) => patch.id === selectedPatchId)
-      ?? patcherSelector.selectablePatches[0]
-      ?? null,
-    [patcherSelector.selectablePatches, selectedPatchId],
-  );
-  const selectedVersion = selectedPatch?.version ?? version;
+  const selectedVersion = selectedPatch
+    ? patchDisplayName(selectedPatch)
+    : (requiresPatchChoice ? "Select patch" : version);
   const selectedFilename = selectedPatch?.filename ?? patchFilename;
 
   function isRomReadyForPatch() {
-    return !!file || hasCached(baseRomId) || (isLinked(baseRomId) && hasPermission(baseRomId));
+    return !!file || hasCached(effectiveBaseRomId) || (isLinked(effectiveBaseRomId) && hasPermission(effectiveBaseRomId));
   }
-
-  React.useEffect(() => {
-    setSelectedPatchId(patcherSelector.defaultPatchId);
-  }, [patcherSelector.defaultPatchId]);
 
   React.useEffect(() => {
     if (!romReady || !linkInteractionPendingRef.current) return;
@@ -159,6 +164,7 @@ const HackActions: React.FC<HackActionsProps> = ({
     if (nextPatchId === selectedPatchId) return;
     selectedPatchIdRef.current = nextPatchId;
     setSelectedPatchId(nextPatchId);
+    setFile(null);
     resetPatchSession();
   }
 
@@ -177,7 +183,7 @@ const HackActions: React.FC<HackActionsProps> = ({
   }, []);
 
   React.useEffect(() => {
-    if ((isLinked(baseRomId) && hasPermission(baseRomId)) || hasCached(baseRomId)) {
+    if ((isLinked(effectiveBaseRomId) && hasPermission(effectiveBaseRomId)) || hasCached(effectiveBaseRomId)) {
       if (status !== "downloading" && status !== "patching" && status !== "done") {
         if (termsAgreed && patchUrl) {
           setStatus("ready");
@@ -186,7 +192,7 @@ const HackActions: React.FC<HackActionsProps> = ({
         }
       }
     }
-  }, [baseRomId, isLinked, hasPermission, hasCached, status, termsAgreed, patchUrl]);
+  }, [effectiveBaseRomId, isLinked, hasPermission, hasCached, status, termsAgreed, patchUrl]);
 
   React.useEffect(() => {
     let timeoutId: NodeJS.Timeout | undefined;
@@ -205,7 +211,7 @@ const HackActions: React.FC<HackActionsProps> = ({
     setFile(null);
     if (!f) return;
 
-    const requiredRomName = baseRomName ?? "this hack's base ROM";
+    const requiredRomName = selectedBaseRomName ?? "this hack's base ROM";
     const requiredExtensionPhrase = effectivePlatform
       ? formatRequiredRomExtension(effectivePlatform)
       : "a ROM file";
@@ -241,7 +247,7 @@ const HackActions: React.FC<HackActionsProps> = ({
     try {
       const selectedHash = await sha1Hex(f);
       const match = baseRoms.find((r) => r.sha1.toLowerCase() === selectedHash.toLowerCase());
-      const requiredHash = baseRoms.find((r) => r.id === baseRomId)?.sha1.toLowerCase() ?? "";
+      const requiredHash = baseRoms.find((r) => r.id === effectiveBaseRomId)?.sha1.toLowerCase() ?? "";
 
       if (!match) {
         setRomErrorModal({
@@ -255,7 +261,7 @@ const HackActions: React.FC<HackActionsProps> = ({
         return;
       }
 
-      if (match.id !== baseRomId) {
+      if (match.id !== effectiveBaseRomId) {
         await importUploadedBlob(f);
         setRomErrorModal({
           kind: "hash_mismatch",
@@ -514,19 +520,19 @@ const HackActions: React.FC<HackActionsProps> = ({
 
       let baseFile = file;
       if (!baseFile) {
-        if (!isLinked(baseRomId) && !hasCached(baseRomId)) {
+        if (!isLinked(effectiveBaseRomId) && !hasCached(effectiveBaseRomId)) {
           await discardSink();
           return;
         }
-        if (!hasCached(baseRomId)) {
-          const perm = await ensurePermission(baseRomId, true);
+        if (!hasCached(effectiveBaseRomId)) {
+          const perm = await ensurePermission(effectiveBaseRomId, true);
           if (perm !== "granted") {
             await discardSink();
             return;
           }
           onboarding.onHackPageRomSupplied();
         }
-        const linkedFile = await getFileBlob(baseRomId);
+        const linkedFile = await getFileBlob(effectiveBaseRomId);
         if (!linkedFile) {
           await discardSink();
           return;
@@ -612,14 +618,14 @@ const HackActions: React.FC<HackActionsProps> = ({
   }
 
   async function onClickLink() {
-    if (isLinked(baseRomId)) {
-      const permission = await ensurePermission(baseRomId, true);
+    if (isLinked(effectiveBaseRomId)) {
+      const permission = await ensurePermission(effectiveBaseRomId, true);
       if (permission === "granted") onboarding.onHackPageRomSupplied();
       return;
     }
 
     linkInteractionPendingRef.current = true;
-    await linkRom(baseRomId);
+    await linkRom(effectiveBaseRomId);
   }
 
   return (
@@ -637,12 +643,12 @@ const HackActions: React.FC<HackActionsProps> = ({
         onOnboardingGateClick={onboarding.openFromGate}
         author={author}
         filename={selectedFilename}
-        baseRomName={baseRomName}
-        baseRomPlatform={platform}
+        baseRomName={selectedBaseRomName}
+        baseRomPlatform={effectivePlatform}
         onPatch={onPatch}
         status={status}
         error={error}
-        isLinked={isLinked(baseRomId)}
+        isLinked={isLinked(effectiveBaseRomId)}
         romReady={romReady}
         onClickLink={onClickLink}
         supported={supported}
@@ -660,7 +666,7 @@ const HackActions: React.FC<HackActionsProps> = ({
           onNext={onboarding.next}
           onGotIt={onboarding.gotIt}
           onDismiss={onboarding.dismissCard}
-          baseRomName={baseRomName}
+          baseRomName={selectedBaseRomName}
         />
       )}
       {romErrorModal && (

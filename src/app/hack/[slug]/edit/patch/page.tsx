@@ -5,6 +5,7 @@ import Link from "next/link";
 import { FaChevronLeft } from "react-icons/fa6";
 import { isInformationalArchiveHack, isDownloadableArchiveHack, canEditAsCreator, canEditAsAdmin, canEditAsArchiver } from "@/utils/hack";
 import { getPatcherSelectablePatches } from "@/utils/patches/patcher-selectable-patches";
+import { isMultiEntryHack } from "@/utils/hacks/multi-entry";
 
 interface EditPatchPageProps {
   params: Promise<{ slug: string }>;
@@ -51,16 +52,38 @@ export default async function EditPatchPage({ params }: EditPatchPageProps) {
 
   const { data: patchRows } = await supabase
     .from("patches")
-    .select("id,version")
+    .select("id,version,label,info,base_rom,created_at,archived")
     .eq("parent_hack", slug)
     .order("created_at", { ascending: true });
-  const existingVersions = (patchRows || []).map((p: any) => p.version as string);
+  const existingVersions = [...new Set((patchRows || []).map((p: any) => p.version as string))];
+  const existingPatchKeys = (patchRows || []).map((p: any) => `${p.version}::${(p.label || "").trim()}`);
+
+  const { data: hackBaseRomRows } = await supabase
+    .from("hack_base_roms")
+    .select("base_rom,sort_order")
+    .eq("hack_slug", slug)
+    .order("sort_order", { ascending: true });
+  const baseRomIds = [...new Set((hackBaseRomRows || []).map((row) => row.base_rom).filter(Boolean))];
+  if (baseRomIds.length === 0 && hack.base_rom) baseRomIds.push(hack.base_rom);
+  const multiSource = isMultiEntryHack({
+    baseRomCount: baseRomIds.length,
+    patches: patchRows || [],
+  });
 
   const patcherSelection = await getPatcherSelectablePatches(supabase, slug, hack.current_patch);
   const isCustomPatcherActive = patcherSelection.savedPatchIds.length > 0;
 
   const currentPatch = patchRows?.find((p: any) => p.id === hack.current_patch);
   const currentVersion = isCustomPatcherActive ? hack.custom_version_name ?? undefined : currentPatch?.version;
+  const templateVersion = currentPatch?.version
+    || [...(patchRows || [])].reverse().find((p: any) => !p.archived)?.version;
+  const initialPatches = (patchRows || [])
+    .filter((p: any) => !p.archived && p.version === templateVersion)
+    .map((p: any) => ({
+      label: p.label ?? null,
+      info: p.info ?? null,
+      base_rom: p.base_rom ?? null,
+    }));
 
   return (
     <div className="mx-auto max-w-screen-lg px-6 py-10">
@@ -69,14 +92,18 @@ export default async function EditPatchPage({ params }: EditPatchPageProps) {
         <span className="gradient-text font-bold">{hack.title}</span>
       </h1>
 
-      <div className="mt-8 card p-5 max-w-[480px]">
+      <div className={`mt-8 card p-5 ${multiSource ? "max-w-[640px]" : "max-w-[480px]"}`}>
         <HackPatchForm
           slug={slug}
           baseRomId={hack.base_rom}
+          baseRomIds={baseRomIds}
           existingVersions={existingVersions}
+          existingPatchKeys={existingPatchKeys}
           isCustomPatcherActive={isCustomPatcherActive}
           customVersionName={isCustomPatcherActive ? hack.custom_version_name : undefined}
           currentVersion={currentVersion}
+          multiSource={multiSource}
+          initialPatches={initialPatches}
         />
       </div>
 

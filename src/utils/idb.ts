@@ -186,7 +186,7 @@ export function platformAccept(p?: Platform | Platform[] | null): string {
 
   // Exhaustive check using a mapping object for platform strings
   const mapping: Record<Platform, string> = {
-    GB: ".gb",
+    GB: ".gb,.gbc",
     GBC: ".gbc,.gb",
     GBA: ".gba",
     NDS: ".nds",

@@ -52,6 +52,26 @@ async function generateDiscoverData(): Promise<DiscoverData> {
 
   const slugs = rows.map((row) => row.slug);
 
+  const { data: hackBaseRomRows, error: hackBaseRomsError } = await fetchInChunks(
+    slugs,
+    CHUNK_SIZE,
+    async (slugChunk) => {
+      const { data, error } = await supabase
+        .from("hack_base_roms")
+        .select("hack_slug,base_rom,sort_order")
+        .in("hack_slug", slugChunk)
+        .order("sort_order", { ascending: true });
+      return { data, error };
+    },
+  );
+  if (hackBaseRomsError) throw hackBaseRomsError;
+  const baseRomsBySlug = new Map<string, string[]>();
+  for (const row of hackBaseRomRows) {
+    const ids = baseRomsBySlug.get(row.hack_slug) ?? [];
+    if (!ids.includes(row.base_rom)) ids.push(row.base_rom);
+    baseRomsBySlug.set(row.hack_slug, ids);
+  }
+
   const { data: coverRows, error: coversError } = await fetchInChunks(
     slugs,
     CHUNK_SIZE,
@@ -229,6 +249,7 @@ async function generateDiscoverData(): Promise<DiscoverData> {
       tags: sortOrderedTags(tagsBySlug.get(row.slug) ?? []),
       downloads,
       baseRomId: row.base_rom,
+      baseRomIds: baseRomsBySlug.get(row.slug) ?? [row.base_rom],
       version: resolveHackDisplayVersion({
         isArchive: false,
         isCustomPatcherActive: customPatcherSlugs.has(row.slug),

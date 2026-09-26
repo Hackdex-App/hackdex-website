@@ -23,8 +23,8 @@ interface HackOnboardingOverlayProps {
 
 const STEP_COPY: Record<HackOnboardingStep, { title: string; body: React.ReactNode }> = {
   version: {
-    title: "Choose your version",
-    body: "This hack has more than one release. Pick the version you want here before you patch.",
+    title: "Choose your patch",
+    body: "This hack has more than one patch. Each one uses a different base ROM, so pick the patch you want before you continue.",
   },
   selectRom: {
     title: "The key to your download",
@@ -119,10 +119,8 @@ function cardPosition(anchor: Anchor, step: HackOnboardingStep): React.CSSProper
   return {
     top: anchor.barBottom + 14,
     width: 280,
-    // Step 1 points back at the version chip; the ROM steps follow the CTA.
-    ...(step === "version"
-      ? { left: anchor.barLeft }
-      : { right: anchor.viewportWidth - anchor.barRight }),
+    // Version, ROM, and patch CTAs all sit on the right side of the bar.
+    right: anchor.viewportWidth - anchor.barRight,
   };
 }
 
@@ -217,7 +215,7 @@ export default function HackOnboardingOverlay({
           style={cardPosition(anchor, step)}
           className="anim-pop elevate fixed z-[80] rounded-xl border border-[var(--border)] bg-white p-3.5 outline-none dark:bg-[#141414]"
         >
-          {(step === "selectRom" || !isLastStep) && (
+          {(step === "selectRom" || step === "version" || !isLastStep) && (
             <button
               type="button"
               onClick={onDismiss}
@@ -227,13 +225,19 @@ export default function HackOnboardingOverlay({
               <FiX size={14} aria-hidden />
             </button>
           )}
-          <h4 id={titleId} className={`text-[13px] font-semibold ${step === "selectRom" || !isLastStep ? "pr-7" : ""}`}>
+          <h4 id={titleId} className={`text-[13px] font-semibold ${step === "selectRom" || step === "version" || !isLastStep ? "pr-7" : ""}`}>
             {copy.title}
           </h4>
           <p className="mt-1 text-xs leading-relaxed text-foreground/70">{copy.body}</p>
-          {step === "selectRom" ? (
+          {step === "version" ? (
             <p className="mt-3 text-xs font-semibold text-foreground/75">
-              Select a clean {baseRomName || "base"} ROM to continue.
+              Press Select Patch to choose which one you want.
+            </p>
+          ) : step === "selectRom" ? (
+            <p className="mt-3 text-xs font-semibold text-foreground/75">
+              {baseRomName && baseRomName !== "Unknown"
+                ? `Select a clean ${baseRomName} ROM to continue.`
+                : "Select a clean base ROM to continue."}
             </p>
           ) : (
             <div className="mt-3 flex justify-end">

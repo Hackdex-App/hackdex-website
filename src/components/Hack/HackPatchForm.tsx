@@ -13,18 +13,40 @@ import { FaInfoCircle } from "react-icons/fa";
 import { FiAlertTriangle } from "react-icons/fi";
 import { patchFormatFromFilename } from "@/utils/patching";
 import { encodeXdelta, trialDecodeXdelta, friendlyXdeltaError } from "@/utils/patching/xdelta";
+import { confirmPatchUploads } from "@/app/submit/actions";
+import PatchSlotCard, { createPatchSlotDraft, isPatchSlotReady, type PatchSlotDraft, type PatchSlotStatus } from "@/components/Hack/PatchSlotCard";
+import { normalizePatchLabel } from "@/utils/patches/patch-variant";
 
 export interface HackPatchFormProps {
   slug: string;
   baseRomId: string;
+  baseRomIds?: string[];
   existingVersions: string[];
+  existingPatchKeys?: string[];
   isCustomPatcherActive: boolean;
   customVersionName?: string | null;
   currentVersion?: string;
+  multiSource?: boolean;
+  initialPatches?: Array<{
+    label: string | null;
+    info: string | null;
+    base_rom: string | null;
+  }>;
+}
+
+function emptySlotStatus(): PatchSlotStatus {
+  return {
+    file: null,
+    genStatus: "idle",
+    genError: "",
+    checksumStatus: "idle",
+    checksumError: "",
+  };
 }
 
 export default function HackPatchForm(props: HackPatchFormProps) {
-  const { slug, baseRomId, existingVersions, isCustomPatcherActive, currentVersion } = props;
+  const { slug, baseRomId, baseRomIds, existingVersions, existingPatchKeys = [], isCustomPatcherActive, currentVersion, multiSource = false, initialPatches = [] } = props;
+  const allowedBaseRomIds = baseRomIds?.length ? baseRomIds : (baseRomId ? [baseRomId] : []);
   const [version, setVersion] = React.useState("");
   const [patchMode, setPatchMode] = React.useState<"bps" | "rom">("rom");
   const [patchFile, setPatchFile] = React.useState<File | null>(null);
@@ -35,6 +57,25 @@ export default function HackPatchForm(props: HackPatchFormProps) {
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string>("");
   const [publishAutomatically, setPublishAutomatically] = React.useState(false);
+  const [globalChangelog, setGlobalChangelog] = React.useState("");
+  const [patchSlots, setPatchSlots] = React.useState<PatchSlotDraft[]>(() => {
+    if (multiSource && initialPatches.length > 0) {
+      return initialPatches.map((patch) => createPatchSlotDraft({
+        label: patch.label || "",
+        info: patch.info || "",
+        baseRomId: patch.base_rom || "",
+      }));
+    }
+    return multiSource
+      ? allowedBaseRomIds.map((id) => createPatchSlotDraft({ baseRomId: id }))
+      : [createPatchSlotDraft({ baseRomId })];
+  });
+  const [patchSlotStatuses, setPatchSlotStatuses] = React.useState<PatchSlotStatus[]>(() => (
+    (multiSource && initialPatches.length > 0
+      ? initialPatches
+      : (multiSource ? allowedBaseRomIds : [baseRomId])
+    ).map(() => emptySlotStatus())
+  ));
 
   const versionInputRef = React.useRef<HTMLInputElement | null>(null);
   const patchInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -49,15 +90,26 @@ export default function HackPatchForm(props: HackPatchFormProps) {
   const baseRomNeedsPermission = !!baseRomId && isLinked(baseRomId) && !baseRomReady;
   const baseRomMissing = !!baseRomId && !isLinked(baseRomId) && !hasCached(baseRomId);
 
-  const isVersionTaken = version.trim() && existingVersions.includes(version.trim());
+  const isVersionTaken = !multiSource && !!version.trim() && existingVersions.includes(version.trim());
+  const hasDuplicateLabels = multiSource && new Set(patchSlots.map((slot) => slot.label.trim().toLowerCase()).filter(Boolean)).size !== patchSlots.filter((slot) => slot.label.trim()).length;
+  const hasExistingVariant = multiSource && patchSlots.some((slot) => existingPatchKeys.includes(`${version.trim()}::${normalizePatchLabel(slot.label)}`));
+  const multiReady = !multiSource || (
+    patchSlots.length >= 2
+    && patchSlots.every((slot, index) => isPatchSlotReady(slot, patchSlotStatuses[index] || emptySlotStatus()))
+    && !hasDuplicateLabels
+    && !hasExistingVariant
+  );
   const canSubmit = React.useMemo(() => {
+    if (multiSource) {
+      return !!version.trim() && multiReady && !submitting;
+    }
     return !!version.trim()
       && ((!!patchFile && patchMode === "bps") || (patchMode === "rom" && genStatus === "ready"))
       && !isVersionTaken
       && !submitting
       && checksumStatus !== "invalid"
       && checksumStatus !== "validating";
-  }, [version, patchFile, patchMode, genStatus, isVersionTaken, submitting, checksumStatus]);
+  }, [version, patchFile, patchMode, genStatus, isVersionTaken, submitting, checksumStatus, multiSource, multiReady]);
 
   React.useEffect(() => {
     versionInputRef.current?.focus();
@@ -237,12 +289,47 @@ export default function HackPatchForm(props: HackPatchFormProps) {
     setError("");
     try {
       const safeVersion = version.trim().replace(/[^a-zA-Z0-9._-]+/g, "-");
+      if (multiSource) {
+        const uploaded: { objectKey: string; label: string; info: string; base_rom: string }[] = [];
+        for (let i = 0; i < patchSlots.length; i++) {
+          const slot = patchSlots[i];
+          const status = patchSlotStatuses[i] || emptySlotStatus();
+          if (!status.file) throw new Error(`Patch ${i + 1} is missing a file.`);
+          const patchExt = patchFormatFromFilename(status.file.name) === "xdelta" ? "xdelta" : "bps";
+          const safeLabel = slot.label.trim().replace(/[^a-zA-Z0-9._-]+/g, "-") || `patch-${i + 1}`;
+          const objectKey = `${slug}-${safeVersion}-${safeLabel}-${i}.${patchExt}`;
+          const presigned = await presignNewPatchVersion({
+            slug,
+            version: version.trim(),
+            objectKey,
+            allowExistingVersion: true,
+          });
+          if (!presigned.ok) throw new Error(presigned.error || 'Failed to presign');
+          await fetch(presigned.presignedUrl!, { method: 'PUT', body: status.file, headers: { 'Content-Type': 'application/octet-stream' } });
+          uploaded.push({
+            objectKey: presigned.objectKey!,
+            label: slot.label.trim(),
+            info: slot.info.trim(),
+            base_rom: slot.baseRomId,
+          });
+        }
+        const finalized = await confirmPatchUploads({
+          slug,
+          version: version.trim(),
+          publishAutomatically,
+          changelog: globalChangelog,
+          patches: uploaded,
+        });
+        if (!finalized.ok) throw new Error(finalized.error || 'Failed to finalize');
+        window.location.href = finalized.redirectTo!;
+        return;
+      }
       const patchExt = patchFormatFromFilename(patchFile?.name) === "xdelta" ? "xdelta" : "bps";
       const objectKey = `${slug}-${safeVersion}.${patchExt}`;
       const presigned = await presignNewPatchVersion({ slug, version: version.trim(), objectKey });
       if (!presigned.ok) throw new Error(presigned.error || 'Failed to presign');
       await fetch(presigned.presignedUrl!, { method: 'PUT', body: patchFile!, headers: { 'Content-Type': 'application/octet-stream' } });
-      const finalized = await confirmPatchUpload({ slug, objectKey: presigned.objectKey!, version: version.trim(), publishAutomatically });
+      const finalized = await confirmPatchUpload({ slug, objectKey: presigned.objectKey!, version: version.trim(), publishAutomatically, base_rom: baseRomId });
       if (!finalized.ok) throw new Error(finalized.error || 'Failed to finalize');
       window.location.href = finalized.redirectTo!;
     } catch (e: any) {
@@ -281,13 +368,74 @@ export default function HackPatchForm(props: HackPatchFormProps) {
           className={`h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ${isVersionTaken ? 'ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20' : 'ring-[var(--border)]'} focus:outline-none focus:ring-2 focus:ring-[var(--ring)]`}
         />
         <div className="text-xs text-foreground/60">
-          {isVersionTaken ? 'Already used by this hack.' : 'Use semantic versions like v1.2.0.'}
+          {isVersionTaken ? 'Already used by this hack.' : hasExistingVariant ? 'One of these patch names already exists for this version.' : 'Use semantic versions like v1.2.0.'}
         </div>
         {existingVersions.length > 0 && (
           <div className="text-[11px] text-foreground/60">Existing versions: {existingVersions.join(', ')}</div>
         )}
       </div>
 
+      {multiSource && (
+        <div className="grid gap-2">
+          <label className="text-sm text-foreground/80">Global changelog</label>
+          <textarea
+            value={globalChangelog}
+            onChange={(e) => setGlobalChangelog(e.target.value)}
+            rows={6}
+            className="w-full rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+            placeholder="Enter changelog in Markdown format..."
+          />
+          <p className="text-xs text-foreground/60">
+            This will be added to the start of every patch changelog for this version.
+          </p>
+        </div>
+      )}
+
+      {multiSource ? (
+        <div className="grid gap-4">
+          <div>
+            <label className="text-sm text-foreground/80">Provide patches <span className="text-red-500">*</span></label>
+            <p className="mt-1 text-xs text-foreground/60">
+              Upload every patch option for this version. Players will choose which one to apply.
+            </p>
+          </div>
+          {patchSlots.map((slot, index) => (
+            <PatchSlotCard
+              key={slot.id}
+              index={index}
+              draft={slot}
+              status={patchSlotStatuses[index] || emptySlotStatus()}
+              allowedBaseRomIds={allowedBaseRomIds}
+              canRemove={patchSlots.length > 2}
+              fileNameHint={`${slug}-${version || "patch"}-${slot.label || index + 1}`}
+              onDraftChange={(next) => {
+                setPatchSlots((prev) => prev.map((item, itemIndex) => itemIndex === index ? next : item));
+              }}
+              onStatusChange={(next) => {
+                setPatchSlotStatuses((prev) => {
+                  const copy = [...prev];
+                  copy[index] = next;
+                  return copy;
+                });
+              }}
+              onRemove={() => {
+                setPatchSlots((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
+                setPatchSlotStatuses((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
+              }}
+            />
+          ))}
+          <button
+            type="button"
+            onClick={() => {
+              setPatchSlots((prev) => [...prev, createPatchSlotDraft()]);
+              setPatchSlotStatuses((prev) => [...prev, emptySlotStatus()]);
+            }}
+            className="inline-flex h-11 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-4 text-sm font-semibold text-foreground transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+          >
+            Add another patch
+          </button>
+        </div>
+      ) : (
       <div className="grid gap-3">
         <label className="text-sm text-foreground/80">Provide patch <span className="text-red-500">*</span></label>
         <div className="flex flex-col gap-3">
@@ -366,6 +514,7 @@ export default function HackPatchForm(props: HackPatchFormProps) {
           )}
         </div>
       </div>
+      )}
 
       {!!error && <div className="text-sm text-red-400">{error}</div>}
 

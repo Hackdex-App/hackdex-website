@@ -1,5 +1,5 @@
 import { getHackMetadata } from "@/app/hack/[slug]/actions";
-import { baseRoms } from "@/data/baseRoms";
+import { formatBaseRomNames } from "@/utils/hacks/base-roms";
 import { isArchiveHack } from "@/utils/hack";
 import type { Metadata } from "next";
 
@@ -40,8 +40,9 @@ export async function getHackPageMetadata(
   }
 
   const isArchive = isArchiveHack(hack);
-  const baseRomName =
-    baseRoms.find((rom) => rom.id === hack.base_rom)?.name ?? "Pokémon";
+  const baseRomName = formatBaseRomNames(
+    hack.base_roms?.length ? hack.base_roms : [hack.base_rom],
+  ) || "Pokémon";
   const pageUrl = getHackPageUrl(slug);
   const title = isArchive
     ? `${hack.title} | Archive`

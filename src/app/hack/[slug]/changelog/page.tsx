@@ -24,7 +24,7 @@ export default async function ChangelogPage({ params }: ChangelogPageProps) {
   // Fetch all published, non-archived patches with changelogs
   const { data: patches } = await supabase
     .from("patches")
-    .select("id, version, created_at, changelog")
+    .select("id, version, created_at, changelog, label")
     .eq("parent_hack", slug)
     .eq("published", true)
     .eq("archived", false)
@@ -32,6 +32,15 @@ export default async function ChangelogPage({ params }: ChangelogPageProps) {
     .order("created_at", { ascending: false });
 
   const patchesWithChangelogs = (patches || []).filter(p => p.changelog && p.changelog.trim().length > 0);
+  let currentVersion = (patches || []).find((patch) => patch.id === hack.current_patch)?.version ?? null;
+  if (!currentVersion && hack.current_patch) {
+    const { data: currentPatch } = await supabase
+      .from("patches")
+      .select("version")
+      .eq("id", hack.current_patch)
+      .maybeSingle();
+    currentVersion = currentPatch?.version ?? null;
+  }
 
   return (
     <div className="mx-auto w-full max-w-screen-md px-6 py-10">
@@ -60,8 +69,8 @@ export default async function ChangelogPage({ params }: ChangelogPageProps) {
               <div className="mb-4 flex items-center justify-between">
                 <div>
                   <h2 className="text-xl font-semibold">
-                    {patch.version}
-                    {hack.current_patch === patch.id && (
+                    {patch.label?.trim() ? `${patch.label.trim()} (${patch.version})` : patch.version}
+                    {currentVersion === patch.version && (
                       <span className="ml-2 inline-flex items-center rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
                         Current
                       </span>

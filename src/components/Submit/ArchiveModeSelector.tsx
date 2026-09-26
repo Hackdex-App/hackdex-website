@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
+import { usePageScrollLock } from "@/hooks/usePageScrollLock";
 
 type ArchiveModeSelectorProps = {
   onSelect: (options?: {
@@ -17,26 +18,7 @@ const ArchiveModeSelector: React.FC<ArchiveModeSelectorProps> = ({ onSelect }) =
   const [isSamePerson, setIsSamePerson] = useState<boolean | null>(null);
   const [customCreator, setCustomCreator] = useState<string | null>(null);
 
-  useEffect(() => {
-    const html = document.documentElement;
-    const body = document.body;
-    const previousHtmlOverflow = html.style.overflow;
-    const previousBodyOverflow = body.style.overflow;
-    const previousBodyPaddingRight = body.style.paddingRight;
-    const scrollBarWidth = window.innerWidth - html.clientWidth;
-
-    html.style.overflow = "hidden";
-    body.style.overflow = "hidden";
-    if (scrollBarWidth > 0) {
-      body.style.paddingRight = `${scrollBarWidth}px`;
-    }
-
-    return () => {
-      html.style.overflow = previousHtmlOverflow;
-      body.style.overflow = previousBodyOverflow;
-      body.style.paddingRight = previousBodyPaddingRight;
-    };
-  }, []);
+  usePageScrollLock();
 
   const canProceed = () => {
     if (hasPermission === false) return false;

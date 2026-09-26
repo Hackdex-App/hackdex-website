@@ -27,6 +27,14 @@ export default async function EditHackPage({ params }: EditPageProps) {
     .maybeSingle();
   if (!hack) return notFound();
 
+  const { data: hackBaseRomRows } = await supabase
+    .from("hack_base_roms")
+    .select("base_rom,sort_order")
+    .eq("hack_slug", slug)
+    .order("sort_order", { ascending: true });
+  const editBaseRomIds = [...new Set((hackBaseRomRows || []).map((row) => row.base_rom).filter(Boolean))];
+  if (editBaseRomIds.length === 0 && hack.base_rom) editBaseRomIds.push(hack.base_rom);
+
   const tagsUpdatedAt = new Date(hack.tags_updated_at);
 
   // Check if user can edit: either they're the creator, or they're admin/archiver editing an Archive hack
@@ -77,6 +85,7 @@ export default async function EditHackPage({ params }: EditPageProps) {
     summary: hack.summary,
     description: hack.description,
     base_rom: hack.base_rom,
+    base_roms: editBaseRomIds,
     language: hack.language,
     completion_status: hack.completion_status,
     version: isArchive ? "Archive" : (version || "Pre-release"),

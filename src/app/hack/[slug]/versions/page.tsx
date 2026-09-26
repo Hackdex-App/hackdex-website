@@ -7,7 +7,7 @@ import PatcherVersionManager, { type Patch } from "@/components/Hack/PatcherVers
 import CollapsibleCard from "@/components/Primitives/CollapsibleCard";
 import Link from "next/link";
 import { FaChevronLeft, FaPlus, FaStar } from "react-icons/fa6";
-import { getPatcherSelectablePatches } from "@/utils/patches/patcher-selectable-patches";
+import { getPatcherSelectablePatches, hackDisablesCustomPatcher } from "@/utils/patches/patcher-selectable-patches";
 
 interface VersionsPageProps {
   params: Promise<{ slug: string }>;
@@ -33,7 +33,7 @@ export default async function VersionsPage({ params }: VersionsPageProps) {
   // Fetch all published, non-archived patches
   const { data: patches } = await supabase
     .from("patches")
-    .select("id, version, created_at, updated_at, changelog, published, archived, format")
+    .select("id, version, created_at, updated_at, changelog, published, archived, format, label, info, base_rom")
     .eq("parent_hack", slug)
     .eq("published", true)
     .eq("archived", false)
@@ -44,7 +44,7 @@ export default async function VersionsPage({ params }: VersionsPageProps) {
   if (canEdit) {
     const { data: unpub } = await supabase
       .from("patches")
-      .select("id, version, created_at, updated_at, changelog, published, archived, format")
+      .select("id, version, created_at, updated_at, changelog, published, archived, format, label, info, base_rom")
       .eq("parent_hack", slug)
       .eq("published", false)
       .eq("archived", false)
@@ -55,8 +55,9 @@ export default async function VersionsPage({ params }: VersionsPageProps) {
   const allPatches: Patch[] = [...(patches || []), ...unpublishedPatches].sort((a, b) => 
     new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
+  const disableCustomPatcher = await hackDisablesCustomPatcher(supabase, slug);
   const patcherSelection = await getPatcherSelectablePatches(supabase, slug, hack.current_patch);
-  const isCustomPatcherActive = patcherSelection.savedPatchIds.length > 0;
+  const isCustomPatcherActive = !disableCustomPatcher && patcherSelection.savedPatchIds.length > 0;
 
   return (
     <div className="mx-auto w-full max-w-screen-md px-4 sm:px-6 py-6 sm:py-10">
@@ -101,18 +102,18 @@ export default async function VersionsPage({ params }: VersionsPageProps) {
           initialCustomVersionName={hack.custom_version_name}
           patches={allPatches}
           baseRom={hack.base_rom}
-          patchesDownloadPermission={hack.patches_download_permission}
+          disableCustomPatcher={disableCustomPatcher}
         >
           <DownloadPermissionSettings
             hackSlug={slug}
             initialPermission={hack.patches_download_permission}
             isCustomPatcherActive={isCustomPatcherActive}
           />
-          <VersionStatusGuide canEdit={canEdit} isCustomPatcherActive={isCustomPatcherActive} />
+          <VersionStatusGuide canEdit={canEdit} isCustomPatcherActive={isCustomPatcherActive} customPatcherAvailable={!disableCustomPatcher} />
         </PatcherVersionManager>
       ) : (
         <>
-          <VersionStatusGuide canEdit={canEdit} isCustomPatcherActive={isCustomPatcherActive} />
+          <VersionStatusGuide canEdit={canEdit} isCustomPatcherActive={isCustomPatcherActive} customPatcherAvailable={!disableCustomPatcher} />
           <VersionList
             patches={allPatches}
             currentPatchId={hack.current_patch}
@@ -132,12 +133,15 @@ export default async function VersionsPage({ params }: VersionsPageProps) {
 function VersionStatusGuide({
   canEdit,
   isCustomPatcherActive,
+  customPatcherAvailable = true,
 }: {
   canEdit: boolean;
   isCustomPatcherActive: boolean;
+  customPatcherAvailable?: boolean;
 }) {
   const showCurrentGuide = canEdit || !isCustomPatcherActive;
-  const showPatchableGuide = canEdit || isCustomPatcherActive;
+  const showCustomGuides = customPatcherAvailable;
+  const showPatchableGuide = showCustomGuides && (canEdit || isCustomPatcherActive);
 
   return (
     <CollapsibleCard
@@ -153,13 +157,15 @@ function VersionStatusGuide({
           </span>
           <p className="text-foreground/70">
             {canEdit ?
-              <>The version used by the <strong>Latest published patch</strong> option. This is the default downloader version when <strong>Custom</strong> patcher versions are not active.</> :
+              (customPatcherAvailable ?
+                <>The version used by the <strong>Latest published patch</strong> option. This is the default downloader version when <strong>Custom</strong> patcher versions are not active.</> :
+                "The current published version. Players choose among its patches on the hack page.") :
               "This is the version you will download when using the patch button on the hack page."
             }
           </p>
         </div>
         )}
-        {canEdit && (
+        {showCustomGuides && canEdit && (
           <div className="flex flex-col sm:grid sm:grid-cols-[100px_1fr] gap-2 sm:gap-1 items-start">
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400 shrink-0 w-fit">
               <FaStar size={10} />

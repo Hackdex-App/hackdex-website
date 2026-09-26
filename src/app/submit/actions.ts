@@ -14,7 +14,11 @@ import {
   getHackReviewThread,
   postHackReviewMessage,
 } from "@/utils/hack-review";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { revalidateDiscoverCatalog } from "@/app/discover/revalidate";
+import { parseBaseRomIds, replaceHackBaseRoms, validateKnownBaseRomIds } from "@/utils/hacks/save-base-roms";
+import { MAX_MULTI_BASE_ROMS, MAX_MULTI_PATCHES } from "@/utils/hacks/multi-entry";
+import { normalizePatchInfo, normalizePatchLabel, prependChangelog, PATCH_INFO_MAX_LENGTH, PATCH_LABEL_MAX_LENGTH } from "@/utils/patches/patch-variant";
 
 type HackInsert = TablesInsert<"hacks">;
 
@@ -50,7 +54,9 @@ export async function prepareSubmission(formData: FormData) {
   const title = (formData.get("title") as string)?.trim();
   const summary = (formData.get("summary") as string)?.trim();
   const description = (formData.get("description") as string)?.trim();
-  const base_rom = (formData.get("base_rom") as string)?.trim();
+  const entry_layout = (formData.get("entry_layout") as string)?.trim() || "single";
+  const baseRomIds = parseBaseRomIds(formData.get("base_roms") || formData.get("base_rom"));
+  const base_rom = baseRomIds[0] || (formData.get("base_rom") as string)?.trim();
   const language = (formData.get("language") as string)?.trim();
   const completion_status = (formData.get("completion_status") as string)?.trim() || null;
   const version = (formData.get("version") as string)?.trim();
@@ -68,6 +74,16 @@ export async function prepareSubmission(formData: FormData) {
   // For archives, version is not required; for regular hacks, it is
   if (!title || !summary || !description || !base_rom || !language || !completion_status || (!is_archive && !version)) {
     return { ok: false, error: "Missing required fields" } as const;
+  }
+  if (entry_layout === "multi" && baseRomIds.length < 2) {
+    return { ok: false, error: "Multi-source hacks need at least two base ROMs." } as const;
+  }
+  if (entry_layout === "multi" && baseRomIds.length > MAX_MULTI_BASE_ROMS) {
+    return { ok: false, error: `Multi-source hacks can include at most ${MAX_MULTI_BASE_ROMS} base ROMs.` } as const;
+  }
+  const invalidBaseRoms = validateKnownBaseRomIds(baseRomIds.length > 0 ? baseRomIds : [base_rom]);
+  if (invalidBaseRoms) {
+    return { ok: false, error: invalidBaseRoms } as const;
   }
 
   // For archives, original_author is required
@@ -113,6 +129,15 @@ export async function prepareSubmission(formData: FormData) {
   const { error: insertErr } = await supabase.from("hacks").insert(insertPayload);
   if (insertErr) {
     return { ok: false, error: insertErr.message } as const;
+  }
+
+  const baseRomsSaved = await replaceHackBaseRoms(
+    supabase,
+    slug,
+    baseRomIds.length > 0 ? baseRomIds : [base_rom],
+  );
+  if (!baseRomsSaved.ok) {
+    return { ok: false, error: baseRomsSaved.error } as const;
   }
 
   if (!is_archive) {
@@ -236,7 +261,83 @@ export async function presignPatchAndSaveCovers(args: {
   return { ok: true, presignedUrl: url, objectKey: args.objectKey } as const;
 }
 
-export async function confirmPatchUpload(args: { slug: string; objectKey: string; version: string, firstUpload?: boolean; publishAutomatically?: boolean }) {
+export type PatchUploadSpec = {
+  objectKey: string;
+  label?: string | null;
+  info?: string | null;
+  base_rom?: string | null;
+};
+
+function validatePatchSpecs(specs: PatchUploadSpec[], options?: { maxCount?: number }): { ok: true; specs: Required<Pick<PatchUploadSpec, "objectKey">> & { objectKey: string; label: string | null; info: string | null; base_rom: string | null }[] } | { ok: false; error: string } {
+  if (specs.length === 0) return { ok: false, error: "At least one patch file is required." };
+  if (options?.maxCount != null && specs.length > options.maxCount) {
+    return { ok: false, error: `You can upload at most ${options.maxCount} patches.` };
+  }
+  const labels = specs.map((spec) => normalizePatchLabel(spec.label));
+  if (specs.length > 1 && labels.some((label) => !label)) {
+    return { ok: false, error: "Each patch needs a name." };
+  }
+  if (new Set(labels).size !== labels.length) {
+    return { ok: false, error: "Patch names must be unique for this version." };
+  }
+  for (const spec of specs) {
+    const label = normalizePatchLabel(spec.label);
+    const info = normalizePatchInfo(spec.info);
+    if (label.length > PATCH_LABEL_MAX_LENGTH) {
+      return { ok: false, error: `Patch names must be ${PATCH_LABEL_MAX_LENGTH} characters or fewer.` };
+    }
+    if (info.length > PATCH_INFO_MAX_LENGTH) {
+      return { ok: false, error: `Patch information must be ${PATCH_INFO_MAX_LENGTH} characters or fewer.` };
+    }
+    const baseRom = spec.base_rom?.trim() || null;
+    if (baseRom) {
+      const invalid = validateKnownBaseRomIds([baseRom]);
+      if (invalid) return { ok: false, error: invalid };
+    }
+  }
+  return {
+    ok: true,
+    specs: specs.map((spec) => ({
+      objectKey: spec.objectKey,
+      label: normalizePatchLabel(spec.label) || null,
+      info: normalizePatchInfo(spec.info) || null,
+      base_rom: spec.base_rom?.trim() || null,
+    })),
+  };
+}
+
+export async function confirmPatchUpload(args: {
+  slug: string;
+  objectKey: string;
+  version: string;
+  firstUpload?: boolean;
+  publishAutomatically?: boolean;
+  label?: string | null;
+  info?: string | null;
+  base_rom?: string | null;
+}) {
+  return confirmPatchUploads({
+    slug: args.slug,
+    version: args.version,
+    firstUpload: args.firstUpload,
+    publishAutomatically: args.publishAutomatically,
+    patches: [{
+      objectKey: args.objectKey,
+      label: args.label,
+      info: args.info,
+      base_rom: args.base_rom,
+    }],
+  });
+}
+
+export async function confirmPatchUploads(args: {
+  slug: string;
+  version: string;
+  patches: PatchUploadSpec[];
+  firstUpload?: boolean;
+  publishAutomatically?: boolean;
+  changelog?: string | null;
+}) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -259,15 +360,28 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
     return { ok: false, error: "Forbidden" } as const;
   }
 
-  // Enforce unique version per hack defensively (avoid race with presign step)
+  const validated = validatePatchSpecs(
+    args.patches,
+    args.firstUpload ? { maxCount: MAX_MULTI_PATCHES } : undefined,
+  );
+  if (!validated.ok) return { ok: false, error: validated.error } as const;
+
+  // Enforce unique version + label per hack defensively (avoid race with presign step)
   const { data: existing, error: vErr } = await supabase
     .from("patches")
-    .select("id")
+    .select("id,label")
     .eq("parent_hack", args.slug)
-    .eq("version", args.version)
-    .maybeSingle();
+    .eq("version", args.version);
   if (vErr) return { ok: false, error: vErr.message } as const;
-  if (existing) return { ok: false, error: "That version already exists for this hack." } as const;
+  const existingLabels = new Set((existing || []).map((row) => normalizePatchLabel(row.label)));
+  if (validated.specs.some((spec) => existingLabels.has(normalizePatchLabel(spec.label)))) {
+    return {
+      ok: false,
+      error: validated.specs.length > 1
+        ? "One or more of these patch names already exist for this version."
+        : "That version already exists for this hack.",
+    } as const;
+  }
 
   let shouldPublishAutomatically = !!args.publishAutomatically;
   let didUpdateCurrentPatch = false;
@@ -281,29 +395,30 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
     shouldPublishAutomatically = (customPatcherRows || []).length === 0;
   }
 
-  // Create patch row
-  const patchInsert: any = {
+  const publishedAt = shouldPublishAutomatically ? new Date().toISOString() : null;
+  const sharedChangelog = prependChangelog(args.changelog, null);
+  const patchInserts = validated.specs.map((spec) => ({
     bucket: PATCHES_BUCKET,
-    filename: args.objectKey,
+    filename: spec.objectKey,
     version: args.version,
     parent_hack: args.slug,
-    format: patchFormatFromObjectKey(args.objectKey),
-  };
+    format: patchFormatFromObjectKey(spec.objectKey),
+    label: spec.label,
+    info: spec.info,
+    base_rom: spec.base_rom,
+    changelog: sharedChangelog,
+    published: shouldPublishAutomatically,
+    published_at: publishedAt,
+  }));
 
-  // Set published status based on publishAutomatically flag
-  if (shouldPublishAutomatically) {
-    patchInsert.published = true;
-    patchInsert.published_at = new Date().toISOString();
-  } else {
-    patchInsert.published = false;
-  }
-
-  const { data: patch, error: pErr } = await supabase
+  const { data: insertedPatches, error: pErr } = await supabase
     .from("patches")
-    .insert(patchInsert)
-    .select("id, created_at")
-    .single();
+    .insert(patchInserts)
+    .select("id, created_at");
   if (pErr) return { ok: false, error: pErr.message } as const;
+  const patches = [...(insertedPatches || [])].sort((a, b) => a.id - b.id);
+  const patch = patches[0];
+  if (!patch) return { ok: false, error: "Failed to create patch." } as const;
 
   // Only update current_patch if publishAutomatically is true
   if (shouldPublishAutomatically) {
@@ -330,6 +445,11 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
     }
   }
 
+  revalidateTag(`hack:${args.slug}:metadata`);
+  revalidatePath(`/hack/${args.slug}`);
+  revalidatePath(`/hack/${args.slug}/session`);
+  revalidatePath(`/hack/${args.slug}/versions`);
+  revalidatePath(`/hack/${args.slug}/changelog`);
   if (hack.approved && didUpdateCurrentPatch) {
     revalidateDiscoverCatalog();
   }
@@ -351,7 +471,9 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
     footer: { text: "This message brought to you by Hackdex" },
   } : {
     title: `New update for ${hack.title}`,
-    description: `**${hack.title}** has been updated to **${args.version}**`,
+    description: validated.specs.length > 1
+      ? `**${hack.title}** has been updated to **${args.version}** with ${validated.specs.length} patch options.`
+      : `**${hack.title}** has been updated to **${args.version}**`,
     color: 0x40f56a,
     url: `${process.env.NEXT_PUBLIC_SITE_URL}/hack/${args.slug}`,
     footer: {
