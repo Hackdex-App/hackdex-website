@@ -87,7 +87,7 @@ export default async function DashboardPage() {
 
   const { data: hacks } = await supa
     .from("hacks")
-    .select("slug,title,approved,submitted_at,updated_at,downloads,current_patch(id,version),created_at,original_author,is_archive")
+    .select("slug,title,approved,submitted_at,updated_at,downloads,current_patch(id,version),created_at,original_author,is_archive,ai_disclosed_at")
     .is("is_archive", false)
     .eq("created_by", user.id)
     .order("updated_at", { ascending: false });
@@ -96,6 +96,8 @@ export default async function DashboardPage() {
     ...h,
     version: h.current_patch?.version || "Pre-release",
     current_patch: h.current_patch?.id || null,
+    // Drafts get it from their checklist; this catches hacks from before the label existed.
+    needsAiLabel: h.submitted_at !== null && h.ai_disclosed_at === null,
   }));
 
   const seriesAll = await getDownloadsSeriesAll({ days: 30 });

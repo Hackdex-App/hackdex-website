@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { FiExternalLink, FiEdit2, FiUpload, FiShare2, FiBarChart2, FiMoreVertical, FiCheck } from "react-icons/fi";
+import { FiAlertTriangle, FiExternalLink, FiEdit2, FiUpload, FiShare2, FiBarChart2, FiMoreVertical, FiCheck } from "react-icons/fi";
 import { TbVersions } from "react-icons/tb";
 import { useFloating, offset, flip, shift, autoUpdate } from "@floating-ui/react";
 import ActionSheet from "@/components/Primitives/ActionSheet";
@@ -15,7 +15,20 @@ type HackRow = {
   updated_at: string | null;
   downloads: number;
   version: string;
+  needsAiLabel: boolean;
 };
+
+/** Opens the hack's editor with the AI form already up. */
+function NeedsAiLabel({ slug }: { slug: string }) {
+  return (
+    <Link
+      href={`/hack/${slug}?edit=1&ai=1`}
+      className="inline-flex w-fit items-center gap-1 rounded-full bg-warn-soft px-2 py-0.5 text-xs font-medium text-warn ring-1 ring-warn/30 transition-colors hover:ring-warn/60"
+    >
+      <FiAlertTriangle className="h-3 w-3" /> Needs AI label
+    </Link>
+  );
+}
 
 function StatusBadge({ hack, className = "" }: { hack: HackRow; className?: string }) {
   const base = `inline-flex items-center gap-1 rounded-full px-2 py-0.5 ring-1 ${className}`;
@@ -58,8 +71,9 @@ export default function HackList({ hacks }: { hacks: HackRow[] }) {
                 </div>
                 <FiExternalLink className="h-4 w-4 text-text-2 group-hover:text-text" />
               </Link>
-              <div className="col-span-2">
+              <div className="col-span-2 flex flex-col items-start gap-1">
                 <StatusBadge hack={h} className="text-xs" />
+                {h.needsAiLabel && <NeedsAiLabel slug={h.slug} />}
               </div>
               <div className="col-span-2">{h.version}</div>
               <div className="col-span-2">{h.downloads}</div>
@@ -85,6 +99,7 @@ export default function HackList({ hacks }: { hacks: HackRow[] }) {
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                   <StatusBadge hack={h} />
+                  {h.needsAiLabel && <NeedsAiLabel slug={h.slug} />}
                   <span className="rounded-full bg-surface-2 px-2 py-0.5 ring-1 ring-line">{h.version}</span>
                   <span className="rounded-full bg-surface-2 px-2 py-0.5 ring-1 ring-line">{h.downloads} downloads</span>
                 </div>

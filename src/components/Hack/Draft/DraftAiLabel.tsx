@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useSearchParams } from "next/navigation";
 import { FiEdit2, FiPlus } from "react-icons/fi";
 import AiLabel from "@/components/Hack/AiLabel";
 import AiDisclosureModal from "@/components/Hack/AiDisclosureModal";
@@ -11,11 +12,13 @@ import { useDraftEditing } from "./DraftEditing";
  * The AI label as players see it, plus a pill that opens the disclosure form.
  * Saves through the page's editor, so drafts save right away and listed hacks
  * stage it until Save changes; the label shows the new answers either way.
+ * `?ai=1` opens the form on load (the dashboard's "Needs AI label" link).
  */
 export default function DraftAiLabel({ initial }: { initial: AiDisclosure | null }) {
   const { save } = useDraftEditing();
   const [disclosure, setDisclosure] = React.useState(initial);
-  const [open, setOpen] = React.useState(false);
+  const searchParams = useSearchParams();
+  const [open, setOpen] = React.useState(searchParams.get("ai") === "1");
   const Icon = disclosure ? FiEdit2 : FiPlus;
 
   return (

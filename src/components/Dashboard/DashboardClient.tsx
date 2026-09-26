@@ -17,6 +17,7 @@ export type HackRow = {
   current_patch: number | null;
   version: string;
   created_at: string;
+  needsAiLabel: boolean;
 };
 
 export default function DashboardClient({

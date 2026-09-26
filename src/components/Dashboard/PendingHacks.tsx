@@ -8,7 +8,7 @@ import { FaCircleCheck, FaRegCircle, FaUserCheck } from "react-icons/fa6";
 import { assignHacksToAdminForReview } from "@/app/dashboard/actions";
 import { useRouter } from "next/navigation";
 
-export type PendingHack = HackRow & {
+export type PendingHack = Omit<HackRow, "needsAiLabel"> & {
   created_by: string;
   creator_username: string | null;
   creator_full_name: string | null;
