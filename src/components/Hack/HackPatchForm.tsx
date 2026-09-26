@@ -7,10 +7,13 @@ import { platformAccept } from "@/utils/idb";
 import { sha1Hex } from "@/utils/hash";
 import BinFile from "rom-patcher-js/rom-patcher-js/modules/BinFile.js";
 import BPS from "rom-patcher-js/rom-patcher-js/modules/RomPatcher.format.bps.js";
-import { presignNewPatchVersion } from "@/app/hack/actions";
+import { confirmAiDisclosure, presignNewPatchVersion, updateHack } from "@/app/hack/actions";
+import AiLabel from "@/components/Hack/AiLabel";
+import AiDisclosureModal from "@/components/Hack/AiDisclosureModal";
+import type { AiDisclosure } from "@/utils/aiDisclosure";
 import { confirmPatchUpload } from "@/app/submit/actions";
 import { FaInfoCircle } from "react-icons/fa";
-import { FiAlertTriangle } from "react-icons/fi";
+import { FiAlertTriangle, FiCheck } from "react-icons/fi";
 import { patchFormatFromFilename } from "@/utils/patching";
 import { encodeXdelta, trialDecodeXdelta, friendlyXdeltaError } from "@/utils/patching/xdelta";
 
@@ -21,6 +24,8 @@ export interface HackPatchFormProps {
   isCustomPatcherActive: boolean;
   customVersionName?: string | null;
   currentVersion?: string;
+  /** The hack's AI label. New versions confirm or update it before upload; the first upload skips this (the draft checklist covers it). */
+  ai: AiDisclosure | null;
 }
 
 export default function HackPatchForm(props: HackPatchFormProps) {
@@ -35,6 +40,11 @@ export default function HackPatchForm(props: HackPatchFormProps) {
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string>("");
   const [publishAutomatically, setPublishAutomatically] = React.useState(false);
+  const [disclosure, setDisclosure] = React.useState(props.ai);
+  // "confirmed" re-stamps the label once the upload lands; "updated" was already saved from the form.
+  const [aiCheck, setAiCheck] = React.useState<"pending" | "confirmed" | "updated">("pending");
+  const [aiFormOpen, setAiFormOpen] = React.useState(false);
+  const needsAiCheck = existingVersions.length > 0;
 
   const versionInputRef = React.useRef<HTMLInputElement | null>(null);
   const patchInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -56,8 +66,9 @@ export default function HackPatchForm(props: HackPatchFormProps) {
       && !isVersionTaken
       && !submitting
       && checksumStatus !== "invalid"
-      && checksumStatus !== "validating";
-  }, [version, patchFile, patchMode, genStatus, isVersionTaken, submitting, checksumStatus]);
+      && checksumStatus !== "validating"
+      && (!needsAiCheck || aiCheck !== "pending");
+  }, [version, patchFile, patchMode, genStatus, isVersionTaken, submitting, checksumStatus, needsAiCheck, aiCheck]);
 
   React.useEffect(() => {
     versionInputRef.current?.focus();
@@ -244,6 +255,7 @@ export default function HackPatchForm(props: HackPatchFormProps) {
       await fetch(presigned.presignedUrl!, { method: 'PUT', body: patchFile!, headers: { 'Content-Type': 'application/octet-stream' } });
       const finalized = await confirmPatchUpload({ slug, objectKey: presigned.objectKey!, version: version.trim(), publishAutomatically });
       if (!finalized.ok) throw new Error(finalized.error || 'Failed to finalize');
+      if (aiCheck === "confirmed") await confirmAiDisclosure(slug);
       window.location.href = finalized.redirectTo!;
     } catch (e: any) {
       setError(e.message || 'Upload failed');
@@ -366,6 +378,59 @@ export default function HackPatchForm(props: HackPatchFormProps) {
           )}
         </div>
       </div>
+
+      {needsAiCheck && (
+        <div className="grid gap-2.5 border-t border-line pt-4">
+          <div>
+            <div className="text-sm font-medium text-text">Is the AI label still accurate?</div>
+            <p className="mt-0.5 text-xs text-text-3">Count anything AI-generated you added since the last version.</p>
+          </div>
+          {disclosure ? (
+            <AiLabel disclosure={disclosure} />
+          ) : (
+            <p className="rounded-card border border-dashed border-line-strong px-3.5 py-3 text-[13px] text-text-3">This hack has no AI label yet. Every hack needs one, even with no AI use.</p>
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {disclosure && aiCheck !== "updated" && (
+              <button
+                type="button"
+                aria-pressed={aiCheck === "confirmed"}
+                onClick={() => setAiCheck(aiCheck === "confirmed" ? "pending" : "confirmed")}
+                className="inline-flex h-9 items-center gap-1.5 rounded-control border border-line-strong bg-surface px-3 text-sm font-medium transition-colors hover:border-text-3 aria-pressed:border-ready aria-pressed:bg-ready-soft aria-pressed:text-ready"
+              >
+                {aiCheck === "confirmed" && <FiCheck className="h-4 w-4" />} Still accurate
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setAiFormOpen(true)}
+              className="inline-flex h-9 items-center rounded-control border border-line-strong bg-surface px-3 text-sm font-medium transition-colors hover:border-text-3"
+            >
+              {disclosure ? "Update" : "Add AI label"}
+            </button>
+            {aiCheck === "updated" && (
+              <span className="inline-flex items-center gap-1 text-xs text-ready">
+                <FiCheck className="h-3.5 w-3.5" /> Saved
+              </span>
+            )}
+          </div>
+          <AiDisclosureModal
+            visible={aiFormOpen}
+            initial={disclosure}
+            onClose={() => setAiFormOpen(false)}
+            onSave={async (levels, note) => {
+              const res = await updateHack({ slug, ai: { levels, note } });
+              if (!res.ok) {
+                setError(res.error);
+                return false;
+              }
+              setDisclosure({ levels, note, disclosedAt: new Date().toISOString() });
+              setAiCheck("updated");
+              return true;
+            }}
+          />
+        </div>
+      )}
 
       {!!error && <div className="text-sm text-error">{error}</div>}
 

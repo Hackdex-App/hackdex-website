@@ -5,6 +5,7 @@ import Link from "next/link";
 import { FaChevronLeft } from "react-icons/fa6";
 import { isInformationalArchiveHack, isDownloadableArchiveHack, canEditAsCreator, canEditAsAdmin, canEditAsArchiver } from "@/utils/hack";
 import { getPatcherSelectablePatches } from "@/utils/patches/patcher-selectable-patches";
+import { AI_SELECT, aiDisclosureFromRow } from "@/utils/aiDisclosure";
 
 interface EditPatchPageProps {
   params: Promise<{ slug: string }>;
@@ -20,7 +21,7 @@ export default async function EditPatchPage({ params }: EditPatchPageProps) {
 
   const { data: hack } = await supabase
     .from("hacks")
-    .select("slug,base_rom,created_by,title,current_patch,original_author,permission_from,is_archive,custom_version_name")
+    .select(`slug,base_rom,created_by,title,current_patch,original_author,permission_from,is_archive,custom_version_name,${AI_SELECT}`)
     .eq("slug", slug)
     .maybeSingle();
   if (!hack) return notFound();
@@ -77,6 +78,7 @@ export default async function EditPatchPage({ params }: EditPatchPageProps) {
           isCustomPatcherActive={isCustomPatcherActive}
           customVersionName={isCustomPatcherActive ? hack.custom_version_name : undefined}
           currentVersion={currentVersion}
+          ai={aiDisclosureFromRow(hack)}
         />
       </div>
 
