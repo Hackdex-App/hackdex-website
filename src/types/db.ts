@@ -204,6 +204,14 @@ export type Database = {
       }
       hacks: {
         Row: {
+          ai_code: Database["public"]["Enums"]["ai_level"] | null
+          ai_disclosed_at: string | null
+          ai_events: Database["public"]["Enums"]["ai_level"] | null
+          ai_graphics: Database["public"]["Enums"]["ai_level"] | null
+          ai_music: Database["public"]["Enums"]["ai_level"] | null
+          ai_note: string | null
+          ai_story: Database["public"]["Enums"]["ai_level"] | null
+          ai_translation: Database["public"]["Enums"]["ai_level"] | null
           approved: boolean
           approved_at: string | null
           approved_by: string | null
@@ -243,6 +251,14 @@ export type Database = {
           version: string
         }
         Insert: {
+          ai_code?: Database["public"]["Enums"]["ai_level"] | null
+          ai_disclosed_at?: string | null
+          ai_events?: Database["public"]["Enums"]["ai_level"] | null
+          ai_graphics?: Database["public"]["Enums"]["ai_level"] | null
+          ai_music?: Database["public"]["Enums"]["ai_level"] | null
+          ai_note?: string | null
+          ai_story?: Database["public"]["Enums"]["ai_level"] | null
+          ai_translation?: Database["public"]["Enums"]["ai_level"] | null
           approved?: boolean
           approved_at?: string | null
           approved_by?: string | null
@@ -282,6 +298,14 @@ export type Database = {
           version: string
         }
         Update: {
+          ai_code?: Database["public"]["Enums"]["ai_level"] | null
+          ai_disclosed_at?: string | null
+          ai_events?: Database["public"]["Enums"]["ai_level"] | null
+          ai_graphics?: Database["public"]["Enums"]["ai_level"] | null
+          ai_music?: Database["public"]["Enums"]["ai_level"] | null
+          ai_note?: string | null
+          ai_story?: Database["public"]["Enums"]["ai_level"] | null
+          ai_translation?: Database["public"]["Enums"]["ai_level"] | null
           approved?: boolean
           approved_at?: string | null
           approved_by?: string | null
@@ -669,6 +693,7 @@ export type Database = {
       show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
+      ai_level: "none" | "little" | "some" | "most" | "all"
       "Completion Status": "Complete" | "Demo" | "Alpha" | "Beta"
       "Patch Format": "bps" | "xdelta"
       "Patches Download Permission": "None" | "Current" | "All"
@@ -813,6 +838,7 @@ export const Constants = {
   },
   public: {
     Enums: {
+      ai_level: ["none", "little", "some", "most", "all"],
       "Completion Status": ["Complete", "Demo", "Alpha", "Beta"],
       "Patch Format": ["bps", "xdelta"],
       "Patches Download Permission": ["None", "Current", "All"],

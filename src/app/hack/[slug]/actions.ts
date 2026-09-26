@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient, createServiceClient } from "@/utils/supabase/server";
+import { AI_SELECT, aiDisclosureFromRow, type AiDisclosure } from "@/utils/aiDisclosure";
 import { getMinioClient, PATCHES_BUCKET } from "@/utils/minio/server";
 import { buildPatchDownloadUrl } from "@/utils/patches/patch-download-url";
 import { isInformationalArchiveHack, canEditAsCreator, canEditAsAdmin } from "@/utils/hack";
@@ -43,6 +44,8 @@ export interface HackMetadata {
     /** null while the creator is still drafting; set once they submit for review. */
     submitted_at: string | null;
   };
+  /** null until the creator fills in the AI disclosure form. */
+  ai: AiDisclosure | null;
   displayVersion: string;
   images: string[];
   tags: string[];
@@ -77,7 +80,7 @@ export async function getHackMetadata(slug: string): Promise<HackMetadata | null
 
       const { data: hack, error } = await supabase
         .from("hacks")
-        .select("slug,title,summary,description,base_rom,created_at,updated_at,current_patch,custom_version_name,box_art,social_links,created_by,approved,original_author,permission_from,language,is_archive,completion_status,verification_contact_info,submitted_at")
+        .select(`slug,title,summary,description,base_rom,created_at,updated_at,current_patch,custom_version_name,box_art,social_links,created_by,approved,original_author,permission_from,language,is_archive,completion_status,verification_contact_info,submitted_at,${AI_SELECT}`)
         .eq("slug", slug)
         .maybeSingle();
 
@@ -182,6 +185,7 @@ export async function getHackMetadata(slug: string): Promise<HackMetadata | null
 
       return {
         hack,
+        ai: aiDisclosureFromRow(hack),
         displayVersion,
         images,
         tags,

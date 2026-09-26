@@ -18,6 +18,7 @@ import {
   postHackReviewMessage,
 } from "@/utils/hack-review";
 import { revalidateDiscoverCatalog } from "@/app/discover/revalidate";
+import { aiColumns, parseAiLevels, type AiLevels } from "@/utils/aiDisclosure";
 
 export async function updateHack(args: {
   slug: string;
@@ -40,6 +41,8 @@ export async function updateHack(args: {
   original_author?: string;
   permission_from?: string;
   verification_contact_info?: string | null;
+  /** Replaces the whole AI disclosure and marks it confirmed now. */
+  ai?: { levels: AiLevels; note: string | null };
 }) {
   const supabase = await createClient();
   const {
@@ -87,6 +90,12 @@ export async function updateHack(args: {
   }
   if (args.verification_contact_info !== undefined) {
     updatePayload.verification_contact_info = args.verification_contact_info?.trim() || null;
+  }
+  if (args.ai !== undefined) {
+    const levels = parseAiLevels(args.ai.levels);
+    if (!levels) return { ok: false, error: "Pick a level for every area of the AI label" } as const;
+    if ((args.ai.note?.length ?? 0) > 1000) return { ok: false, error: "Keep the AI explanation under 1,000 characters" } as const;
+    Object.assign(updatePayload, aiColumns(levels, args.ai.note));
   }
 
   if (Object.keys(updatePayload).length > 0) {
@@ -150,6 +159,32 @@ export async function updateHack(args: {
   revalidateTag(`hack:${args.slug}:metadata`);
   revalidatePath(`/hack/${args.slug}`);
   revalidateDiscoverCatalog();
+  return { ok: true } as const;
+}
+
+/** "Still accurate": re-stamps an existing AI disclosure without changing it, e.g. when publishing a new version. */
+export async function confirmAiDisclosure(slug: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Unauthorized" } as const;
+
+  const { data: hack, error: hErr } = await supabase
+    .from("hacks")
+    .select("slug, created_by, current_patch, original_author, permission_from, is_archive, ai_disclosed_at")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (hErr) return { ok: false, error: hErr.message } as const;
+  if (!hack) return { ok: false, error: "Hack not found" } as const;
+  if (!hack.ai_disclosed_at) return { ok: false, error: "Fill in the AI label first" } as const;
+  const permission = await checkEditPermission(hack, user.id, supabase);
+  if (!permission.canEdit) return { ok: false, error: "Forbidden" } as const;
+
+  const { error } = await supabase.from("hacks").update({ ai_disclosed_at: new Date().toISOString() }).eq("slug", slug);
+  if (error) return { ok: false, error: error.message } as const;
+  revalidateTag(`hack:${slug}:metadata`);
+  revalidatePath(`/hack/${slug}`);
   return { ok: true } as const;
 }
 

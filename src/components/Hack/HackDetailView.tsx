@@ -8,6 +8,8 @@ import HackShareButton from "@/components/Hack/HackShareButton";
 import HackTabs, { type HackVersionRow } from "@/components/Hack/HackTabs";
 import { DraftChecklist, DraftStatusStrip, type ChecklistItem, type DraftStage } from "@/components/Hack/DraftStatus";
 import { DraftEditingProvider } from "@/components/Hack/Draft/DraftEditing";
+import AiLabel, { AiLabelMissing } from "@/components/Hack/AiLabel";
+import DraftAiLabel from "@/components/Hack/Draft/DraftAiLabel";
 import DraftHeader from "@/components/Hack/Draft/DraftHeader";
 import DraftAbout from "@/components/Hack/Draft/DraftAbout";
 import DraftGallery from "@/components/Hack/Draft/DraftGallery";
@@ -380,6 +382,10 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
                 ["Platform", baseRom ? PLATFORM_NAMES[baseRom.platform] : "Unknown"],
               ]}
             />
+          </RailGroup>
+
+          <RailGroup title="AI use">
+            {editing ? <DraftAiLabel initial={metadata.ai} /> : metadata.ai ? <AiLabel disclosure={metadata.ai} /> : <AiLabelMissing />}
           </RailGroup>
 
           {!isInformationalArchive && (
