@@ -42,3 +42,6 @@ next-env.d.ts
 
 # local minio storage
 .minio
+
+# Private announcement recipient lists, previews, and delivery records
+/.local/announcements/
