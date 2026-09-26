@@ -58,15 +58,13 @@ Creators must:
 
 Every hack must have a clearly labeled Credits section on its public Hackdex page. This section must name the hack's contributors and credit the creators or sources of reused assets and code, or link to a complete, publicly accessible credits page. Creators must keep credits accurate as the hack is updated and comply with any attribution requirements attached to material they use. Credits do not replace permission or other rights required to use that material.
 
-### AI-generated content disclosure
+### AI disclosure
 
-Creators must clearly disclose AI-generated content included in their hack or its public Hackdex page. The disclosure must appear in a labeled section of the hack's description, identify the types of content affected, and remain accurate as the hack or page is updated. This requirement applies to content generated in whole or in part by AI, including generated content that is later edited or supplied by another contributor.
+Creators must complete Hackdex's AI disclosure form for each hack, accurately declaring the extent of AI use, including when no AI was used. Keep the disclosure accurate as the hack or its public Hackdex page is updated. A disclosure in the hack's description does not replace completing the form.
 
-Content requiring disclosure includes graphics, music, sound effects, story, dialogue, translations, and event scripts. Event scripts include instructions that control NPC actions, cutscenes, dialogue, item interactions, and other in-game events, even when those scripts contain no generated dialogue.
+Disclosure is required for content and code generated or modified in whole or in part with AI and included in the hack or its public page. This includes graphics, music, sound effects, writing, translations, event scripts, and general programming, even when later edited or supplied by another contributor. Disclosure of AI use for brainstorming and unused experiments is optional when no AI-generated or AI-modified content or code is included in the hack or its page.
 
-AI assistance with general programming, such as engine changes, bug fixes, development tools, or implementing game systems, does not require disclosure. This exception does not cover AI-generated event scripts or other content listed above. Brainstorming and experiments that do not result in AI-generated content being included in the hack or its page do not require disclosure.
-
-Disclosing AI use does not exempt content from the credits requirement, other provisions of these Terms, or third-party rights.
+Disclosing AI use does not exempt content or code from the credits requirement, other provisions of these Terms, or third-party rights.
 
 ## 7. Content Moderation
 
