@@ -38,7 +38,11 @@ export default function AiLabel({ disclosure, defaultOpen = false }: { disclosur
   const bodyId = React.useId();
   const used = AI_AREAS.filter((a) => levels[a.key] !== "none");
   const unused = AI_AREAS.filter((a) => levels[a.key] === "none").map((a) => a.short);
-  const hover = (key: AiArea) => ({ onMouseEnter: () => setHot(key), onMouseLeave: () => setHot(null) });
+  // Mouse only: a tap fires enter without leave, which left the cell looking selected on phones.
+  const hover = (key: AiArea) => ({
+    onPointerEnter: (e: React.PointerEvent) => e.pointerType === "mouse" && setHot(key),
+    onPointerLeave: () => setHot(null),
+  });
 
   return (
     <div className="rounded-card border border-line bg-surface px-3.5 py-3 shadow-rest">

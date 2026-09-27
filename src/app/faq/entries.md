@@ -130,17 +130,7 @@ Disclose content and code generated or modified with AI that is included in your
 
 Disclosure of AI use for brainstorming and unused experiments is optional when no AI-generated or AI-modified content or code is included in the hack or its page. Disclosure does not replace credits or exempt your hack from our content rules. See [Section 6 of the Terms of Service](/terms#6-creator-responsibilities) for the full requirement.
 
-The form asks for a level in six areas. Graphics, music and sound, story and dialogue, translation, and event scripts use three levels. Code uses five, since a single AI bug fix and an AI-written engine are very different.
-
-| Level | Content areas | Code |
-| --- | --- | --- |
-| None | No AI | No AI |
-| A little | Not used | A bug fix or a few |
-| Some | Anything from one asset up to a sizable share, like a title screen or a few tracks | AI helped write some larger features |
-| Most | Most or all of it | AI wrote most of the code, and the creator reviewed it |
-| All | Not used | The creator told the AI what to do |
-
-The label's headline sums it up: **Contains AI** when any content area has AI, **AI in code only** when only code does, and **No direct AI usage** when nothing AI-generated was intentionally added. Brainstorming, unused experiments, and anything that came with a base the creator built on don't count.
+Pick the level that feels right for how much AI went into each area. It doesn't need to be exact. Code also has "A little" and "All", since one AI bug fix and an AI-written engine are very different. The label covers what you and your team added on purpose, so something like AI code that came with a base you built on doesn't count.
 
 ### Who retains ownership of submitted hacks?
 Creators retain ownership of their work. Hackdex serves as a distribution and discovery platform. Specific rights and responsibilities are outlined in the Terms of Service available on the platform.
