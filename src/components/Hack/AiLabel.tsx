@@ -29,7 +29,7 @@ const listFormat = new Intl.ListFormat("en", { type: "conjunction" });
 /**
  * The hack page's AI label: a headline, a six-cell strip (five content areas,
  * then code), and a collapsible breakdown listing only the areas with AI.
- * Hovering a row highlights its cell and the other way around.
+ * While the breakdown is open, hovering a row highlights its cell and the other way around.
  */
 export default function AiLabel({ disclosure, defaultOpen = false }: { disclosure: AiDisclosure; defaultOpen?: boolean }) {
   const { levels, note } = disclosure;
@@ -38,9 +38,10 @@ export default function AiLabel({ disclosure, defaultOpen = false }: { disclosur
   const bodyId = React.useId();
   const used = AI_AREAS.filter((a) => levels[a.key] !== "none");
   const unused = AI_AREAS.filter((a) => levels[a.key] === "none").map((a) => a.short);
+  // Links a cell to its row, so only while the breakdown is open (otherwise the cell looks clickable).
   // Mouse only: a tap fires enter without leave, which left the cell looking selected on phones.
   const hover = (key: AiArea) => ({
-    onPointerEnter: (e: React.PointerEvent) => e.pointerType === "mouse" && setHot(key),
+    onPointerEnter: (e: React.PointerEvent) => open && e.pointerType === "mouse" && setHot(key),
     onPointerLeave: () => setHot(null),
   });
 
