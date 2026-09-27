@@ -127,21 +127,24 @@ function AiDisclosureForm({ initial, onCancel, onSave }: { initial: AiDisclosure
         </p>
       </div>
 
-      <div className="flex flex-wrap items-center justify-end gap-2.5 border-t border-line pt-4 md:col-span-2">
-        <span className="mr-auto text-xs text-text-3" aria-live="polite">
+      {/* Phones: the hint gets its own line and the buttons split the width below it. */}
+      <div className="flex flex-col gap-2.5 border-t border-line pt-4 sm:flex-row sm:items-center md:col-span-2">
+        <span className="text-xs text-text-3 empty:hidden sm:mr-auto" aria-live="polite">
           {!complete && "Pick a level for every area to save."}
         </span>
-        <button type="button" onClick={onCancel} className="inline-flex h-10 items-center rounded-control px-4 text-sm font-medium text-text-2 transition-colors hover:bg-surface-2 hover:text-text">
-          Cancel
-        </button>
-        <button
-          type="button"
-          onClick={save}
-          disabled={!complete || busy}
-          className="inline-flex h-10 items-center rounded-control bg-accent-deep px-[18px] text-sm font-semibold text-white transition-colors hover:enabled:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {busy ? "Saving…" : "Save"}
-        </button>
+        <div className="grid grid-cols-2 gap-2.5 sm:ml-auto sm:flex">
+          <button type="button" onClick={onCancel} className="inline-flex h-10 items-center justify-center rounded-control px-4 text-sm font-medium text-text-2 transition-colors hover:bg-surface-2 hover:text-text max-sm:bg-surface-2">
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={save}
+            disabled={!complete || busy}
+            className="inline-flex h-10 items-center justify-center rounded-control bg-accent-deep px-[18px] text-sm font-semibold text-white transition-colors hover:enabled:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {busy ? "Saving…" : "Save"}
+          </button>
+        </div>
       </div>
     </div>
   );
