@@ -51,7 +51,7 @@ function AiDisclosureForm({ initial, onCancel, onSave }: { initial: AiDisclosure
     <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_280px] md:items-start">
       <div>
         <p className="-mt-2 text-[13px] leading-[1.45] text-text-2">
-          Rough is fine. Count AI-generated content or code that you or your team added to the hack or this page, even if you edited it afterward. Brainstorming, experiments you didn&rsquo;t use, and anything that came with a base you built on don&rsquo;t count.{" "}
+          Pick the level that feels right for each area. It doesn&rsquo;t need to be exact. Count AI-generated work you and your team added to the hack or this page on purpose, even if you edited it afterward. Something like AI code that came with a base you built on doesn&rsquo;t count.{" "}
           <Link href="/faq#ai-disclosure" prefetch={false} target="_blank" className="text-link-hd">
             What the levels mean
           </Link>
