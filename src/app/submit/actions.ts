@@ -295,6 +295,10 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
   // Only a key signed for this hack, so nobody can register another hack's file.
   if (!isPatchKeyFor(args.slug, args.objectKey)) return { ok: false, error: "Invalid patch upload" } as const;
   if (!(await objectExists(PATCHES_BUCKET, args.objectKey))) return { ok: false, error: "The patch didn't finish uploading. Please try again." } as const;
+  // Patch rows are server-only (RLS has no insert policy), so writes below use the service client.
+  const service = await createServiceClient();
+  const { count: keyUses } = await service.from("patches").select("id", { count: "exact", head: true }).eq("filename", args.objectKey);
+  if (keyUses) return { ok: false, error: "That upload was already used. Please upload again." } as const;
 
   // Enforce unique version per hack defensively (avoid race with presign step)
   const { data: existing, error: vErr } = await supabase
@@ -329,7 +333,7 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
     ...(shouldPublishAutomatically ? { published_at: new Date().toISOString() } : {}),
   };
 
-  const { data: patch, error: pErr } = await supabase
+  const { data: patch, error: pErr } = await service
     .from("patches")
     .insert(patchInsert)
     .select("id, created_at")

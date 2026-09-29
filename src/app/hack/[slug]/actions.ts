@@ -817,6 +817,8 @@ export async function confirmReuploadPatchVersion(
   // Update patch filename and format (derived from object key extension)
   const format = objectKey.toLowerCase().endsWith(".xdelta") ? "xdelta" : "bps";
   const serviceClient = await createServiceClient();
+  const { count: keyUses } = await serviceClient.from("patches").select("id", { count: "exact", head: true }).eq("filename", objectKey);
+  if (keyUses) return { ok: false, error: "That upload was already used. Please upload again." };
   const { error: updateErr } = await serviceClient
     .from("patches")
     .update({ filename: objectKey, format, updated_at: new Date().toISOString() })
