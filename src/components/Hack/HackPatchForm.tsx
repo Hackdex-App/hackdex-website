@@ -263,7 +263,7 @@ export default function HackPatchForm(props: HackPatchFormProps) {
   };
 
   return (
-    <div className="grid gap-5">
+    <div className="grid min-w-0 gap-5">
       {currentVersion !== undefined && (
         <div className="flex items-center rounded-control border border-line/70 bg-surface-2/20 px-3 py-2">
           <div className="min-w-[24px]">
@@ -308,7 +308,7 @@ export default function HackPatchForm(props: HackPatchFormProps) {
                 onChange={onUploadPatch}
                 type="file"
                 accept=".bps,.xdelta"
-                className="cursor-pointer rounded-control bg-surface-2 px-3 py-2 text-sm italic text-text-3 ring-1 ring-inset ring-line file:bg-black/10 dark:file:bg-surface-2 file:text-text-2 file:text-sm file:font-medium file:not-italic file:rounded-control file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer"
+                className="w-full min-w-0 cursor-pointer rounded-control bg-surface-2 px-3 py-2 text-sm italic text-text-3 ring-1 ring-inset ring-line file:bg-black/10 dark:file:bg-surface-2 file:text-text-2 file:text-sm file:font-medium file:not-italic file:rounded-control file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer"
               />
               <p className="flex items-center gap-1.5 text-xs text-text-3">
                 <FiAlertTriangle className="h-3 w-3 shrink-0 text-warn" />
@@ -334,16 +334,16 @@ export default function HackPatchForm(props: HackPatchFormProps) {
                 <div className="text-xs text-text-2">Required base ROM</div>
                 <div className="mt-1 text-sm font-medium">{baseRomEntry ? `${baseRomEntry.name} (${baseRomEntry.platform})` : "Select base ROM in main Edit page"}</div>
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                  <span className={`rounded-full px-2 py-0.5 ring-1 ${baseRomReady ? "bg-ready-soft text-white ring-ready/40 dark:bg-ready-soft dark:text-ready dark:ring-ready/40" : baseRomNeedsPermission ? "bg-warn-soft text-white ring-warn/40 dark:bg-warn-soft dark:text-warn dark:ring-warn/40" : "bg-error-soft text-white ring-error/40 dark:bg-error-soft dark:text-error dark:ring-error/40"}`}>
+                  <span className={`rounded-full px-2 py-0.5 ring-1 ${baseRomReady ? "bg-ready-soft text-ready ring-ready/40" : baseRomNeedsPermission ? "bg-warn-soft text-warn ring-warn/40" : "bg-error-soft text-error ring-error/40"}`}>
                     {baseRomReady ? "Ready" : baseRomNeedsPermission ? "Permission needed" : "Base ROM needed"}
                   </span>
                   {baseRomNeedsPermission && (
                     <button type="button" onClick={onGrantPermission} disabled={!supported} className="rounded-control border border-line bg-surface-2 px-2 py-1 disabled:opacity-60 disabled:cursor-not-allowed">Grant permission</button>
                   )}
                   {baseRomMissing && (
-                    <label className="inline-flex items-center gap-2 text-xs text-text-2">
-                      <input type="file" onChange={onUploadBaseRom} className="cursor-pointer rounded-control bg-surface-2 px-2 py-1 text-xs italic text-text-3 ring-1 ring-inset ring-line file:bg-black/10 dark:file:bg-surface-2 file:text-text-2 file:text-xs file:font-medium file:not-italic file:rounded-control file:border-0 file:px-2 file:py-1 file:mr-2 file:cursor-pointer" />
+                    <label className="flex w-full min-w-0 flex-col items-start gap-1.5 text-xs text-text-2">
                       <span>Upload base ROM</span>
+                      <input type="file" onChange={onUploadBaseRom} className="w-full min-w-0 cursor-pointer rounded-control bg-surface-2 px-2 py-1 text-xs italic text-text-3 ring-1 ring-inset ring-line file:bg-black/10 dark:file:bg-surface-2 file:text-text-2 file:text-xs file:font-medium file:not-italic file:rounded-control file:border-0 file:px-2 file:py-1 file:mr-2 file:cursor-pointer" />
                     </label>
                   )}
                 </div>
@@ -358,7 +358,7 @@ export default function HackPatchForm(props: HackPatchFormProps) {
                   accept={baseRomPlatform ? platformAccept(baseRomPlatform) : "*/*"}
                   disabled={!baseRomEntry || !baseRomReady || !baseRomPlatform}
                   onChange={onUploadModifiedRom}
-                  className="cursor-pointer rounded-control bg-surface-2 px-3 py-2 text-sm italic text-text-3 ring-1 ring-inset ring-line file:bg-black/10 dark:file:bg-surface-2 file:text-text-2 file:text-sm file:font-medium file:not-italic file:rounded-control file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full min-w-0 cursor-pointer rounded-control bg-surface-2 px-3 py-2 text-sm italic text-text-3 ring-1 ring-inset ring-line file:bg-black/10 dark:file:bg-surface-2 file:text-text-2 file:text-sm file:font-medium file:not-italic file:rounded-control file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 />
                 <p className="text-xs text-text-3">We'll generate a .xdelta patch on-device. No ROMs are uploaded.</p>
                 {genStatus === "generating" && <div className="text-xs text-text-2">Generating patch…</div>}
