@@ -13,6 +13,7 @@ interface HackFormCreateProps {
   isArchive?: boolean;
   permissionFrom?: string;
   customCreator?: string;
+  multiSource?: boolean;
   catalogTags: CatalogTagRow[];
 }
 
@@ -33,6 +34,7 @@ export default function HackForm(props: HackFormProps) {
       isArchive={props.isArchive}
       permissionFrom={props.permissionFrom}
       customCreator={props.customCreator}
+      multiSource={props.multiSource}
       catalogTags={props.catalogTags}
     />;
   }

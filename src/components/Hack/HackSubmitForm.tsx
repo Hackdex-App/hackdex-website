@@ -6,7 +6,7 @@ import { baseRoms } from "@/data/baseRoms";
 import { getScreenshotTutorial } from "@/data/screenshotTutorials";
 import HackCard from "@/components/HackCard";
 import { createClient } from "@/utils/supabase/client";
-import { prepareSubmission, presignPatchAndSaveCovers, confirmPatchUpload, saveHackCovers } from "@/app/submit/actions";
+import { prepareSubmission, presignPatchAndSaveCovers, confirmPatchUpload, confirmPatchUploads, saveHackCovers } from "@/app/submit/actions";
 import { presignCoverUpload } from "@/app/hack/actions";
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -15,6 +15,8 @@ import Markdown from "@/components/Markdown/Markdown";
 import { RxDragHandleDots2 } from "react-icons/rx";
 import { FaDiscord, FaTwitter, FaGithub } from "react-icons/fa6";
 import { FiAlertTriangle, FiExternalLink } from "react-icons/fi";
+import { AiOutlineLoading3Quarters } from "react-icons/ai";
+import { usePageScrollLock } from "@/hooks/usePageScrollLock";
 import PokeCommunityIcon from "@/components/Icons/PokeCommunityIcon";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
@@ -29,6 +31,32 @@ import { patchFormatFromFilename } from "@/utils/patching";
 import { encodeXdelta, trialDecodeXdelta, friendlyXdeltaError } from "@/utils/patching/xdelta";
 import type { CatalogTagRow } from "@/types/catalogTag";
 import { HACK_FORM_DESCRIPTION_PLACEHOLDER } from "./hackFormConstants";
+import BaseRomCheckboxList from "@/components/Hack/BaseRomCheckboxList";
+import PatchSlotCard, { createPatchSlotDraft, isPatchSlotReady, type PatchSlotDraft, type PatchSlotStatus } from "@/components/Hack/PatchSlotCard";
+import { MAX_MULTI_BASE_ROMS, MAX_MULTI_PATCHES } from "@/utils/hacks/multi-entry";
+
+function SubmitProcessingOverlay({ message }: { message: string }) {
+  usePageScrollLock();
+  return (
+    <div className="fixed left-0 right-0 top-16 bottom-0 z-[100] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 dark:bg-black/60 backdrop-blur-sm" />
+      <div
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+        className="relative z-[101] mb-16 card backdrop-blur-lg dark:!bg-white/6 p-6 max-w-sm w-full rounded-lg"
+      >
+        <div className="flex flex-col items-center gap-4 text-center">
+          <AiOutlineLoading3Quarters className="h-8 w-8 animate-spin text-foreground/80" aria-hidden />
+          <div>
+            <div className="text-lg font-semibold">Submitting your hack</div>
+            <p className="mt-1 text-sm text-foreground/75">{message}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function SortableCoverItem({ id, index, url, filename, onRemove }: { id: string; index: number; url: string; filename: string; onRemove: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
@@ -65,11 +93,22 @@ function SortableCoverItem({ id, index, url, filename, onRemove }: { id: string;
   );
 }
 
+function emptySlotStatus(): PatchSlotStatus {
+  return {
+    file: null,
+    genStatus: "idle",
+    genError: "",
+    checksumStatus: "idle",
+    checksumError: "",
+  };
+}
+
 interface HackSubmitFormProps {
   dummy?: boolean;
   isArchive?: boolean;
   permissionFrom?: string;
   customCreator?: string;
+  multiSource?: boolean;
   catalogTags: CatalogTagRow[];
 }
 
@@ -78,6 +117,7 @@ export default function HackSubmitForm({
   isArchive = false,
   permissionFrom = undefined,
   customCreator = undefined,
+  multiSource = false,
   catalogTags,
 }: HackSubmitFormProps) {
   const MAX_COVERS = 10;
@@ -105,6 +145,23 @@ export default function HackSubmitForm({
   const [newCoverFiles, setNewCoverFiles] = React.useState<File[]>([]);
   const [coverErrors, setCoverErrors] = React.useState<string[]>([]);
   const [baseRom, setBaseRom] = React.useState(() => initialDraftRef.current?.baseRom || "");
+  const [selectedBaseRoms, setSelectedBaseRoms] = React.useState<string[]>(() => {
+    const draftRoms = initialDraftRef.current?.selectedBaseRoms;
+    if (Array.isArray(draftRoms) && draftRoms.every((id: unknown) => typeof id === "string")) {
+      return draftRoms.slice(0, MAX_MULTI_BASE_ROMS);
+    }
+    return initialDraftRef.current?.baseRom ? [initialDraftRef.current.baseRom] : [];
+  });
+  const [patchSlots, setPatchSlots] = React.useState<PatchSlotDraft[]>(() => {
+    const draftSlots = initialDraftRef.current?.patchSlots;
+    if (Array.isArray(draftSlots) && draftSlots.length > 0) {
+      return draftSlots.slice(0, MAX_MULTI_PATCHES).map((slot: Partial<PatchSlotDraft>) => createPatchSlotDraft(slot));
+    }
+    return [createPatchSlotDraft(), createPatchSlotDraft()];
+  });
+  const [patchSlotStatuses, setPatchSlotStatuses] = React.useState<PatchSlotStatus[]>(() => (
+    [emptySlotStatus(), emptySlotStatus()]
+  ));
   const [platform, setPlatform] = React.useState<"GB" | "GBC" | "GBA" | "NDS" | "">(() => (initialDraftRef.current?.platform as any) || "");
   const [version, setVersion] = React.useState(() => initialDraftRef.current?.version || "");
   const [language, setLanguage] = React.useState(() => initialDraftRef.current?.language || "");
@@ -129,6 +186,7 @@ export default function HackSubmitForm({
   const [checksumError, setChecksumError] = React.useState<string>("");
   const [genError, setGenError] = React.useState<string>("");
   const [submitting, setSubmitting] = React.useState(false);
+  const [submitStatus, setSubmitStatus] = React.useState("Submitting…");
   const maxSteps = isArchive ? 3 : 4;
   const [step, setStep] = React.useState<number>(() => {
     const s = initialDraftRef.current?.step;
@@ -142,6 +200,19 @@ export default function HackSubmitForm({
   const screenshotsInputRef = React.useRef<HTMLInputElement | null>(null);
   const patchInputRef = React.useRef<HTMLInputElement | null>(null);
   const modifiedRomInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  React.useEffect(() => {
+    if (multiSource) {
+      setBaseRom(selectedBaseRoms[0] || "");
+    }
+  }, [multiSource, selectedBaseRoms]);
+
+  React.useEffect(() => {
+    setPatchSlotStatuses((prev) => {
+      if (prev.length === patchSlots.length) return prev;
+      return patchSlots.map((_, index) => prev[index] || emptySlotStatus());
+    });
+  }, [patchSlots.length]);
 
   const baseRomEntry = React.useMemo(() => baseRoms.find((r) => r.id === baseRom) || null, [baseRom]);
   const baseRomName = baseRomEntry?.name || "";
@@ -198,6 +269,7 @@ export default function HackSubmitForm({
     if (!newCoverFiles || newCoverFiles.length === 0) return [] as string[];
     const urls: string[] = [];
     for (let i = 0; i < newCoverFiles.length; i++) {
+      setSubmitStatus(`Uploading screenshot ${i + 1} of ${newCoverFiles.length}…`);
       const file = newCoverFiles[i];
       const fileExt = file.name.split('.').pop();
       const path = `${slug}/${Date.now()}-${i}.${fileExt}`;
@@ -307,6 +379,14 @@ export default function HackSubmitForm({
               if (typeof data.description === "string") applied = applied || !!data.description;
               if (typeof data.baseRom === "string") setBaseRom(data.baseRom);
               if (typeof data.baseRom === "string") applied = applied || !!data.baseRom;
+              if (Array.isArray(data.selectedBaseRoms)) {
+                setSelectedBaseRoms(data.selectedBaseRoms.filter((id: unknown) => typeof id === "string").slice(0, MAX_MULTI_BASE_ROMS));
+                applied = applied || data.selectedBaseRoms.length > 0;
+              }
+              if (Array.isArray(data.patchSlots) && data.patchSlots.length > 0) {
+                setPatchSlots(data.patchSlots.slice(0, MAX_MULTI_PATCHES).map((slot: Partial<PatchSlotDraft>) => createPatchSlotDraft(slot)));
+                applied = true;
+              }
               if (["GB","GBC","GBA","NDS",""].includes(data.platform)) setPlatform(data.platform);
               if (["GB","GBC","GBA","NDS",""].includes(data.platform)) applied = applied || !!data.platform;
               if (typeof data.version === "string") setVersion(data.version);
@@ -371,6 +451,9 @@ export default function HackSubmitForm({
           summary,
           description,
           baseRom,
+          selectedBaseRoms,
+          entryLayout: multiSource ? "multi" : "single",
+          patchSlots,
           platform,
           version,
           language,
@@ -405,6 +488,9 @@ export default function HackSubmitForm({
     summary,
     description,
     baseRom,
+    selectedBaseRoms,
+    multiSource,
+    patchSlots,
     platform,
     version,
     language,
@@ -432,20 +518,30 @@ export default function HackSubmitForm({
 
   const allSocialValid = [discord, twitter, pokecommunity, github].every((s) => !s || urlLike(s));
 
-  const step1Valid = !!title.trim() && !!platform && !!baseRom.trim() && !!language.trim() && !!completionStatus.trim() && (isArchive ? !!originalAuthor.trim() : true);
+  const step1Valid = !!title.trim() && !!platform && (multiSource ? selectedBaseRoms.length >= 2 && selectedBaseRoms.length <= MAX_MULTI_BASE_ROMS : !!baseRom.trim()) && !!language.trim() && !!completionStatus.trim() && (isArchive ? !!originalAuthor.trim() : true);
   const step2Valid = (isArchive ? true : !!version.trim()) && !!summary.trim() && !summaryTooLong && !!description.trim() && tags.length > 0;
   const step3Valid = (newCoverFiles.length > 0) && !overLimit && coverErrors.length === 0 && (!boxArt.trim() || urlLike(boxArt)) && allSocialValid;
-  const isValid = step1Valid && step2Valid && step3Valid && (isArchive ? true : !!patchFile) && checksumStatus !== "invalid" && checksumStatus !== "validating";
+  const multiPatchesReady = !multiSource || (
+    patchSlots.length >= 2
+    && patchSlots.length <= MAX_MULTI_PATCHES
+    && patchSlots.every((slot, index) => isPatchSlotReady(slot, patchSlotStatuses[index] || emptySlotStatus()))
+    && new Set(patchSlots.map((slot) => slot.label.trim().toLowerCase())).size === patchSlots.length
+  );
+  const isValid = step1Valid && step2Valid && step3Valid && (isArchive ? true : (multiSource ? multiPatchesReady : !!patchFile)) && checksumStatus !== "invalid" && checksumStatus !== "validating";
 
   const onSubmit = async () => {
     if (!isValid || submitting) return;
+    if (multiSource && (selectedBaseRoms.length > MAX_MULTI_BASE_ROMS || patchSlots.length > MAX_MULTI_PATCHES)) return;
+    setSubmitStatus("Creating your entry…");
     setSubmitting(true);
     try {
       const fd = new FormData();
       fd.set('title', title);
       fd.set('summary', summary);
       fd.set('description', description);
-      fd.set('base_rom', baseRom);
+      fd.set('base_rom', multiSource ? (selectedBaseRoms[0] || baseRom) : baseRom);
+      fd.set('base_roms', (multiSource ? selectedBaseRoms : [baseRom]).filter(Boolean).join(','));
+      fd.set('entry_layout', multiSource ? 'multi' : 'single');
       fd.set('language', language);
       fd.set('completion_status', completionStatus);
       fd.set('version', version);
@@ -471,12 +567,12 @@ export default function HackSubmitForm({
       const prepared = await prepareSubmission(fd);
       if (!prepared.ok) throw new Error(prepared.error || 'Failed to prepare');
 
-      console.log('[HackSubmitForm] Uploading covers...');
-
+      setSubmitStatus("Uploading screenshots…");
       const uploadedCoverUrls = await uploadCovers(prepared.slug);
 
       if (isArchive) {
         // For archives, we don't need patch upload
+        setSubmitStatus("Saving your archive…");
         const coversSaved = await saveHackCovers({ slug: prepared.slug, coverUrls: uploadedCoverUrls });
         if (!coversSaved.ok) throw new Error(coversSaved.error || 'Failed to save covers');
         try {
@@ -485,19 +581,41 @@ export default function HackSubmitForm({
             await deleteDraftCovers(draftKey);
           }
         } catch {}
+        setSubmitStatus("Opening your hack…");
         window.location.href = `/hack/${prepared.slug}`;
+        return;
       } else {
-        console.log('[HackSubmitForm] Getting patch upload URL...');
         const safeVersion = version.replace(/[^a-zA-Z0-9._-]+/g, "-");
-        const patchExt = patchFormatFromFilename(patchFile?.name) === "xdelta" ? "xdelta" : "bps";
-        const objectKey = `${prepared.slug}-${safeVersion}.${patchExt}`;
-        const presigned = await presignPatchAndSaveCovers({ slug: prepared.slug, version, coverUrls: uploadedCoverUrls, objectKey });
-        if (!presigned.ok) throw new Error(presigned.error || 'Failed to presign');
-
-        if (patchFile) {
-          console.log('[HackSubmitForm] Uploading patch...');
-          await fetch(presigned.presignedUrl, { method: 'PUT', body: patchFile, headers: { 'Content-Type': 'application/octet-stream' } });
-          const finalized = await confirmPatchUpload({ slug: prepared.slug, objectKey: presigned.objectKey!, version, firstUpload: true, publishAutomatically: true });
+        if (multiSource) {
+          const readySlots = patchSlots.map((slot, index) => ({ slot, status: patchSlotStatuses[index] || emptySlotStatus() }));
+          const uploaded: { objectKey: string; label: string; info: string; base_rom: string }[] = [];
+          for (let i = 0; i < readySlots.length; i++) {
+            const { slot, status } = readySlots[i];
+            if (!status.file) throw new Error(`Patch ${i + 1} is missing a file.`);
+            setSubmitStatus(`Uploading ${slot.label.trim() || `patch ${i + 1}`} (${i + 1} of ${readySlots.length})…`);
+            const patchExt = patchFormatFromFilename(status.file.name) === "xdelta" ? "xdelta" : "bps";
+            const safeLabel = slot.label.trim().replace(/[^a-zA-Z0-9._-]+/g, "-") || `patch-${i + 1}`;
+            const objectKey = `${prepared.slug}-${safeVersion}-${safeLabel}-${i}.${patchExt}`;
+            const presigned = i === 0
+              ? await presignPatchAndSaveCovers({ slug: prepared.slug, version, coverUrls: uploadedCoverUrls, objectKey })
+              : await presignPatchAndSaveCovers({ slug: prepared.slug, version, coverUrls: [], objectKey });
+            if (!presigned.ok) throw new Error(presigned.error || 'Failed to presign');
+            await fetch(presigned.presignedUrl, { method: 'PUT', body: status.file, headers: { 'Content-Type': 'application/octet-stream' } });
+            uploaded.push({
+              objectKey: presigned.objectKey!,
+              label: slot.label.trim(),
+              info: slot.info.trim(),
+              base_rom: slot.baseRomId,
+            });
+          }
+          setSubmitStatus("Finishing your entry…");
+          const finalized = await confirmPatchUploads({
+            slug: prepared.slug,
+            version,
+            firstUpload: true,
+            publishAutomatically: true,
+            patches: uploaded,
+          });
           if (!finalized.ok) throw new Error(finalized.error || 'Failed to finalize');
           try {
             if (draftKey) {
@@ -505,23 +623,44 @@ export default function HackSubmitForm({
               await deleteDraftCovers(draftKey);
             }
           } catch {}
+          setSubmitStatus("Opening your hack…");
           window.location.href = finalized.redirectTo!;
+          return;
         } else {
-          console.log('[HackSubmitForm] No patch file, redirecting to hack page...');
+          const patchExt = patchFormatFromFilename(patchFile?.name) === "xdelta" ? "xdelta" : "bps";
+          const objectKey = `${prepared.slug}-${safeVersion}.${patchExt}`;
+          const presigned = await presignPatchAndSaveCovers({ slug: prepared.slug, version, coverUrls: uploadedCoverUrls, objectKey });
+          if (!presigned.ok) throw new Error(presigned.error || 'Failed to presign');
+
+          if (patchFile) {
+            setSubmitStatus("Uploading your patch…");
+            await fetch(presigned.presignedUrl, { method: 'PUT', body: patchFile, headers: { 'Content-Type': 'application/octet-stream' } });
+            setSubmitStatus("Finishing your entry…");
+            const finalized = await confirmPatchUpload({ slug: prepared.slug, objectKey: presigned.objectKey!, version, firstUpload: true, publishAutomatically: true, base_rom: baseRom });
+            if (!finalized.ok) throw new Error(finalized.error || 'Failed to finalize');
+            try {
+              if (draftKey) {
+                localStorage.removeItem(draftKey);
+                await deleteDraftCovers(draftKey);
+              }
+            } catch {}
+            setSubmitStatus("Opening your hack…");
+            window.location.href = finalized.redirectTo!;
+            return;
+          }
           try {
             if (draftKey) {
               localStorage.removeItem(draftKey);
               await deleteDraftCovers(draftKey);
             }
           } catch {}
+          setSubmitStatus("Opening your hack…");
           window.location.href = `/hack/${prepared.slug}`;
         }
       }
-      console.log('[HackSubmitForm] Submission successful');
     } catch (e: any) {
       console.log('[HackSubmitForm] Submission failed', e);
       alert(e.message ? `There was an error during submission:\n\n===\n${e.message}\n===\n\nYour hack might have only been partially submitted. Try going to your dashboard and see if your hack is listed there. If not, please contact support.` : 'Submission failed');
-    } finally {
       setSubmitting(false);
     }
   };
@@ -680,7 +819,8 @@ export default function HackSubmitForm({
     summary: (summary || "Short description, max 100 characters.") as string,
     description: (description || "Write a longer markdown description here.") as string,
     covers: coverPreviews,
-    baseRomId: baseRom,
+    baseRomId: multiSource ? (selectedBaseRoms[0] || baseRom) : baseRom,
+    baseRomIds: multiSource ? selectedBaseRoms : (baseRom ? [baseRom] : []),
     downloads: 0,
     version: isArchive ? "Archive" : (version || "v0.0.0"),
     tags: sortOrderedTags(tags.map((name, index) => ({ name, order: index + 1 }))),
@@ -767,6 +907,9 @@ export default function HackSubmitForm({
                   setSummary("");
                   setDescription("");
                   setBaseRom("");
+                  setSelectedBaseRoms([]);
+                  setPatchSlots([createPatchSlotDraft(), createPatchSlotDraft()]);
+                  setPatchSlotStatuses([emptySlotStatus(), emptySlotStatus()]);
                   setPlatform("");
                   setVersion("");
                   setLanguage("");
@@ -826,7 +969,7 @@ export default function HackSubmitForm({
                   {!isDummy ? (
                     <Select
                       value={platform}
-                      onChange={(value) => { if ((newCoverFiles.length) > 0) return; setPlatform(value as any); setBaseRom(""); }}
+                      onChange={(value) => { if ((newCoverFiles.length) > 0) return; setPlatform(value as any); setBaseRom(""); setSelectedBaseRoms([]); }}
                       disabled={newCoverFiles.length > 0}
                       placeholder="Select platform"
                       options={(["GB","GBC","GBA","NDS"] as const).map(p => ({
@@ -843,8 +986,30 @@ export default function HackSubmitForm({
                 </div>
 
                 <div className="grid gap-2">
-                  <label className="text-sm text-foreground/80">Base ROM <span className="text-red-500">*</span></label>
-                  {!isDummy ? (
+                  <label className="text-sm text-foreground/80">{multiSource ? "Base ROMs" : "Base ROM"} <span className="text-red-500">*</span></label>
+                  {multiSource ? (
+                    <>
+                      <BaseRomCheckboxList
+                        platform={platform}
+                        value={selectedBaseRoms}
+                        onChange={(next) => setSelectedBaseRoms(next.slice(0, MAX_MULTI_BASE_ROMS))}
+                        disabled={isDummy || !platform}
+                        max={MAX_MULTI_BASE_ROMS}
+                      />
+                      <p className="text-xs text-foreground/60">
+                        Select every source ROM this hack can be applied to. Players who have any of these ROMs will see this hack as ready.
+                      </p>
+                      <p className="text-xs text-foreground/60">
+                        Selected: {selectedBaseRoms.length} of max {MAX_MULTI_BASE_ROMS}
+                      </p>
+                      {selectedBaseRoms.length === 1 && (
+                        <p className="text-xs text-red-400">Choose at least two base ROMs for a multi-source entry.</p>
+                      )}
+                      {selectedBaseRoms.length >= MAX_MULTI_BASE_ROMS && (
+                        <p className="text-xs text-foreground/60">Maximum of {MAX_MULTI_BASE_ROMS} base ROMs reached.</p>
+                      )}
+                    </>
+                  ) : !isDummy ? (
                     <Select
                       enableFilter
                       value={baseRom}
@@ -1236,7 +1401,65 @@ https://discord.gg/example`}
               </>
             )}
 
-            {step === 4 && !isArchive && (
+            {step === 4 && !isArchive && multiSource && (
+              <div className="grid gap-4">
+                <div>
+                  <label className="text-sm text-foreground/80">Provide patches <span className="text-red-500">*</span></label>
+                  <p className="mt-1 text-xs text-foreground/60">
+                    Add a patch file for each option players should be able to choose. Give each one a name and a short explanation.
+                  </p>
+                  <p className="mt-1 text-xs text-foreground/60">
+                    Patches: {patchSlots.length}/{MAX_MULTI_PATCHES}
+                  </p>
+                </div>
+                {patchSlots.map((slot, index) => (
+                  <PatchSlotCard
+                    key={slot.id}
+                    index={index}
+                    draft={slot}
+                    status={patchSlotStatuses[index] || emptySlotStatus()}
+                    allowedBaseRomIds={selectedBaseRoms}
+                    canRemove={patchSlots.length > 2}
+                    fileNameHint={`${slug || title || "patch"}-${slot.label || index + 1}`}
+                    dummy={isDummy}
+                    onDraftChange={(next) => {
+                      setPatchSlots((prev) => prev.map((item, itemIndex) => itemIndex === index ? next : item));
+                    }}
+                    onStatusChange={(next) => {
+                      setPatchSlotStatuses((prev) => {
+                        const copy = [...prev];
+                        copy[index] = next;
+                        return copy;
+                      });
+                    }}
+                    onRemove={() => {
+                      setPatchSlots((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
+                      setPatchSlotStatuses((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
+                    }}
+                  />
+                ))}
+                {!isDummy && (
+                  <div className="grid gap-2">
+                    <button
+                      type="button"
+                      disabled={patchSlots.length >= MAX_MULTI_PATCHES}
+                      onClick={() => {
+                        setPatchSlots((prev) => prev.length >= MAX_MULTI_PATCHES ? prev : [...prev, createPatchSlotDraft()]);
+                        setPatchSlotStatuses((prev) => prev.length >= MAX_MULTI_PATCHES ? prev : [...prev, emptySlotStatus()]);
+                      }}
+                      className="inline-flex h-11 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-4 text-sm font-semibold text-foreground transition-colors hover:bg-black/5 dark:hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Add another patch
+                    </button>
+                    {patchSlots.length >= MAX_MULTI_PATCHES && (
+                      <p className="text-xs text-foreground/60">Maximum of {MAX_MULTI_PATCHES} patches reached.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {step === 4 && !isArchive && !multiSource && (
               <div className="grid gap-3">
                 <label className="text-sm text-foreground/80">Provide patch <span className="text-red-500">*</span></label>
                 {!isDummy ? (
@@ -1362,6 +1585,7 @@ https://discord.gg/example`}
             )}
           </fieldset>
         </form>
+        {submitting && <SubmitProcessingOverlay message={submitStatus} />}
       </div>
 
       <aside className="flex flex-col gap-5 lg:sticky lg:top-20 self-start basis-[360px]">

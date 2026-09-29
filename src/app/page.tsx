@@ -38,6 +38,18 @@ export default async function Home() {
   if (popularHacks && popularHacks.length > 0) {
     const slugs = popularHacks.map((h) => h.slug);
 
+    const { data: hackBaseRomRows } = await supabase
+      .from("hack_base_roms")
+      .select("hack_slug,base_rom,sort_order")
+      .in("hack_slug", slugs)
+      .order("sort_order", { ascending: true });
+    const baseRomsBySlug = new Map<string, string[]>();
+    (hackBaseRomRows || []).forEach((row) => {
+      const ids = baseRomsBySlug.get(row.hack_slug) || [];
+      if (!ids.includes(row.base_rom)) ids.push(row.base_rom);
+      baseRomsBySlug.set(row.hack_slug, ids);
+    });
+
     // Fetch covers
     const { data: coverRows } = await supabase
       .from("hack_covers")
@@ -140,6 +152,7 @@ export default async function Home() {
       tags: sortOrderedTags(tagsBySlug.get(r.slug) || []),
       downloads: r.downloads,
       baseRomId: r.base_rom,
+      baseRomIds: baseRomsBySlug.get(r.slug) ?? [r.base_rom],
       version: mappedVersions.get(r.slug) || "Pre-release",
       summary: r.summary,
       description: r.description,

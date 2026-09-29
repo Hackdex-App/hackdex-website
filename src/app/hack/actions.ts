@@ -221,7 +221,7 @@ export async function saveHackCovers(args: { slug: string; coverUrls: string[] }
 }
 
 
-export async function presignNewPatchVersion(args: { slug: string; version: string; objectKey?: string }) {
+export async function presignNewPatchVersion(args: { slug: string; version: string; objectKey?: string; allowExistingVersion?: boolean }) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -245,15 +245,17 @@ export async function presignNewPatchVersion(args: { slug: string; version: stri
     return { ok: false, error: "Forbidden" } as const;
   }
 
-  // Enforce unique version per hack
-  const { data: existing } = await supabase
-    .from("patches")
-    .select("id")
-    .eq("parent_hack", args.slug)
-    .eq("version", args.version)
-    .limit(1)
-    .maybeSingle();
-  if (existing) return { ok: false, error: "That version already exists for this hack." } as const;
+  if (!args.allowExistingVersion) {
+    // Enforce unique version per hack for the single-patch flow
+    const { data: existing } = await supabase
+      .from("patches")
+      .select("id")
+      .eq("parent_hack", args.slug)
+      .eq("version", args.version)
+      .limit(1)
+      .maybeSingle();
+    if (existing) return { ok: false, error: "That version already exists for this hack." } as const;
+  }
 
   const safeVersion = args.version.replace(/[^a-zA-Z0-9._-]+/g, "-");
   const objectKey = args.objectKey || `${args.slug}-${safeVersion}.bps`;

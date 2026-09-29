@@ -156,9 +156,12 @@ export default function DiscoverBrowser({
     if (selectedTags.length > 0) {
       out = out.filter((h) => selectedTags.every((t) => h.tags.some((tag) => tag.name === t)));
     }
-    // OR filter across base roms: hack's baseRomId must be in selectedBaseRoms
+    // OR filter across base roms: any of the hack's base ROMs may match
     if (selectedBaseRoms.length > 0) {
-      out = out.filter((h) => h.baseRomId && selectedBaseRoms.includes(h.baseRomId));
+      out = out.filter((h) => {
+        const ids = h.baseRomIds?.length ? h.baseRomIds : (h.baseRomId ? [h.baseRomId] : []);
+        return ids.some((id) => selectedBaseRoms.includes(id));
+      });
     }
     // OR filter across completion statuses: hack's completion_status must be in selectedCompletionStatuses
     // If "Complete" is selected, also include hacks with null completion_status
@@ -173,7 +176,11 @@ export default function DiscoverBrowser({
     }
     // Filter to hacks whose base ROM is ready (linked with permission or cached)
     if (onlyReady) {
-      out = out.filter((h) => !h.is_archive && h.baseRomId && readyBaseRomIds.has(h.baseRomId));
+      out = out.filter((h) => {
+        if (h.is_archive) return false;
+        const ids = h.baseRomIds?.length ? h.baseRomIds : (h.baseRomId ? [h.baseRomId] : []);
+        return ids.some((id) => readyBaseRomIds.has(id));
+      });
     }
     return [...out].sort((a, b) => {
       if (sort === "popular") return b.downloads - a.downloads;

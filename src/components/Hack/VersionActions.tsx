@@ -23,7 +23,7 @@ import {
 import BinFile from "rom-patcher-js/rom-patcher-js/modules/BinFile.js";
 import BPS from "rom-patcher-js/rom-patcher-js/modules/RomPatcher.format.bps.js";
 import { sha1Hex } from "@/utils/hash";
-import { baseRoms, type BaseRom } from "@/data/baseRoms";
+import { baseRoms } from "@/data/baseRoms";
 import { platformAccept } from "@/utils/idb";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
 import { patchFormatFromFilename } from "@/utils/patching";
@@ -47,6 +47,7 @@ interface VersionActionsProps {
   isCustomPatcherActive?: boolean;
   isInCustomPatcherList?: boolean;
   customPatcherPatchCount?: number;
+  versionPatchLabels?: string[];
   onActionComplete: () => void;
 }
 
@@ -59,6 +60,7 @@ export default function VersionActions({
   isCustomPatcherActive = false,
   isInCustomPatcherList = false,
   customPatcherPatchCount = 0,
+  versionPatchLabels = [],
   onActionComplete,
 }: VersionActionsProps) {
   const { isLinked, hasPermission, hasCached, importUploadedBlob, ensurePermission, getFileBlob, supported } = useBaseRoms();
@@ -80,11 +82,12 @@ export default function VersionActions({
   const modifiedRomInputRef = useRef<HTMLInputElement>(null);
   const baseRomInputRef = useRef<HTMLInputElement>(null);
 
-  const baseRomEntry = baseRoms.find((r) => r.id === baseRom);
+  const effectiveBaseRom = patch.base_rom || baseRom;
+  const baseRomEntry = baseRoms.find((r) => r.id === effectiveBaseRom);
   const baseRomPlatform = baseRomEntry?.platform;
-  const baseRomReady = baseRom && (hasPermission(baseRom) || hasCached(baseRom));
-  const baseRomNeedsPermission = baseRom && isLinked(baseRom) && !baseRomReady;
-  const baseRomMissing = baseRom && !isLinked(baseRom) && !hasCached(baseRom);
+  const baseRomReady = effectiveBaseRom && (hasPermission(effectiveBaseRom) || hasCached(effectiveBaseRom));
+  const baseRomNeedsPermission = effectiveBaseRom && isLinked(effectiveBaseRom) && !baseRomReady;
+  const baseRomMissing = effectiveBaseRom && !isLinked(effectiveBaseRom) && !hasCached(effectiveBaseRom);
 
   // Determine if this patch is newer than the current patch
   const isNewerThanCurrent = currentPatchCreatedAt
@@ -223,7 +226,7 @@ export default function VersionActions({
       }
 
       if (patchFormatFromFilename(patchFile.name) === "xdelta") {
-        const baseFile = baseRom ? await getFileBlob(baseRom) : null;
+        const baseFile = effectiveBaseRom ? await getFileBlob(effectiveBaseRom) : null;
         if (!baseFile) {
           setChecksumStatus("unknown");
           setChecksumError("Cannot validate without the base ROM on this device. Proceed at your own risk, or upload your modified ROM instead.");
@@ -293,15 +296,15 @@ export default function VersionActions({
     try {
       setGenError("");
       const f = e.target.files?.[0];
-      if (!f || !baseRom) return;
+      if (!f || !effectiveBaseRom) return;
       const matchedId = await importUploadedBlob(f);
       if (!matchedId) {
         setGenError("That ROM doesn't match any supported base ROM.");
         return;
       }
-      if (matchedId !== baseRom) {
+      if (matchedId !== effectiveBaseRom) {
         const matchedName = baseRoms.find(r => r.id === matchedId)?.name;
-        const baseRomName = baseRomEntry?.name || baseRom;
+        const baseRomName = baseRomEntry?.name || effectiveBaseRom;
         setGenError(`This ROM matches "${matchedName ?? matchedId}", but the form requires "${baseRomName}".`);
         return;
       }
@@ -313,8 +316,8 @@ export default function VersionActions({
   }
 
   async function onGrantPermission() {
-    if (!baseRom) return;
-    await ensurePermission(baseRom, true);
+    if (!effectiveBaseRom) return;
+    await ensurePermission(effectiveBaseRom, true);
   }
 
   async function onUploadModifiedRom(e: React.ChangeEvent<HTMLInputElement>) {
@@ -323,14 +326,14 @@ export default function VersionActions({
       setGenError("");
 
       const mod = e.target.files?.[0] || null;
-      if (!mod || !baseRom) {
+      if (!mod || !effectiveBaseRom) {
         setGenStatus("idle");
         return;
       }
 
       let baseFile = baseRomFile;
       if (!baseFile) {
-        baseFile = await getFileBlob(baseRom);
+        baseFile = await getFileBlob(effectiveBaseRom);
       }
       if (!baseFile) {
         setGenStatus("error");
@@ -703,9 +706,22 @@ export default function VersionActions({
         visible={showPublishModal}
         onClose={() => !actionLoading && setShowPublishModal(false)}
       >
-        <p className="text-foreground/80 mb-4">
-          Publish version <strong>{patch.version}</strong>? This will make it viewable to the public along with its changelog.
-        </p>
+        {versionPatchLabels.length > 1 ? (
+          <>
+            <p className="text-foreground/80 mb-3">
+              Publishing <strong>{patch.version}</strong> will mark all patches in this version as published:
+            </p>
+            <ul className="mb-4 list-disc space-y-1 pl-5 text-sm text-foreground/75">
+              {versionPatchLabels.map((label) => (
+                <li key={label}>{label}</li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <p className="text-foreground/80 mb-4">
+            Publish version <strong>{patch.version}</strong>? This will make it viewable to the public along with its changelog.
+          </p>
+        )}
         <p className="text-sm text-foreground/60 mb-4">
           {isCustomPatcherActive
             ? "This will not add the version to the Custom patcher list. Add it through Patcher Version Settings if you want it available in the homepage downloader."
@@ -717,7 +733,7 @@ export default function VersionActions({
             disabled={actionLoading}
             className="flex-1 rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {actionLoading ? "Publishing..." : "Publish"}
+            {actionLoading ? "Publishing..." : "Confirm"}
           </button>
           <button
             onClick={() => setShowPublishModal(false)}

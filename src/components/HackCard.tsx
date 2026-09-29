@@ -4,8 +4,9 @@
 import PixelImage from "./PixelImage";
 import Link from "next/link";
 import { formatCompactNumber, OrderedTag } from "@/utils/format";
+import { resolveHackBaseRomIds } from "@/utils/hacks/base-roms";
+import BaseRomNamesLabel from "@/components/Hack/BaseRomNamesLabel";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
-import { baseRoms } from "@/data/baseRoms";
 import { useEffect, useRef, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import { usePathname } from "next/navigation";
@@ -23,6 +24,7 @@ export interface HackCardAttributes {
   tags: OrderedTag[];
   downloads: number;
   baseRomId?: string;
+  baseRomIds?: string[];
   version: string;
   summary?: string;
   description?: string;
@@ -45,13 +47,11 @@ export default function HackCard({
 }: HackCardProps) {
   const isArchive = hack.is_archive;
   const { isLinked, hasPermission, hasCached } = useBaseRoms();
-  const match = baseRoms.find((r) => r.id === hack.baseRomId);
-  const baseId = match?.id ?? undefined;
-  const baseName = match?.name ?? undefined;
+  const baseIds = resolveHackBaseRomIds(hack.baseRomId, hack.baseRomIds);
 
   // Only compute base ROM readiness for non-archive hacks
-  const linked = !isArchive && baseId ? isLinked(baseId) : false;
-  const ready = !isArchive && baseId ? hasPermission(baseId) || hasCached(baseId) : false;
+  const linked = !isArchive && baseIds.some((id) => isLinked(id));
+  const ready = !isArchive && baseIds.some((id) => hasPermission(id) || hasCached(id));
   const images = (hack.covers && hack.covers.length > 0 ? hack.covers : []).filter(Boolean);
   const isCarousel = images.length > 1;
   const pathname = usePathname();
@@ -223,7 +223,9 @@ export default function HackCard({
             })()}
           </p>
           <div className="flex justify-between items-end mt-auto pt-3 text-xs text-foreground/60">
-            <p>Base: {baseName ?? "Unknown"}</p>
+            <p>
+              <BaseRomNamesLabel ids={baseIds} prefix="Base: " />
+            </p>
             {hack.completion_status && hack.completion_status !== "Complete" && <p className="font-bold text-sm">{hack.completion_status}</p>}
           </div>
         </div>

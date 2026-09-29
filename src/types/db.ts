@@ -34,6 +34,35 @@ export type Database = {
   }
   public: {
     Tables: {
+      hack_base_roms: {
+        Row: {
+          base_rom: string
+          created_at: string
+          hack_slug: string
+          sort_order: number
+        }
+        Insert: {
+          base_rom: string
+          created_at?: string
+          hack_slug: string
+          sort_order?: number
+        }
+        Update: {
+          base_rom?: string
+          created_at?: string
+          hack_slug?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hack_base_roms_hack_slug_fkey"
+            columns: ["hack_slug"]
+            isOneToOne: false
+            referencedRelation: "hacks"
+            referencedColumns: ["slug"]
+          },
+        ]
+      }
       hack_covers: {
         Row: {
           alt: string | null
@@ -527,6 +556,7 @@ export type Database = {
         Row: {
           archived: boolean
           archived_at: string | null
+          base_rom: string | null
           breaks_saves: boolean
           bucket: string
           changelog: string | null
@@ -534,6 +564,8 @@ export type Database = {
           filename: string
           format: Database["public"]["Enums"]["Patch Format"]
           id: number
+          info: string | null
+          label: string | null
           parent_hack: string | null
           published: boolean
           published_at: string | null
@@ -543,6 +575,7 @@ export type Database = {
         Insert: {
           archived?: boolean
           archived_at?: string | null
+          base_rom?: string | null
           breaks_saves?: boolean
           bucket: string
           changelog?: string | null
@@ -550,6 +583,8 @@ export type Database = {
           filename: string
           format?: Database["public"]["Enums"]["Patch Format"]
           id?: number
+          info?: string | null
+          label?: string | null
           parent_hack?: string | null
           published?: boolean
           published_at?: string | null
@@ -559,6 +594,7 @@ export type Database = {
         Update: {
           archived?: boolean
           archived_at?: string | null
+          base_rom?: string | null
           breaks_saves?: boolean
           bucket?: string
           changelog?: string | null
@@ -566,6 +602,8 @@ export type Database = {
           filename?: string
           format?: Database["public"]["Enums"]["Patch Format"]
           id?: number
+          info?: string | null
+          label?: string | null
           parent_hack?: string | null
           published?: boolean
           published_at?: string | null

@@ -2,78 +2,15 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Markdown from "@/components/Markdown/Markdown";
-import { FaChevronDown, FaChevronUp, FaStar, FaDownload, FaTrash, FaRotateLeft, FaUpload, FaCheck, FaPlus } from "react-icons/fa6";
+import { FaChevronDown, FaChevronUp, FaDownload, FaStar, FaCheck, FaPlus } from "react-icons/fa6";
 import { FiEdit2, FiEdit, FiX } from "react-icons/fi";
 import VersionActions from "@/components/Hack/VersionActions";
 import type { PatchesDownloadPermission } from "@/components/Hack/DownloadPermissionSettings";
-import { updatePatchChangelog, updatePatchVersion, getPatchDownloadUrl, updatePatchDownloadCount } from "@/app/hack/[slug]/actions";
-import { getOrCreateDeviceId } from "@/utils/deviceId";
+import { getPatchDownloadUrl, updatePatchChangelog, updatePatchVersion, updatePatchVariant } from "@/app/hack/[slug]/actions";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import type { Patch } from "@/components/Hack/PatcherVersionManager";
-
-function shouldShowPublicPatchDownload(
-  permission: PatchesDownloadPermission,
-  patch: Patch,
-  isCurrent: boolean,
-  isPatchable: boolean,
-  isCustomPatcherActive: boolean,
-): boolean {
-  if (permission === "None") return false;
-  if (!patch.published || patch.archived) return false;
-  if (permission === "All") return true;
-  if (permission === "Current") {
-    return isCustomPatcherActive ? isPatchable : isCurrent;
-  }
-  return false;
-}
-
-function PublicPatchDownloadButton({ patchId }: { patchId: number }) {
-  const [loading, setLoading] = useState(false);
-
-  const handleClick = async () => {
-    setLoading(true);
-    try {
-      const result = await getPatchDownloadUrl(patchId);
-      if (result.ok) {
-        window.open(result.url, "_blank");
-        // Best-effort log download for counting
-        try {
-          const deviceId = getOrCreateDeviceId();
-          if (!deviceId) return;
-          setTimeout(async () => {
-            const deviceIdObscured = deviceId.split("-");
-            const countResult = await updatePatchDownloadCount(patchId, deviceIdObscured);
-            if (!countResult.ok) {
-              console.error(countResult.error);
-            }
-          }, 50);
-        } catch (e) {
-          console.error(e);
-        }
-      } else {
-        alert(result.error || "Failed to generate download URL");
-      }
-    } catch {
-      alert("Failed to download patch");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={handleClick}
-      disabled={loading}
-      className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-3)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
-      title="Download patch file"
-    >
-      <FaDownload size={12} aria-hidden />
-      {loading ? "Opening…" : "Download Patch"}
-    </button>
-  );
-}
+import { currentPatchVersion, isCurrentVersionPatch, PATCH_INFO_MAX_LENGTH, PATCH_LABEL_MAX_LENGTH } from "@/utils/patches/patch-variant";
 
 interface VersionListProps {
   patches: Patch[];
@@ -81,7 +18,7 @@ interface VersionListProps {
   canEdit: boolean;
   hackSlug: string;
   baseRom: string;
-  patchesDownloadPermission: PatchesDownloadPermission;
+  patchesDownloadPermission?: PatchesDownloadPermission;
   patcherSelectionMode?: boolean;
   draftPatchIds?: number[];
   savedPatchIds?: number[];
@@ -95,7 +32,7 @@ export default function VersionList({
   canEdit,
   hackSlug,
   baseRom,
-  patchesDownloadPermission,
+  patchesDownloadPermission = "None",
   patcherSelectionMode = false,
   draftPatchIds = [],
   savedPatchIds = [],
@@ -116,6 +53,7 @@ export default function VersionList({
   const [expandedChangelogs, setExpandedChangelogs] = useState<Set<number>>(getInitialExpanded);
   const [editingChangelog, setEditingChangelog] = useState<number | null>(null);
   const [editingVersion, setEditingVersion] = useState<number | null>(null);
+  const [editingDetails, setEditingDetails] = useState<number | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [archivedPatches, setArchivedPatches] = useState<Patch[]>([]);
   const [loadingArchived, setLoadingArchived] = useState(false);
@@ -138,7 +76,7 @@ export default function VersionList({
       setLoadingArchived(true);
       supabase
         .from("patches")
-        .select("id, version, created_at, updated_at, changelog, published, archived")
+        .select("id, version, created_at, updated_at, changelog, published, archived, format, label, info, base_rom")
         .eq("parent_hack", hackSlug)
         .eq("archived", true)
         .order("created_at", { ascending: false })
@@ -161,6 +99,7 @@ export default function VersionList({
     : patches;
   const draftPatchIdSet = new Set(draftPatchIds);
   const savedPatchIdSet = new Set(savedPatchIds);
+  const currentVersion = currentPatchVersion(currentPatchId, allPatches);
 
   if (patches.length === 0 && (!showArchived || archivedPatches.length === 0)) {
     return (
@@ -185,7 +124,7 @@ export default function VersionList({
       )}
 
       {allPatches.map((patch) => {
-        const isCurrent = currentPatchId === patch.id;
+        const isCurrent = isCurrentVersionPatch(patch, currentVersion);
         const isPatchable = isCustomPatcherActive && savedPatchIdSet.has(patch.id);
         const isDefaultPatcherPatch = isCustomPatcherActive && savedPatchIds[0] === patch.id;
         const hasChangelog = patch.changelog && patch.changelog.trim().length > 0;
@@ -193,15 +132,6 @@ export default function VersionList({
         const isEditing = editingChangelog === patch.id;
         const currentPatch = allPatches.find(p => p.id === currentPatchId);
         const currentPatchCreatedAt = currentPatch?.created_at || null;
-        const showPublicPatchDownload =
-          !canEdit &&
-          shouldShowPublicPatchDownload(
-            patchesDownloadPermission,
-            patch,
-            isCurrent,
-            isPatchable,
-            isCustomPatcherActive,
-          );
         const isHighlighted = isCustomPatcherActive ? isPatchable : isCurrent;
         const selectedForPatcher = draftPatchIdSet.has(patch.id);
         const patcherSelectionIndex = draftPatchIds.indexOf(patch.id);
@@ -209,7 +139,7 @@ export default function VersionList({
 
         const titleBar = (
           <div
-            className={`flex flex-wrap items-center gap-2 ${showPublicPatchDownload ? "" : "mb-1.5 sm:mb-2"}`}
+            className="flex flex-wrap items-center gap-2 mb-1.5 sm:mb-2"
           >
             {editingVersion === patch.id ? (
               <VersionEditor
@@ -224,16 +154,28 @@ export default function VersionList({
               />
             ) : (
               <>
-                <h3 className="text-base sm:text-lg font-semibold">{patch.version}</h3>
+                <h3 className="text-base sm:text-lg font-semibold">
+                  {patch.label?.trim() ? `${patch.label.trim()} (${patch.version})` : patch.version}
+                </h3>
                 {canEdit && (
-                  <button
-                    onClick={() => setEditingVersion(patch.id)}
-                    className="inline-flex items-center justify-center rounded-md p-1.5 text-foreground/60 hover:text-foreground hover:bg-[var(--surface-2)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--accent)] touch-manipulation"
-                    title="Edit version"
-                    aria-label="Edit version"
-                  >
-                    <FiEdit size={14} />
-                  </button>
+                  <>
+                    <button
+                      onClick={() => setEditingVersion(patch.id)}
+                      className="inline-flex items-center justify-center rounded-md p-1.5 text-foreground/60 hover:text-foreground hover:bg-[var(--surface-2)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--accent)] touch-manipulation"
+                      title="Edit version"
+                      aria-label="Edit version"
+                    >
+                      <FiEdit size={14} />
+                    </button>
+                    <button
+                      onClick={() => setEditingDetails(patch.id)}
+                      className="inline-flex items-center justify-center rounded-md p-1.5 text-foreground/60 hover:text-foreground hover:bg-[var(--surface-2)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--accent)] touch-manipulation"
+                      title="Edit patch details"
+                      aria-label="Edit patch details"
+                    >
+                      <FiEdit2 size={14} />
+                    </button>
+                  </>
                 )}
               </>
             )}
@@ -271,8 +213,23 @@ export default function VersionList({
           </div>
         );
 
-        const datesBlock = (
+        const datesBlock = editingDetails === patch.id ? (
+          <PatchDetailsEditor
+            patchId={patch.id}
+            hackSlug={hackSlug}
+            initialLabel={patch.label || ""}
+            initialInfo={patch.info || ""}
+            onSave={() => {
+              setEditingDetails(null);
+              router.refresh();
+            }}
+            onCancel={() => setEditingDetails(null)}
+          />
+        ) : (
           <div className="text-xs sm:text-sm text-foreground/60 mt-4 sm:mt-0">
+            {patch.info?.trim() && (
+              <p className="mb-2 text-foreground/75">{patch.info.trim()}</p>
+            )}
             <p>
               Created: {new Date(patch.created_at).toLocaleDateString("en-US", {
                 year: "numeric",
@@ -302,7 +259,9 @@ export default function VersionList({
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2 mb-2">
-                    <h3 className="text-base sm:text-lg font-semibold">{patch.version}</h3>
+                    <h3 className="text-base sm:text-lg font-semibold">
+                  {patch.label?.trim() ? `${patch.label.trim()} (${patch.version})` : patch.version}
+                </h3>
                     {isCurrent && !isCustomPatcherActive && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
                         <FaStar size={10} />
@@ -372,45 +331,44 @@ export default function VersionList({
             className={`card p-4 sm:p-5 ${isHighlighted ? "ring-2 ring-emerald-500/50" : ""}`}
           >
             <div className="space-y-3 sm:space-y-4">
-              {showPublicPatchDownload ? (
-                <div className="space-y-2">
-                  <div className="flex items-start justify-between gap-3 sm:gap-4">
-                    <div className="flex-1 min-w-0">{titleBar}</div>
-                    <div className="shrink-0">
-                      <PublicPatchDownloadButton patchId={patch.id} />
-                    </div>
-                  </div>
+              <div className="flex items-start justify-between gap-3 sm:gap-4">
+                <div className="flex-1 min-w-0">
+                  {titleBar}
                   {datesBlock}
                 </div>
-              ) : (
-                <div className="flex items-start justify-between gap-3 sm:gap-4">
-                  <div className="flex-1 min-w-0">
-                    {titleBar}
-                    {datesBlock}
-                  </div>
-                  <div className="shrink-0">
-                    {canEdit && (
-                      <VersionActions
-                        patch={patch}
-                        isCurrent={isCurrent}
-                        hackSlug={hackSlug}
-                        baseRom={baseRom}
-                        currentPatchCreatedAt={currentPatchCreatedAt}
-                        isCustomPatcherActive={isCustomPatcherActive}
-                        isInCustomPatcherList={savedPatchIdSet.has(patch.id)}
-                        customPatcherPatchCount={savedPatchIds.length}
-                        onActionComplete={() => {
-                          router.refresh();
-                          setEditingChangelog(null);
-                          setEditingVersion(null);
-                          // Clear archived patches to force refetch if checkbox is toggled
-                          setArchivedPatches([]);
-                        }}
-                      />
-                    )}
-                  </div>
+                <div className="shrink-0">
+                  {canEdit ? (
+                    <VersionActions
+                      patch={patch}
+                      isCurrent={isCurrent}
+                      hackSlug={hackSlug}
+                      baseRom={baseRom}
+                      currentPatchCreatedAt={currentPatchCreatedAt}
+                      isCustomPatcherActive={isCustomPatcherActive}
+                      isInCustomPatcherList={savedPatchIdSet.has(patch.id)}
+                      customPatcherPatchCount={savedPatchIds.length}
+                      versionPatchLabels={allPatches
+                        .filter((item) => item.version === patch.version && !item.archived)
+                        .map((item) => item.label?.trim() || item.version)}
+                      onActionComplete={() => {
+                        router.refresh();
+                        setEditingChangelog(null);
+                        setEditingVersion(null);
+                        // Clear archived patches to force refetch if checkbox is toggled
+                        setArchivedPatches([]);
+                      }}
+                    />
+                  ) : visitorCanDownloadPatch({
+                    patch,
+                    permission: patchesDownloadPermission,
+                    isCurrent,
+                    isCustomPatcherActive,
+                    savedPatchIdSet,
+                  }) && (
+                    <VisitorPatchDownloadButton patchId={patch.id} />
+                  )}
                 </div>
-              )}
+              </div>
 
               {hasChangelog ? (
                 <div className="border-t border-[var(--border)] pt-2">
@@ -496,6 +454,57 @@ export default function VersionList({
         );
       })}
     </div>
+  );
+}
+
+function visitorCanDownloadPatch({
+  patch,
+  permission,
+  isCurrent,
+  isCustomPatcherActive,
+  savedPatchIdSet,
+}: {
+  patch: Patch;
+  permission: PatchesDownloadPermission;
+  isCurrent: boolean;
+  isCustomPatcherActive: boolean;
+  savedPatchIdSet: Set<number>;
+}) {
+  if (permission === "None" || !patch.published || patch.archived) return false;
+  if (permission === "All") return true;
+  return isCustomPatcherActive ? savedPatchIdSet.has(patch.id) : isCurrent;
+}
+
+function VisitorPatchDownloadButton({ patchId }: { patchId: number }) {
+  const [loading, setLoading] = useState(false);
+
+  const handleDownload = async () => {
+    setLoading(true);
+    try {
+      const result = await getPatchDownloadUrl(patchId);
+      if (result.ok) {
+        window.open(result.url, "_blank");
+      } else {
+        alert(result.error || "Failed to generate download URL");
+      }
+    } catch {
+      alert("Failed to download patch");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleDownload}
+      disabled={loading}
+      className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2 py-1 text-xs font-medium hover:bg-[var(--surface-3)] transition-colors disabled:opacity-50"
+      title="Download"
+    >
+      <FaDownload size={12} />
+      {loading ? "Downloading..." : "Download"}
+    </button>
   );
 }
 
@@ -665,6 +674,89 @@ function VersionEditor({
         </div>
       </div>
       {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
+    </div>
+  );
+}
+
+function PatchDetailsEditor({
+  patchId,
+  hackSlug,
+  initialLabel,
+  initialInfo,
+  onSave,
+  onCancel,
+}: {
+  patchId: number;
+  hackSlug: string;
+  initialLabel: string;
+  initialInfo: string;
+  onSave: () => void;
+  onCancel: () => void;
+}) {
+  const [label, setLabel] = useState(initialLabel);
+  const [info, setInfo] = useState(initialInfo);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const result = await updatePatchVariant(hackSlug, patchId, { label, info });
+      if (result.ok) {
+        onSave();
+      } else {
+        setError(result.error || "Failed to update patch details");
+      }
+    } catch {
+      setError("Failed to update patch details");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="mt-3 grid gap-2">
+      <div className="grid gap-1">
+        <label className="text-xs font-medium text-foreground/70">Patch name</label>
+        <input
+          value={label}
+          maxLength={PATCH_LABEL_MAX_LENGTH}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder="e.g. FireRed"
+          className="h-9 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+        />
+      </div>
+      <div className="grid gap-1">
+        <label className="text-xs font-medium text-foreground/70">Player information</label>
+        <textarea
+          value={info}
+          maxLength={PATCH_INFO_MAX_LENGTH}
+          rows={3}
+          onChange={(e) => setInfo(e.target.value)}
+          placeholder="Explain what this patch is for."
+          className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+        />
+      </div>
+      {error && <p className="text-sm text-red-400">{error}</p>}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+        >
+          Save
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={saving}
+          className="inline-flex items-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 py-1.5 text-sm font-medium hover:bg-[var(--surface-3)] disabled:opacity-50"
+        >
+          Cancel
+        </button>
+      </div>
     </div>
   );
 }

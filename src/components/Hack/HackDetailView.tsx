@@ -12,6 +12,8 @@ import Markdown from "@/components/Markdown/Markdown";
 import { getHackPageUrl } from "@/app/hack/[slug]/hack-page-shared";
 import type { HackMetadata } from "@/app/hack/[slug]/actions";
 import { baseRoms, PLATFORM_NAMES } from "@/data/baseRoms";
+import { formatBaseRomNames, resolveHackBaseRomIds } from "@/utils/hacks/base-roms";
+import BaseRomNamesLabel from "@/components/Hack/BaseRomNamesLabel";
 import {
   isArchiveHack,
   isDownloadableArchiveHack,
@@ -53,7 +55,9 @@ export default function HackDetailView({
 }: HackDetailViewProps) {
   const { hack, images, tags, profile, otherHacks, patch, displayVersion } =
     metadata;
-  const baseRom = baseRoms.find((rom) => rom.id === hack.base_rom);
+  const hackBaseRomIds = resolveHackBaseRomIds(hack.base_rom, hack.base_roms);
+  const baseRom = baseRoms.find((rom) => rom.id === (hackBaseRomIds[0] || hack.base_rom));
+  const baseRomLabel = formatBaseRomNames(hackBaseRomIds);
   const author = hack.original_author
     ? hack.original_author
     : profile?.username
@@ -96,12 +100,10 @@ export default function HackDetailView({
     "Game",
     "Hack",
   ];
-  if (baseRom) {
-    commonTags.push(
-      PLATFORM_NAMES[baseRom.platform],
-      baseRom.platform,
-      baseRom.name,
-    );
+  for (const id of hackBaseRomIds) {
+    const rom = baseRoms.find((item) => item.id === id);
+    if (!rom) continue;
+    commonTags.push(PLATFORM_NAMES[rom.platform], rom.platform, rom.name);
   }
 
   const jsonLd: WithContext<CreativeWork> = {
@@ -124,12 +126,15 @@ export default function HackDetailView({
     version: patchVersion || undefined,
     inLanguage: "en",
     isAccessibleForFree: true,
-    isBasedOn: baseRom
-      ? {
-          "@type": "VideoGame",
-          name: baseRom.name,
-          gamePlatform: PLATFORM_NAMES[baseRom.platform],
-        }
+    isBasedOn: hackBaseRomIds.length
+      ? hackBaseRomIds
+          .map((id) => baseRoms.find((rom) => rom.id === id))
+          .filter((rom): rom is NonNullable<typeof rom> => !!rom)
+          .map((rom) => ({
+            "@type": "VideoGame" as const,
+            name: rom.name,
+            gamePlatform: PLATFORM_NAMES[rom.platform],
+          }))
       : undefined,
   };
 
@@ -436,7 +441,7 @@ export default function HackDetailView({
             </h3>
             <ul className="mt-3 grid gap-2 text-sm text-foreground/75">
               <li>Language: {hack.language || "Unknown"}</li>
-              <li>Base ROM: {baseRom?.name || "Unknown"}</li>
+              <li>Base ROM{hackBaseRomIds.length > 1 ? "s" : ""}: <BaseRomNamesLabel ids={hackBaseRomIds} /></li>
               <li>
                 First uploaded:{" "}
                 {new Date(hack.created_at).toLocaleDateString()}
@@ -572,7 +577,7 @@ export default function HackDetailView({
                 download and apply the{" "}
                 <span className="font-semibold">{hack.title}</span> patch file
                 to your legally-obtained{" "}
-                <span className="font-semibold">{baseRom?.name}</span> ROM. The
+                <span className="font-semibold">{baseRomLabel}</span> ROM. The
                 patched ROM will then be automatically downloaded.
               </p>
               <p className="mt-2">

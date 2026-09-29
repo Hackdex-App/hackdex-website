@@ -544,3 +544,8 @@ FROM (
 ) AS spec(slug, ver, cnt)
 JOIN public.patches p ON p.parent_hack = spec.slug AND p.version = spec.ver
 CROSS JOIN LATERAL generate_series(0, spec.cnt - 1) AS gs(n);
+
+INSERT INTO public.hack_base_roms (hack_slug, base_rom, sort_order)
+SELECT slug, base_rom, 0
+FROM public.hacks
+ON CONFLICT DO NOTHING;

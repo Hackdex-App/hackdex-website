@@ -6,6 +6,9 @@ import { FiChevronDown, FiX } from "react-icons/fi";
 import { platformAccept } from "@/utils/idb";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
 import type { Platform } from "@/data/baseRoms";
+import type { SelectablePatch } from "@/types/patcher";
+import { patchDisplayName, patchPickerSubtitle } from "@/utils/patches/patch-variant";
+import { baseRomName } from "@/utils/hacks/base-roms";
 import HackOnboardingGate from "@/components/Hack/Onboarding/HackOnboardingGate";
 
 type OnboardingTarget = "version" | "selectRom" | "agree";
@@ -13,7 +16,7 @@ type OnboardingTarget = "version" | "selectRom" | "agree";
 interface StickyActionBarProps {
   title: string;
   version?: string;
-  selectablePatches?: { id: number; version: string }[];
+  selectablePatches?: SelectablePatch[];
   selectedPatchId?: number | null;
   onVersionChange?: (patchId: number) => void;
   author: string;
@@ -79,6 +82,7 @@ export default function StickyActionBar({
   const [patchAgainReady, setPatchAgainReady] = React.useState(true);
   const [versionPickerOpen, setVersionPickerOpen] = React.useState(false);
   const hasVersionPicker = selectablePatches.length > 1 && !!onVersionChange;
+  const needsPatchChoice = hasVersionPicker && selectedPatchId == null;
   const onboardingActive = onboardingDimBar || onboardingHighlight !== null;
 
   // Reported through a ref so an inline parent callback cannot loop the effect.
@@ -159,27 +163,7 @@ export default function StickyActionBar({
         <div className="md:w-fit md:max-w-[40%] lg:max-w-[45%]">
           <div className="flex items-center gap-2">
             <div className="truncate text-xl font-bold md:text-sm md:font-medium">{title}</div>
-            {hasVersionPicker ? (
-              <button
-                type="button"
-                aria-label="Patch version"
-                aria-haspopup="dialog"
-                aria-expanded={versionPickerOpen}
-                data-onboarding-spotlight={spotlightAttr("version")}
-                onClick={() => setVersionPickerOpen((open) => !open)}
-                className={`relative shrink-0 max-w-44 ml-auto md:ml-0 inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1 text-[11px] font-semibold text-foreground/90 shadow-sm cursor-pointer focus:outline-none md:hover:bg-[var(--surface-3)] md:focus:ring-2 md:focus:ring-[var(--accent)]${spotlight("version")}`}
-              >
-                <span className="truncate">{version}</span>
-                {versionPickerOpen ? (
-                  <FiX size={13} className="shrink-0 text-foreground/65" aria-hidden />
-                ) : (
-                  <FiChevronDown size={13} className="shrink-0 text-foreground/65" aria-hidden />
-                )}
-                {onboardingBeacon && onboardingHighlight === "version" && (
-                  <OnboardingBeacon className="-top-[3px] -right-[3px]" />
-                )}
-              </button>
-            ) : version && (
+            {!hasVersionPicker && version && (
               <span className="shrink-0 rounded-full bg-[var(--surface-2)] ml-auto md:ml-0 px-2 py-0.5 text-[11px] font-medium text-foreground/85 ring-1 ring-[var(--border)]">{version}</span>
             )}
           </div>
@@ -188,7 +172,7 @@ export default function StickyActionBar({
         {hasVersionPicker && versionPickerOpen && (
           <div className="relative z-[2] md:hidden mt-3 mb-4 animate-in fade-in slide-in-from-bottom-2 duration-200">
             <div className="mb-2">
-              <div className="text-xs font-semibold uppercase tracking-wide text-foreground/55">Select version</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-foreground/55">Select patch</div>
             </div>
             <VersionRadioList
               patches={selectablePatches}
@@ -198,7 +182,7 @@ export default function StickyActionBar({
           </div>
         )}
         <div className={`${hasVersionPicker && versionPickerOpen ? "hidden md:flex" : "flex"} w-full min-w-0 md:flex-1 md:justify-end flex-col md:flex-row items-stretch md:items-center gap-2 mb-4 md:mb-0`}>
-          {!termsAgreed || status === "downloading" ? (
+          {!needsPatchChoice && (!termsAgreed || status === "downloading" ? (
             baseRomsLoading ? (
               <p className="rounded-full mx-auto md:mx-0 px-2 py-6 md:py-0.5 text-base text-center md:text-right md:mr-1 md:text-balance font-bold">
                 Loading base ROMs…
@@ -222,8 +206,19 @@ export default function StickyActionBar({
             }`}>
               {romReady ? (filename ?? "patch file ready") : isLinked ? "Permission needed" : "Base ROM needed"}
             </span>
+          ))}
+          {hasVersionPicker && !baseRomsLoading && (
+            <PatchSelectButton
+              label={needsPatchChoice ? "Select Patch" : version}
+              open={versionPickerOpen}
+              onClick={() => setVersionPickerOpen((open) => !open)}
+              spotlightClass={spotlight("version")}
+              spotlightAttrValue={spotlightAttr("version")}
+              showBeacon={onboardingBeacon && onboardingHighlight === "version"}
+              primary={needsPatchChoice}
+            />
           )}
-          {!baseRomsLoading && !romReady && !isLinked && (
+          {!baseRomsLoading && !needsPatchChoice && !romReady && !isLinked && (
             <label className="flex w-full min-w-0 max-w-full md:w-auto items-center justify-center md:justify-end">
               <input
                 ref={uploadInputRef}
@@ -261,7 +256,7 @@ export default function StickyActionBar({
               </span>
             </label>
           )}
-          {!baseRomsLoading && !romReady && isLinked && (
+          {!baseRomsLoading && !needsPatchChoice && !romReady && isLinked && (
             <button
               type="button"
               onClick={onClickLink}
@@ -278,7 +273,7 @@ export default function StickyActionBar({
           {/* Wrapper owns the layout slot so the beacon can escape the button's
               overflow clip. Hiding it here keeps the flex gap collapsed. */}
           <span
-            data-ready={romReady}
+            data-ready={!needsPatchChoice && romReady}
             className={`relative inline-flex data-[ready=false]:hidden! w-full md:w-auto ${romReady && status !== 'downloading' && status !== 'ready' && termsAgreed ? "mt-6 md:mt-0" : ""}`}
           >
             <button
@@ -314,7 +309,7 @@ export default function StickyActionBar({
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="Select which version to download"
+            aria-label="Select which patch to use"
             className="relative z-[101] card backdrop-blur-lg dark:!bg-black/70 p-6 max-w-md w-full rounded-lg"
           >
             <button
@@ -325,7 +320,7 @@ export default function StickyActionBar({
             >
               ×
             </button>
-            <h2 className="text-xl font-semibold mb-4 pr-8">Select which version to download</h2>
+            <h2 className="text-xl font-semibold mb-4 pr-8">Select which patch to use</h2>
             <VersionRadioList
               patches={selectablePatches}
               selectedPatchId={selectedPatchId}
@@ -348,6 +343,48 @@ export default function StickyActionBar({
   );
 }
 
+function PatchSelectButton({
+  label,
+  open,
+  onClick,
+  spotlightClass,
+  spotlightAttrValue,
+  showBeacon,
+  primary = false,
+}: {
+  label: string;
+  open: boolean;
+  onClick: () => void;
+  spotlightClass: string;
+  spotlightAttrValue: true | undefined;
+  showBeacon: boolean;
+  primary?: boolean;
+}) {
+  return (
+    <span className="relative inline-flex w-full md:w-auto">
+      <button
+        type="button"
+        aria-label="Select which patch to use"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        data-onboarding-spotlight={spotlightAttrValue}
+        onClick={onClick}
+        className={`${primary ? "shine-wrap btn-premium" : "rounded-md border border-[var(--border)] bg-[var(--surface-2)] md:hover:bg-[var(--surface-3)]"} h-11 md:h-9 w-full md:min-w-46 inline-flex items-center justify-center gap-1.5 px-3 text-base md:text-sm font-semibold cursor-pointer focus:outline-none md:focus:ring-2 md:focus:ring-[var(--accent)]${spotlightClass}`}
+      >
+        <span className="truncate">{label}</span>
+        {open ? (
+          <FiX size={16} className="shrink-0 text-current/70" aria-hidden />
+        ) : (
+          <FiChevronDown size={16} className="shrink-0 text-current/70" aria-hidden />
+        )}
+      </button>
+      {showBeacon && (
+        <OnboardingBeacon large className="-top-[3px] right-[2px]" />
+      )}
+    </span>
+  );
+}
+
 /** Rose onboarding beacon with a reduced-motion-safe halo. */
 function OnboardingBeacon({ className, large = false }: { className: string; large?: boolean }) {
   return (
@@ -363,18 +400,23 @@ function VersionRadioList({
   selectedPatchId,
   onSelect,
 }: {
-  patches: { id: number; version: string }[];
+  patches: SelectablePatch[];
   selectedPatchId?: number | null;
   onSelect: (patchId: number) => void;
 }) {
   return (
     <div
       role="radiogroup"
-      aria-label="Patch version"
+      aria-label="Patch"
       className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-2)]"
     >
       {patches.map((patch, index) => {
         const selected = selectedPatchId === patch.id;
+        const subtitle = patchPickerSubtitle({
+          version: patch.version,
+          label: patch.label,
+          baseRomName: patch.base_rom ? baseRomName(patch.base_rom) : null,
+        });
         return (
           <button
             key={patch.id}
@@ -382,15 +424,19 @@ function VersionRadioList({
             role="radio"
             aria-checked={selected}
             onClick={() => onSelect(patch.id)}
-            className={`flex w-full items-center justify-between gap-3 px-3 py-3 text-left text-sm transition-colors md:py-2.5 ${
+            className={`flex w-full items-start justify-between gap-3 px-3 py-3 text-left text-sm transition-colors md:py-2.5 ${
               selected
                 ? "bg-[var(--accent)]/10 text-foreground"
                 : "text-foreground/75 hover:bg-[var(--surface-3)]"
             } ${index > 0 ? "border-t border-[var(--border)]" : ""}`}
           >
-            <span className="font-medium">{patch.version}</span>
+            <span className="min-w-0">
+              <span className="block font-bold">{patchDisplayName(patch)}</span>
+              {subtitle && <span className="mt-0.5 block text-xs text-foreground/55">{subtitle}</span>}
+              {patch.info && <span className="mt-1 block text-xs text-foreground/70">{patch.info}</span>}
+            </span>
             <span
-              className={`h-3.5 w-3.5 rounded-full border-2 flex items-center justify-center ${
+              className={`mt-0.5 h-3.5 w-3.5 shrink-0 rounded-full border-2 flex items-center justify-center ${
                 selected ? "border-[var(--accent)]" : "border-[var(--border)]"
               }`}
               aria-hidden
