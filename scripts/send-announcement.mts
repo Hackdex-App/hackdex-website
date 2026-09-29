@@ -46,10 +46,23 @@ export async function loadAnnouncement(file: string): Promise<Announcement> {
   if (!isRecord(value) || typeof value.id !== "string" ||
     !/^[a-z0-9][a-z0-9-]{0,79}$/.test(value.id) ||
     typeof value.title !== "string" || !value.title.trim() || /[\r\n]/.test(value.title) ||
-    typeof value.message !== "string" || !value.message.trim() || typeof value.ready !== "boolean") {
-    throw new Error("Announcement needs an id in lowercase kebab-case, a title, a message, and a ready boolean.");
+    typeof value.ready !== "boolean") {
+    throw new Error("Announcement needs an id in lowercase kebab-case, a title, and a ready boolean.");
   }
-  return { id: value.id, title: value.title, message: value.message, ready: value.ready };
+  if (value.message !== undefined && value.messageFile !== undefined) {
+    throw new Error("Announcement needs either message or messageFile, not both.");
+  }
+  let message = value.message;
+  if (value.messageFile !== undefined) {
+    if (typeof value.messageFile !== "string" || !value.messageFile.trim()) {
+      throw new Error("Announcement needs a nonempty messageFile path.");
+    }
+    message = await readFile(path.resolve(path.dirname(file), value.messageFile), "utf8");
+  }
+  if (typeof message !== "string" || !message.trim()) {
+    throw new Error("Announcement needs a nonempty message or messageFile containing text.");
+  }
+  return { id: value.id, title: value.title, message, ready: value.ready };
 }
 
 /** Read approved hacks or hacks with uploaded patches, including pending and unpublished entries. */

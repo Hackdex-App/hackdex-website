@@ -34,6 +34,73 @@ test("announcement escapes content, preserves paragraphs, and links URLs", async
   assert.ok(!html.includes('href="javascript:'));
 });
 
+test("announcement renders section and question headings", async () => {
+  const html = await renderEmail("announcement", {
+    title: "Feature announcement",
+    message: "Intro.\n\n## How it works\n\nFirst paragraph.\n\nSecond paragraph.\r\n\r\n### A question?\r\n\r\nAn answer.",
+  });
+  assert.match(html, /<h2\b[^>]*font-size:20px[^>]*>How it works<\/h2>/);
+  assert.match(html, /<h3\b[^>]*font-weight:700[^>]*>A question\?<\/h3>/);
+  assert.ok(html.includes("First paragraph.<br /><br />Second paragraph."));
+  assert.doesNotMatch(html, /<br \/><h[23]|<\/h[23]><br \/>/);
+  assert.ok(!html.includes("## "));
+});
+
+test("announcement heading text stays escaped", async () => {
+  const html = await renderEmail("announcement", {
+    title: "Feature announcement",
+    message: '## <img src=x onerror="alert(1)"> & news\n\nRead https://www.hackdex.app/faq.',
+  });
+  assert.match(html, /<h2\b[^>]*>&lt;img src=x onerror=&quot;alert\(1\)&quot;&gt; &amp; news<\/h2>/);
+  assert.ok(!html.includes("<img src=x"));
+  assert.ok(html.includes('href="https://www.hackdex.app/faq"'));
+});
+
+test("announcement screenshots link to their full-size images", async () => {
+  const html = await renderEmail("announcement", {
+    title: "Feature announcement",
+    message: '## Preview\n\n![Form & player preview](https://example.com/form.png?v=1&size=large)\n\n![Code disclosure](https://example.com/code%20disclosure.png)\n\nRead https://www.hackdex.app/faq.',
+  });
+  const screenshots = [...html.matchAll(/<a\b[^>]*href="(https:\/\/example\.com\/[^\"]+)"[^>]*>\s*(<img\b[^>]*>)\s*<\/a>/g)];
+  assert.equal(screenshots.length, 2);
+  assert.equal(screenshots[0][1], "https://example.com/form.png?v=1&amp;size=large");
+  assert.match(screenshots[0][2], /alt="Form &amp; player preview"/);
+  assert.match(screenshots[1][2], /alt="Code disclosure"/);
+  for (const [, url, img] of screenshots) {
+    assert.ok(img.includes(`src="${url}"`));
+    assert.match(img, /width:100%/);
+    assert.match(img, /height:auto/);
+  }
+  assert.ok(html.includes('href="https://www.hackdex.app/faq"'));
+  assert.ok(!html.includes("![Form"));
+  assert.ok(!html.includes("![Code"));
+});
+
+test("announcement screenshots cannot inject HTML through alt text", async () => {
+  const html = await renderEmail("announcement", {
+    title: "Feature announcement",
+    message: '![Preview " onerror="alert(1) <script>](https://example.com/form.png)',
+  });
+  const image = html.match(/<img\b[^>]*src="https:\/\/example\.com\/form.png"[^>]*>/)?.[0];
+  assert.ok(image);
+  assert.ok(image.includes('alt="Preview &quot; onerror=&quot;alert(1) &lt;script&gt;"'));
+  assert.ok(!image.includes(' onerror="'));
+  assert.ok(!html.includes("<script>"));
+});
+
+test("announcement images reject non-HTTP sources", async () => {
+  const html = await renderEmail("announcement", {
+    title: "Feature announcement",
+    message: '![Unsafe](javascript:alert(1))\n\n![Local](file:///tmp/private.png)\n\n![Data](data:image/png;base64,abc)\n\n<img src="https://example.com/raw.png">',
+  });
+  assert.ok(!html.includes('src="javascript:'));
+  assert.ok(!html.includes('src="file:'));
+  assert.ok(!html.includes('src="data:'));
+  assert.ok(!html.includes('src="https://example.com/raw.png"'));
+  assert.ok(html.includes("![Unsafe]"));
+  assert.ok(html.includes("&lt;img"));
+});
+
 test("announcement files validate the campaign ID and required copy", async (t) => {
   const directory = await temporaryDirectory(t);
   const file = path.join(directory, "notice.json");
@@ -43,6 +110,40 @@ test("announcement files validate the campaign ID and required copy", async (t) 
     await writeFile(file, JSON.stringify(invalid));
     await assert.rejects(loadAnnouncement(file), /Announcement needs/);
   }
+});
+
+test("announcement loads Markdown relative to its JSON file", async (t) => {
+  const directory = await temporaryDirectory(t);
+  const file = path.join(directory, "notice.json");
+  const { message, ...metadata } = announcement;
+  const markdown = `## Creator notice\n\n${message}\n\n![Preview](https://example.com/preview.png)\n`;
+  await mkdir(path.join(directory, "copy"));
+  await writeFile(path.join(directory, "copy", "notice.md"), markdown);
+  await writeFile(file, JSON.stringify({ ...metadata, messageFile: "copy/notice.md" }));
+  assert.deepEqual(await loadAnnouncement(file), { ...announcement, message: markdown });
+});
+
+test("announcement rejects ambiguous or invalid message sources", async (t) => {
+  const directory = await temporaryDirectory(t);
+  const file = path.join(directory, "notice.json");
+  const { message, ...metadata } = announcement;
+  for (const source of [
+    {}, { message, messageFile: "notice.md" }, { messageFile: " " },
+    { messageFile: null }, { messageFile: 123 }, { message: null },
+  ]) {
+    await writeFile(file, JSON.stringify({ ...metadata, ...source }));
+    await assert.rejects(loadAnnouncement(file), /Announcement needs/);
+  }
+});
+
+test("announcement reports missing or empty Markdown files", async (t) => {
+  const directory = await temporaryDirectory(t);
+  const file = path.join(directory, "notice.json");
+  const { message: _message, ...metadata } = announcement;
+  await writeFile(file, JSON.stringify({ ...metadata, messageFile: "notice.md" }));
+  await assert.rejects(loadAnnouncement(file), { code: "ENOENT" });
+  await writeFile(path.join(directory, "notice.md"), " \n\t");
+  await assert.rejects(loadAnnouncement(file), /Announcement needs/);
 });
 
 test("recipient selection paginates, excludes empty drafts, and deduplicates creator emails", async () => {
@@ -116,9 +217,14 @@ test("default mode renders offline without querying recipients or sending email"
   process.chdir(directory);
   t.after(() => process.chdir(previousCwd));
   t.mock.method(globalThis, "fetch", async () => { throw new Error("Unexpected network request"); });
-  await writeFile("notice.json", JSON.stringify({ ...announcement, ready: false }));
+  const { message: _message, ...metadata } = announcement;
+  await writeFile("notice.md", "## Details\n\nRead https://www.hackdex.app/faq.");
+  await writeFile("notice.json", JSON.stringify({ ...metadata, messageFile: "notice.md", ready: false }));
   await main(["notice.json"]);
-  assert.ok((await readFile(".local/announcements/test-notice/preview.html", "utf8")).includes("Creator notice"));
+  const html = await readFile(".local/announcements/test-notice/preview.html", "utf8");
+  assert.ok(html.includes("Creator notice"));
+  assert.match(html, /<h2\b[^>]*>Details<\/h2>/);
+  assert.ok((await readFile(".local/announcements/test-notice/preview.txt", "utf8")).includes("## Details\n\nRead https://www.hackdex.app/faq."));
   assert.deepEqual((await readdir(".local/announcements/test-notice")).sort(), ["preview.html", "preview.txt"]);
 });
 
@@ -162,6 +268,20 @@ test("production sending rejects drafts and unresolved placeholders", async (t) 
     await assert.rejects(sendAnnouncement({ announcement: draft, message, recipients, directory, mailer }), /Announcement is a draft/);
   }
   assert.deepEqual(await readdir(directory), []);
+});
+
+test("production sending rejects placeholders loaded from Markdown", async (t) => {
+  const directory = await temporaryDirectory(t);
+  const file = path.join(directory, "notice.json");
+  const { message: _message, ...metadata } = announcement;
+  await writeFile(path.join(directory, "notice.md"), "Effective {{effectiveDate}}");
+  await writeFile(file, JSON.stringify({ ...metadata, messageFile: "notice.md" }));
+  t.mock.method(globalThis, "fetch", async () => { throw new Error("Unexpected email"); });
+  await assert.rejects(sendAnnouncement({
+    announcement: await loadAnnouncement(file), message, recipients,
+    directory: path.join(directory, "delivery"), mailer: new Resend("re_test_key").emails,
+  }), /Announcement is a draft/);
+  assert.deepEqual((await readdir(directory)).sort(), ["notice.json", "notice.md"]);
 });
 
 test("accepted sends persist IDs and are skipped on subsequent runs", async (t) => {
