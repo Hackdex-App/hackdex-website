@@ -3,6 +3,7 @@
 import PixelImage from "../PixelImage";
 import React from "react";
 import { FiChevronLeft, FiChevronRight, FiGrid, FiX } from "react-icons/fi";
+import { useDialog } from "@/hooks/useDialog";
 
 const DESKTOP_LIGHTBOX = "(min-width: 768px)";
 
@@ -21,26 +22,30 @@ interface LightboxProps {
 /**
  * Full-window screenshot viewer. Desktop shows the image at the largest whole
  * multiple of its native size so pixels stay square; phones can toggle that.
- * Arrow keys and the filmstrip move between shots, Escape closes.
+ * Arrow keys and the filmstrip move between shots. Escape, clicking outside the
+ * image, and Close all close it; focus stays inside and returns to the opener.
  */
 export default function Lightbox({ images, index, title, onChange, onClose }: LightboxProps) {
   const [pixelPerfect, setPixelPerfect] = React.useState(isDesktopLightbox);
+  const panelRef = React.useRef<HTMLDivElement | null>(null);
   const closeRef = React.useRef<HTMLButtonElement | null>(null);
   const stripRef = React.useRef<HTMLDivElement | null>(null);
   const canCycle = images.length > 1;
   const onPrev = React.useCallback(() => onChange((index - 1 + images.length) % images.length), [images.length, index, onChange]);
   const onNext = React.useCallback(() => onChange((index + 1) % images.length), [images.length, index, onChange]);
 
+  // Focus trap, Escape, and handing focus back to the opener; the arrow keys stay ours.
+  useDialog(panelRef, onClose);
+
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
       if (!canCycle) return;
       if (e.key === "ArrowRight") onNext();
       if (e.key === "ArrowLeft") onPrev();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [canCycle, onClose, onNext, onPrev]);
+  }, [canCycle, onNext, onPrev]);
 
   React.useEffect(() => {
     closeRef.current?.focus();
@@ -89,7 +94,7 @@ export default function Lightbox({ images, index, title, onChange, onClose }: Li
   const control = "inline-flex items-center justify-center rounded-control text-white/80 transition-colors hover:bg-white/10 hover:text-white focus:outline-none disabled:pointer-events-none disabled:opacity-40";
 
   return (
-    <div className="anim-fade fixed inset-0 z-50 grid grid-rows-[auto_minmax(0,1fr)_auto] bg-[rgba(13,16,23,.97)] text-white" role="dialog" aria-modal="true" aria-label={`Screenshots for ${title}`}>
+    <div ref={panelRef} tabIndex={-1} className="anim-fade fixed inset-0 z-50 grid grid-rows-[auto_minmax(0,1fr)_auto] bg-[rgba(13,16,23,.97)] text-white outline-none" role="dialog" aria-modal="true" aria-label={`Screenshots for ${title}`}>
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 pt-[calc(12px+env(safe-area-inset-top,0px))] pb-3 text-sm">
         <span className="tabular-nums" aria-live="polite">
           {index + 1} <span className="text-white/55">of {images.length}</span>
@@ -100,7 +105,8 @@ export default function Lightbox({ images, index, title, onChange, onClose }: Li
         </button>
       </div>
 
-      <div className="relative flex min-h-0 items-center justify-center px-4 py-2 md:px-[72px]" onClick={onClose}>
+      {/* The image's wrapper fills the stage (and the img ignores pointers), so close on clicks outside the picture's box. */}
+      <div className="relative flex min-h-0 items-center justify-center px-4 py-2 md:px-[72px]" onClick={(e) => !overImage(e) && onClose()}>
         <PixelImage
           src={images[index]}
           alt={`${title} screenshot ${index + 1} of ${images.length}`}
@@ -108,7 +114,6 @@ export default function Lightbox({ images, index, title, onChange, onClose }: Li
           pixelPerfect={pixelPerfect}
           className="h-full w-full"
           imgClassName="rounded-frame"
-          onClick={(e) => e.stopPropagation()}
         />
         {canCycle && (
           <>
@@ -180,4 +185,9 @@ export default function Lightbox({ images, index, title, onChange, onClose }: Li
       </div>
     </div>
   );
+}
+
+function overImage(e: React.MouseEvent<HTMLElement>) {
+  const box = e.currentTarget.querySelector("img")?.getBoundingClientRect();
+  return !!box && e.clientX >= box.left && e.clientX <= box.right && e.clientY >= box.top && e.clientY <= box.bottom;
 }

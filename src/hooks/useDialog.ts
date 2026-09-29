@@ -1,18 +1,22 @@
 import React from "react";
 
 /**
- * Modal plumbing shared by Sheet and Modal: focuses the panel, locks page
+ * Modal plumbing shared by Sheet and Modal: focuses the panel (unless a field inside autofocused), locks page
  * scroll, traps Tab inside the panel, closes on Escape, and hands focus back to
  * whatever had it before. Runs while `active`.
  */
 export function useDialog(panelRef: React.RefObject<HTMLElement | null>, onClose: () => void, active = true) {
   const onCloseRef = React.useRef(onClose);
   onCloseRef.current = onClose;
+  // Focus when the dialog first rendered, before an autoFocus field inside could take it.
+  const focusAtRender = React.useRef(typeof document === "undefined" ? null : document.activeElement);
 
   React.useEffect(() => {
     if (!active) return;
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    panelRef.current?.focus({ preventScroll: true });
+    const focused = panelRef.current?.contains(document.activeElement) ? focusAtRender.current : document.activeElement;
+    const opener = focused instanceof HTMLElement ? focused : null;
+    // Leave focus alone if something inside already took it (an autoFocus field).
+    if (!panelRef.current?.contains(document.activeElement)) panelRef.current?.focus({ preventScroll: true });
     const html = document.documentElement;
     const prevOverflow = html.style.overflow;
     html.style.overflow = "hidden";

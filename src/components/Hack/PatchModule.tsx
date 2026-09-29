@@ -130,7 +130,10 @@ export default function PatchModule({
   const scrolledOut = useScrolledBehindHeader(actionRef);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [patchAgainReady, setPatchAgainReady] = React.useState(true);
-  const [versionPickerOpen, setVersionPickerOpen] = React.useState(false);
+  // Which copy of the picker is open: the module's or the compact bar's. Sharing one flag opened both,
+  // and the hidden one's outside-click handler closed the menu before an option could be picked.
+  const [versionPickerOpenIn, setVersionPickerOpenIn] = React.useState<"module" | "compact" | null>(null);
+  const versionPickerOpen = versionPickerOpenIn !== null;
   const hasVersionPicker = selectablePatches.length > 1 && !!onVersionChange;
   const base = baseRomName ? baseGameLabel(baseRomName) : baseRomPlatform ?? "base";
   const format = patchFormat(filename);
@@ -268,16 +271,16 @@ export default function PatchModule({
     );
   }
 
-  const picker = hasVersionPicker && (
+  const picker = (where: "module" | "compact") => hasVersionPicker && (
     <VersionPicker
       version={version}
       patches={selectablePatches}
       selectedPatchId={selectedPatchId}
-      open={versionPickerOpen}
-      onOpenChange={setVersionPickerOpen}
+      open={versionPickerOpenIn === where}
+      onOpenChange={(open) => setVersionPickerOpenIn(open ? where : null)}
       onSelect={(id) => {
         onVersionChange?.(id);
-        setVersionPickerOpen(false);
+        setVersionPickerOpenIn(null);
       }}
       spotlight={spotlight("version")}
       spotlightAttr={spotlightAttr("version")}
@@ -384,7 +387,7 @@ export default function PatchModule({
 
         <dl className="mt-0.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[13px] leading-[1.45]">
           <dt className={`text-text-3 ${hasVersionPicker ? "self-center" : ""}`}>Version</dt>
-          <dd className="flex min-w-0 flex-wrap items-center gap-2 text-text-2">{hasVersionPicker ? picker : <span className="font-medium text-text">{version}</span>}</dd>
+          <dd className="flex min-w-0 flex-wrap items-center gap-2 text-text-2">{hasVersionPicker ? picker("module") : <span className="font-medium text-text">{version}</span>}</dd>
           <dt className="text-text-3">Patch</dt>
           <dd className="text-text-2">{format ? `${format} file` : "Patch file"}, applied locally</dd>
           <dt className="text-text-3">Needs</dt>
@@ -416,7 +419,7 @@ export default function PatchModule({
                 )}
                 {hasVersionPicker && (
                   <div className="max-md:flex-none">
-                    {picker}
+                    {picker("compact")}
                   </div>
                 )}
                 <ActionButton compact />
