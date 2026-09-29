@@ -50,7 +50,10 @@ export default function AiLabel({ disclosure, defaultOpen = false, id = "ai-brea
     <div className="rounded-card border border-line bg-surface px-3.5 py-3 shadow-rest">
       <div className="flex items-baseline justify-between gap-2.5">
         <b className="font-display text-[20px] font-extrabold leading-[1.1] tracking-[-.015em]">{AI_HEADLINES[aiKind(levels)]}</b>
-        <span className="whitespace-nowrap text-[12.5px] text-text-2">Updated {shortDate(disclosure.disclosedAt)}</span>
+        {/* The year shows only outside the current one, so a page cached across New Year can differ once. */}
+        <span suppressHydrationWarning className="whitespace-nowrap text-[12.5px] text-text-2">
+          Updated {shortDate(disclosure.disclosedAt)}
+        </span>
       </div>
 
       <div
@@ -157,6 +160,9 @@ export function AiLabelMissing({ children }: { children?: React.ReactNode }) {
   );
 }
 
+/** UTC so the server and every visitor render the same text (a local time zone broke hydration). */
 function shortDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: new Date(iso).getFullYear() === new Date().getFullYear() ? undefined : "numeric" });
+  const d = new Date(iso);
+  const thisYear = d.getUTCFullYear() === new Date().getUTCFullYear();
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: thisYear ? undefined : "numeric", timeZone: "UTC" });
 }

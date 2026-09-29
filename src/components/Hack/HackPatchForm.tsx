@@ -7,7 +7,7 @@ import { platformAccept } from "@/utils/idb";
 import { sha1Hex } from "@/utils/hash";
 import BinFile from "rom-patcher-js/rom-patcher-js/modules/BinFile.js";
 import BPS from "rom-patcher-js/rom-patcher-js/modules/RomPatcher.format.bps.js";
-import { confirmAiDisclosure, presignNewPatchVersion, updateHack } from "@/app/hack/actions";
+import { presignNewPatchVersion, updateHack } from "@/app/hack/actions";
 import AiLabel from "@/components/Hack/AiLabel";
 import AiDisclosureModal from "@/components/Hack/AiDisclosureModal";
 import type { AiDisclosure } from "@/utils/aiDisclosure";
@@ -41,7 +41,7 @@ export default function HackPatchForm(props: HackPatchFormProps) {
   const [error, setError] = React.useState<string>("");
   const [publishAutomatically, setPublishAutomatically] = React.useState(false);
   const [disclosure, setDisclosure] = React.useState(props.ai);
-  // "confirmed" re-stamps the label once the upload lands; "updated" was already saved from the form.
+  // Either way the upload sends the reviewed label's stamp, and the server re-stamps it once the upload lands.
   const [aiCheck, setAiCheck] = React.useState<"pending" | "confirmed" | "updated">("pending");
   const [aiFormOpen, setAiFormOpen] = React.useState(false);
   const needsAiCheck = existingVersions.length > 0;
@@ -251,9 +251,15 @@ export default function HackPatchForm(props: HackPatchFormProps) {
       if (!presigned.ok) throw new Error(presigned.error || 'Failed to presign');
       const put = await fetch(presigned.presignedUrl!, { method: 'PUT', body: patchFile!, headers: { 'Content-Type': 'application/octet-stream' } });
       if (!put.ok) throw new Error('Upload failed. Please try again.');
-      const finalized = await confirmPatchUpload({ slug, objectKey: presigned.objectKey!, version: version.trim(), publishAutomatically });
+      const finalized = await confirmPatchUpload({
+        slug,
+        objectKey: presigned.objectKey!,
+        version: version.trim(),
+        publishAutomatically,
+        // The label the uploader just reviewed; the server re-stamps it with the upload.
+        aiReviewedAt: needsAiCheck ? disclosure?.disclosedAt ?? null : null,
+      });
       if (!finalized.ok) throw new Error(finalized.error || 'Failed to finalize');
-      if (aiCheck === "confirmed") await confirmAiDisclosure(slug);
       window.location.href = finalized.redirectTo!;
     } catch (e: any) {
       setError(e.message || 'Upload failed');
@@ -422,7 +428,7 @@ export default function HackPatchForm(props: HackPatchFormProps) {
                 setError(res.error);
                 return false;
               }
-              setDisclosure({ levels, note, disclosedAt: new Date().toISOString() });
+              setDisclosure({ levels, note, disclosedAt: res.aiDisclosedAt ?? new Date().toISOString() });
               setAiCheck("updated");
               return true;
             }}

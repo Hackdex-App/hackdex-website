@@ -178,33 +178,8 @@ export async function updateHack(args: {
   revalidatePath(`/hack/${args.slug}`);
   // Only listed hacks are in the catalog; drafts autosave constantly and would rebuild it each time.
   if (hack.approved) revalidateDiscoverCatalog();
-  return { ok: true } as const;
-}
-
-/** "Still accurate": re-stamps an existing AI disclosure without changing it, e.g. when publishing a new version. */
-export async function confirmAiDisclosure(slug: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: "Unauthorized" } as const;
-
-  const { data: hack, error: hErr } = await supabase
-    .from("hacks")
-    .select("slug, created_by, current_patch, original_author, permission_from, is_archive, ai_disclosed_at")
-    .eq("slug", slug)
-    .maybeSingle();
-  if (hErr) return { ok: false, error: hErr.message } as const;
-  if (!hack) return { ok: false, error: "Hack not found" } as const;
-  if (!hack.ai_disclosed_at) return { ok: false, error: "Fill in the AI label first" } as const;
-  const permission = await checkEditPermission(hack, user.id, supabase);
-  if (!permission.canEdit) return { ok: false, error: "Forbidden" } as const;
-
-  const { error } = await supabase.from("hacks").update({ ai_disclosed_at: new Date().toISOString() }).eq("slug", slug);
-  if (error) return { ok: false, error: error.message } as const;
-  revalidateTag(`hack:${slug}:metadata`);
-  revalidatePath(`/hack/${slug}`);
-  return { ok: true } as const;
+  // The upload step confirms against this stamp.
+  return { ok: true, aiDisclosedAt: updatePayload.ai_disclosed_at ?? null } as const;
 }
 
 export async function saveHackCovers(args: { slug: string; coverUrls: string[] }) {

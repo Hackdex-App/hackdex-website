@@ -55,7 +55,7 @@ export function DraftStatusStrip({ slug, stage, submittedAt, required, contact, 
     ) : stage === "draft" ? (
       <>Only you can see this page. {canSubmit ? "Everything required is in place." : `${left} required ${left === 1 ? "item" : "items"} left before you can submit.`}</>
     ) : stage === "review" ? (
-      <>Submitted {submittedAt ? new Date(submittedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : ""}.</>
+      <>Submitted {submittedAt ? new Date(submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" }) : ""}.</>
     ) : (
       <>{editing?.dirty ? "Unsaved changes. Nothing publishes until you save." : "Live. Changes publish when you save; new versions go through a quick check."}</>
     );

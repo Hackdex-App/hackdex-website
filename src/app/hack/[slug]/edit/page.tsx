@@ -6,6 +6,8 @@ import Link from "next/link";
 import { sortOrderedTags, getCoverUrls } from "@/utils/format";
 import { checkEditPermission } from "@/utils/hack";
 import { getCachedTagsWithUsage } from "@/data/tags";
+import { AI_SELECT, aiDisclosureFromRow } from "@/utils/aiDisclosure";
+import ArchiveAiLabel from "@/components/Hack/ArchiveAiLabel";
 
 interface EditPageProps {
   params: Promise<{ slug: string }>;
@@ -22,7 +24,7 @@ export default async function EditHackPage({ params }: EditPageProps) {
 
   const { data: hack } = await supabase
     .from("hacks")
-    .select("slug,title,summary,description,base_rom,language,completion_status,box_art,social_links,created_by,current_patch,original_author,permission_from,is_archive,tags_updated_at,approved,submitted_at")
+    .select(`slug,title,summary,description,base_rom,language,completion_status,box_art,social_links,created_by,current_patch,original_author,permission_from,is_archive,tags_updated_at,approved,submitted_at,${AI_SELECT}`)
     .eq("slug", slug)
     .maybeSingle();
   if (!hack) return notFound();
@@ -111,6 +113,9 @@ export default async function EditHackPage({ params }: EditPageProps) {
       </div>
       <div className="mt-4 lg:mt-8">
         <HackForm mode="edit" slug={slug} initial={initial} catalogTags={catalogTags} tagsUpdatedAt={tagsUpdatedAt} />
+      </div>
+      <div className="mt-6">
+        <ArchiveAiLabel slug={slug} initial={aiDisclosureFromRow(hack)} />
       </div>
     </div>
   );

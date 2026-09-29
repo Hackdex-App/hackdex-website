@@ -275,7 +275,15 @@ export async function presignPatchAndSaveCovers(args: {
   return { ok: true, presignedUrl: url, objectKey } as const;
 }
 
-export async function confirmPatchUpload(args: { slug: string; objectKey: string; version: string, firstUpload?: boolean; publishAutomatically?: boolean }) {
+export async function confirmPatchUpload(args: {
+  slug: string;
+  objectKey: string;
+  version: string;
+  firstUpload?: boolean;
+  publishAutomatically?: boolean;
+  /** The AI label stamp the uploader reviewed; required once the hack already has a version. */
+  aiReviewedAt?: string | null;
+}) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -284,7 +292,7 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
 
   const { data: hack, error: hErr } = await supabase
     .from("hacks")
-    .select("slug, created_by, title, current_patch, original_author, permission_from, is_archive, approved, assigned_admin, verification_contact_info, submitted_at")
+    .select("slug, created_by, title, current_patch, original_author, permission_from, is_archive, approved, assigned_admin, verification_contact_info, submitted_at, ai_disclosed_at")
     .eq("slug", args.slug)
     .maybeSingle();
   if (hErr) return { ok: false, error: hErr.message } as const;
@@ -304,6 +312,17 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
   const service = await createServiceClient();
   const { count: keyUses } = await service.from("patches").select("id", { count: "exact", head: true }).eq("filename", args.objectKey);
   if (keyUses) return { ok: false, error: "That upload was already used. Please upload again." } as const;
+
+  // New versions re-confirm the AI label. The client sends the stamp of the label it showed, so a
+  // direct call can't skip the step and a label changed meanwhile isn't confirmed unseen.
+  const { count: priorPatches } = await service.from("patches").select("id", { count: "exact", head: true }).eq("parent_hack", args.slug);
+  const confirmsAi = (priorPatches ?? 0) > 0;
+  if (confirmsAi) {
+    if (!hack.ai_disclosed_at) return { ok: false, error: "Add the AI label before uploading a new version." } as const;
+    if (!args.aiReviewedAt || Date.parse(args.aiReviewedAt) !== Date.parse(hack.ai_disclosed_at)) {
+      return { ok: false, error: "The AI label changed since you checked it. Review it again." } as const;
+    }
+  }
 
   // Enforce unique version per hack defensively (avoid race with presign step)
   const { data: existing, error: vErr } = await supabase
@@ -371,6 +390,11 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
       if (uErr) return { ok: false, error: uErr.message } as const;
       didUpdateCurrentPatch = true;
     }
+  }
+
+  if (confirmsAi) {
+    const { error: aiErr } = await supabase.from("hacks").update({ ai_disclosed_at: new Date().toISOString() }).eq("slug", args.slug);
+    if (aiErr) console.error(`[confirmPatchUpload] Couldn't re-stamp the AI label for ${args.slug}:`, aiErr);
   }
 
   if (hack.approved && didUpdateCurrentPatch) {
