@@ -319,21 +319,15 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
   }
 
   // Create patch row
-  const patchInsert: any = {
+  const patchInsert: TablesInsert<"patches"> = {
     bucket: PATCHES_BUCKET,
     filename: args.objectKey,
     version: args.version,
     parent_hack: args.slug,
     format: patchFormatFromObjectKey(args.objectKey),
+    published: shouldPublishAutomatically,
+    ...(shouldPublishAutomatically ? { published_at: new Date().toISOString() } : {}),
   };
-
-  // Set published status based on publishAutomatically flag
-  if (shouldPublishAutomatically) {
-    patchInsert.published = true;
-    patchInsert.published_at = new Date().toISOString();
-  } else {
-    patchInsert.published = false;
-  }
 
   const { data: patch, error: pErr } = await supabase
     .from("patches")

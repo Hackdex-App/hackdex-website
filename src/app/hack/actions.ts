@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient, createServiceClient } from "@/utils/supabase/server";
-import type { TablesInsert, Database } from "@/types/db";
+import type { TablesInsert, TablesUpdate, Database } from "@/types/db";
 import { getMinioClient, PATCHES_BUCKET, COVERS_BUCKET } from "@/utils/minio/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
@@ -66,7 +66,7 @@ export async function updateHack(args: {
     return { ok: false, error: "Forbidden" } as const;
   }
 
-  const updatePayload: TablesInsert<"hacks"> | any = {};
+  const updatePayload: TablesUpdate<"hacks"> = {};
   if (args.title !== undefined) {
     if (!args.title.trim() || args.title.length > TITLE_MAX) return { ok: false, error: `Keep the title between 1 and ${TITLE_MAX} characters` } as const;
     updatePayload.title = args.title;
@@ -126,7 +126,7 @@ export async function updateHack(args: {
       .eq("hack_slug", args.slug);
     if (curErr) return { ok: false, error: curErr.message } as const;
 
-    const currentIds = new Set((currentLinks || []).map((r: any) => r.tag_id as number));
+    const currentIds = new Set((currentLinks || []).map((r) => r.tag_id));
     const desiredSet = new Set(desiredIds);
 
     // Remove links for tags that are no longer present
@@ -225,9 +225,9 @@ export async function saveHackCovers(args: { slug: string; coverUrls: string[] }
     .order("position", { ascending: true });
   if (cErr) return { ok: false, error: cErr.message } as const;
 
-  const existingAltMap = new Map((currentRows || []).map((r: any) => [r.url as string, (r.alt as string | null) || null]));
-  const existingIdMap = new Map((currentRows || []).map((r: any) => [r.url as string, r.id as number]));
-  const currentUrls = new Set((currentRows || []).map((r: any) => r.url as string));
+  const existingAltMap = new Map((currentRows || []).map((r) => [r.url, r.alt || null]));
+  const existingIdMap = new Map((currentRows || []).map((r) => [r.url, r.id]));
+  const currentUrls = new Set((currentRows || []).map((r) => r.url));
   const desiredSet = new Set(args.coverUrls);
   if (args.coverUrls.length > MAX_COVERS) return { ok: false, error: `Up to ${MAX_COVERS} screenshots` } as const;
   // New keys must be this hack's own uploads; otherwise removing one later would delete another hack's file.
@@ -258,12 +258,14 @@ export async function saveHackCovers(args: { slug: string; coverUrls: string[] }
 
   // Upsert desired rows (insert new and update existing positions/alts)
   if (args.coverUrls.length > 0) {
-    const rows = args.coverUrls.map((url, idx) => {
-      const base: any = { hack_slug: args.slug, url, position: idx + 1, alt: existingAltMap.get(url) || null };
-      const id = existingIdMap.get(url);
-      base.id = id || undefined; // include pk for existing rows per Supabase upsert requirement
-      return base;
-    });
+    // Existing rows keep their pk, which the upsert needs.
+    const rows = args.coverUrls.map((url, idx): TablesInsert<"hack_covers"> => ({
+      id: existingIdMap.get(url),
+      hack_slug: args.slug,
+      url,
+      position: idx + 1,
+      alt: existingAltMap.get(url) || null,
+    }));
 
     const updatedRows = rows.filter((r) => r.id !== undefined);
     const newRows = rows.filter((r) => r.id === undefined);
