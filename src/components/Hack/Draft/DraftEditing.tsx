@@ -43,8 +43,15 @@ export function DraftEditingProvider({ slug, live, children }: { slug: string; l
     async (work) => {
       inFlight.current += 1;
       setStatus("saving");
-      const res = await work();
-      inFlight.current -= 1;
+      // Server actions throw on network failures; without this the strip stuck on "Saving…".
+      let res: Result;
+      try {
+        res = await work();
+      } catch {
+        res = { ok: false, error: "Couldn't reach Hackdex. Check your connection and try again." };
+      } finally {
+        inFlight.current -= 1;
+      }
       if (!res.ok) {
         setStatus("error");
         toast.error(res.error);
@@ -144,19 +151,35 @@ export function useCommitter(dirty: boolean, commit: () => Promise<Result>, prep
   }, [id, dirty, register]);
 }
 
-/** Calls commit with the latest value once it has stopped changing for `delay` ms. Skips the initial value. */
+/**
+ * Calls commit with the latest value once it has stopped changing for `delay` ms (drafts) or right
+ * away (listed hacks, which only stage). Skips the initial value and flushes a pending one on unmount.
+ */
 export function useAutosave<T>(value: T, commit: (value: T) => void, delay = 800) {
-  const first = React.useRef(true);
+  // Listed hacks only stage (nothing is sent), so do it right away and Save always has the last edit.
+  const { live } = useDraftEditing();
+  const wait = live ? delay : 0;
+  const last = React.useRef(value);
+  const waiting = React.useRef(false);
   const commitRef = React.useRef(commit);
   commitRef.current = commit;
   React.useEffect(() => {
-    if (first.current) {
-      first.current = false;
-      return;
-    }
-    const t = window.setTimeout(() => commitRef.current(value), delay);
+    if (Object.is(value, last.current)) return;
+    last.current = value;
+    waiting.current = true;
+    const t = window.setTimeout(() => {
+      waiting.current = false;
+      commitRef.current(value);
+    }, wait);
     return () => window.clearTimeout(t);
-  }, [value, delay]);
+  }, [value, wait]);
+  // Commit a change still waiting when the editor goes away, e.g. clicking Preview mid-typing.
+  React.useEffect(
+    () => () => {
+      if (waiting.current) commitRef.current(last.current);
+    },
+    [],
+  );
 }
 
 export const FIELD = "w-full rounded-control border border-line bg-surface-2 px-3 text-sm text-text outline-none transition-[border-color,box-shadow] placeholder:text-text-3 focus:border-line-strong focus:ring-2 focus:ring-accent/40";

@@ -71,17 +71,21 @@ export default function DraftGallery({ covers: initial, platform }: DraftGallery
 
   const keys = (list: Cover[]) => list.map((c) => c.key);
   const changed = keys(covers).join("\n") !== keys(initial).join("\n");
+  // The list prepare uploaded; commit saves exactly that, so a shot added mid-save stays staged.
+  const saving = React.useRef<Cover[]>([]);
   useCommitter(
     changed,
     async () => {
-      const res = await saveHackCovers({ slug, coverUrls: keys(covers) });
-      if (res.ok) setCovers((prev) => prev.map(({ key, url }) => ({ key, url })));
+      const list = saving.current;
+      const res = await saveHackCovers({ slug, coverUrls: keys(list) });
+      if (res.ok) setCovers((prev) => prev.map((c) => (c.file && list.some((s) => s.key === c.key) ? { key: c.key, url: c.url } : c)));
       return res;
     },
     // Uploads run before any of the page's changes publish.
     async () => {
+      saving.current = covers;
       try {
-        for (const c of covers) if (c.file) await upload(slug, c.key, c.file);
+        for (const c of saving.current) if (c.file) await upload(slug, c.key, c.file);
         return { ok: true };
       } catch (e) {
         return { ok: false, error: e instanceof Error ? e.message : "Upload failed" };
