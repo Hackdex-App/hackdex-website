@@ -30,12 +30,13 @@ const listFormat = new Intl.ListFormat("en", { type: "conjunction" });
  * The hack page's AI label: a headline, a six-cell strip (five content areas,
  * then code), and a collapsible breakdown listing only the areas with AI.
  * While the breakdown is open, hovering a row highlights its cell and the other way around.
+ * `id` names the breakdown for aria-controls; a fixed one (not useId) because
+ * useId came out different on the server and client here.
  */
-export default function AiLabel({ disclosure, defaultOpen = false }: { disclosure: AiDisclosure; defaultOpen?: boolean }) {
+export default function AiLabel({ disclosure, defaultOpen = false, id = "ai-breakdown" }: { disclosure: AiDisclosure; defaultOpen?: boolean; id?: string }) {
   const { levels, note } = disclosure;
   const [open, setOpen] = React.useState(defaultOpen);
   const [hot, setHot] = React.useState<AiArea | null>(null);
-  const bodyId = React.useId();
   const used = AI_AREAS.filter((a) => levels[a.key] !== "none");
   const unused = AI_AREAS.filter((a) => levels[a.key] === "none").map((a) => a.short);
   // Links a cell to its row, so only while the breakdown is open (otherwise the cell looks clickable).
@@ -84,14 +85,14 @@ export default function AiLabel({ disclosure, defaultOpen = false }: { disclosur
       <button
         type="button"
         aria-expanded={open}
-        aria-controls={bodyId}
+        aria-controls={id}
         onClick={() => setOpen((v) => !v)}
         className="group mt-2.5 flex w-full items-center gap-1.5 border-t border-line pt-1.5 text-left text-[13px] text-text-2 transition-colors hover:text-text"
       >
         Breakdown
         <FiChevronDown className="ml-auto h-4 w-4 text-text-3 transition-transform duration-[180ms] group-aria-expanded:rotate-180" />
       </button>
-      <div id={bodyId} className={`grid transition-[grid-template-rows] duration-[240ms] ease-[cubic-bezier(.2,.8,.2,1)] ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`} inert={!open}>
+      <div id={id} className={`grid transition-[grid-template-rows] duration-[240ms] ease-[cubic-bezier(.2,.8,.2,1)] ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`} inert={!open}>
         <div className="min-h-0 overflow-hidden">
           {used.length > 0 && (
             <ul className="mt-2 border-t-2 border-text">

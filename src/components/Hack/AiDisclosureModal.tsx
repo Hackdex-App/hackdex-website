@@ -116,7 +116,7 @@ function AiDisclosureForm({ initial, onCancel, onSave }: { initial: AiDisclosure
 
       <div className="md:sticky md:top-0">
         <p className="mb-2 text-[11.5px] font-semibold text-text-3">Players will see</p>
-        <AiLabel disclosure={{ levels: preview, note: note.trim() || null, disclosedAt: new Date().toISOString() }} defaultOpen />
+        <AiLabel id="ai-breakdown-preview" disclosure={{ levels: preview, note: note.trim() || null, disclosedAt: new Date().toISOString() }} defaultOpen />
         <p className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-text-3">
           Shows under
           {AI_FILTERS.map((f) => (
