@@ -221,7 +221,8 @@ export default function HackEditForm({ slug, initial, catalogTags, tagsUpdatedAt
           const path = `${slug}/${Date.now()}-${i}.${ext}`;
           const presigned = await presignCoverUpload({ slug, objectKey: path });
           if (!presigned.ok) throw new Error(presigned.error || 'Failed to presign cover upload');
-          await fetch(presigned.presignedUrl, { method: 'PUT', body: item.file, headers: { 'Content-Type': item.file.type || 'image/jpeg' } });
+          const put = await fetch(presigned.presignedUrl, { method: 'PUT', body: item.file, headers: { 'Content-Type': item.file.type || 'image/jpeg' } });
+          if (!put.ok) throw new Error('Screenshot upload failed');
           keys.push(path);
         }
       }

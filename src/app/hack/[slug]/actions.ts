@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient, createServiceClient } from "@/utils/supabase/server";
-import { getMinioClient, PATCHES_BUCKET } from "@/utils/minio/server";
+import { getMinioClient, objectExists, PATCHES_BUCKET } from "@/utils/minio/server";
 import { buildPatchDownloadUrl } from "@/utils/patches/patch-download-url";
 import { isInformationalArchiveHack, canEditAsCreator, canEditAsAdmin } from "@/utils/hack";
 import { sendDiscordMessageEmbed } from "@/utils/discord";
@@ -811,6 +811,7 @@ export async function confirmReuploadPatchVersion(
 
   // Only a key reuploadPatchVersion signed for this hack.
   if (!isPatchKeyFor(slug, objectKey)) return { ok: false, error: "Invalid patch upload" };
+  if (!(await objectExists(PATCHES_BUCKET, objectKey))) return { ok: false, error: "The patch didn't finish uploading. Please try again." };
 
   // Update patch filename and format (derived from object key extension)
   const format = objectKey.toLowerCase().endsWith(".xdelta") ? "xdelta" : "bps";

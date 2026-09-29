@@ -203,7 +203,8 @@ export default function HackSubmitForm({
       const path = `${slug}/${Date.now()}-${i}.${fileExt}`;
       const presigned = await presignCoverUpload({ slug, objectKey: path });
       if (!presigned.ok) throw new Error(presigned.error || 'Failed to presign cover upload');
-      await fetch(presigned.presignedUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type || 'image/jpeg' } });
+      const put = await fetch(presigned.presignedUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type || 'image/jpeg' } });
+      if (!put.ok) throw new Error('Screenshot upload failed');
       urls.push(path);
     }
     return urls;
@@ -493,7 +494,8 @@ export default function HackSubmitForm({
 
         if (patchFile) {
           console.log('[HackSubmitForm] Uploading patch...');
-          await fetch(presigned.presignedUrl, { method: 'PUT', body: patchFile, headers: { 'Content-Type': 'application/octet-stream' } });
+          const put = await fetch(presigned.presignedUrl, { method: 'PUT', body: patchFile, headers: { 'Content-Type': 'application/octet-stream' } });
+          if (!put.ok) throw new Error('Patch upload failed');
           const finalized = await confirmPatchUpload({ slug: prepared.slug, objectKey: presigned.objectKey!, version, firstUpload: true, publishAutomatically: true });
           if (!finalized.ok) throw new Error(finalized.error || 'Failed to finalize');
           try {

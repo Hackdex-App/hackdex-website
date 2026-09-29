@@ -249,7 +249,8 @@ export default function HackPatchForm(props: HackPatchFormProps) {
     try {
       const presigned = await presignNewPatchVersion({ slug, version: version.trim(), format: patchFormatFromFilename(patchFile?.name) });
       if (!presigned.ok) throw new Error(presigned.error || 'Failed to presign');
-      await fetch(presigned.presignedUrl!, { method: 'PUT', body: patchFile!, headers: { 'Content-Type': 'application/octet-stream' } });
+      const put = await fetch(presigned.presignedUrl!, { method: 'PUT', body: patchFile!, headers: { 'Content-Type': 'application/octet-stream' } });
+      if (!put.ok) throw new Error('Upload failed. Please try again.');
       const finalized = await confirmPatchUpload({ slug, objectKey: presigned.objectKey!, version: version.trim(), publishAutomatically });
       if (!finalized.ok) throw new Error(finalized.error || 'Failed to finalize');
       if (aiCheck === "confirmed") await confirmAiDisclosure(slug);

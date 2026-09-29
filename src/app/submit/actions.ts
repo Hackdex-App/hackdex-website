@@ -2,7 +2,7 @@
 
 import { createClient, createServiceClient } from "@/utils/supabase/server";
 import type { TablesInsert, Database } from "@/types/db";
-import { getMinioClient, PATCHES_BUCKET } from "@/utils/minio/server";
+import { getMinioClient, objectExists, PATCHES_BUCKET } from "@/utils/minio/server";
 import { sendDiscordMessageEmbed } from "@/utils/discord";
 import { APIEmbed } from "discord-api-types/v10";
 import { slugify } from "@/utils/format";
@@ -291,6 +291,7 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
   }
   // Only a key signed for this hack, so nobody can register another hack's file.
   if (!isPatchKeyFor(args.slug, args.objectKey)) return { ok: false, error: "Invalid patch upload" } as const;
+  if (!(await objectExists(PATCHES_BUCKET, args.objectKey))) return { ok: false, error: "The patch didn't finish uploading. Please try again." } as const;
 
   // Enforce unique version per hack defensively (avoid race with presign step)
   const { data: existing, error: vErr } = await supabase

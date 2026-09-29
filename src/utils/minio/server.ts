@@ -15,4 +15,14 @@ export function getMinioClient(): Client {
 }
 
 export const PATCHES_BUCKET = process.env.PATCHES_BUCKET!;
+
+/** Whether an uploaded file actually landed, checked before a database row points at it. */
+export async function objectExists(bucket: string, key: string) {
+  try {
+    await getMinioClient().statObject(bucket, key);
+    return true;
+  } catch {
+    return false;
+  }
+}
 export const COVERS_BUCKET = process.env.COVERS_BUCKET!;
