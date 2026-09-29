@@ -374,70 +374,74 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
   if (hack.approved && didUpdateCurrentPatch) {
     revalidateDiscoverCatalog();
   }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("username")
-    .eq("id", hack.created_by)
-    .single();
-  const displayName = profile?.username ? `@${profile.username}` : hack.created_by;
-  const uploadedByDifferentUser = hack.created_by !== user.id;
-  const embed: APIEmbed = args.firstUpload ? {
-    title: hack.title,
-    description: `A new hack by **${displayName}** is pending approval by an admin.`
-      + (uploadedByDifferentUser ? ` (Uploaded by ${user.id})` : "")
-      + (hack.verification_contact_info ? `\n\n**Verification contact info:**\n${hack.verification_contact_info}` : ""),
-    color: 0x40f56a,
-    url: `${process.env.NEXT_PUBLIC_SITE_URL}/hack/${args.slug}`,
-    footer: { text: "This message brought to you by Hackdex" },
-  } : {
-    title: `New update for ${hack.title}`,
-    description: `**${hack.title}** has been updated to **${args.version}**`,
-    color: 0x40f56a,
-    url: `${process.env.NEXT_PUBLIC_SITE_URL}/hack/${args.slug}`,
-    footer: {
-      text: hack.approved
-        ? "This message brought to you by Hackdex"
-        : "This hack is still pending approval",
-    },
-  };
-
-  if (hack.approved) {
-    if (process.env.DISCORD_WEBHOOK_HACKDEX_HACKS_URL) {
-      await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_HACKDEX_HACKS_URL, [embed]);
-    }
-  } else if (hack.submitted_at === null) {
-    // Still a private draft: reviewers hear about it when the creator submits, not per upload.
-  } else {
-    let reviewThread = null;
-    if (!hack.is_archive) {
-      try {
-        reviewThread = await getHackReviewThread(args.slug);
-        if (!reviewThread && args.firstUpload) {
-          reviewThread = await ensureHackReviewThread({
-            slug: args.slug,
-            title: hack.title,
-            author: displayName,
-            isClaimed: hack.assigned_admin !== null,
-          });
-        }
-      } catch (error) {
-        console.error(`[HackReview] Failed to load or create the review thread for ${args.slug}:`, error);
-      }
-    }
-
-    if (reviewThread) {
-      await postHackReviewMessage(reviewThread, { embeds: [embed] });
-    } else if (process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL) {
-      await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL, [embed]);
-    }
-  }
-
-  // Redirect to versions page if not publishing automatically, otherwise to hack page
-  // The hack page reads cached metadata (patch, version); without this it can show the old one for hours.
+  // Right after the writes, so a failed notification below can't skip it. The hack page reads
+  // cached metadata (patch, version); without this it can show the old one for hours.
   revalidateTag(`hack:${args.slug}:metadata`);
   revalidatePath(`/hack/${args.slug}`);
   revalidatePath(`/hack/${args.slug}/versions`);
+
+  // Notifications are best effort: the upload is already saved, so a Discord error mustn't report failure.
+  try {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("username")
+      .eq("id", hack.created_by)
+      .single();
+    const displayName = profile?.username ? `@${profile.username}` : hack.created_by;
+    const uploadedByDifferentUser = hack.created_by !== user.id;
+    const embed: APIEmbed = args.firstUpload ? {
+      title: hack.title,
+      description: `A new hack by **${displayName}** is pending approval by an admin.`
+        + (uploadedByDifferentUser ? ` (Uploaded by ${user.id})` : "")
+        + (hack.verification_contact_info ? `\n\n**Verification contact info:**\n${hack.verification_contact_info}` : ""),
+      color: 0x40f56a,
+      url: `${process.env.NEXT_PUBLIC_SITE_URL}/hack/${args.slug}`,
+      footer: { text: "This message brought to you by Hackdex" },
+    } : {
+      title: `New update for ${hack.title}`,
+      description: `**${hack.title}** has been updated to **${args.version}**`,
+      color: 0x40f56a,
+      url: `${process.env.NEXT_PUBLIC_SITE_URL}/hack/${args.slug}`,
+      footer: {
+        text: hack.approved
+          ? "This message brought to you by Hackdex"
+          : "This hack is still pending approval",
+      },
+    };
+
+    if (hack.approved) {
+      if (process.env.DISCORD_WEBHOOK_HACKDEX_HACKS_URL) {
+        await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_HACKDEX_HACKS_URL, [embed]);
+      }
+    } else if (hack.submitted_at === null) {
+      // Still a private draft: reviewers hear about it when the creator submits, not per upload.
+    } else {
+      let reviewThread = null;
+      if (!hack.is_archive) {
+        try {
+          reviewThread = await getHackReviewThread(args.slug);
+          if (!reviewThread && args.firstUpload) {
+            reviewThread = await ensureHackReviewThread({
+              slug: args.slug,
+              title: hack.title,
+              author: displayName,
+              isClaimed: hack.assigned_admin !== null,
+            });
+          }
+        } catch (error) {
+          console.error(`[HackReview] Failed to load or create the review thread for ${args.slug}:`, error);
+        }
+      }
+
+      if (reviewThread) {
+        await postHackReviewMessage(reviewThread, { embeds: [embed] });
+      } else if (process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL) {
+        await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL, [embed]);
+      }
+    }
+  } catch (error) {
+    console.error(`[confirmPatchUpload] Notification failed for ${args.slug}:`, error);
+  }
 
   const redirectTo = args.publishAutomatically ? `/hack/${args.slug}` : `/hack/${args.slug}/versions`;
   return { ok: true, patchId: patch.id, redirectTo } as const;
@@ -499,6 +503,8 @@ export async function createDraft(formData: FormData) {
   };
   const { error } = await supabase.from("hacks").insert(insertPayload);
   if (error) return { ok: false, error: error.message } as const;
+  // Someone may have visited this address before it existed; that "not found" is cached.
+  revalidateTag(`hack:${slug}:metadata`);
   return { ok: true, slug } as const;
 }
 

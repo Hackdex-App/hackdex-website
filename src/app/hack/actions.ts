@@ -55,7 +55,7 @@ export async function updateHack(args: {
 
   const { data: hack, error: hErr } = await supabase
     .from("hacks")
-    .select("slug, created_by, current_patch, original_author, permission_from, is_archive")
+    .select("slug, created_by, current_patch, original_author, permission_from, is_archive, approved")
     .eq("slug", args.slug)
     .maybeSingle();
   if (hErr) return { ok: false, error: hErr.message } as const;
@@ -167,7 +167,8 @@ export async function updateHack(args: {
 
   revalidateTag(`hack:${args.slug}:metadata`);
   revalidatePath(`/hack/${args.slug}`);
-  revalidateDiscoverCatalog();
+  // Only listed hacks are in the catalog; drafts autosave constantly and would rebuild it each time.
+  if (hack.approved) revalidateDiscoverCatalog();
   return { ok: true } as const;
 }
 
@@ -206,7 +207,7 @@ export async function saveHackCovers(args: { slug: string; coverUrls: string[] }
 
   const { data: hack, error: hErr } = await supabase
     .from("hacks")
-    .select("slug, created_by, current_patch, original_author, permission_from, is_archive")
+    .select("slug, created_by, current_patch, original_author, permission_from, is_archive, approved")
     .eq("slug", args.slug)
     .maybeSingle();
   if (hErr) return { ok: false, error: hErr.message } as const;
@@ -284,7 +285,7 @@ export async function saveHackCovers(args: { slug: string; coverUrls: string[] }
 
   revalidateTag(`hack:${args.slug}:metadata`);
   revalidatePath(`/hack/${args.slug}`);
-  revalidateDiscoverCatalog();
+  if (hack.approved) revalidateDiscoverCatalog();
   return { ok: true } as const;
 }
 
@@ -400,6 +401,7 @@ export async function approveHack(slug: string, verified?: boolean) {
 
   // If already approved, return success
   if (hack.approved) {
+    revalidateTag(`hack:${slug}:metadata`);
     revalidatePath(`/hack/${slug}`);
     revalidateDiscoverCatalog();
     return { ok: true } as const;
@@ -416,7 +418,11 @@ export async function approveHack(slug: string, verified?: boolean) {
     .eq("slug", slug);
 
   if (updateErr) return { ok: false, error: updateErr.message } as const;
+  // Before the notifications, so a failed one can't leave the page cached as unapproved.
   revalidateDiscoverCatalog();
+  revalidateTag(`hack:${slug}:metadata`);
+  revalidateTag(`hack:${slug}:downloads`);
+  revalidatePath(`/hack/${slug}`);
 
   try {
     const { data: creatorData, error: creatorError } = await serviceClient.auth.admin.getUserById(hack.created_by);
@@ -451,25 +457,26 @@ export async function approveHack(slug: string, verified?: boolean) {
   }
 
   if (process.env.DISCORD_WEBHOOK_HACKDEX_HACKS_URL) {
-    const { data: profile } = await serviceClient.from('profiles').select('*').eq('id', hack.created_by).single();
-    const displayName = profile?.username ? `@${profile.username}` : user.id;
-    const embed: APIEmbed = {
-      title: `:tada: ${hack.title} :tada:`,
-      description: `A new hack by **${displayName}** is now live!`,
-      color: 0x40f56a,
-      url: `${process.env.NEXT_PUBLIC_SITE_URL}/hack/${slug}`,
-      footer: {
-        text: `This message brought to you by Hackdex`
+    try {
+      const { data: profile } = await serviceClient.from('profiles').select('*').eq('id', hack.created_by).single();
+      const displayName = profile?.username ? `@${profile.username}` : user.id;
+      const embed: APIEmbed = {
+        title: `:tada: ${hack.title} :tada:`,
+        description: `A new hack by **${displayName}** is now live!`,
+        color: 0x40f56a,
+        url: `${process.env.NEXT_PUBLIC_SITE_URL}/hack/${slug}`,
+        footer: {
+          text: `This message brought to you by Hackdex`
+        }
       }
+      await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_HACKDEX_HACKS_URL, [
+        embed,
+      ]);
+    } catch (error) {
+      console.error(`[HackApprove] Failed to announce ${slug} on Discord:`, error);
     }
-    await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_HACKDEX_HACKS_URL, [
-      embed,
-    ]);
   }
 
-  revalidateTag(`hack:${slug}:metadata`);
-  revalidateTag(`hack:${slug}:downloads`);
-  revalidatePath(`/hack/${slug}`);
   redirect(`/hack/${slug}`);
 }
 
