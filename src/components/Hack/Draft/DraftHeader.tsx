@@ -4,7 +4,7 @@ import React from "react";
 import type { CatalogTagRow } from "@/types/catalogTag";
 import { FIELD, useAutosave, useDraftEditing } from "./DraftEditing";
 import DraftTags from "./DraftTags";
-import { SUMMARY_MAX } from "@/data/hackLimits";
+import { SUMMARY_MAX, TITLE_MAX } from "@/data/hackLimits";
 
 interface DraftHeaderProps {
   title: string;
@@ -16,7 +16,6 @@ interface DraftHeaderProps {
   children: React.ReactNode;
 }
 
-const TITLE_MAX = 64;
 
 /** Title, summary and tags edited in place of the hack page header. Each field autosaves once typing pauses. */
 export default function DraftHeader({ title: initialTitle, summary: initialSummary, tags: initialTags, catalogTags, tagsUpdatedAt, children }: DraftHeaderProps) {

@@ -104,11 +104,12 @@ export default async function HackSessionDetail({
   const editsInPlace = canEdit && !isArchive && ((isOwner && !hack.approved) || edit === "1");
   let editor: DraftEditorData | undefined;
   if (editsInPlace) {
-    const [checklist, catalogTags, { data: covers }, { data: row }] = await Promise.all([
+    const [checklist, catalogTags, { data: covers }, { data: row }, { count: patchCount }] = await Promise.all([
       getDraftChecklist(slug),
       getCachedTagsWithUsage(),
       supabase.from("hack_covers").select("url").eq("hack_slug", slug).order("position", { ascending: true }),
       supabase.from("hacks").select("tags_updated_at").eq("slug", slug).maybeSingle(),
+      supabase.from("patches").select("id", { count: "exact", head: true }).eq("parent_hack", slug),
     ]);
     if (checklist) {
       editor = {
@@ -119,6 +120,7 @@ export default async function HackSessionDetail({
         tagsUpdatedAt: row?.tags_updated_at ?? new Date(0).toISOString(),
         coverKeys: (covers ?? []).map((c) => c.url),
         preview: !hack.approved && preview === "1",
+        hasPatches: (patchCount ?? 0) > 0,
       };
     }
   }

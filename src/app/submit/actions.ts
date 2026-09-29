@@ -7,7 +7,8 @@ import { sendDiscordMessageEmbed } from "@/utils/discord";
 import { APIEmbed } from "discord-api-types/v10";
 import { slugify } from "@/utils/format";
 import { isCoverKeyFor, isPatchKeyFor, newPatchKey } from "@/utils/storageKeys";
-import { MAX_COVERS } from "@/data/hackLimits";
+import { MAX_COVERS, SUMMARY_MAX, TITLE_MAX } from "@/data/hackLimits";
+import { baseRoms } from "@/data/baseRoms";
 import { checkEditPermission, checkPatchEditPermission } from "@/utils/hack";
 import { getCachedTagsWithUsage, resolveTagIdsInOrder } from "@/data/tags";
 import type { PatchFormat } from "@/utils/patching";
@@ -314,7 +315,8 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
   if (vErr) return { ok: false, error: vErr.message } as const;
   if (existing) return { ok: false, error: "That version already exists for this hack." } as const;
 
-  let shouldPublishAutomatically = !!args.publishAutomatically;
+  // A hack's first patch always becomes current: there's nothing else to play, and a draft's stays private anyway.
+  let shouldPublishAutomatically = !!args.publishAutomatically || hack.current_patch === null;
   let didUpdateCurrentPatch = false;
   if (shouldPublishAutomatically) {
     const { data: customPatcherRows, error: customPatcherErr } = await supabase
@@ -469,7 +471,9 @@ export async function createDraft(formData: FormData) {
   const permission_from = behalf ? (formData.get("permission_from") as string | null)?.trim() || null : null;
 
   if (!title || !base_rom || summary.length < 10) return { ok: false, error: "Add a title, a base ROM, and a summary to continue." } as const;
-  if (summary.length > 100) return { ok: false, error: "Keep the summary under 100 characters." } as const;
+  if (title.length > TITLE_MAX) return { ok: false, error: `Keep the title to ${TITLE_MAX} characters.` } as const;
+  if (summary.length > SUMMARY_MAX) return { ok: false, error: `Keep the summary to ${SUMMARY_MAX} characters.` } as const;
+  if (!baseRoms.some((r) => r.id === base_rom)) return { ok: false, error: "Choose a base ROM from the list." } as const;
   if (behalf && (!original_author || !permission_from)) return { ok: false, error: "Name the creator and where they gave permission." } as const;
   if (behalf) {
     // Listing someone else's hack is admin-only for now.
@@ -511,17 +515,17 @@ export async function createDraft(formData: FormData) {
 /** What still stands between a draft and the review queue. Empty means it can be submitted. */
 export async function getDraftChecklist(slug: string) {
   const supabase = await createClient();
-  const [{ data: hack }, { count: covers }, { count: patches }, { count: tags }] = await Promise.all([
-    supabase.from("hacks").select("base_rom,summary,description,completion_status,language,original_author,permission_from,ai_disclosed_at").eq("slug", slug).maybeSingle(),
+  const [{ data: hack }, { count: covers }, { count: tags }] = await Promise.all([
+    supabase.from("hacks").select("base_rom,summary,description,completion_status,language,original_author,permission_from,ai_disclosed_at,current_patch").eq("slug", slug).maybeSingle(),
     supabase.from("hack_covers").select("id", { count: "exact", head: true }).eq("hack_slug", slug),
-    supabase.from("patches").select("id", { count: "exact", head: true }).eq("parent_hack", slug),
     supabase.from("hack_tags").select("tag_id", { count: "exact", head: true }).eq("hack_slug", slug),
   ]);
   if (!hack) return null;
   const description = hack.description.trim();
   const required = [
     { key: "base", label: "Base ROM chosen", done: !!hack.base_rom },
-    { key: "patch", label: "A patch file uploaded", done: (patches ?? 0) > 0, href: "edit/patch" },
+    // Uploaded isn't enough: players need a current version to patch with.
+    { key: "patch", label: "A playable patch uploaded", done: hack.current_patch !== null, href: "edit/patch" },
     { key: "summary", label: "Summary under 100 characters", done: hack.summary.trim().length > 0 && hack.summary.length <= 100 },
     { key: "description", label: "A description", done: description.length > 0 },
     { key: "completion", label: "Completion status set", done: !!hack.completion_status },

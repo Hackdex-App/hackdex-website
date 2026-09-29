@@ -21,6 +21,7 @@ import { revalidateDiscoverCatalog } from "@/app/discover/revalidate";
 import { aiColumns, parseAiLevels, type AiLevels } from "@/utils/aiDisclosure";
 import { isCoverKeyFor, newPatchKey } from "@/utils/storageKeys";
 import { MAX_COVERS, SUMMARY_MAX, TITLE_MAX } from "@/data/hackLimits";
+import { baseRoms } from "@/data/baseRoms";
 import type { PatchFormat } from "@/utils/patching";
 
 export async function updateHack(args: {
@@ -55,7 +56,7 @@ export async function updateHack(args: {
 
   const { data: hack, error: hErr } = await supabase
     .from("hacks")
-    .select("slug, created_by, current_patch, original_author, permission_from, is_archive, approved")
+    .select("slug, created_by, current_patch, original_author, permission_from, is_archive, approved, base_rom")
     .eq("slug", args.slug)
     .maybeSingle();
   if (hErr) return { ok: false, error: hErr.message } as const;
@@ -76,7 +77,15 @@ export async function updateHack(args: {
     updatePayload.summary = args.summary;
   }
   if (args.description !== undefined) updatePayload.description = args.description;
-  if (args.base_rom !== undefined) updatePayload.base_rom = args.base_rom;
+  if (args.base_rom !== undefined) {
+    if (!baseRoms.some((r) => r.id === args.base_rom)) return { ok: false, error: "Choose a base ROM from the list" } as const;
+    // Patches are built against one ROM; switching it after an upload would make players patch the wrong game.
+    if (args.base_rom !== hack.base_rom) {
+      const { count } = await supabase.from("patches").select("id", { count: "exact", head: true }).eq("parent_hack", args.slug);
+      if (count) return { ok: false, error: "The base ROM is locked once a patch is uploaded" } as const;
+    }
+    updatePayload.base_rom = args.base_rom;
+  }
   if (args.language !== undefined) updatePayload.language = args.language;
   if (args.completion_status !== undefined) {
     if (args.completion_status === null) {
@@ -380,13 +389,14 @@ export async function approveHack(slug: string, verified?: boolean) {
   // Check if hack exists
   const { data: hack, error: hErr } = await serviceClient
     .from("hacks")
-    .select("slug, approved, title, created_by, submitted_at")
+    .select("slug, approved, title, created_by, submitted_at, current_patch, is_archive")
     .eq("slug", slug)
     .maybeSingle();
   if (hErr) return { ok: false, error: hErr.message } as const;
   if (!hack) return { ok: false, error: "Hack not found" } as const;
   // Only the creator can submit; a draft isn't in the queue yet.
   if (hack.submitted_at === null) return { ok: false, error: "This hack hasn't been submitted for review yet." } as const;
+  if (!hack.approved && !hack.is_archive && hack.current_patch === null) return { ok: false, error: "This hack has no playable patch yet." } as const;
 
   if (verified === true) {
     const { error: updateErr } = await serviceClient
