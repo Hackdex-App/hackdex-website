@@ -34,6 +34,73 @@ test("announcement escapes content, preserves paragraphs, and links URLs", async
   assert.ok(!html.includes('href="javascript:'));
 });
 
+test("announcement renders section and question headings", async () => {
+  const html = await renderEmail("announcement", {
+    title: "Feature announcement",
+    message: "Intro.\n\n## How it works\n\nFirst paragraph.\n\nSecond paragraph.\r\n\r\n### A question?\r\n\r\nAn answer.",
+  });
+  assert.match(html, /<h2\b[^>]*font-size:20px[^>]*>How it works<\/h2>/);
+  assert.match(html, /<h3\b[^>]*font-weight:700[^>]*>A question\?<\/h3>/);
+  assert.ok(html.includes("First paragraph.<br /><br />Second paragraph."));
+  assert.doesNotMatch(html, /<br \/><h[23]|<\/h[23]><br \/>/);
+  assert.ok(!html.includes("## "));
+});
+
+test("announcement heading text stays escaped", async () => {
+  const html = await renderEmail("announcement", {
+    title: "Feature announcement",
+    message: '## <img src=x onerror="alert(1)"> & news\n\nRead https://www.hackdex.app/faq.',
+  });
+  assert.match(html, /<h2\b[^>]*>&lt;img src=x onerror=&quot;alert\(1\)&quot;&gt; &amp; news<\/h2>/);
+  assert.ok(!html.includes("<img src=x"));
+  assert.ok(html.includes('href="https://www.hackdex.app/faq"'));
+});
+
+test("announcement screenshots link to their full-size images", async () => {
+  const html = await renderEmail("announcement", {
+    title: "Feature announcement",
+    message: '## Preview\n\n![Form & player preview](https://example.com/form.png?v=1&size=large)\n\n![Code disclosure](https://example.com/code%20disclosure.png)\n\nRead https://www.hackdex.app/faq.',
+  });
+  const screenshots = [...html.matchAll(/<a\b[^>]*href="(https:\/\/example\.com\/[^\"]+)"[^>]*>\s*(<img\b[^>]*>)\s*<\/a>/g)];
+  assert.equal(screenshots.length, 2);
+  assert.equal(screenshots[0][1], "https://example.com/form.png?v=1&amp;size=large");
+  assert.match(screenshots[0][2], /alt="Form &amp; player preview"/);
+  assert.match(screenshots[1][2], /alt="Code disclosure"/);
+  for (const [, url, img] of screenshots) {
+    assert.ok(img.includes(`src="${url}"`));
+    assert.match(img, /width:100%/);
+    assert.match(img, /height:auto/);
+  }
+  assert.ok(html.includes('href="https://www.hackdex.app/faq"'));
+  assert.ok(!html.includes("![Form"));
+  assert.ok(!html.includes("![Code"));
+});
+
+test("announcement screenshots cannot inject HTML through alt text", async () => {
+  const html = await renderEmail("announcement", {
+    title: "Feature announcement",
+    message: '![Preview " onerror="alert(1) <script>](https://example.com/form.png)',
+  });
+  const image = html.match(/<img\b[^>]*src="https:\/\/example\.com\/form.png"[^>]*>/)?.[0];
+  assert.ok(image);
+  assert.ok(image.includes('alt="Preview &quot; onerror=&quot;alert(1) &lt;script&gt;"'));
+  assert.ok(!image.includes(' onerror="'));
+  assert.ok(!html.includes("<script>"));
+});
+
+test("announcement images reject non-HTTP sources", async () => {
+  const html = await renderEmail("announcement", {
+    title: "Feature announcement",
+    message: '![Unsafe](javascript:alert(1))\n\n![Local](file:///tmp/private.png)\n\n![Data](data:image/png;base64,abc)\n\n<img src="https://example.com/raw.png">',
+  });
+  assert.ok(!html.includes('src="javascript:'));
+  assert.ok(!html.includes('src="file:'));
+  assert.ok(!html.includes('src="data:'));
+  assert.ok(!html.includes('src="https://example.com/raw.png"'));
+  assert.ok(html.includes("![Unsafe]"));
+  assert.ok(html.includes("&lt;img"));
+});
+
 test("announcement files validate the campaign ID and required copy", async (t) => {
   const directory = await temporaryDirectory(t);
   const file = path.join(directory, "notice.json");

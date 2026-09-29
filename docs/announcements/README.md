@@ -1,6 +1,6 @@
 # Creator announcements
 
-Use the `announcement` email template for service notices to creators. It takes a title and a plain-text message, preserves paragraph breaks, and makes HTTP/HTTPS URLs clickable. HTML in either field is escaped. It reuses the existing Hackdex email styling and invites replies.
+Use the `announcement` email template for service notices to creators. It takes a title and a text message, preserves paragraph breaks, and makes HTTP/HTTPS URLs clickable. Start a line with `## ` for a section heading or `### ` for a smaller heading, such as a question. Markdown images are also supported as described below; other Markdown formatting is not supported. HTML in either field is escaped. It reuses the existing Hackdex email styling and invites replies.
 
 The script requires Node 22.18 or newer and installed project dependencies. It uses Node's built-in TypeScript support; no additional runner is needed. Run commands from the repository root.
 
@@ -15,6 +15,18 @@ npm run email:announcement -- docs/announcements/terms-1.1.0.json
 This default mode renders HTML and plain-text previews without any network access. Output is under `.local/announcements/<id>/`, which is ignored by Git. If a recipient snapshot already exists, it also reports the count.
 
 The Terms announcement uses October 3, 2026 as the effective date and November 2, 2026 as the deadline for existing hacks. Before sending, confirm these dates match the published Terms, including the 30-day grace period, and that the updated Terms and FAQ are live. Send by September 26 to provide seven days of notice. Set `ready` to `true` only after reviewing the final copy. Production sending rejects drafts and unresolved `{{...}}` placeholders. The script does not validate legal deadlines or publish policy changes.
+
+## Screenshots
+
+Replace each screenshot placeholder in the message with a Markdown image on its own line, separated from surrounding text by blank lines:
+
+```md
+![AI disclosure form with a player preview](https://raw.githubusercontent.com/Hackdex-App/hackdex-website/FULL_COMMIT_SHA/docs/announcements/assets/ai-disclosure/form.png)
+```
+
+Commit and push the screenshots first, then replace `FULL_COMMIT_SHA` with the full hash of that commit. Use a public HTTP/HTTPS URL that returns the image itself. Encode spaces and parentheses in URLs as `%20`, `%28`, and `%29`. Image titles and escaped brackets in alt text are not supported.
+
+Images fit the email's width, preserve their proportions, and link to the full-size image. The text in square brackets supplies alt text; put any visible caption in a separate paragraph. The plain-text email keeps the image description and URL in Markdown form. Regenerate the preview and send yourself a test to check loading and readability before sending to creators.
 
 ## Configuration
 
