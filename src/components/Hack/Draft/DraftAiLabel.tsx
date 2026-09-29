@@ -17,8 +17,12 @@ import { useDraftEditing } from "./DraftEditing";
 export default function DraftAiLabel({ initial }: { initial: AiDisclosure | null }) {
   const { save } = useDraftEditing();
   const [disclosure, setDisclosure] = React.useState(initial);
-  const searchParams = useSearchParams();
-  const [open, setOpen] = React.useState(searchParams.get("ai") === "1");
+  const [open, setOpen] = React.useState(false);
+  // After mount: the modal portals into document.body, which doesn't exist while server rendering.
+  const openOnLoad = useSearchParams().get("ai") === "1";
+  React.useEffect(() => {
+    if (openOnLoad) setOpen(true);
+  }, [openOnLoad]);
   const Icon = disclosure ? FiEdit2 : FiPlus;
 
   return (
