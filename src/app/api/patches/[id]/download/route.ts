@@ -1,11 +1,8 @@
 import { NextRequest } from "next/server";
-import { getMinioClient, PATCHES_BUCKET } from "@/utils/minio/server";
-import { buildPatchDownloadUrl } from "@/utils/patches/patch-download-url";
-import { createClient } from "@/utils/supabase/server";
+import { getPatchDownloadUrl } from "@/app/hack/[slug]/actions";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const supabase = await createClient();
 
   // Log suspicious access patterns
   const referer = req.headers.get("referer");
@@ -37,24 +34,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     });
   }
 
-  const { data: patch, error } = await supabase
-    .from("patches")
-    .select("id, bucket, filename")
-    .eq("id", Number(id))
-    .maybeSingle();
-  if (error || !patch) {
-    return new Response("Not found", { status: 404 });
-  }
-
-  const workerUrl = buildPatchDownloadUrl(patch.filename);
-  if (workerUrl) {
-    return Response.redirect(workerUrl, 302);
-  }
-
-  const client = getMinioClient();
-  const bucket = patch.bucket || PATCHES_BUCKET;
-  const url = await client.presignedGetObject(bucket, patch.filename, 60 * 5);
-  return Response.redirect(url, 302);
+  // Same rules as the patcher: published, not archived, the hack's download
+  // permission, and the parent hack visible to this caller (drafts and pending
+  // hacks aren't). Anything else looks like a missing patch.
+  const patchId = Number(id);
+  const res = Number.isInteger(patchId) ? await getPatchDownloadUrl(patchId) : null;
+  if (!res?.ok) return new Response("Not found", { status: 404 });
+  return Response.redirect(res.url, 302);
 }
-
-
