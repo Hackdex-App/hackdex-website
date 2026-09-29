@@ -10,6 +10,7 @@ import { presignCoverUpload, saveHackCovers } from "@/app/hack/actions";
 import type { Platform } from "@/data/baseRoms";
 import { getCoverUrls } from "@/utils/format";
 import { useCommitter, useDraftEditing } from "./DraftEditing";
+import { MAX_COVERS } from "@/data/hackLimits";
 
 interface Cover {
   key: string;
@@ -23,7 +24,6 @@ interface DraftGalleryProps {
   platform: Platform | undefined;
 }
 
-const MAX_COVERS = 10;
 
 function allowedSizes(platform: Platform | undefined) {
   if (platform === "GB" || platform === "GBC") return [{ w: 160, h: 144 }];

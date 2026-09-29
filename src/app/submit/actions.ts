@@ -7,6 +7,7 @@ import { sendDiscordMessageEmbed } from "@/utils/discord";
 import { APIEmbed } from "discord-api-types/v10";
 import { slugify } from "@/utils/format";
 import { isCoverKeyFor, isPatchKeyFor, newPatchKey } from "@/utils/storageKeys";
+import { MAX_COVERS } from "@/data/hackLimits";
 import { checkEditPermission, checkPatchEditPermission } from "@/utils/hack";
 import { getCachedTagsWithUsage, resolveTagIdsInOrder } from "@/data/tags";
 import type { PatchFormat } from "@/utils/patching";
@@ -207,6 +208,7 @@ export async function saveHackCovers(args: { slug: string; coverUrls: string[] }
   }
 
   if (args.coverUrls.some((u) => !isCoverKeyFor(args.slug, u))) return { ok: false, error: "Invalid screenshot" } as const;
+  if (args.coverUrls.length > MAX_COVERS) return { ok: false, error: `Up to ${MAX_COVERS} screenshots` } as const;
 
   // Insert covers (overwrite positions)
   if (args.coverUrls && args.coverUrls.length > 0) {
@@ -250,6 +252,7 @@ export async function presignPatchAndSaveCovers(args: {
   }
 
   if (args.coverUrls.some((u) => !isCoverKeyFor(args.slug, u))) return { ok: false, error: "Invalid screenshot" } as const;
+  if (args.coverUrls.length > MAX_COVERS) return { ok: false, error: `Up to ${MAX_COVERS} screenshots` } as const;
 
   // Insert covers (overwrite positions)
   if (args.coverUrls && args.coverUrls.length > 0) {

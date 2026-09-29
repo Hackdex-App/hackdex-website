@@ -4,6 +4,7 @@ import React from "react";
 import type { CatalogTagRow } from "@/types/catalogTag";
 import { FIELD, useAutosave, useDraftEditing } from "./DraftEditing";
 import DraftTags from "./DraftTags";
+import { SUMMARY_MAX } from "@/data/hackLimits";
 
 interface DraftHeaderProps {
   title: string;
@@ -15,12 +16,11 @@ interface DraftHeaderProps {
   children: React.ReactNode;
 }
 
-const SUMMARY_MAX = 100;
 const TITLE_MAX = 64;
 
 /** Title, summary and tags edited in place of the hack page header. Each field autosaves once typing pauses. */
 export default function DraftHeader({ title: initialTitle, summary: initialSummary, tags: initialTags, catalogTags, tagsUpdatedAt, children }: DraftHeaderProps) {
-  const { save } = useDraftEditing();
+  const { save, live } = useDraftEditing();
   const [title, setTitle] = React.useState(initialTitle);
   const [summary, setSummary] = React.useState(initialSummary);
   const [tags, setTags] = React.useState(initialTags);
@@ -29,7 +29,10 @@ export default function DraftHeader({ title: initialTitle, summary: initialSumma
   useAutosave(title, (v) => {
     if (v.trim()) void save({ title: v.trim() });
   });
-  useAutosave(summary, (v) => void save({ summary: v.trim() }));
+  // Drafts wait until it fits (the counter is red meanwhile); listed hacks stage it so Save reports the limit.
+  useAutosave(summary, (v) => {
+    if (!live || v.trim().length <= SUMMARY_MAX) void save({ summary: v.trim() });
+  });
   useAutosave(tags, (v) => void save({ tags: v }), 500);
 
   const nearLimit = summary.length > SUMMARY_MAX - 10;

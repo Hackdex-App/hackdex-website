@@ -20,6 +20,7 @@ import {
 import { revalidateDiscoverCatalog } from "@/app/discover/revalidate";
 import { aiColumns, parseAiLevels, type AiLevels } from "@/utils/aiDisclosure";
 import { isCoverKeyFor, newPatchKey } from "@/utils/storageKeys";
+import { MAX_COVERS, SUMMARY_MAX, TITLE_MAX } from "@/data/hackLimits";
 import type { PatchFormat } from "@/utils/patching";
 
 export async function updateHack(args: {
@@ -66,8 +67,14 @@ export async function updateHack(args: {
   }
 
   const updatePayload: TablesInsert<"hacks"> | any = {};
-  if (args.title !== undefined) updatePayload.title = args.title;
-  if (args.summary !== undefined) updatePayload.summary = args.summary;
+  if (args.title !== undefined) {
+    if (!args.title.trim() || args.title.length > TITLE_MAX) return { ok: false, error: `Keep the title between 1 and ${TITLE_MAX} characters` } as const;
+    updatePayload.title = args.title;
+  }
+  if (args.summary !== undefined) {
+    if (args.summary.length > SUMMARY_MAX) return { ok: false, error: `Keep the summary to ${SUMMARY_MAX} characters` } as const;
+    updatePayload.summary = args.summary;
+  }
   if (args.description !== undefined) updatePayload.description = args.description;
   if (args.base_rom !== undefined) updatePayload.base_rom = args.base_rom;
   if (args.language !== undefined) updatePayload.language = args.language;
@@ -222,6 +229,7 @@ export async function saveHackCovers(args: { slug: string; coverUrls: string[] }
   const existingIdMap = new Map((currentRows || []).map((r: any) => [r.url as string, r.id as number]));
   const currentUrls = new Set((currentRows || []).map((r: any) => r.url as string));
   const desiredSet = new Set(args.coverUrls);
+  if (args.coverUrls.length > MAX_COVERS) return { ok: false, error: `Up to ${MAX_COVERS} screenshots` } as const;
   // New keys must be this hack's own uploads; otherwise removing one later would delete another hack's file.
   if (args.coverUrls.some((u) => !currentUrls.has(u) && !isCoverKeyFor(args.slug, u))) {
     return { ok: false, error: "Invalid screenshot" } as const;
