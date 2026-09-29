@@ -50,6 +50,26 @@ interface DiscoverBrowserProps {
   ungroupedTags: string[];
 }
 
+/**
+ * One predicate for the results and the phone sheet's "Show N hacks", so they can't disagree.
+ * Tags are OR within a category and AND across them; "Complete" also matches hacks without a status.
+ */
+function hackMatcher(f: FilterState, query: string, groups: TagGroup[], readyBaseRomIds: Set<string>) {
+  const q = query.toLowerCase();
+  const wanted = groups.map((g) => g.tags.filter((t) => f.tags.includes(t))).filter((picked) => picked.length > 0);
+  return (h: DiscoverHack) =>
+    (!q ||
+      h.title.toLowerCase().includes(q) ||
+      h.author.toLowerCase().includes(q) ||
+      !!h.summary?.toLowerCase().includes(q) ||
+      h.tags.some((t) => t.name.toLowerCase().includes(q))) &&
+    wanted.every((picked) => picked.some((t) => h.tags.some((tag) => tag.name === t))) &&
+    (f.baseRoms.length === 0 || (!!h.baseRomId && f.baseRoms.includes(h.baseRomId))) &&
+    (f.completionStatuses.length === 0 || f.completionStatuses.includes(h.completion_status ?? "Complete")) &&
+    (!f.onlyReady || (!h.is_archive && !!h.baseRomId && readyBaseRomIds.has(h.baseRomId))) &&
+    matchesAiFilter(h.ai, f.ai);
+}
+
 export default function DiscoverBrowser({ catalog, generatedAt, initialState, tagGroups, ungroupedTags }: DiscoverBrowserProps) {
   const [query, setQuery] = React.useState(initialState.query);
   const [selectedTags, setSelectedTags] = React.useState<string[]>(() => [...initialState.tags]);
@@ -137,36 +157,8 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
   }, [currentUrlState, initialUrlStateApplied, selectedTags.length, syncUrl, validTagNames]);
 
   const filtered = React.useMemo(() => {
-    let out = catalog;
-    const q = query.toLowerCase();
-    if (q) {
-      out = out.filter(
-        (h) =>
-          h.title.toLowerCase().includes(q) ||
-          h.author.toLowerCase().includes(q) ||
-          h.summary?.toLowerCase().includes(q) ||
-          h.tags.some((t) => t.name.toLowerCase().includes(q))
-      );
-    }
-    // Tags: OR within a category, AND across categories.
-    if (selectedTags.length > 0) {
-      const wanted = groups
-        .map((g) => g.tags.filter((t) => selectedTags.includes(t)))
-        .filter((picked) => picked.length > 0);
-      out = out.filter((h) => wanted.every((picked) => picked.some((t) => h.tags.some((tag) => tag.name === t))));
-    }
-    if (selectedBaseRoms.length > 0) {
-      out = out.filter((h) => h.baseRomId && selectedBaseRoms.includes(h.baseRomId));
-    }
-    // "Complete" also matches hacks that never set a status.
-    if (selectedCompletionStatuses.length > 0) {
-      out = out.filter((h) => selectedCompletionStatuses.includes(h.completion_status ?? "Complete"));
-    }
-    if (onlyReady) {
-      out = out.filter((h) => !h.is_archive && h.baseRomId && readyBaseRomIds.has(h.baseRomId));
-    }
-    if (ai !== "any") out = out.filter((h) => matchesAiFilter(h.ai, ai));
-    return [...out].sort((a, b) => {
+    const matches = hackMatcher({ tags: selectedTags, baseRoms: selectedBaseRoms, completionStatuses: selectedCompletionStatuses, onlyReady, ai }, query, groups, readyBaseRomIds);
+    return catalog.filter(matches).sort((a, b) => {
       if (sort === "popular") return b.downloads - a.downloads;
       if (sort === "new") return (b.approvedAt ? Date.parse(b.approvedAt) : 0) - (a.approvedAt ? Date.parse(a.approvedAt) : 0);
       if (sort === "updated") {
@@ -219,14 +211,14 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
   );
 
   const applyFilters = React.useCallback(
-    (next: FilterState) => {
+    (next: FilterState, mode: "push" | "replace" = "push") => {
       setSelectedTags(next.tags);
       setSelectedBaseRoms(next.baseRoms);
       setSelectedCompletionStatuses(next.completionStatuses);
       setOnlyReady(next.onlyReady);
       setAi(next.ai);
       setCurrentPage(1);
-      syncUrlWith({ ...next, baseRoms: next.onlyReady ? [] : next.baseRoms, page: 1 });
+      syncUrlWith({ ...next, baseRoms: next.onlyReady ? [] : next.baseRoms, page: 1 }, mode);
     },
     [syncUrlWith]
   );
@@ -244,18 +236,10 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
   const [sheet, setSheet] = React.useState(false);
   const [draft, setDraft] = React.useState<FilterState>(filterState);
   const filterBtnRef = React.useRef<HTMLButtonElement>(null);
-  const draftTotal = React.useMemo(() => {
-    if (!sheet) return 0;
-    const wanted = groups.map((g) => g.tags.filter((t) => draft.tags.includes(t))).filter((p) => p.length > 0);
-    return catalog.filter(
-      (h) =>
-        wanted.every((picked) => picked.some((t) => h.tags.some((tag) => tag.name === t))) &&
-        (draft.baseRoms.length === 0 || (h.baseRomId && draft.baseRoms.includes(h.baseRomId))) &&
-        (draft.completionStatuses.length === 0 || draft.completionStatuses.includes(h.completion_status ?? "Complete")) &&
-        (!draft.onlyReady || (h.baseRomId && readyBaseRomIds.has(h.baseRomId))) &&
-        matchesAiFilter(h.ai, draft.ai)
-    ).length;
-  }, [catalog, draft, groups, readyBaseRomIds, sheet]);
+  const draftTotal = React.useMemo(
+    () => (sheet ? catalog.filter(hackMatcher(draft, query, groups, readyBaseRomIds)).length : 0),
+    [catalog, draft, groups, query, readyBaseRomIds, sheet]
+  );
 
   const openSheet = () => {
     setDraft(filterState);
@@ -276,8 +260,14 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
     filterBtnRef.current?.focus();
   }, []);
   const closeSheet = (commit: boolean) => {
-    if (commit) applyFilters(draft);
-    if (history.state && (history.state as { discoverFilters?: boolean }).discoverFilters) {
+    const onSheetEntry = Boolean((history.state as { discoverFilters?: boolean } | null)?.discoverFilters);
+    if (commit) {
+      // Take over the sheet's history entry; pushing on top of it left a duplicate for Back to land on.
+      applyFilters(draft, onSheetEntry ? "replace" : "push");
+      finishClose();
+      return;
+    }
+    if (onSheetEntry) {
       history.back();
       return;
     }
