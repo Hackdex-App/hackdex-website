@@ -6,7 +6,18 @@ The script requires Node 22.18 or newer and installed project dependencies. It u
 
 ## Draft and preview
 
-Copy `docs/announcements/terms-1.1.0.json` for a new announcement. Give it a unique, stable `id`, a `title` used as the email subject, a `message`, and `ready: false`. The ID identifies this mailing, including its delivery records. Never change it to retry the same mailing.
+Give each announcement a unique, stable `id`, a `title` used as the email subject, and `ready: false`. Use `messageFile` to keep the body in a separate Markdown file:
+
+```json
+{
+  "id": "ai-disclosure-explained",
+  "ready": false,
+  "title": "How Hackdex's AI disclosure system will work",
+  "messageFile": "ai-disclosure-explained.md"
+}
+```
+
+The path is resolved relative to the JSON file. Existing announcements can keep their inline `message` field; provide exactly one of `message` or `messageFile`. Both use the same formatting described above. Missing or empty message files stop the script. The ID identifies this mailing, including its delivery records. Never change it to retry the same mailing.
 
 ```sh
 npm run email:announcement -- docs/announcements/terms-1.1.0.json

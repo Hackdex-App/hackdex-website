@@ -112,6 +112,40 @@ test("announcement files validate the campaign ID and required copy", async (t) 
   }
 });
 
+test("announcement loads Markdown relative to its JSON file", async (t) => {
+  const directory = await temporaryDirectory(t);
+  const file = path.join(directory, "notice.json");
+  const { message, ...metadata } = announcement;
+  const markdown = `## Creator notice\n\n${message}\n\n![Preview](https://example.com/preview.png)\n`;
+  await mkdir(path.join(directory, "copy"));
+  await writeFile(path.join(directory, "copy", "notice.md"), markdown);
+  await writeFile(file, JSON.stringify({ ...metadata, messageFile: "copy/notice.md" }));
+  assert.deepEqual(await loadAnnouncement(file), { ...announcement, message: markdown });
+});
+
+test("announcement rejects ambiguous or invalid message sources", async (t) => {
+  const directory = await temporaryDirectory(t);
+  const file = path.join(directory, "notice.json");
+  const { message, ...metadata } = announcement;
+  for (const source of [
+    {}, { message, messageFile: "notice.md" }, { messageFile: " " },
+    { messageFile: null }, { messageFile: 123 }, { message: null },
+  ]) {
+    await writeFile(file, JSON.stringify({ ...metadata, ...source }));
+    await assert.rejects(loadAnnouncement(file), /Announcement needs/);
+  }
+});
+
+test("announcement reports missing or empty Markdown files", async (t) => {
+  const directory = await temporaryDirectory(t);
+  const file = path.join(directory, "notice.json");
+  const { message: _message, ...metadata } = announcement;
+  await writeFile(file, JSON.stringify({ ...metadata, messageFile: "notice.md" }));
+  await assert.rejects(loadAnnouncement(file), { code: "ENOENT" });
+  await writeFile(path.join(directory, "notice.md"), " \n\t");
+  await assert.rejects(loadAnnouncement(file), /Announcement needs/);
+});
+
 test("recipient selection paginates, excludes empty drafts, and deduplicates creator emails", async () => {
   const offsets: number[] = [];
   const authLookups: string[] = [];
@@ -183,9 +217,14 @@ test("default mode renders offline without querying recipients or sending email"
   process.chdir(directory);
   t.after(() => process.chdir(previousCwd));
   t.mock.method(globalThis, "fetch", async () => { throw new Error("Unexpected network request"); });
-  await writeFile("notice.json", JSON.stringify({ ...announcement, ready: false }));
+  const { message: _message, ...metadata } = announcement;
+  await writeFile("notice.md", "## Details\n\nRead https://www.hackdex.app/faq.");
+  await writeFile("notice.json", JSON.stringify({ ...metadata, messageFile: "notice.md", ready: false }));
   await main(["notice.json"]);
-  assert.ok((await readFile(".local/announcements/test-notice/preview.html", "utf8")).includes("Creator notice"));
+  const html = await readFile(".local/announcements/test-notice/preview.html", "utf8");
+  assert.ok(html.includes("Creator notice"));
+  assert.match(html, /<h2\b[^>]*>Details<\/h2>/);
+  assert.ok((await readFile(".local/announcements/test-notice/preview.txt", "utf8")).includes("## Details\n\nRead https://www.hackdex.app/faq."));
   assert.deepEqual((await readdir(".local/announcements/test-notice")).sort(), ["preview.html", "preview.txt"]);
 });
 
@@ -229,6 +268,20 @@ test("production sending rejects drafts and unresolved placeholders", async (t) 
     await assert.rejects(sendAnnouncement({ announcement: draft, message, recipients, directory, mailer }), /Announcement is a draft/);
   }
   assert.deepEqual(await readdir(directory), []);
+});
+
+test("production sending rejects placeholders loaded from Markdown", async (t) => {
+  const directory = await temporaryDirectory(t);
+  const file = path.join(directory, "notice.json");
+  const { message: _message, ...metadata } = announcement;
+  await writeFile(path.join(directory, "notice.md"), "Effective {{effectiveDate}}");
+  await writeFile(file, JSON.stringify({ ...metadata, messageFile: "notice.md" }));
+  t.mock.method(globalThis, "fetch", async () => { throw new Error("Unexpected email"); });
+  await assert.rejects(sendAnnouncement({
+    announcement: await loadAnnouncement(file), message, recipients,
+    directory: path.join(directory, "delivery"), mailer: new Resend("re_test_key").emails,
+  }), /Announcement is a draft/);
+  assert.deepEqual((await readdir(directory)).sort(), ["notice.json", "notice.md"]);
 });
 
 test("accepted sends persist IDs and are skipped on subsequent runs", async (t) => {
