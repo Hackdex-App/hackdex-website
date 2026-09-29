@@ -24,9 +24,9 @@ interface HackTabsProps {
   changes?: { version: string; date: string; body: React.ReactNode } | null;
   versions: HackVersionRow[];
   baseRomName: string | null;
-  /** Draft editing: replaces the About section (heading included) with the description editor. */
+  /** Draft editing: replaces the About section (heading included) with the description editor. Stays mounted across tabs. */
   aboutPanel?: React.ReactNode;
-  /** Draft editing: replaces the Gallery panel with the screenshot manager. */
+  /** Draft editing: replaces the Gallery panel with the screenshot manager. Stays mounted across tabs. */
   gallery?: React.ReactNode;
   /** Draft editing: action row under the versions table, e.g. Upload a version. */
   versionsAction?: React.ReactNode;
@@ -80,8 +80,9 @@ export default function HackTabs({ slug, title, author, images, about, changes, 
         </div>
       </div>
 
-      {tab === "about" && (
-        <div id="panel-about" role="tabpanel" aria-labelledby="tab-about" className="anim-fade flex flex-col gap-8">
+      {/* Editors stay mounted while hidden: unmounting them dropped staged edits when switching tabs. */}
+      {(tab === "about" || aboutPanel) && (
+        <div id="panel-about" role="tabpanel" aria-labelledby="tab-about" hidden={tab !== "about"} className="anim-fade flex flex-col gap-8">
           {images.length > 0 && (
             <section aria-label="Screenshots">
               <figure className="m-0 rounded-card bg-well p-3 md:p-4">
@@ -135,8 +136,8 @@ export default function HackTabs({ slug, title, author, images, about, changes, 
         </div>
       )}
 
-      {tab === "gallery" && gallery && (
-        <div id="panel-gallery" role="tabpanel" aria-labelledby="tab-gallery" className="anim-fade">
+      {gallery && (
+        <div id="panel-gallery" role="tabpanel" aria-labelledby="tab-gallery" hidden={tab !== "gallery"} className="anim-fade">
           {gallery}
         </div>
       )}
