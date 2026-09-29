@@ -12,6 +12,8 @@ import { Database, Constants } from "@/types/db";
 import { getPatcherSelectablePatches } from "@/utils/patches/patcher-selectable-patches";
 import { CUSTOM_VERSION_NAME_MAX_LENGTH } from "@/utils/patches/hack-display-version";
 import { revalidateDiscoverCatalog } from "@/app/discover/revalidate";
+import { isPatchKeyFor, newPatchKey } from "@/utils/storageKeys";
+import type { PatchFormat } from "@/utils/patching";
 
 const PATCHES_DOWNLOAD_PERMISSION_VALUES = Constants.public.Enums[
   "Patches Download Permission"
@@ -727,11 +729,12 @@ export async function publishPatchVersion(slug: string, patchId: number): Promis
   return { ok: true, willBecomeCurrent };
 }
 
+/** Signs a replacement upload for an existing version; the key is made here, inside this hack's files. */
 export async function reuploadPatchVersion(
   slug: string,
   patchId: number,
-  objectKey: string
-): Promise<{ ok: true; presignedUrl: string } | { ok: false; error: string }> {
+  format: PatchFormat
+): Promise<{ ok: true; presignedUrl: string; objectKey: string } | { ok: false; error: string }> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Unauthorized" };
@@ -755,7 +758,7 @@ export async function reuploadPatchVersion(
   // Verify patch belongs to this hack
   const { data: patch, error: pErr } = await supabase
     .from("patches")
-    .select("id, parent_hack, filename")
+    .select("id, parent_hack, filename, version")
     .eq("id", patchId)
     .maybeSingle();
   if (pErr || !patch || patch.parent_hack !== slug) {
@@ -763,11 +766,12 @@ export async function reuploadPatchVersion(
   }
 
   // Generate presigned URL for upload
+  const objectKey = newPatchKey(slug, `${patch.version ?? "patch"}-reupload`, format === "xdelta" ? "xdelta" : "bps");
   const client = getMinioClient();
   const url = await client.presignedPutObject(PATCHES_BUCKET, objectKey, 60 * 10);
 
   // Update patch filename after upload (caller should handle the actual upload and update)
-  return { ok: true, presignedUrl: url };
+  return { ok: true, presignedUrl: url, objectKey };
 }
 
 export async function confirmReuploadPatchVersion(
@@ -804,6 +808,9 @@ export async function confirmReuploadPatchVersion(
   if (pErr || !patch || patch.parent_hack !== slug) {
     return { ok: false, error: "Patch not found" };
   }
+
+  // Only a key reuploadPatchVersion signed for this hack.
+  if (!isPatchKeyFor(slug, objectKey)) return { ok: false, error: "Invalid patch upload" };
 
   // Update patch filename and format (derived from object key extension)
   const format = objectKey.toLowerCase().endsWith(".xdelta") ? "xdelta" : "bps";

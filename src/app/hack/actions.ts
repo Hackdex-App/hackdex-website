@@ -19,6 +19,8 @@ import {
 } from "@/utils/hack-review";
 import { revalidateDiscoverCatalog } from "@/app/discover/revalidate";
 import { aiColumns, parseAiLevels, type AiLevels } from "@/utils/aiDisclosure";
+import { isCoverKeyFor, newPatchKey } from "@/utils/storageKeys";
+import type { PatchFormat } from "@/utils/patching";
 
 export async function updateHack(args: {
   slug: string;
@@ -220,6 +222,10 @@ export async function saveHackCovers(args: { slug: string; coverUrls: string[] }
   const existingIdMap = new Map((currentRows || []).map((r: any) => [r.url as string, r.id as number]));
   const currentUrls = new Set((currentRows || []).map((r: any) => r.url as string));
   const desiredSet = new Set(args.coverUrls);
+  // New keys must be this hack's own uploads; otherwise removing one later would delete another hack's file.
+  if (args.coverUrls.some((u) => !currentUrls.has(u) && !isCoverKeyFor(args.slug, u))) {
+    return { ok: false, error: "Invalid screenshot" } as const;
+  }
 
   const toRemove = Array.from(currentUrls).filter((u) => !desiredSet.has(u));
 
@@ -231,9 +237,9 @@ export async function saveHackCovers(args: { slug: string; coverUrls: string[] }
       .eq("hack_slug", args.slug)
       .in("url", toRemove);
     if (delErr) return { ok: false, error: delErr.message } as const;
-    // Best-effort removal of orphaned files from S3
+    // Best-effort removal of orphaned files from S3, only inside this hack's folder
     const client = getMinioClient();
-    for (const key of toRemove) {
+    for (const key of toRemove.filter((k) => isCoverKeyFor(args.slug, k))) {
       try {
         await client.removeObject(COVERS_BUCKET, key);
       } catch (e) {
@@ -273,7 +279,8 @@ export async function saveHackCovers(args: { slug: string; coverUrls: string[] }
 }
 
 
-export async function presignNewPatchVersion(args: { slug: string; version: string; objectKey?: string }) {
+/** Signs an upload for a new version. The key is made here so it can only land in this hack's files. */
+export async function presignNewPatchVersion(args: { slug: string; version: string; format: PatchFormat }) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -307,8 +314,7 @@ export async function presignNewPatchVersion(args: { slug: string; version: stri
     .maybeSingle();
   if (existing) return { ok: false, error: "That version already exists for this hack." } as const;
 
-  const safeVersion = args.version.replace(/[^a-zA-Z0-9._-]+/g, "-");
-  const objectKey = args.objectKey || `${args.slug}-${safeVersion}.bps`;
+  const objectKey = newPatchKey(args.slug, args.version, args.format === "xdelta" ? "xdelta" : "bps");
 
   const client = getMinioClient();
   // 10 minutes to upload
@@ -337,6 +343,7 @@ export async function presignCoverUpload(args: { slug: string; objectKey: string
   if (!permission.canEdit) {
     return { ok: false, error: "Forbidden" } as const;
   }
+  if (!isCoverKeyFor(args.slug, args.objectKey)) return { ok: false, error: "Invalid screenshot path" } as const;
 
   const client = getMinioClient();
   // 10 minutes to upload

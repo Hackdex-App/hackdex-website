@@ -488,10 +488,7 @@ export default function HackSubmitForm({
         window.location.href = `/hack/${prepared.slug}`;
       } else {
         console.log('[HackSubmitForm] Getting patch upload URL...');
-        const safeVersion = version.replace(/[^a-zA-Z0-9._-]+/g, "-");
-        const patchExt = patchFormatFromFilename(patchFile?.name) === "xdelta" ? "xdelta" : "bps";
-        const objectKey = `${prepared.slug}-${safeVersion}.${patchExt}`;
-        const presigned = await presignPatchAndSaveCovers({ slug: prepared.slug, version, coverUrls: uploadedCoverUrls, objectKey });
+        const presigned = await presignPatchAndSaveCovers({ slug: prepared.slug, version, coverUrls: uploadedCoverUrls, format: patchFormatFromFilename(patchFile?.name) });
         if (!presigned.ok) throw new Error(presigned.error || 'Failed to presign');
 
         if (patchFile) {

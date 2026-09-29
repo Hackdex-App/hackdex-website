@@ -247,10 +247,7 @@ export default function HackPatchForm(props: HackPatchFormProps) {
     setSubmitting(true);
     setError("");
     try {
-      const safeVersion = version.trim().replace(/[^a-zA-Z0-9._-]+/g, "-");
-      const patchExt = patchFormatFromFilename(patchFile?.name) === "xdelta" ? "xdelta" : "bps";
-      const objectKey = `${slug}-${safeVersion}.${patchExt}`;
-      const presigned = await presignNewPatchVersion({ slug, version: version.trim(), objectKey });
+      const presigned = await presignNewPatchVersion({ slug, version: version.trim(), format: patchFormatFromFilename(patchFile?.name) });
       if (!presigned.ok) throw new Error(presigned.error || 'Failed to presign');
       await fetch(presigned.presignedUrl!, { method: 'PUT', body: patchFile!, headers: { 'Content-Type': 'application/octet-stream' } });
       const finalized = await confirmPatchUpload({ slug, objectKey: presigned.objectKey!, version: version.trim(), publishAutomatically });

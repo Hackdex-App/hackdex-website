@@ -372,11 +372,7 @@ export default function VersionActions({
     setActionLoading(true);
     setReuploadError(null);
     try {
-      const safeVersion = patch.version.replace(/[^a-zA-Z0-9._-]+/g, "-");
-      const patchExt = patchFormatFromFilename(reuploadFile.name) === "xdelta" ? "xdelta" : "bps";
-      const objectKey = `${hackSlug}-${safeVersion}-reupload-${Date.now()}.${patchExt}`;
-
-      const presignResult = await reuploadPatchVersion(hackSlug, patch.id, objectKey);
+      const presignResult = await reuploadPatchVersion(hackSlug, patch.id, patchFormatFromFilename(reuploadFile.name));
       if (!presignResult.ok) {
         throw new Error(presignResult.error || "Failed to get upload URL");
       }
@@ -393,7 +389,7 @@ export default function VersionActions({
       }
 
       // Confirm upload
-      const confirmResult = await confirmReuploadPatchVersion(hackSlug, patch.id, objectKey);
+      const confirmResult = await confirmReuploadPatchVersion(hackSlug, patch.id, presignResult.objectKey);
       if (confirmResult.ok) {
         setShowReuploadModal(false);
         setReuploadFile(null);

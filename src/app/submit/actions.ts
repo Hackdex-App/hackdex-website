@@ -6,6 +6,7 @@ import { getMinioClient, PATCHES_BUCKET } from "@/utils/minio/server";
 import { sendDiscordMessageEmbed } from "@/utils/discord";
 import { APIEmbed } from "discord-api-types/v10";
 import { slugify } from "@/utils/format";
+import { isCoverKeyFor, isPatchKeyFor, newPatchKey } from "@/utils/storageKeys";
 import { checkEditPermission, checkPatchEditPermission } from "@/utils/hack";
 import { getCachedTagsWithUsage, resolveTagIdsInOrder } from "@/data/tags";
 import type { PatchFormat } from "@/utils/patching";
@@ -205,6 +206,8 @@ export async function saveHackCovers(args: { slug: string; coverUrls: string[] }
     return { ok: false, error: "Forbidden" } as const;
   }
 
+  if (args.coverUrls.some((u) => !isCoverKeyFor(args.slug, u))) return { ok: false, error: "Invalid screenshot" } as const;
+
   // Insert covers (overwrite positions)
   if (args.coverUrls && args.coverUrls.length > 0) {
     // Clear any existing rows first (idempotency on retry)
@@ -221,7 +224,7 @@ export async function presignPatchAndSaveCovers(args: {
   slug: string;
   version: string;
   coverUrls: string[];
-  objectKey: string;
+  format: PatchFormat;
 }) {
   const supabase = await createClient();
   const {
@@ -246,6 +249,8 @@ export async function presignPatchAndSaveCovers(args: {
     return { ok: false, error: "Forbidden" } as const;
   }
 
+  if (args.coverUrls.some((u) => !isCoverKeyFor(args.slug, u))) return { ok: false, error: "Invalid screenshot" } as const;
+
   // Insert covers (overwrite positions)
   if (args.coverUrls && args.coverUrls.length > 0) {
     // Clear any existing rows first (idempotency on retry)
@@ -256,9 +261,10 @@ export async function presignPatchAndSaveCovers(args: {
   }
   const client = getMinioClient();
   // 10 minutes to upload
-  const url = await client.presignedPutObject(PATCHES_BUCKET, args.objectKey, 60 * 10);
+  const objectKey = newPatchKey(args.slug, args.version, args.format === "xdelta" ? "xdelta" : "bps");
+  const url = await client.presignedPutObject(PATCHES_BUCKET, objectKey, 60 * 10);
 
-  return { ok: true, presignedUrl: url, objectKey: args.objectKey } as const;
+  return { ok: true, presignedUrl: url, objectKey } as const;
 }
 
 export async function confirmPatchUpload(args: { slug: string; objectKey: string; version: string, firstUpload?: boolean; publishAutomatically?: boolean }) {
@@ -283,6 +289,8 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
   if (!permission.canEdit) {
     return { ok: false, error: "Forbidden" } as const;
   }
+  // Only a key signed for this hack, so nobody can register another hack's file.
+  if (!isPatchKeyFor(args.slug, args.objectKey)) return { ok: false, error: "Invalid patch upload" } as const;
 
   // Enforce unique version per hack defensively (avoid race with presign step)
   const { data: existing, error: vErr } = await supabase
