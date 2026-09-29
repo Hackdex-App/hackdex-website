@@ -25,16 +25,18 @@ export function useDialog(panelRef: React.RefObject<HTMLElement | null>, onClose
         return;
       }
       if (e.key !== "Tab" || !panelRef.current) return;
-      const nodes = [...panelRef.current.querySelectorAll<HTMLElement>("button, input, [href], select, textarea")].filter((el) => !el.hasAttribute("disabled"));
+      const nodes = [...panelRef.current.querySelectorAll<HTMLElement>("button, input, [href], select, textarea, [tabindex]")].filter(
+        (el) => !el.hasAttribute("disabled") && el.tabIndex >= 0 && !el.closest("[inert]") && el.getClientRects().length > 0,
+      );
       if (nodes.length === 0) return;
-      const first = nodes[0];
-      const last = nodes[nodes.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
+      // Focus starts on the panel itself, so wrap from anywhere that isn't one of its controls.
+      const at = nodes.indexOf(document.activeElement as HTMLElement);
+      if (e.shiftKey && at <= 0) {
         e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
+        nodes[nodes.length - 1].focus();
+      } else if (!e.shiftKey && (at === -1 || at === nodes.length - 1)) {
         e.preventDefault();
-        first.focus();
+        nodes[0].focus();
       }
     };
     document.addEventListener("keydown", onKey);

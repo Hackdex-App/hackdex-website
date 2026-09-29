@@ -10,6 +10,7 @@ const RAIL_PLATFORMS: Platform[] = ["GBA", "GBC", "GB", "NDS"];
 import { DISCOVER_COMPLETION_STATUSES } from "@/app/discover/search-params";
 import type { DiscoverHack } from "@/types/discover";
 import { AI_FILTERS, matchesAiFilter, type AiFilter } from "@/utils/aiDisclosure";
+import { useDialog } from "@/hooks/useDialog";
 
 /** The filterable part of the Discover URL state. The sheet edits a draft copy of this. */
 export type FilterState = {
@@ -360,48 +361,21 @@ interface SheetProps {
  */
 export function FilterSheet({ active, total, onClose, onCommit, onClear, children }: SheetProps) {
   const panelRef = React.useRef<HTMLDivElement>(null);
-  const onCloseRef = React.useRef(onClose);
   const [mounted, setMounted] = React.useState(false);
   const [inView, setInView] = React.useState(false);
-  onCloseRef.current = onClose;
 
   React.useEffect(() => {
     setMounted(true);
   }, []);
 
+  // Focus, scroll lock, Tab trap, and Escape come from the shared dialog hook.
+  useDialog(panelRef, onClose, mounted);
+
   React.useEffect(() => {
     if (!mounted) return;
     // Paint at the final height first, then slide in, so the panel never travels as a tall content box.
     const enter = requestAnimationFrame(() => requestAnimationFrame(() => setInView(true)));
-    panelRef.current?.focus({ preventScroll: true });
-    const html = document.documentElement;
-    const prevOverflow = html.style.overflow;
-    html.style.overflow = "hidden";
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onCloseRef.current();
-        return;
-      }
-      if (e.key !== "Tab" || !panelRef.current) return;
-      const nodes = [...panelRef.current.querySelectorAll<HTMLElement>("button, input, [href], select, textarea")].filter((el) => !el.hasAttribute("disabled"));
-      if (nodes.length === 0) return;
-      const first = nodes[0];
-      const last = nodes[nodes.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => {
-      cancelAnimationFrame(enter);
-      document.removeEventListener("keydown", onKey);
-      html.style.overflow = prevOverflow;
-    };
+    return () => cancelAnimationFrame(enter);
   }, [mounted]);
 
   if (!mounted) return null;
