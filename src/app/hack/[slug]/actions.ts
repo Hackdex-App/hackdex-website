@@ -641,6 +641,7 @@ export async function updatePatchVersion(slug: string, patchId: number, version:
     .update({ version: trimmedVersion, updated_at: new Date().toISOString() })
     .eq("id", patchId);
 
+  if (updateErr?.code === "23505") return { ok: false, error: "That version already exists for this hack." };
   if (updateErr) return { ok: false, error: updateErr.message };
 
   revalidateTag(`hack:${slug}:metadata`);

@@ -340,6 +340,8 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
     .insert(patchInsert)
     .select("id, created_at")
     .single();
+  // The unique index catches a concurrent upload of the same version.
+  if (pErr?.code === "23505") return { ok: false, error: "That version already exists for this hack." } as const;
   if (pErr) return { ok: false, error: pErr.message } as const;
 
   // Only update current_patch if publishAutomatically is true
