@@ -64,6 +64,7 @@ export async function checkSlugAvailable(slug: string) {
   return !(await isSlugTaken(slug));
 }
 
+/** The one-shot archive wizard. Everyone else starts a draft (createDraft), which goes through the checklist. */
 export async function prepareSubmission(formData: FormData) {
   const supabase = await createClient();
   const {
@@ -72,6 +73,9 @@ export async function prepareSubmission(formData: FormData) {
   if (!user) {
     return { ok: false, error: "Unauthorized" } as const;
   }
+  // Same gate as /submit?mode=wizard (archivers include admins).
+  const { data: canUseWizard } = await supabase.rpc("is_archiver");
+  if (!canUseWizard) return { ok: false, error: "Forbidden" } as const;
 
   const title = (formData.get("title") as string)?.trim();
   const summary = (formData.get("summary") as string)?.trim();

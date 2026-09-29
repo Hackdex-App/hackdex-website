@@ -18,12 +18,18 @@ import { notFound } from "next/navigation";
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: HackDetailPageProps) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
   const { slug } = await params;
-  return getHackPageMetadata(slug, Boolean(user));
+  const metadata = await getHackMetadata(slug);
+  let includeRestricted = false;
+  if (metadata && (!metadata.hack.approved || isArchiveHack(metadata.hack))) {
+    // Same gate as the page body; otherwise any signed-in visitor got a draft's title in <title>.
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    includeRestricted = !!user && (await checkEditPermission(metadata.hack, user.id, supabase)).canEdit;
+  }
+  return getHackPageMetadata(slug, includeRestricted);
 }
 
 export default async function HackSessionDetail({
