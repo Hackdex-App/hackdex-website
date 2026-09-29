@@ -115,7 +115,8 @@ export default function DraftGallery({ covers: initial, platform }: DraftGallery
           rejected += 1;
           continue;
         }
-        const ext = file.name.split(".").pop() || "png";
+        // Keys only allow [A-Za-z0-9._-], so a name like "shot 1.PNG " would be rejected by the server.
+        const ext = (file.name.split(".").pop() ?? "").toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
         const key = `${slug}/${Date.now()}-${i}.${ext}`;
         if (live) {
           await upload(slug, key, file);
@@ -148,8 +149,14 @@ export default function DraftGallery({ covers: initial, platform }: DraftGallery
 
   function remove(i: number) {
     if (live && !window.confirm("Delete this screenshot?")) return;
+    if (covers[i].file) URL.revokeObjectURL(covers[i].url);
     persist(covers.filter((_, j) => j !== i));
   }
+
+  // Staged previews are object URLs; free the rest when the gallery goes away.
+  const coversRef = React.useRef(covers);
+  coversRef.current = covers;
+  React.useEffect(() => () => coversRef.current.forEach((c) => c.url.startsWith("blob:") && URL.revokeObjectURL(c.url)), []);
 
   return (
     <div className="flex flex-col gap-5">
@@ -160,7 +167,7 @@ export default function DraftGallery({ covers: initial, platform }: DraftGallery
         <SortableContext items={covers.map((c) => c.key)} strategy={rectSortingStrategy}>
           <ul className="grid grid-cols-1 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(264px,1fr))]">
             {covers.map((c, i) => (
-              <Shot key={c.key} cover={c} featured={i === 0} onFeature={() => feature(i)} onRemove={() => remove(i)} />
+              <Shot key={c.key} cover={c} index={i} featured={i === 0} onFeature={() => feature(i)} onRemove={() => remove(i)} />
             ))}
             {covers.length < MAX_COVERS && (
               <li>
@@ -195,7 +202,7 @@ export default function DraftGallery({ covers: initial, platform }: DraftGallery
   );
 }
 
-function Shot({ cover, featured, onFeature, onRemove }: { cover: Cover; featured: boolean; onFeature: () => void; onRemove: () => void }) {
+function Shot({ cover, index, featured, onFeature, onRemove }: { cover: Cover; index: number; featured: boolean; onFeature: () => void; onRemove: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: cover.key });
   return (
     <li ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={isDragging ? "z-10 opacity-70" : ""}>
@@ -206,6 +213,7 @@ function Shot({ cover, featured, onFeature, onRemove }: { cover: Cover; featured
           draggable={false}
           {...attributes}
           {...listeners}
+          aria-label={`Screenshot ${index + 1}${featured ? ", the cover" : ""}. Drag to reorder.`}
           className="pixelated aspect-[3/2] w-full max-w-[240px] cursor-grab touch-none rounded-frame object-cover object-top active:cursor-grabbing"
         />
         {featured && <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-accent-deep px-2 py-0.5 text-[11px] font-semibold text-white">Cover</span>}

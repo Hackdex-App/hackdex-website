@@ -190,7 +190,7 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
 
       {editing && editor.notOwner && (
         <Notice tone="warn" icon={<FiAlertTriangle size={22} />} title="You are editing a hack you do not own.">
-          Changes save as you type, so be careful with what you change.
+          {hack.approved ? "Changes publish when you save, so check them before you do." : "Changes save as you type, so be careful with what you change."}
         </Notice>
       )}
 

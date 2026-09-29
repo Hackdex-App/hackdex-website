@@ -544,3 +544,6 @@ FROM (
 ) AS spec(slug, ver, cnt)
 JOIN public.patches p ON p.parent_hack = spec.slug AND p.version = spec.ver
 CROSS JOIN LATERAL generate_series(0, spec.cnt - 1) AS gs(n);
+
+-- Seeded hacks count as submitted (drafts are made in the app); otherwise the pending ones show up as private drafts.
+UPDATE public.hacks SET submitted_at = created_at WHERE slug LIKE 'seed-%' AND submitted_at IS NULL;
