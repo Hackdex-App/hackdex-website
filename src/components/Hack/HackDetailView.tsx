@@ -18,7 +18,7 @@ import type { CatalogTagRow } from "@/types/catalogTag";
 import PokeCommunityIcon from "@/components/Icons/PokeCommunityIcon";
 import Markdown from "@/components/Markdown/Markdown";
 import { getHackPageUrl } from "@/app/hack/[slug]/hack-page-shared";
-import type { HackMetadata } from "@/app/hack/[slug]/actions";
+import type { HackMetadata } from "@/app/hack/[slug]/metadata";
 import { baseGameLabel, baseRoms, PLATFORM_NAMES } from "@/data/baseRoms";
 import { EMULATORS } from "@/data/emulators";
 import Handle from "@/components/Primitives/Handle";

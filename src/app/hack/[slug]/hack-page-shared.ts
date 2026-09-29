@@ -1,4 +1,4 @@
-import { getHackMetadata } from "@/app/hack/[slug]/actions";
+import { getHackMetadata } from "@/app/hack/[slug]/metadata";
 import { baseRoms } from "@/data/baseRoms";
 import { isArchiveHack } from "@/utils/hack";
 import type { Metadata } from "next";

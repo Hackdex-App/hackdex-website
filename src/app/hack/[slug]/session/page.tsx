@@ -1,4 +1,4 @@
-import { getHackDownloads, getHackMetadata } from "@/app/hack/[slug]/actions";
+import { getHackDownloads, getHackMetadata } from "@/app/hack/[slug]/metadata";
 import {
   getHackPageMetadata,
   type HackDetailPageProps,
