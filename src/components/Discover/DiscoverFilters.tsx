@@ -391,7 +391,7 @@ export function FilterSheet({ active, total, onClose, onCommit, onClear, childre
         aria-modal="true"
         aria-labelledby="discover-filter-title"
         tabIndex={-1}
-        className={`relative flex h-[90%] max-h-[90%] min-h-0 flex-none flex-col overflow-hidden rounded-t-[20px] bg-surface text-text shadow-overlay outline-none transition-transform duration-[240ms] ease-[cubic-bezier(.2,.8,.2,1)] ${
+        className={`relative flex h-[90%] max-h-[90%] min-h-0 flex-none flex-col overflow-hidden rounded-t-[20px] bg-surface text-text shadow-overlay outline-none transition-transform duration-[240ms] motion-reduce:transition-none ease-[cubic-bezier(.2,.8,.2,1)] ${
           inView ? "translate-y-0" : "translate-y-full"
         }`}
       >

@@ -73,11 +73,11 @@ function AiDisclosureForm({ initial, onCancel, onSave }: { initial: AiDisclosure
                   <span aria-hidden className="inline-flex items-center gap-2 text-sm">
                     <Icon className="h-4 w-4 text-text-3" /> {area.name}
                   </span>
-                  <div className="inline-flex flex-wrap rounded-control bg-surface-2 p-0.5">
+                  <div className="inline-flex flex-wrap rounded-control bg-surface-2 p-0.5 max-sm:grid max-sm:w-full max-sm:auto-cols-fr max-sm:grid-flow-col">
                     {area.levels.map((level) => (
                       <label
                         key={level}
-                        className="cursor-pointer rounded-md px-2.5 py-1 text-[12.5px] text-text-2 transition-colors hover:text-text has-[:checked]:bg-surface has-[:checked]:font-semibold has-[:checked]:text-text has-[:checked]:shadow-rest has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent"
+                        className="inline-flex cursor-pointer items-center justify-center whitespace-nowrap rounded-md px-2.5 py-1 text-[12.5px] max-sm:min-h-11 max-sm:px-1 text-text-2 transition-colors hover:text-text has-[:checked]:bg-surface has-[:checked]:font-semibold has-[:checked]:text-text has-[:checked]:shadow-rest has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent"
                       >
                         <input
                           type="radio"

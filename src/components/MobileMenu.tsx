@@ -117,7 +117,7 @@ export default function MobileMenu({ signedIn }: { signedIn: boolean }) {
               aria-label="Menu"
               tabIndex={-1}
               style={{ transitionDuration: `${SLIDE_MS}ms` }}
-              className={`absolute inset-y-0 right-0 flex w-[min(320px,86vw)] flex-col rounded-bl-[20px] border-l border-line bg-surface text-text shadow-overlay outline-none transition-transform ease-[cubic-bezier(.2,.8,.2,1)] ${
+              className={`absolute inset-y-0 right-0 flex w-[min(320px,86vw)] flex-col rounded-bl-[20px] border-l border-line bg-surface text-text shadow-overlay outline-none transition-transform ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none ${
                 inView ? "translate-x-0" : "translate-x-full"
               }`}
             >
