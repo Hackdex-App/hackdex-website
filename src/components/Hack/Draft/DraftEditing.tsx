@@ -8,7 +8,8 @@ import { updateHack } from "@/app/hack/actions";
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 type Result = { ok: true } | { ok: false; error: string };
 type UpdateArgs = Omit<Parameters<typeof updateHack>[0], "slug">;
-type Committer = { dirty: boolean; commit: () => Promise<Result> };
+/** `prepare` does the failure-prone work (uploads) before anything publishes; `commit` writes to the page. */
+type Committer = { dirty: boolean; prepare: () => Promise<Result>; commit: () => Promise<Result> };
 
 interface DraftEditing {
   slug: string;
@@ -21,7 +22,7 @@ interface DraftEditing {
   run: (work: () => Promise<Result>) => Promise<boolean>;
   /** Partial hack update. Live: saves now. Manual: stages for Save. */
   save: (args: UpdateArgs) => Promise<boolean>;
-  /** Manual mode: writes the staged fields, then every registered committer. */
+  /** Manual mode: runs every committer's prepare, then writes the staged fields and the commits. */
   saveAll: () => Promise<boolean>;
   register: (id: string, committer: Committer | null) => void;
 }
@@ -74,20 +75,30 @@ export function DraftEditingProvider({ slug, live, children }: { slug: string; l
 
   const saveAll = React.useCallback(async () => {
     const fields = pending;
-    const work = [...committers.current.values()].filter((c) => c.dirty).map((c) => c.commit);
+    const work = [...committers.current.values()].filter((c) => c.dirty);
     const ok = await run(async () => {
+      // Uploads first, so a failed one leaves the published page untouched.
+      for (const c of work) {
+        const res = await c.prepare();
+        if (!res.ok) return res;
+      }
       if (Object.keys(fields).length > 0) {
         const res = await updateHack({ slug, ...fields });
         if (!res.ok) return res;
       }
-      for (const commit of work) {
-        const res = await commit();
+      for (const c of work) {
+        const res = await c.commit();
         if (!res.ok) return res;
       }
       return { ok: true };
     });
     if (ok) {
-      setPending({});
+      // Keep anything edited while the save was running.
+      setPending((prev) => {
+        const next = { ...prev };
+        for (const k of Object.keys(fields) as (keyof UpdateArgs)[]) if (next[k] === fields[k]) delete next[k];
+        return next;
+      });
       toast.success("Changes published");
     }
     return ok;
@@ -119,14 +130,16 @@ export function useDraftEditingOptional() {
   return React.useContext(Ctx);
 }
 
-/** Registers work that runs on Save in manual mode, e.g. uploading staged screenshots. */
-export function useCommitter(dirty: boolean, commit: () => Promise<Result>) {
+/** Registers work that runs on Save in manual mode: `prepare` (e.g. uploading staged screenshots) runs before anything publishes. */
+export function useCommitter(dirty: boolean, commit: () => Promise<Result>, prepare?: () => Promise<Result>) {
   const { register } = useDraftEditing();
   const id = React.useId();
   const commitRef = React.useRef(commit);
+  const prepareRef = React.useRef(prepare);
   commitRef.current = commit;
+  prepareRef.current = prepare;
   React.useEffect(() => {
-    register(id, { dirty, commit: () => commitRef.current() });
+    register(id, { dirty, prepare: () => prepareRef.current?.() ?? Promise.resolve({ ok: true }), commit: () => commitRef.current() });
     return () => register(id, null);
   }, [id, dirty, register]);
 }

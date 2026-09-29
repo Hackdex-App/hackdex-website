@@ -71,16 +71,23 @@ export default function DraftGallery({ covers: initial, platform }: DraftGallery
 
   const keys = (list: Cover[]) => list.map((c) => c.key);
   const changed = keys(covers).join("\n") !== keys(initial).join("\n");
-  useCommitter(changed, async () => {
-    try {
-      for (const c of covers) if (c.file) await upload(slug, c.key, c.file);
-    } catch (e) {
-      return { ok: false, error: e instanceof Error ? e.message : "Upload failed" };
-    }
-    const res = await saveHackCovers({ slug, coverUrls: keys(covers) });
-    if (res.ok) setCovers((prev) => prev.map(({ key, url }) => ({ key, url })));
-    return res;
-  });
+  useCommitter(
+    changed,
+    async () => {
+      const res = await saveHackCovers({ slug, coverUrls: keys(covers) });
+      if (res.ok) setCovers((prev) => prev.map(({ key, url }) => ({ key, url })));
+      return res;
+    },
+    // Uploads run before any of the page's changes publish.
+    async () => {
+      try {
+        for (const c of covers) if (c.file) await upload(slug, c.key, c.file);
+        return { ok: true };
+      } catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : "Upload failed" };
+      }
+    },
+  );
 
   const persist = (next: Cover[]) => {
     setCovers(next);
