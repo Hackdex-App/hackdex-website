@@ -427,6 +427,11 @@ export async function confirmPatchUpload(args: { slug: string; objectKey: string
   }
 
   // Redirect to versions page if not publishing automatically, otherwise to hack page
+  // The hack page reads cached metadata (patch, version); without this it can show the old one for hours.
+  revalidateTag(`hack:${args.slug}:metadata`);
+  revalidatePath(`/hack/${args.slug}`);
+  revalidatePath(`/hack/${args.slug}/versions`);
+
   const redirectTo = args.publishAutomatically ? `/hack/${args.slug}` : `/hack/${args.slug}/versions`;
   return { ok: true, patchId: patch.id, redirectTo } as const;
 }
