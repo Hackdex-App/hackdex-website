@@ -634,6 +634,7 @@ const HackActions: React.FC<HackActionsProps> = ({
         onboardingHighlight={onboarding.cardOpen ? onboarding.currentStep : null}
         onboardingDimBar={onboarding.cardOpen && onboarding.locked && !onboarding.hideForPicker}
         onboardingGateLabel={onboarding.showGate ? onboarding.gateLabel : null}
+        onboardingGateHidden={onboarding.cardOpen}
         onOnboardingGateClick={onboarding.openFromGate}
         author={author}
         filename={selectedFilename}

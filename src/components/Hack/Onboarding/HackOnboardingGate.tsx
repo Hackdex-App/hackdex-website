@@ -14,10 +14,12 @@ interface HackOnboardingGateProps {
    * pill: floating chip above the phone tab bar once the module scrolls away.
    */
   variant: "row" | "icon" | "pill";
+  /** Row only: the tour is open. The row stays put (so the module doesn't jump) but ignores clicks and focus. */
+  inactive?: boolean;
 }
 
 /** Opt-in entry point for the hack page onboarding tour, in three shapes for three homes. */
-export default function HackOnboardingGate({ label, onClick, beacon = false, variant }: HackOnboardingGateProps) {
+export default function HackOnboardingGate({ label, onClick, beacon = false, variant, inactive = false }: HackOnboardingGateProps) {
   const icon = (
     <span className="relative inline-flex flex-none">
       <FiHelpCircle size={variant === "row" ? 16 : 18} aria-hidden className="text-accent" />
@@ -57,7 +59,9 @@ export default function HackOnboardingGate({ label, onClick, beacon = false, var
     <button
       type="button"
       onClick={onClick}
-      className="group/gate -mt-0.5 flex w-full cursor-pointer items-center gap-2 rounded-control border-t border-line pt-3 text-[13px] font-medium text-text-2 transition-colors hover:text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      aria-hidden={inactive || undefined}
+      tabIndex={inactive ? -1 : undefined}
+      className={`${inactive ? "pointer-events-none" : ""} group/gate -mt-0.5 flex w-full cursor-pointer items-center gap-2 rounded-control border-t border-line pt-3 text-[13px] font-medium text-text-2 transition-colors hover:text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-accent`}
     >
       {icon}
       {label}

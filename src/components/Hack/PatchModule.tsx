@@ -40,6 +40,8 @@ interface PatchModuleProps {
   onboardingDimBar?: boolean;
   onboardingBeacon?: boolean;
   onboardingGateLabel?: string | null;
+  /** The tour is open: the in-module entry point stays (inactive) so nothing shifts; the floating ones go. */
+  onboardingGateHidden?: boolean;
   onOnboardingGateClick?: () => void;
 }
 
@@ -119,6 +121,7 @@ export default function PatchModule({
   onboardingDimBar = false,
   onboardingBeacon = true,
   onboardingGateLabel = null,
+  onboardingGateHidden = false,
   onOnboardingGateClick,
 }: PatchModuleProps) {
   const [mounted, setMounted] = React.useState(false);
@@ -383,7 +386,7 @@ export default function PatchModule({
         <div ref={actionRef}>
           <ActionButton />
         </div>
-        {gate && <HackOnboardingGate variant="row" label={gate.label} onClick={gate.open} beacon={gate.beacon} />}
+        {gate && <HackOnboardingGate variant="row" label={gate.label} onClick={gate.open} beacon={gate.beacon && !onboardingGateHidden} inactive={onboardingGateHidden} />}
 
         <dl className="mt-0.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[13px] leading-[1.45]">
           <dt className={`text-text-3 ${hasVersionPicker ? "self-center" : ""}`}>Version</dt>
@@ -412,7 +415,7 @@ export default function PatchModule({
                 </small>
               )}
               <div className="flex items-center gap-2 max-md:w-full">
-                {gate && (
+                {gate && !onboardingGateHidden && (
                   <div className="hidden md:block">
                     <HackOnboardingGate variant="icon" label={gate.label} onClick={gate.open} beacon={gate.beacon} />
                   </div>
@@ -428,7 +431,7 @@ export default function PatchModule({
           </div>,
           compactTarget,
         )}
-      {compactTarget && gate && createPortal(<HackOnboardingGate variant="pill" label={gate.label} onClick={gate.open} beacon={gate.beacon} />, document.body)}
+      {compactTarget && gate && !onboardingGateHidden && createPortal(<HackOnboardingGate variant="pill" label={gate.label} onClick={gate.open} beacon={gate.beacon} />, document.body)}
     </div>
   );
 }
