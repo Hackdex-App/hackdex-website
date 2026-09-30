@@ -357,7 +357,8 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
             />
           </form>
 
-          <div className="flex flex-[1_1_100%] flex-col gap-2.5 md:hidden">
+          {/* min-w-0: otherwise the unwrapped chip row sets this column's minimum width, stretching the Filters button past the screen. */}
+          <div className="flex min-w-0 flex-[1_1_100%] flex-col gap-2.5 md:hidden">
             <button
               ref={filterBtnRef}
               type="button"
