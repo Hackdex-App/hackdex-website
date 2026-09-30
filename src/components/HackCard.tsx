@@ -69,8 +69,13 @@ function CompletionBadge({ status }: { status?: HackCardAttributes["completion_s
   );
 }
 
-/** Ready hacks wear the green on the whole card: a 2px outline in place of the usual hairline. */
-const READY_OUTLINE = "border-ready ring-1 ring-ready";
+/**
+ * Ready (base ROM linked): a light green tint and a faintly green border instead of an outline, so a
+ * grid where every card is ready stays calm. Replaces bg-surface/border-line on the card.
+ */
+const READY_SURFACE =
+  "border-[color-mix(in_srgb,var(--ready)_22%,var(--line))] bg-[color-mix(in_srgb,var(--ready)_4%,var(--surface))] dark:bg-[color-mix(in_srgb,var(--ready)_5%,var(--surface))]";
+const READY_HOVER = "hover:border-[color-mix(in_srgb,var(--ready)_40%,var(--line))]";
 
 /** Pixel art only stays crisp at whole-number scales; anything else is smoothed. */
 function snapRendering(img: HTMLImageElement) {
@@ -276,9 +281,9 @@ export default function HackCard({ hack, clickable = true, prefetch = false, cla
     </>
   );
 
-  const shell = `group/card block overflow-hidden rounded-card border bg-surface shadow-rest transition-[transform,box-shadow,border-color] duration-150 ease-out ${
-    ready ? READY_OUTLINE : "border-line"
-  } ${clickable ? `hover:-translate-y-0.5 hover:shadow-lift active:scale-[.99] ${ready ? "" : "hover:border-line-strong"} ${pressed ? "anim-float" : ""}` : ""} ${className}`.trim();
+  const shell = `group/card block overflow-hidden rounded-card border shadow-rest transition-[transform,box-shadow,border-color] duration-150 ease-out ${
+    ready ? READY_SURFACE : "border-line bg-surface"
+  } ${clickable ? `hover:-translate-y-0.5 hover:shadow-lift active:scale-[.99] ${ready ? READY_HOVER : "hover:border-line-strong"} ${pressed ? "anim-float" : ""}` : ""} ${className}`.trim();
 
   if (!clickable) return <div className={shell}>{body}</div>;
   return (
@@ -305,8 +310,8 @@ export function HackRow({ hack, prefetch = false }: { hack: HackCardAttributes; 
     <Link
       href={`/hack/${hack.slug}`}
       prefetch={prefetch}
-      className={`grid grid-cols-[120px_minmax(0,1fr)] items-center gap-4 rounded-card border bg-surface p-3 shadow-rest transition-[box-shadow,border-color] duration-150 hover:shadow-lift md:grid-cols-[120px_minmax(0,1fr)_auto] ${
-        readiness.ready ? READY_OUTLINE : "border-line hover:border-line-strong"
+      className={`grid grid-cols-[120px_minmax(0,1fr)] items-center gap-4 rounded-card border p-3 shadow-rest transition-[box-shadow,border-color] duration-150 hover:shadow-lift md:grid-cols-[120px_minmax(0,1fr)_auto] ${
+        readiness.ready ? `${READY_SURFACE} ${READY_HOVER}` : "border-line bg-surface hover:border-line-strong"
       }`}
     >
       <span className="block h-20 w-[120px] overflow-hidden rounded-frame bg-well">
