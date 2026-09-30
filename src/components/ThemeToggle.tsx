@@ -4,13 +4,7 @@ import React from "react";
 
 import { FiMoon, FiSun } from "react-icons/fi";
 
-export const THEME_STORAGE_KEY = "hackdex-theme";
-
-/**
- * Runs before first paint (see layout.tsx) so the stored choice, or the system
- * preference when nothing is stored, is applied without a flash.
- */
-export const themeInitScript = `(function(){try{var t=localStorage.getItem("${THEME_STORAGE_KEY}");var d=t?t==="dark":matchMedia("(prefers-color-scheme: dark)").matches;document.documentElement.classList.toggle("dark",d);}catch(e){}})();`;
+import { THEME_STORAGE_KEY } from "@/utils/initScripts";
 
 function applyStoredTheme() {
   try {

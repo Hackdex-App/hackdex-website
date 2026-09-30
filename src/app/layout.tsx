@@ -9,7 +9,8 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import NoticeBanner from "@/components/NoticeBanner";
 import AppToaster from "@/components/AppToaster";
 import MobileTabs from "@/components/MobileTabs";
-import { themeInitScript } from "@/components/ThemeToggle";
+import FreshLookBanner from "@/components/FreshLookBanner";
+import { freshLookInitScript, themeInitScript } from "@/utils/initScripts";
 
 /** One family. Body at full width; headings use the width axis (see `font-display` in globals.css). */
 const archivo = Archivo({
@@ -44,7 +45,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript + freshLookInitScript }} />
       </head>
       <body
         className={`${archivo.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
@@ -53,6 +54,7 @@ export default function RootLayout({
           <BaseRomProvider>
             <NoticeBanner />
             <Header />
+            <FreshLookBanner />
             <main className="flex-1 flex flex-col">{children}</main>
             <Footer />
             <MobileTabs />

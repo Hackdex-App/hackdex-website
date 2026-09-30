@@ -144,6 +144,9 @@
 .plat-dot::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--plat, var(--text-3)); margin-right: 6px; }
 
 /* Green dot meaning exactly one thing: a base ROM is on this device. */
+/* Set before paint by freshLookInitScript once the visitor dismissed the banner. */
+html[data-fresh-look-dismissed] .fresh-look-banner { display: none; }
+
 .ready-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ready); }
 
 /* Text links: muted rose, underline fades in on hover. */
