@@ -34,7 +34,24 @@ export default function Lightbox({ images, index, title, onChange, onClose }: Li
   const onPrev = React.useCallback(() => onChange((index - 1 + images.length) % images.length), [images.length, index, onChange]);
   const onNext = React.useCallback(() => onChange((index + 1) % images.length), [images.length, index, onChange]);
 
-  // Focus trap, Escape, and handing focus back to the opener; the arrow keys stay ours.
+  // Keep the layout from shifting when the scrollbar goes, and stop touch scrolling behind the viewer.
+  // Declared before useDialog so it measures the scrollbar before useDialog locks <html>; each owns
+  // different styles, since cleanups run in declaration order and nested save/restore of one style
+  // left the page stuck on overflow: hidden.
+  React.useEffect(() => {
+    const body = document.body;
+    const previousBodyPaddingRight = body.style.paddingRight;
+    const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
+    if (scrollBarWidth > 0) body.style.paddingRight = `${scrollBarWidth}px`;
+    const preventTouchScroll = (e: TouchEvent) => e.preventDefault();
+    document.addEventListener("touchmove", preventTouchScroll, { passive: false });
+    return () => {
+      body.style.paddingRight = previousBodyPaddingRight;
+      document.removeEventListener("touchmove", preventTouchScroll);
+    };
+  }, []);
+
+  // Scroll lock on <html>, focus trap, Escape, and handing focus back to the opener; the arrow keys stay ours.
   useDialog(panelRef, onClose);
 
   React.useEffect(() => {
@@ -49,27 +66,6 @@ export default function Lightbox({ images, index, title, onChange, onClose }: Li
 
   React.useEffect(() => {
     closeRef.current?.focus();
-  }, []);
-
-  // Lock the page behind the viewer without the layout shifting when the scrollbar goes.
-  React.useEffect(() => {
-    const html = document.documentElement;
-    const body = document.body;
-    const previousHtmlOverflow = html.style.overflow;
-    const previousBodyOverflow = body.style.overflow;
-    const previousBodyPaddingRight = body.style.paddingRight;
-    const scrollBarWidth = window.innerWidth - html.clientWidth;
-    html.style.overflow = "hidden";
-    body.style.overflow = "hidden";
-    if (scrollBarWidth > 0) body.style.paddingRight = `${scrollBarWidth}px`;
-    const preventTouchScroll = (e: TouchEvent) => e.preventDefault();
-    document.addEventListener("touchmove", preventTouchScroll, { passive: false });
-    return () => {
-      html.style.overflow = previousHtmlOverflow;
-      body.style.overflow = previousBodyOverflow;
-      body.style.paddingRight = previousBodyPaddingRight;
-      document.removeEventListener("touchmove", preventTouchScroll);
-    };
   }, []);
 
   React.useEffect(() => {
