@@ -99,6 +99,9 @@ export function FilterFields({ value, onChange, tagGroups, counts, readyCount, o
   const romQuery = romQ.trim().toLowerCase();
   const tagQuery = tagQ.trim().toLowerCase();
   const rowH = tall ? "min-h-11" : "min-h-8";
+  // The rail and the phone sheet are both mounted on phones; a shared radio name made them one group,
+  // so the rail's pick unchecked the sheet's.
+  const aiGroup = `discover-ai-${React.useId()}`;
 
   const setBaseRoms = (baseRomsNext: string[]) => onChange({ ...value, baseRoms: baseRomsNext, onlyReady: baseRomsNext.length > 0 ? false : value.onlyReady });
   // The game row selects every dump; once all are on, it clears them all.
@@ -207,7 +210,7 @@ export function FilterFields({ value, onChange, tagGroups, counts, readyCount, o
           {AI_FILTERS.map((f) => (
             <Radio
               key={f.value}
-              name="discover-ai"
+              name={aiGroup}
               className={rowH}
               label={f.label}
               hint={"hint" in f ? f.hint : undefined}
