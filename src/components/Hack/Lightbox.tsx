@@ -158,7 +158,9 @@ export default function Lightbox({ images, index, title, onChange, onClose }: Li
             <button type="button" aria-label="Previous image" onClick={onPrev} className={`${control} h-12 w-12 flex-none md:hidden`}>
               <FiChevronLeft className="h-7 w-7" />
             </button>
-            <div ref={stripRef} role="tablist" aria-label="Screenshots" className="flex min-w-0 flex-1 gap-2 overflow-x-auto [scrollbar-width:none] md:flex-none md:max-w-full">
+            {/* p-1 leaves room for the selected thumb's 2px ring, which the scroll container would clip.
+                relative makes the thumbs' offsetLeft measure from the strip, which the centering below relies on. */}
+            <div ref={stripRef} role="tablist" aria-label="Screenshots" className="relative flex min-w-0 flex-1 gap-2 overflow-x-auto p-1 [scrollbar-width:none] md:flex-none md:max-w-full">
               {images.map((src, i) => (
                 <button
                   key={`${src}-${i}`}
