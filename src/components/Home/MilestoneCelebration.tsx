@@ -4,13 +4,16 @@ import { useCallback, useEffect, useRef } from "react";
 import { PiConfettiBold } from "react-icons/pi";
 
 const COLORS = ["#f43f5e", "#f97316", "#f59e0b", "#fb7185"];
+
+/** The note under the headline. Edit per milestone; the number comes from NEXT_PUBLIC_DOWNLOADS_MILESTONE. */
+const NOTE = "To celebrate, Hackdex got a fresh coat of paint: a faster Discover, drafts for creators, and AI labels on every hack page.";
 const BURST_MS_DESKTOP = 2200;
 const BURST_MS_MOBILE = 1400;
 
 function formatMilestone(milestone: string): string {
   if (!/^\d+$/.test(milestone)) return milestone;
 
-  return `${milestone.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}+`;
+  return milestone.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
 function prefersReducedMotion(): boolean {
@@ -99,16 +102,23 @@ export default function MilestoneCelebration({ milestone }: { milestone: string 
     };
   }, [fireConfetti, stopConfetti, storageKey]);
 
+  // The whole card replays the confetti; hover tints it and tilts the icon so it reads as tappable.
   return (
     <button
       type="button"
       onClick={() => void fireConfetti()}
-      className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm ring-1 ring-[var(--accent)]/30 bg-accent-deep/10 text-text elevate hover:ring-[var(--accent)]/50 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+      className="group/ms mb-[18px] flex w-full max-w-[620px] cursor-pointer select-none items-start gap-3 rounded-card border border-[color-mix(in_srgb,var(--rose)_22%,var(--line))] bg-[color-mix(in_srgb,var(--rose)_7%,var(--surface))] py-3.5 pl-4 pr-3.5 text-left transition-colors duration-150 hover:border-[color-mix(in_srgb,var(--rose)_34%,var(--line))] hover:bg-[color-mix(in_srgb,var(--rose)_11%,var(--surface))]"
     >
-      <PiConfettiBold size={16} className="text-accent-text" aria-hidden="true" />
-      <span className="font-semibold gradient-text">{formatMilestone(milestone)} downloads</span>
-      <span className="-ml-0.5">Thank you!</span>
-      <span className="sr-only">. Activate to replay the celebration confetti.</span>
+      <span className="inline-grid h-9 w-9 flex-none place-items-center rounded-full bg-accent-soft text-accent-text">
+        <PiConfettiBold size={19} aria-hidden="true" className="transition-transform duration-200 ease-[cubic-bezier(.2,.8,.2,1)] group-hover/ms:-rotate-[14deg] group-hover/ms:scale-110 group-active/ms:rotate-[8deg] group-active/ms:scale-90" />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[15px] font-bold leading-[1.3] text-text">
+          <b className="font-extrabold">{formatMilestone(milestone)} downloads.</b> Thank you!
+        </span>
+        <span className="mt-0.5 block text-[13.5px] leading-[1.45] text-text-2">{NOTE}</span>
+        <span className="sr-only"> Activate to replay the celebration confetti.</span>
+      </span>
     </button>
   );
 }
