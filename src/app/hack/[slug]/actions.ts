@@ -230,6 +230,49 @@ export async function getHackDownloads(slug: string): Promise<number | null> {
   return runner();
 }
 
+//Hide hack
+export async function toggleHackVisibility(slug: string, hide: boolean) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return { ok: false, error: "Unauthorized" };
+
+  const { error } = await supabase
+    .from("hacks")
+    .update({ is_hidden: hide })
+    .eq("slug", slug);
+
+  if (error) {
+    console.error("Error toggling visibility:", error);
+    return { ok: false, error: "Error updating visibility." };
+  }
+
+  revalidatePath(`/hack/${slug}`);
+  revalidatePath("/discover");
+  return { ok: true };
+}
+
+//Delete hack
+export async function deleteHackFull(slug: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return { ok: false, error: "Unauthorized" };
+
+  const { error } = await supabase
+    .from("hacks")
+    .delete()
+    .eq("slug", slug);
+
+  if (error) {
+    console.error("Error deleting hack:", error);
+    return { ok: false, error: "Error deleting the hack." };
+  }
+
+  revalidatePath("/discover");
+  return { ok: true };
+}
+
 type GetSignedPatchUrlResult = {
   ok: true;
   url: string;
