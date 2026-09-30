@@ -76,6 +76,8 @@ function CompletionBadge({ status }: { status?: HackCardAttributes["completion_s
 const READY_SURFACE =
   "border-[color-mix(in_srgb,var(--ready)_22%,var(--line))] bg-[color-mix(in_srgb,var(--ready)_4%,var(--surface))] dark:bg-[color-mix(in_srgb,var(--ready)_5%,var(--surface))]";
 const READY_HOVER = "hover:border-[color-mix(in_srgb,var(--ready)_40%,var(--line))]";
+/** Tag pills shade whatever they sit on (about surface-2 on a plain card), so they keep contrast on the Ready tint. */
+const TAG_PILL = "bg-text/[.08]";
 
 /** Pixel art only stays crisp at whole-number scales; anything else is smoothed. */
 function snapRendering(img: HTMLImageElement) {
@@ -270,7 +272,7 @@ export default function HackCard({ hack, clickable = true, prefetch = false, cla
         {hack.tags.length > 0 && (
           <span className="mt-2 flex gap-1.5 overflow-hidden" aria-label="Tags">
             {hack.tags.slice(0, 2).map((t) => (
-              <span key={t.name} className="flex-none rounded-full bg-surface-2 px-2 py-px text-xs text-text-2">
+              <span key={t.name} className={`flex-none rounded-full px-2 py-px text-xs text-text-2 ${TAG_PILL}`}>
                 {t.name}
               </span>
             ))}
@@ -325,7 +327,7 @@ export function HackRow({ hack, prefetch = false }: { hack: HackCardAttributes; 
         {hack.tags.length > 0 && (
           <span className="flex gap-1.5 overflow-hidden">
             {hack.tags.slice(0, 4).map((t) => (
-              <span key={t.name} className="flex-none rounded-full bg-surface-2 px-2 py-0.5 text-xs text-text-2">
+              <span key={t.name} className={`flex-none rounded-full px-2 py-0.5 text-xs text-text-2 ${TAG_PILL}`}>
                 {t.name}
               </span>
             ))}
