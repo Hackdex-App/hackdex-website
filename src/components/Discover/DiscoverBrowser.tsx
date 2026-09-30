@@ -318,13 +318,13 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
 
   const hasFilters = active > 0;
   const pager = totalPages > 1;
-  const railRef = useRailHeight();
 
   return (
     <div className="grid gap-8 md:grid-cols-[240px_minmax(0,1fr)]">
       <aside className="hidden min-w-0 md:block" aria-label="Filters">
         <div className="sticky top-[84px]">
-          <div ref={railRef} className="overflow-y-auto overscroll-contain pb-4 pr-3 pt-1 [scrollbar-gutter:stable] [scrollbar-width:thin]">
+          {/* Viewport height minus the sticky offset. Before the rail sticks, its bottom sits a little below the fold. */}
+          <div className="max-h-[calc(100dvh-84px)] overflow-y-auto overscroll-contain pb-4 pr-3 pt-1 [scrollbar-gutter:stable] [scrollbar-width:thin]">
             <div className="flex h-12 items-baseline justify-between">
               <h2 className="text-[15px] font-semibold">Filters</h2>
               {hasFilters && (
@@ -524,36 +524,6 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
       )}
     </div>
   );
-}
-
-/**
- * The desktop rail scrolls on its own, so its height has to stop at the
- * viewport bottom. Until the page has scrolled enough for the rail to stick
- * its top sits below the sticky offset, so a fixed calc() would overshoot.
- */
-function useRailHeight() {
-  const ref = React.useRef<HTMLDivElement | null>(null);
-  React.useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    let frame = 0;
-    const fit = () => {
-      frame = 0;
-      el.style.maxHeight = `${window.innerHeight - el.getBoundingClientRect().top}px`;
-    };
-    const schedule = () => {
-      if (!frame) frame = requestAnimationFrame(fit);
-    };
-    fit();
-    window.addEventListener("scroll", schedule, { passive: true });
-    window.addEventListener("resize", schedule);
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", schedule);
-      window.removeEventListener("resize", schedule);
-    };
-  }, []);
-  return ref;
 }
 
 /** First, last, current ± `sibling`, with gaps as an ellipsis. */
