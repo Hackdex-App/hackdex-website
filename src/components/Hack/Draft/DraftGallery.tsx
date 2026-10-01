@@ -96,13 +96,20 @@ export default function DraftGallery({ covers: initial, platform }: DraftGallery
     },
   );
 
+  // The latest list, for work that finishes after an await (an add can outlive a delete or reorder).
+  const coversRef = React.useRef(covers);
+  coversRef.current = covers;
+  // Saves send the whole list, so they run in order: an older list landing last would undo newer edits.
+  const saveQueue = React.useRef<Promise<unknown>>(Promise.resolve());
+
   const persist = (next: Cover[]) => {
+    coversRef.current = next;
     setCovers(next);
-    if (live) void run(() => saveHackCovers({ slug, coverUrls: keys(next) }), "covers");
+    if (live) saveQueue.current = saveQueue.current.then(() => run(() => saveHackCovers({ slug, coverUrls: keys(next) }), "covers"));
   };
 
   async function addFiles(files: File[]) {
-    const room = MAX_COVERS - covers.length;
+    const room = MAX_COVERS - coversRef.current.length;
     if (room <= 0) {
       toast.error(`Up to ${MAX_COVERS} screenshots.`);
       return;
@@ -134,7 +141,7 @@ export default function DraftGallery({ covers: initial, platform }: DraftGallery
       setUploading(0);
     }
     if (rejected > 0) toast.error(`${rejected} ${rejected === 1 ? "image was" : "images were"} skipped. Screenshots must be ${sizeHint}.`);
-    if (added.length > 0) persist([...covers, ...added]);
+    if (added.length > 0) persist([...coversRef.current, ...added]);
   }
 
   function onDragEnd({ active, over }: DragEndEvent) {
@@ -157,8 +164,6 @@ export default function DraftGallery({ covers: initial, platform }: DraftGallery
   }
 
   // Staged previews are object URLs; free the rest when the gallery goes away.
-  const coversRef = React.useRef(covers);
-  coversRef.current = covers;
   React.useEffect(() => () => coversRef.current.forEach((c) => c.url.startsWith("blob:") && URL.revokeObjectURL(c.url)), []);
 
   return (
