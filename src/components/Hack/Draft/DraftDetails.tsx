@@ -56,26 +56,78 @@ const SOCIAL: { key: keyof Social; label: string; placeholder: string }[] = [
 
 const urlLike = (s: string) => !s || /^https?:\/\//i.test(s);
 
+type Form = {
+  base: string;
+  language: string;
+  completion: Completion | "";
+  boxArt: string;
+  social: Record<keyof Social, string>;
+  creator: string;
+  permission: string;
+  contact: string;
+};
+
+function toForm(values: DraftDetailsValues): Form {
+  return {
+    base: values.base_rom,
+    language: values.language,
+    completion: values.completion_status ?? "",
+    boxArt: values.box_art ?? "",
+    social: {
+      discord: values.social_links?.discord ?? "",
+      twitter: values.social_links?.twitter ?? "",
+      pokecommunity: values.social_links?.pokecommunity ?? "",
+      github: values.social_links?.github ?? "",
+    },
+    creator: values.original_author ?? "",
+    permission: values.permission_from ?? "",
+    contact: values.verification_contact_info ?? "",
+  };
+}
+
 /** Wraps the rail and owns the details sheet for the fields that are not edited in place: base ROM, language, completion, box art, links, and the creator and review fields. Saves (or stages, on listed hacks) on the footer button. */
 export default function DraftDetails({ values, baseLocked, children }: DraftDetailsProps) {
-  const { save, live } = useDraftEditing();
   const [open, setOpen] = React.useState(false);
+  // What the sheet opens with: the last saved or applied values, so Cancel drops only this session's edits.
+  const [applied, setApplied] = React.useState(() => toForm(values));
+  const openSheet = React.useCallback(() => setOpen(true), []);
+
+  return (
+    <OpenCtx.Provider value={openSheet}>
+      {children}
+      {open && (
+        <DetailsSheet
+          initial={applied}
+          baseLocked={baseLocked}
+          behalf={values.original_author !== null}
+          askContact={values.verification_contact_info !== undefined}
+          onApplied={(form) => {
+            setApplied(form);
+            setOpen(false);
+          }}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </OpenCtx.Provider>
+  );
+}
+
+interface DetailsSheetProps {
+  initial: Form;
+  baseLocked: boolean;
+  behalf: boolean;
+  askContact: boolean;
+  onApplied: (form: Form) => void;
+  onClose: () => void;
+}
+
+/** One editing session; mounts with the sheet, so closing it any way but Save/Apply discards its edits. */
+function DetailsSheet({ initial, baseLocked, behalf, askContact, onApplied, onClose }: DetailsSheetProps) {
+  const { save, live } = useDraftEditing();
   const [saving, setSaving] = React.useState(false);
-  const [base, setBase] = React.useState(values.base_rom);
-  const [language, setLanguage] = React.useState(values.language);
-  const [completion, setCompletion] = React.useState<Completion | "">(values.completion_status ?? "");
-  const [boxArt, setBoxArt] = React.useState(values.box_art ?? "");
-  const [social, setSocial] = React.useState<Record<keyof Social, string>>({
-    discord: values.social_links?.discord ?? "",
-    twitter: values.social_links?.twitter ?? "",
-    pokecommunity: values.social_links?.pokecommunity ?? "",
-    github: values.social_links?.github ?? "",
-  });
-  const behalf = values.original_author !== null;
-  const [creator, setCreator] = React.useState(values.original_author ?? "");
-  const [permission, setPermission] = React.useState(values.permission_from ?? "");
-  const askContact = values.verification_contact_info !== undefined;
-  const [contact, setContact] = React.useState(values.verification_contact_info ?? "");
+  const [form, setForm] = React.useState(initial);
+  const { base, language, completion, boxArt, social, creator, permission, contact } = form;
+  const set = <K extends keyof Form>(key: K, value: Form[K]) => setForm((prev) => ({ ...prev, [key]: value }));
 
   const invalid = !urlLike(boxArt) || SOCIAL.some((s) => !urlLike(social[s.key])) || (behalf && (!creator.trim() || !permission.trim()));
 
@@ -92,99 +144,92 @@ export default function DraftDetails({ values, baseLocked, children }: DraftDeta
       ...(askContact ? { verification_contact_info: contact } : {}),
     });
     setSaving(false);
-    if (ok) setOpen(false);
+    if (ok) onApplied(form);
   }
 
   const baseRom = baseRoms.find((r) => r.id === base);
 
-  const openSheet = React.useCallback(() => setOpen(true), []);
-
   return (
-    <OpenCtx.Provider value={openSheet}>
-      {children}
-      {open && (
-        <Sheet
-          title="Details"
-          onClose={() => setOpen(false)}
-          footer={
-            <>
-              <button type="button" onClick={() => setOpen(false)} className="inline-flex h-10 items-center rounded-control px-3 text-sm font-medium text-text-2 hover:bg-surface-2 hover:text-text">
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={saving || invalid}
-                onClick={done}
-                className="inline-flex h-10 items-center rounded-control bg-accent-deep px-4 text-sm font-semibold text-white transition-colors hover:enabled:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {saving ? "Saving…" : live ? "Save" : "Apply"}
-              </button>
-            </>
-          }
-        >
-          <div className="flex flex-col gap-5">
-            <Field label="Base ROM">
-              {baseLocked ? (
-                <div className="flex items-start gap-2 rounded-control bg-surface-2 px-3 py-2.5 text-sm">
-                  <FiLock className="mt-0.5 h-4 w-4 flex-none text-text-3" />
-                  <div>
-                    <span className="plat-dot font-medium" data-platform={baseRom?.platform}>
-                      {baseRom?.name ?? base}
-                    </span>
-                    <p className="mt-0.5 text-xs text-text-3">Locked. Your patch was verified against this ROM.</p>
-                  </div>
-                </div>
-              ) : (
-                <Select value={base} onChange={setBase} options={baseRoms.map((r) => ({ value: r.id, label: r.name, description: PLATFORM_NAMES[r.platform] }))} />
-              )}
+    <Sheet
+      title="Details"
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" onClick={onClose} className="inline-flex h-10 items-center rounded-control px-3 text-sm font-medium text-text-2 hover:bg-surface-2 hover:text-text">
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={saving || invalid}
+            onClick={done}
+            className="inline-flex h-10 items-center rounded-control bg-accent-deep px-4 text-sm font-semibold text-white transition-colors hover:enabled:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {saving ? "Saving…" : live ? "Save" : "Apply"}
+          </button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-5">
+        <Field label="Base ROM">
+          {baseLocked ? (
+            <div className="flex items-start gap-2 rounded-control bg-surface-2 px-3 py-2.5 text-sm">
+              <FiLock className="mt-0.5 h-4 w-4 flex-none text-text-3" />
+              <div>
+                <span className="plat-dot font-medium" data-platform={baseRom?.platform}>
+                  {baseRom?.name ?? base}
+                </span>
+                <p className="mt-0.5 text-xs text-text-3">Locked. Your patch was verified against this ROM.</p>
+              </div>
+            </div>
+          ) : (
+            <Select value={base} onChange={(v) => set("base", v)} options={baseRoms.map((r) => ({ value: r.id, label: r.name, description: PLATFORM_NAMES[r.platform] }))} />
+          )}
+        </Field>
+        <Field label="Language">
+          <Select value={language} onChange={(v) => set("language", v)} options={LANGUAGES.map((l) => ({ value: l, label: l }))} />
+        </Field>
+        <Field label="Completion status">
+          <Select value={completion} onChange={(v) => set("completion", v as Completion)} placeholder="Choose one" options={COMPLETION.map((c) => ({ value: c, label: c }))} />
+        </Field>
+        <Field label="Box art URL" hint="Optional. Shown in the rail with a download link.">
+          <input value={boxArt} onChange={(e) => set("boxArt", e.target.value)} placeholder="https://…" className={`${FIELD} h-10 ${urlLike(boxArt) ? "" : "border-error"}`} />
+        </Field>
+        <fieldset className="flex flex-col gap-3">
+          <legend className="mb-1 text-sm font-medium">Links</legend>
+          {SOCIAL.map((s) => (
+            <Field key={s.key} label={s.label} small>
+              <input
+                value={social[s.key]}
+                onChange={(e) => set("social", { ...social, [s.key]: e.target.value })}
+                placeholder={s.placeholder}
+                className={`${FIELD} h-10 ${urlLike(social[s.key]) ? "" : "border-error"}`}
+              />
             </Field>
-            <Field label="Language">
-              <Select value={language} onChange={setLanguage} options={LANGUAGES.map((l) => ({ value: l, label: l }))} />
+          ))}
+        </fieldset>
+        {behalf && (
+          <fieldset className="flex flex-col gap-3">
+            <legend className="mb-1 text-sm font-medium">Creator</legend>
+            <Field label="Creator’s name" small>
+              <input value={creator} onChange={(e) => set("creator", e.target.value)} className={`${FIELD} h-10 ${creator.trim() ? "" : "border-error"}`} />
             </Field>
-            <Field label="Completion status">
-              <Select value={completion} onChange={(v) => setCompletion(v as Completion)} placeholder="Choose one" options={COMPLETION.map((c) => ({ value: c, label: c }))} />
+            <Field label="Where they gave permission" small>
+              <input
+                value={permission}
+                onChange={(e) => set("permission", e.target.value)}
+                placeholder="Discord DM, PokéCommunity thread, email…"
+                className={`${FIELD} h-10 ${permission.trim() ? "" : "border-error"}`}
+              />
             </Field>
-            <Field label="Box art URL" hint="Optional. Shown in the rail with a download link.">
-              <input value={boxArt} onChange={(e) => setBoxArt(e.target.value)} placeholder="https://…" className={`${FIELD} h-10 ${urlLike(boxArt) ? "" : "border-error"}`} />
-            </Field>
-            <fieldset className="flex flex-col gap-3">
-              <legend className="mb-1 text-sm font-medium">Links</legend>
-              {SOCIAL.map((s) => (
-                <Field key={s.key} label={s.label} small>
-                  <input
-                    value={social[s.key]}
-                    onChange={(e) => setSocial((prev) => ({ ...prev, [s.key]: e.target.value }))}
-                    placeholder={s.placeholder}
-                    className={`${FIELD} h-10 ${urlLike(social[s.key]) ? "" : "border-error"}`}
-                  />
-                </Field>
-              ))}
-            </fieldset>
-            {behalf && (
-              <fieldset className="flex flex-col gap-3">
-                <legend className="mb-1 text-sm font-medium">Creator</legend>
-                <Field label="Creator’s name" small>
-                  <input value={creator} onChange={(e) => setCreator(e.target.value)} className={`${FIELD} h-10 ${creator.trim() ? "" : "border-error"}`} />
-                </Field>
-                <Field label="Where they gave permission" small>
-                  <input
-                    value={permission}
-                    onChange={(e) => setPermission(e.target.value)}
-                    placeholder="Discord DM, PokéCommunity thread, email…"
-                    className={`${FIELD} h-10 ${permission.trim() ? "" : "border-error"}`}
-                  />
-                </Field>
-              </fieldset>
-            )}
-            {askContact && (
-              <Field label="Verification contact" hint="Optional, but speeds up verification. Only admins see it, while they review the hack. Name where your post history shows you made it, like one of your socials and the communities you’re active in, or link a public post where you mention submitting to Hackdex.">
-                <textarea value={contact} onChange={(e) => setContact(e.target.value)} rows={4} placeholder={"@yourname, active in RH Hideout\nor a link to your post about it"} className={`${FIELD} resize-y py-2`} />
-              </Field>
-            )}
-          </div>
-        </Sheet>
-      )}
-    </OpenCtx.Provider>
+          </fieldset>
+        )}
+        {askContact && (
+          <Field label="Verification contact" hint="Optional, but speeds up verification. Only admins see it, while they review the hack. Name where your post history shows you made it, like one of your socials and the communities you’re active in, or link a public post where you mention submitting to Hackdex.">
+            <textarea value={contact} onChange={(e) => set("contact", e.target.value)} rows={4} placeholder={"@yourname, active in RH Hideout\nor a link to your post about it"} className={`${FIELD} resize-y py-2`} />
+          </Field>
+        )}
+      </div>
+    </Sheet>
   );
 }
 
