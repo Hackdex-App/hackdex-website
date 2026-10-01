@@ -12,6 +12,7 @@ import { createClient } from "@/utils/supabase/client";
 import Avatar from "@/components/Account/Avatar";
 import ThemeToggle from "@/components/ThemeToggle";
 import MobileMenu from "@/components/MobileMenu";
+import { DISCOVER_URL_EVENT } from "@/components/Discover/useDiscoverUrlState";
 
 /** Element id the hack page portals its compact title + action bar into once the patch module scrolls away. */
 export const HEADER_COMPACT_ID = "site-header-compact";
@@ -68,7 +69,11 @@ export default function Header() {
     e.preventDefault();
     const q = new FormData(e.currentTarget).get("q");
     const query = typeof q === "string" ? q.trim() : "";
-    router.push(query ? `/discover?q=${encodeURIComponent(query)}` : "/discover");
+    const url = query ? `/discover?q=${encodeURIComponent(query)}` : "/discover";
+    if (pathname !== "/discover") return router.push(url);
+    // Already there: Discover owns its URL (like its own filters), so update it in place and tell it.
+    window.history.pushState(null, "", url);
+    window.dispatchEvent(new Event(DISCOVER_URL_EVENT));
   }
 
   return (

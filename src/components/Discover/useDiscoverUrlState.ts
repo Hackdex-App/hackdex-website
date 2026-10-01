@@ -11,6 +11,12 @@ import {
 
 const SEARCH_URL_DEBOUNCE_MS = 300;
 
+/**
+ * Fired after something outside Discover (the header search) rewrites a /discover URL in place.
+ * Same-route navigations don't remount Discover or fire popstate, so it listens for this too.
+ */
+export const DISCOVER_URL_EVENT = "hackdex:discover-url";
+
 type UrlSyncMode = "push" | "replace";
 
 interface UseDiscoverUrlStateArgs {
@@ -110,7 +116,11 @@ export function useDiscoverUrlState({ currentState, onUrlStateChange }: UseDisco
       currentStateRef.current = nextState;
     };
     window.addEventListener("popstate", applyUrlState);
-    return () => window.removeEventListener("popstate", applyUrlState);
+    window.addEventListener(DISCOVER_URL_EVENT, applyUrlState);
+    return () => {
+      window.removeEventListener("popstate", applyUrlState);
+      window.removeEventListener(DISCOVER_URL_EVENT, applyUrlState);
+    };
   }, [clearSearchUrlTimeout]);
 
   return {
