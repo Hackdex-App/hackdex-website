@@ -45,7 +45,7 @@ export default function Sheet({ title, onClose, children, footer }: SheetProps) 
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={`relative flex h-[90%] max-h-[90%] min-h-0 flex-none flex-col overflow-hidden rounded-t-[20px] bg-surface text-text shadow-overlay outline-none transition-transform duration-[240ms] ease-[cubic-bezier(.2,.8,.2,1)] md:h-full md:max-h-full md:w-[440px] md:rounded-l-[20px] md:rounded-tr-none ${
+        className={`relative flex h-[90%] max-h-[90%] min-h-0 flex-none flex-col overflow-hidden rounded-t-[20px] bg-surface text-text shadow-overlay outline-none transition-transform duration-[240ms] ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none md:h-full md:max-h-full md:w-[440px] md:rounded-l-[20px] md:rounded-tr-none ${
           inView ? "translate-y-0 md:translate-x-0" : "translate-y-full md:translate-x-full md:translate-y-0"
         }`}
       >

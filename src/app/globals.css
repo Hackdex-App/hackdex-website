@@ -139,6 +139,22 @@
   letter-spacing: -0.01em;
 }
 
+/* Grows a compact control's touch area to 40px with an invisible ::after, keeping its look. Touch screens only, so it never steals mouse clicks from neighbors. */
+@utility tap-target {
+  position: relative;
+}
+@media (pointer: coarse) {
+  .tap-target::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, 40px);
+    height: max(100%, 40px);
+    transform: translate(-50%, -50%);
+  }
+}
+
 /* Platform cue color: a dot before a base ROM name. */
 [data-platform="GB"]  { --plat: var(--plat-gb); }
 [data-platform="GBC"] { --plat: var(--plat-gbc); }

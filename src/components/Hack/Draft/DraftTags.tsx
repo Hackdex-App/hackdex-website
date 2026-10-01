@@ -44,7 +44,7 @@ export default function DraftTags({ tags, onChange, catalogTags, tagsUpdatedAt }
           <button
             type="button"
             onClick={openPicker}
-            className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-line-strong px-2.5 py-[3px] text-[13px] font-medium leading-tight text-text-2 transition-colors hover:border-solid hover:border-text-3 hover:bg-surface hover:text-text"
+            className="tap-target inline-flex items-center gap-1.5 rounded-full border border-dashed border-line-strong px-2.5 py-[3px] text-[13px] font-medium leading-tight text-text-2 transition-colors hover:border-solid hover:border-text-3 hover:bg-surface hover:text-text"
           >
             <Icon className="h-3 w-3" /> {tags.length ? "Edit tags" : "Add tags"}
           </button>

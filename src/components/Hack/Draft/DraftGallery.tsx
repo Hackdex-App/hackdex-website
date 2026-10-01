@@ -220,14 +220,14 @@ function Shot({ cover, index, featured, onFeature, onRemove }: { cover: Cover; i
           className="pixelated aspect-[3/2] w-full max-w-[240px] cursor-grab touch-none rounded-frame object-cover object-top active:cursor-grabbing"
         />
         {featured && <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-accent-deep px-2 py-0.5 text-[11px] font-semibold text-white">Cover</span>}
-        <span className="absolute bottom-3 right-3 flex gap-1 opacity-0 transition-opacity group-focus-within/shot:opacity-100 group-hover/shot:opacity-100 max-md:opacity-100">
+        <span className="absolute bottom-3 right-3 flex gap-2 opacity-0 transition-opacity group-focus-within/shot:opacity-100 group-hover/shot:opacity-100 max-md:opacity-100">
           <button
             type="button"
             onClick={onFeature}
             aria-pressed={featured}
             aria-label={featured ? "Cover screenshot" : "Make cover"}
             title={featured ? "Cover screenshot" : "Make cover"}
-            className={`inline-flex h-8 w-8 items-center justify-center rounded-full bg-surface text-text shadow-rest transition-colors hover:bg-surface-2 ${featured ? "text-accent" : ""}`}
+            className={`tap-target inline-flex h-8 w-8 items-center justify-center rounded-full bg-surface text-text shadow-rest transition-colors hover:bg-surface-2 ${featured ? "text-accent" : ""}`}
           >
             <FiStar className={`h-4 w-4 ${featured ? "fill-current" : ""}`} />
           </button>
@@ -236,7 +236,7 @@ function Shot({ cover, index, featured, onFeature, onRemove }: { cover: Cover; i
             onClick={onRemove}
             aria-label="Delete screenshot"
             title="Delete screenshot"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-surface text-text shadow-rest transition-colors hover:bg-error-soft hover:text-error"
+            className="tap-target inline-flex h-8 w-8 items-center justify-center rounded-full bg-surface text-text shadow-rest transition-colors hover:bg-error-soft hover:text-error"
           >
             <FiTrash2 className="h-4 w-4" />
           </button>

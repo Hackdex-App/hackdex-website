@@ -39,7 +39,7 @@ export function EditDetailsLink() {
   const open = React.useContext(OpenCtx);
   if (!open) return null;
   return (
-    <button type="button" onClick={open} className="inline-flex items-center gap-1 text-[12px] font-medium text-link hover:underline hover:underline-offset-[3px]">
+    <button type="button" onClick={open} className="tap-target inline-flex items-center gap-1 text-[12px] font-medium text-link hover:underline hover:underline-offset-[3px]">
       <FiEdit2 className="h-3 w-3" /> Edit
     </button>
   );

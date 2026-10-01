@@ -97,7 +97,7 @@ export default function StartDraftForm({ disabled = false, canSubmitForOthers = 
                   title="Edit page address"
                   onClick={() => setCustomSlug(slug)}
                   disabled={disabled}
-                  className="inline-flex h-[26px] w-[26px] flex-none items-center justify-center rounded-md text-text-3 transition-colors hover:bg-surface-2 hover:text-text"
+                  className="tap-target inline-flex h-[26px] w-[26px] flex-none items-center justify-center rounded-md text-text-3 transition-colors hover:bg-surface-2 hover:text-text"
                 >
                   <FiEdit2 className="h-[13px] w-[13px]" />
                 </button>

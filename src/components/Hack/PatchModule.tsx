@@ -500,7 +500,7 @@ function VersionPicker({
         aria-expanded={open}
         data-onboarding-spotlight={spotlightAttr}
         onClick={() => onOpenChange(!open)}
-        className={`inline-flex h-8 max-w-44 items-center gap-1.5 rounded-full border border-line-strong bg-surface px-2.5 text-[12px] font-semibold text-text transition-colors hover:border-text-3${spotlight}`}
+        className={`tap-target inline-flex h-8 max-w-44 items-center gap-1.5 rounded-full border border-line-strong bg-surface px-2.5 text-[12px] font-semibold text-text transition-colors hover:border-text-3${spotlight}`}
       >
         <span className="truncate">{version}</span>
         {open ? <FiX size={13} className="shrink-0 text-text-3" aria-hidden /> : <FiChevronDown size={13} className="shrink-0 text-text-3" aria-hidden />}
