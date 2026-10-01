@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import Link from "next/link";
 import { FiArrowRight } from "react-icons/fi";
 import { getDiscoverData } from "@/app/discover/actions";
+import MilestoneCelebration from "@/components/Home/MilestoneCelebration";
 import { HomeHero, HowItWorksGate, ReadyShelf } from "@/components/Home/HomeHero";
 import Shelf from "@/components/Home/Shelf";
 import type { HackCardAttributes } from "@/components/HackCard";
@@ -56,7 +57,8 @@ export default async function Home() {
 
   return (
     <div className="mx-auto w-full max-w-[1164px] px-6 pt-2 md:pt-6">
-      <HomeHero catalog={catalog} milestone={milestone} />
+      {milestone && <MilestoneCelebration milestone={milestone} />}
+      <HomeHero catalog={catalog} />
 
       <ReadyShelf catalog={catalog} />
       <Shelf title="Trending this week" blurb="Popular over the last few days." href="/discover" hacks={trending} />

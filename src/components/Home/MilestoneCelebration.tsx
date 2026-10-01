@@ -102,21 +102,22 @@ export default function MilestoneCelebration({ milestone }: { milestone: string 
     };
   }, [fireConfetti, stopConfetti, storageKey]);
 
-  // The whole card replays the confetti; hover tints it and tilts the icon so it reads as tappable.
+  // A strip across the content column: title and note side by side on desktop, stacked on phones.
+  // The whole strip replays the confetti; hover tints it and tilts the icon so it reads as tappable.
   return (
     <button
       type="button"
       onClick={() => void fireConfetti()}
-      className="group/ms mb-[18px] flex w-full max-w-[620px] cursor-pointer select-none items-start gap-3 rounded-card border border-[color-mix(in_srgb,var(--rose)_22%,var(--line))] bg-[color-mix(in_srgb,var(--rose)_7%,var(--surface))] py-3.5 pl-4 pr-3.5 text-left transition-colors duration-150 hover:border-[color-mix(in_srgb,var(--rose)_34%,var(--line))] hover:bg-[color-mix(in_srgb,var(--rose)_11%,var(--surface))]"
+      className="group/ms mt-3 flex w-full cursor-pointer select-none items-start gap-3 rounded-card border border-[color-mix(in_srgb,var(--rose)_22%,var(--line))] bg-[color-mix(in_srgb,var(--rose)_7%,var(--surface))] py-3.5 pl-4 pr-3.5 text-left md:mt-0 md:items-center md:py-2.5 md:pl-3 md:pr-4 transition-colors duration-150 hover:border-[color-mix(in_srgb,var(--rose)_34%,var(--line))] hover:bg-[color-mix(in_srgb,var(--rose)_11%,var(--surface))]"
     >
-      <span className="inline-grid h-9 w-9 flex-none place-items-center rounded-full bg-accent-soft text-accent-text">
-        <PiConfettiBold size={19} aria-hidden="true" className="transition-transform duration-200 ease-[cubic-bezier(.2,.8,.2,1)] group-hover/ms:-rotate-[14deg] group-hover/ms:scale-110 group-active/ms:rotate-[8deg] group-active/ms:scale-90" />
+      <span className="inline-grid h-9 w-9 flex-none place-items-center rounded-full bg-accent-soft text-accent-text md:h-[30px] md:w-[30px]">
+        <PiConfettiBold aria-hidden="true" className="h-[19px] w-[19px] transition-transform duration-200 md:h-4 md:w-4 ease-[cubic-bezier(.2,.8,.2,1)] group-hover/ms:-rotate-[14deg] group-hover/ms:scale-110 group-active/ms:rotate-[8deg] group-active/ms:scale-90" />
       </span>
-      <span className="min-w-0">
-        <span className="block text-[15px] font-bold leading-[1.3] text-text">
+      <span className="min-w-0 md:flex md:items-baseline md:gap-2.5">
+        <span className="block text-[15px] font-bold leading-[1.3] text-text md:whitespace-nowrap">
           <b className="font-extrabold">{formatMilestone(milestone)} downloads.</b> Thank you!
         </span>
-        <span className="mt-0.5 block text-[13.5px] leading-[1.45] text-text-2">{NOTE}</span>
+        <span className="mt-0.5 block text-[13.5px] leading-[1.45] text-text-2 md:mt-0">{NOTE}</span>
         <span className="sr-only"> Activate to replay the celebration confetti.</span>
       </span>
     </button>
