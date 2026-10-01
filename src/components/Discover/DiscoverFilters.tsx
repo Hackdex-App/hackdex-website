@@ -315,17 +315,20 @@ function CheckBox({ checked, indeterminate = false, onChange, ready = false, ari
     if (ref.current) ref.current.indeterminate = indeterminate;
   }, [indeterminate]);
   return (
-    <label className="inline-flex cursor-pointer">
+    <label className="relative inline-flex cursor-pointer">
       <input ref={ref} type="checkbox" checked={checked} onChange={onChange} aria-label={ariaLabel} className="peer sr-only" />
       <span className={`${BOX} ${ready ? "peer-checked:border-ready peer-checked:bg-ready" : "peer-checked:border-accent-deep peer-checked:bg-accent-deep"}`} />
     </label>
   );
 }
 
-/** Checkbox row: box, label, count. The whole row toggles. */
+/**
+ * Checkbox row: box, label, count. The whole row toggles. Rows are `relative` so the
+ * sr-only input sits in the row: focusing it then scrolls the list, not the sheet's frame.
+ */
 function Check({ label, count, checked, onChange, className = "", ready = false }: { label: React.ReactNode; count: number; checked: boolean; onChange: () => void; className?: string; ready?: boolean }) {
   return (
-    <label className={`group/check flex cursor-pointer select-none items-center gap-2.5 rounded-md text-sm ${className}`}>
+    <label className={`group/check relative flex cursor-pointer select-none items-center gap-2.5 rounded-md text-sm ${className}`}>
       <input type="checkbox" checked={checked} onChange={onChange} className="peer sr-only" />
       <span className={`${BOX} ${ready ? "peer-checked:border-ready peer-checked:bg-ready" : "peer-checked:border-accent-deep peer-checked:bg-accent-deep"}`} />
       <span className="min-w-0 flex-1 truncate">{label}</span>
@@ -337,7 +340,7 @@ function Check({ label, count, checked, onChange, className = "", ready = false 
 /** Radio row for single-choice groups, same layout as Check. The hint wraps under the label. */
 function Radio({ name, label, hint, count, checked, onChange, className = "" }: { name: string; label: string; hint?: string; count: number; checked: boolean; onChange: () => void; className?: string }) {
   return (
-    <label className={`group/check flex cursor-pointer select-none items-start gap-2.5 rounded-md py-1.5 text-sm ${className}`}>
+    <label className={`group/check relative flex cursor-pointer select-none items-start gap-2.5 rounded-md py-1.5 text-sm ${className}`}>
       <input type="radio" name={name} checked={checked} onChange={onChange} className="peer sr-only" />
       <span className="relative mt-px h-[18px] w-[18px] flex-none rounded-full border-[1.5px] border-line-strong bg-surface transition-[border-color,border-width] duration-[120ms] group-hover/check:border-text-3 peer-checked:border-[5px] peer-checked:border-accent-deep peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent" />
       <span className="min-w-0 flex-1">
