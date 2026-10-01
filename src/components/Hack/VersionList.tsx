@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import Markdown from "@/components/Markdown/Markdown";
 import { FaChevronDown, FaChevronUp, FaStar, FaDownload, FaTrash, FaRotateLeft, FaUpload, FaCheck, FaPlus } from "react-icons/fa6";
 import { FiEdit2, FiEdit, FiX } from "react-icons/fi";
-import VersionActions from "@/components/Hack/VersionActions";
+import VersionActions, { READY_BUTTON } from "@/components/Hack/VersionActions";
 import type { PatchesDownloadPermission } from "@/components/Hack/DownloadPermissionSettings";
 import { updatePatchChangelog, updatePatchVersion, getPatchDownloadUrl, updatePatchDownloadCount } from "@/app/hack/[slug]/actions";
 import { getOrCreateDeviceId } from "@/utils/deviceId";
@@ -548,7 +548,7 @@ function ChangelogEditor({
         <button
           onClick={handleSave}
           disabled={saving}
-          className="inline-flex items-center gap-2 rounded-control bg-ready px-3 py-1.5 text-sm font-medium text-white hover:bg-ready disabled:opacity-50 disabled:cursor-not-allowed"
+          className={`inline-flex items-center gap-2 rounded-control px-3 py-1.5 text-sm font-medium ${READY_BUTTON} disabled:opacity-50 disabled:cursor-not-allowed`}
         >
           <FaCheck size={12} />
           Save
@@ -647,7 +647,7 @@ function VersionEditor({
           <button
             onClick={handleSave}
             disabled={saving || !version.trim()}
-            className="inline-flex items-center justify-center rounded-control bg-ready px-2.5 py-1.5 text-sm font-medium text-white hover:bg-ready disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
+            className={`inline-flex items-center justify-center rounded-control px-2.5 py-1.5 text-sm font-medium ${READY_BUTTON} disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation`}
             title="Save version"
             aria-label="Save version"
           >

@@ -29,6 +29,10 @@ import { useBaseRoms } from "@/contexts/BaseRomContext";
 import { patchFormatFromFilename } from "@/utils/patching";
 import { encodeXdelta, trialDecodeXdelta, friendlyXdeltaError } from "@/utils/patching/xdelta";
 
+/** Solid status buttons: the paired on-color keeps text readable in both themes; hover mixes toward the text color. */
+export const READY_BUTTON = "bg-ready text-on-ready transition-colors hover:enabled:bg-[color-mix(in_srgb,var(--ready)_85%,var(--text))]";
+const ERROR_BUTTON = "bg-error text-on-error transition-colors hover:enabled:bg-[color-mix(in_srgb,var(--error)_85%,var(--text))]";
+
 interface Patch {
   id: number;
   version: string;
@@ -423,7 +427,7 @@ export default function VersionActions({
 
           <button
             onClick={() => setShowRestoreModal(true)}
-            className="inline-flex items-center gap-1.5 rounded-control border border-ready/40 bg-ready-soft px-2 py-1 text-xs font-medium text-ready hover:bg-ready-soft transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-control border border-ready/40 bg-ready-soft px-2 py-1 text-xs font-medium text-ready hover:border-ready transition-colors"
             title="Restore version"
           >
             <FaRotateLeft size={12} />
@@ -478,7 +482,7 @@ export default function VersionActions({
             <button
               onClick={handleRestore}
               disabled={actionLoading}
-              className="flex-1 rounded-control bg-ready px-4 py-2 text-sm font-medium text-white hover:bg-ready disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`flex-1 rounded-control px-4 py-2 text-sm font-medium ${READY_BUTTON} disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {actionLoading ? "Restoring..." : "Restore"}
             </button>
@@ -503,7 +507,7 @@ export default function VersionActions({
         {!patch.published && (
           <button
             onClick={() => setShowPublishModal(true)}
-            className="inline-flex items-center gap-1.5 rounded-control border border-ready/40 bg-ready-soft px-2 py-1 text-xs font-medium text-ready hover:bg-ready-soft transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-control border border-ready/40 bg-ready-soft px-2 py-1 text-xs font-medium text-ready hover:border-ready transition-colors"
             title="Publish"
           >
             <FaCheck size={12} />
@@ -543,7 +547,7 @@ export default function VersionActions({
         {!isCurrent && (
           <button
             onClick={() => setShowDeleteModal(true)}
-            className="inline-flex items-center gap-1.5 rounded-control border border-error/40 bg-error-soft px-2 py-1 text-xs font-medium text-error hover:bg-error-soft transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-control border border-error/40 bg-error-soft px-2 py-1 text-xs font-medium text-error hover:border-error transition-colors"
             title="Archive version"
           >
             <FaTrash size={12} />
@@ -651,7 +655,7 @@ export default function VersionActions({
             <button
               onClick={handleDelete}
               disabled={actionLoading}
-              className="flex-1 rounded-control bg-error px-4 py-2 text-sm font-medium text-white hover:bg-error disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`flex-1 rounded-control px-4 py-2 text-sm font-medium ${ERROR_BUTTON} disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {actionLoading ? "Archiving..." : "Archive"}
             </button>
@@ -679,7 +683,7 @@ export default function VersionActions({
           <button
             onClick={handleRollback}
             disabled={actionLoading}
-            className="flex-1 rounded-control bg-ready px-4 py-2 text-sm font-medium text-white hover:bg-ready disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`flex-1 rounded-control px-4 py-2 text-sm font-medium ${READY_BUTTON} disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             {actionLoading ? "Rolling back..." : "Rollback"}
           </button>
@@ -711,7 +715,7 @@ export default function VersionActions({
           <button
             onClick={handlePublish}
             disabled={actionLoading}
-            className="flex-1 rounded-control bg-ready px-4 py-2 text-sm font-medium text-white hover:bg-ready disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`flex-1 rounded-control px-4 py-2 text-sm font-medium ${READY_BUTTON} disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             {actionLoading ? "Publishing..." : "Publish"}
           </button>
@@ -776,34 +780,34 @@ export default function VersionActions({
             )}
 
             {patchMode === "rom" && (
-              <div className="grid gap-3">
+              <div className="grid min-w-0 gap-3">
                 <div className="rounded-control border border-line p-3 bg-surface-2/50">
                   <div className="text-xs text-text-2">Required base ROM</div>
                   <div className="mt-1 text-sm font-medium">{baseRomEntry ? `${baseRomEntry.name} (${baseRomEntry.platform})` : "Unknown base ROM"}</div>
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                    <span className={`rounded-full px-2 py-0.5 ring-1 ${baseRomReady ? "bg-ready-soft text-white ring-ready/40 dark:bg-ready-soft dark:text-ready dark:ring-ready/40" : baseRomNeedsPermission ? "bg-warn-soft text-white ring-warn/40 dark:bg-warn-soft dark:text-warn dark:ring-warn/40" : "bg-error-soft text-white ring-error/40 dark:bg-error-soft dark:text-error dark:ring-error/40"}`}>
+                    <span className={`rounded-full px-2 py-0.5 ring-1 ${baseRomReady ? "bg-ready-soft text-ready ring-ready/40" : baseRomNeedsPermission ? "bg-warn-soft text-warn ring-warn/40" : "bg-error-soft text-error ring-error/40"}`}>
                       {baseRomReady ? "Ready" : baseRomNeedsPermission ? "Permission needed" : "Base ROM needed"}
                     </span>
                     {baseRomNeedsPermission && (
                       <button type="button" onClick={onGrantPermission} disabled={!supported} className="rounded-control border border-line bg-surface-2 px-2 py-1 disabled:opacity-60 disabled:cursor-not-allowed">Grant permission</button>
                     )}
                     {baseRomMissing && (
-                      <label className="inline-flex items-center gap-2 text-xs text-text-2">
+                      <label className="flex basis-full flex-col gap-1.5 text-xs text-text-2">
+                        <span>Upload base ROM</span>
                         <input
                           ref={baseRomInputRef}
                           type="file"
                           onChange={onUploadBaseRom}
                           accept={baseRomPlatform ? platformAccept(baseRomPlatform) : "*/*"}
-                          className="cursor-pointer rounded-control bg-surface-2 px-2 py-1 text-xs italic text-text-3 ring-1 ring-inset ring-line file:bg-black/10 dark:file:bg-surface-2 file:text-text-2 file:text-xs file:font-medium file:not-italic file:rounded-control file:border-0 file:px-2 file:py-1 file:mr-2 file:cursor-pointer"
+                          className="w-full min-w-0 cursor-pointer rounded-control bg-surface-2 px-2 py-1 text-xs italic text-text-3 ring-1 ring-inset ring-line file:bg-black/10 dark:file:bg-surface-2 file:text-text-2 file:text-xs file:font-medium file:not-italic file:rounded-control file:border-0 file:px-2 file:py-1 file:mr-2 file:cursor-pointer"
                         />
-                        <span>Upload base ROM</span>
                       </label>
                     )}
                   </div>
                   {!!genError && <div className="mt-2 text-xs text-error">{genError}</div>}
                 </div>
 
-                <div className="grid gap-2">
+                <div className="grid min-w-0 gap-2">
                   <label className="text-sm text-text-2">Modified ROM <span className="text-text-3">(Recommended)</span></label>
                   <input
                     ref={modifiedRomInputRef}
@@ -811,7 +815,7 @@ export default function VersionActions({
                     accept={baseRomPlatform ? platformAccept(baseRomPlatform) : "*/*"}
                     disabled={!baseRomEntry || !baseRomReady || !baseRomPlatform}
                     onChange={onUploadModifiedRom}
-                    className="cursor-pointer rounded-control bg-surface-2 px-3 py-2 text-sm italic text-text-3 ring-1 ring-inset ring-line file:bg-black/10 dark:file:bg-surface-2 file:text-text-2 file:text-sm file:font-medium file:not-italic file:rounded-control file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full min-w-0 cursor-pointer rounded-control bg-surface-2 px-3 py-2 text-sm italic text-text-3 ring-1 ring-inset ring-line file:bg-black/10 dark:file:bg-surface-2 file:text-text-2 file:text-sm file:font-medium file:not-italic file:rounded-control file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                   <p className="text-xs text-text-3">We'll generate a .xdelta patch on-device. No ROMs are uploaded.</p>
                   {genStatus === "generating" && <div className="text-xs text-text-2">Generating patch…</div>}
@@ -836,7 +840,7 @@ export default function VersionActions({
           <button
             onClick={handleReupload}
             disabled={actionLoading || !reuploadFile || checksumStatus === "invalid" || checksumStatus === "validating"}
-            className="flex-1 rounded-control bg-ready px-4 py-2 text-sm font-medium text-white hover:bg-ready disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`flex-1 rounded-control px-4 py-2 text-sm font-medium ${READY_BUTTON} disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             {actionLoading ? "Uploading..." : "Upload"}
           </button>

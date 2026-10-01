@@ -38,6 +38,7 @@
   --on-ready: #ffffff;
   --error: #c2410c;
   --error-soft: #ffedd5;
+  --on-error: #ffffff;
   --warn: #a16207;
   --warn-soft: #fef3c7;
   --screen: #0d1017;
@@ -81,6 +82,7 @@
   --on-ready: #052e16;
   --error: #fb923c;
   --error-soft: #3a1f0e;
+  --on-error: #431407;
   --warn: #fbbf24;
   --warn-soft: #3a2e0e;
   --screen: #07080b;
@@ -116,6 +118,7 @@
   --color-on-ready: var(--on-ready);
   --color-error: var(--error);
   --color-error-soft: var(--error-soft);
+  --color-on-error: var(--on-error);
   --color-warn: var(--warn);
   --color-warn-soft: var(--warn-soft);
   --color-screen: var(--screen);
