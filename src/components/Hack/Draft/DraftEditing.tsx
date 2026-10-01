@@ -32,6 +32,8 @@ interface DraftEditing {
   /** Manual mode: runs every committer's prepare, then writes the staged fields and the commits. */
   saveAll: () => Promise<boolean>;
   register: (id: string, committer: Committer | null) => void;
+  /** useAutosave reports a change waiting out its debounce (+1) and leaving it (-1), so reloads can warn. */
+  trackWaiting: (delta: 1 | -1) => void;
 }
 
 const Ctx = React.createContext<DraftEditing | null>(null);
@@ -48,6 +50,10 @@ export function DraftEditingProvider({ slug, live, children }: { slug: string; l
   // Saves are whole-value writes, so retrying the latest failed one per key is safe.
   const failedSaves = React.useRef(new Map<string, () => Promise<Result>>());
   const [failedCount, setFailedCount] = React.useState(0);
+  const waitingAutosaves = React.useRef(0);
+  const trackWaiting = React.useCallback((delta: 1 | -1) => {
+    waitingAutosaves.current += delta;
+  }, []);
 
   const run = React.useCallback<DraftEditing["run"]>(
     async (work, key) => {
@@ -135,9 +141,19 @@ export function DraftEditingProvider({ slug, live, children }: { slug: string; l
   const failed = live && failedCount > 0;
   useLeaveGuard(dirty || failed);
 
+  // Live edits are unsaved for a moment (debounce, then the request); a reload then would drop them.
+  React.useEffect(() => {
+    if (!live) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (waitingAutosaves.current > 0 || inFlight.current > 0) e.preventDefault();
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [live]);
+
   const value = React.useMemo(
-    () => ({ slug, live, status, dirty, failed, run, retry, save, saveAll, register }),
-    [slug, live, status, dirty, failed, run, retry, save, saveAll, register],
+    () => ({ slug, live, status, dirty, failed, run, retry, save, saveAll, register, trackWaiting }),
+    [slug, live, status, dirty, failed, run, retry, save, saveAll, register, trackWaiting],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
@@ -206,28 +222,37 @@ export function useCommitter(dirty: boolean, commit: () => Promise<Result>, prep
  */
 export function useAutosave<T>(value: T, commit: (value: T) => void, delay = 800) {
   // Listed hacks only stage (nothing is sent), so do it right away and Save always has the last edit.
-  const { live } = useDraftEditing();
+  const { live, trackWaiting } = useDraftEditing();
   const wait = live ? delay : 0;
   const last = React.useRef(value);
   const waiting = React.useRef(false);
   const commitRef = React.useRef(commit);
   commitRef.current = commit;
+  const setWaiting = React.useCallback(
+    (next: boolean) => {
+      if (waiting.current !== next) trackWaiting(next ? 1 : -1);
+      waiting.current = next;
+    },
+    [trackWaiting],
+  );
   React.useEffect(() => {
     if (Object.is(value, last.current)) return;
     last.current = value;
-    waiting.current = true;
+    setWaiting(true);
     const t = window.setTimeout(() => {
-      waiting.current = false;
+      setWaiting(false);
       commitRef.current(value);
     }, wait);
     return () => window.clearTimeout(t);
-  }, [value, wait]);
+  }, [value, wait, setWaiting]);
   // Commit a change still waiting when the editor goes away, e.g. clicking Preview mid-typing.
   React.useEffect(
     () => () => {
-      if (waiting.current) commitRef.current(last.current);
+      if (!waiting.current) return;
+      setWaiting(false);
+      commitRef.current(last.current);
     },
-    [],
+    [setWaiting],
   );
 }
 
