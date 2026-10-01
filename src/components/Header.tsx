@@ -90,7 +90,7 @@ export default function Header() {
           </NavLink>
           <NavLink href="/roms" active={pathname.startsWith("/roms")}>
             My ROMs
-            {countReady > 0 && <span className="ready-dot" role="img" aria-label={`${countReady} base ROM${countReady === 1 ? "" : "s"} ready`} />}
+            <RomCount count={countReady} />
           </NavLink>
         </nav>
 
@@ -177,7 +177,7 @@ function CompactMenu({ countReady, onSearch }: { countReady: number; onSearch: (
             </CloseButton>
             <CloseButton as={Link} href="/roms" className={item}>
               My ROMs
-              {countReady > 0 && <span className="ready-dot" role="img" aria-label={`${countReady} base ROM${countReady === 1 ? "" : "s"} ready`} />}
+              <RomCount count={countReady} />
             </CloseButton>
             <div className="mx-1.5 my-1 border-t border-line" />
             <CloseButton as={Link} href="/submit" className={item}>
@@ -187,5 +187,19 @@ function CompactMenu({ countReady, onSearch }: { countReady: number; onSearch: (
         )}
       </PopoverPanel>
     </Popover>
+  );
+}
+
+/** Number of base ROMs ready to patch, next to My ROMs. Hidden at zero. */
+function RomCount({ count }: { count: number }) {
+  if (count === 0) return null;
+  return (
+    <span
+      className="inline-grid h-[18px] min-w-[18px] place-items-center rounded-full bg-ready-soft px-[5px] text-[11px] font-bold leading-none tabular-nums text-ready"
+      aria-label={`${count} base ROM${count === 1 ? "" : "s"} ready`}
+      role="img"
+    >
+      {count}
+    </span>
   );
 }
