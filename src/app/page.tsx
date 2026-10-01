@@ -59,7 +59,7 @@ export default async function Home() {
       <HomeHero catalog={catalog} milestone={milestone} />
 
       <ReadyShelf catalog={catalog} />
-      <Shelf title="Trending this week" blurb="Most patched in the last seven days." href="/discover" hacks={trending} />
+      <Shelf title="Trending this week" blurb="Popular over the last few days." href="/discover" hacks={trending} />
       <Shelf title="New on Hackdex" blurb="The latest hacks to be listed." href="/discover?s=new" hacks={newest} />
       <Shelf title="Recently updated" blurb="Fresh patches from creators still at work." href="/discover?s=updated" hacks={updated} />
 

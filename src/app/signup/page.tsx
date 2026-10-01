@@ -20,7 +20,7 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
           </Link>
         </p>
         <p className="mt-3 text-sm rounded-control bg-warn-soft p-3 text-text">
-            Share hacks <span className="font-semibold">you made</span>, or ones the creator has given you permission to share. Anything else will be rejected.
+            Only share hacks <span className="font-semibold">you made</span>. If you&rsquo;d like to see someone else&rsquo;s hack here, ask its creator to share it on Hackdex.
         </p>
         <div className="mt-6">
           <SignupForm />
