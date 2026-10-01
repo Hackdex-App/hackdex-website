@@ -5,6 +5,7 @@ import Link from "next/link";
 import { FiMaximize2 } from "react-icons/fi";
 import PixelImage from "@/components/PixelImage";
 import Lightbox from "@/components/Hack/Lightbox";
+import { onTabListKeyDown } from "@/utils/tabKeys";
 
 export interface HackVersionRow {
   id: number;
@@ -60,7 +61,11 @@ export default function HackTabs({ slug, title, author, images, about, changes, 
     <div className="flex min-w-0 flex-col gap-8">
       {/* The tab strip sits 1px over the rule so the active underline replaces it; the scroller is outside so that overhang never becomes a scrollbar. */}
       <div ref={tabsRef} className="-mx-6 border-b border-line px-6 scroll-mt-[72px] md:mx-0 md:px-0">
-        <div role="tablist" aria-label="Hack sections" className="-mb-px flex gap-1 overflow-x-auto overflow-y-hidden [scrollbar-width:none]">
+        <div
+          role="tablist"
+          aria-label="Hack sections"
+          onKeyDown={(e) => onTabListKeyDown(e, tabs.length, TAB_IDS.indexOf(tab), (i) => setTab(TAB_IDS[i]))}
+          className="-mb-px flex gap-1 overflow-x-auto overflow-y-hidden [scrollbar-width:none]">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -68,6 +73,7 @@ export default function HackTabs({ slug, title, author, images, about, changes, 
             role="tab"
             id={`tab-${t.id}`}
             aria-selected={tab === t.id}
+            tabIndex={tab === t.id ? 0 : -1}
             aria-controls={`panel-${t.id}`}
             onClick={() => setTab(t.id)}
             className={`inline-flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 text-[15px] font-medium transition-colors ${
@@ -94,13 +100,18 @@ export default function HackTabs({ slug, title, author, images, about, changes, 
                 </button>
               </figure>
               {images.length > 1 && (
-                <div role="tablist" aria-label="Screenshots" className="-mx-6 mt-1.5 flex gap-2 overflow-x-auto px-6 py-1 [scrollbar-width:none] md:-mx-1 md:flex-wrap md:px-1">
+                <div
+                  role="tablist"
+                  aria-label="Screenshots"
+                  onKeyDown={(e) => onTabListKeyDown(e, images.length, shot, setShot)}
+                  className="-mx-6 mt-1.5 flex gap-2 overflow-x-auto px-6 py-1 [scrollbar-width:none] md:-mx-1 md:flex-wrap md:px-1">
                   {images.map((src, i) => (
                     <button
                       key={`${src}-${i}`}
                       type="button"
                       role="tab"
                       aria-selected={i === shot}
+                      tabIndex={i === shot ? 0 : -1}
                       aria-label={`Screenshot ${i + 1}`}
                       onClick={() => setShot(i)}
                       className={`flex-none overflow-hidden rounded-frame transition-[opacity,box-shadow] duration-[120ms] ${i === shot ? "opacity-100 shadow-[0_0_0_2px_var(--rose)]" : "opacity-55 hover:opacity-90"}`}

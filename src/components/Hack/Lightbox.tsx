@@ -4,6 +4,7 @@ import PixelImage from "../PixelImage";
 import React from "react";
 import { FiChevronLeft, FiChevronRight, FiGrid, FiX } from "react-icons/fi";
 import { useDialog } from "@/hooks/useDialog";
+import { onTabListKeyDown } from "@/utils/tabKeys";
 
 const DESKTOP_LIGHTBOX = "(min-width: 768px)";
 
@@ -163,13 +164,19 @@ export default function Lightbox({ images, index, title, onChange, onClose }: Li
             </button>
             {/* p-1 leaves room for the selected thumb's 2px ring, which the scroll container would clip.
                 relative makes the thumbs' offsetLeft measure from the strip, which the centering below relies on. */}
-            <div ref={stripRef} role="tablist" aria-label="Screenshots" className="relative flex min-w-0 flex-1 touch-pan-x gap-2 overflow-x-auto overscroll-x-contain p-1 [scrollbar-width:none] md:flex-none md:max-w-full">
+            <div
+              ref={stripRef}
+              role="tablist"
+              aria-label="Screenshots"
+              onKeyDown={(e) => onTabListKeyDown(e, images.length, index, onChange)}
+              className="relative flex min-w-0 flex-1 touch-pan-x gap-2 overflow-x-auto overscroll-x-contain p-1 [scrollbar-width:none] md:flex-none md:max-w-full">
               {images.map((src, i) => (
                 <button
                   key={`${src}-${i}`}
                   type="button"
                   role="tab"
                   aria-selected={i === index}
+                  tabIndex={i === index ? 0 : -1}
                   aria-label={`Screenshot ${i + 1}`}
                   onClick={() => onChange(i)}
                   className={`flex-none overflow-hidden rounded-frame transition-[opacity,box-shadow] duration-[120ms] ${i === index ? "opacity-100 shadow-[0_0_0_2px_var(--rose)]" : "opacity-45 hover:opacity-85"}`}
