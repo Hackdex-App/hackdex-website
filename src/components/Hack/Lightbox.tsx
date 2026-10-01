@@ -34,7 +34,8 @@ export default function Lightbox({ images, index, title, onChange, onClose }: Li
   const onPrev = React.useCallback(() => onChange((index - 1 + images.length) % images.length), [images.length, index, onChange]);
   const onNext = React.useCallback(() => onChange((index + 1) % images.length), [images.length, index, onChange]);
 
-  // Keep the layout from shifting when the scrollbar goes, and stop touch scrolling behind the viewer.
+  // Keep the layout from shifting when the scrollbar goes, and stop touch scrolling behind the viewer
+  // (except in the thumbnail strip, which scrolls sideways; touch-pan-x keeps it from panning the page).
   // Declared before useDialog so it measures the scrollbar before useDialog locks <html>; each owns
   // different styles, since cleanups run in declaration order and nested save/restore of one style
   // left the page stuck on overflow: hidden.
@@ -43,7 +44,9 @@ export default function Lightbox({ images, index, title, onChange, onClose }: Li
     const previousBodyPaddingRight = body.style.paddingRight;
     const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
     if (scrollBarWidth > 0) body.style.paddingRight = `${scrollBarWidth}px`;
-    const preventTouchScroll = (e: TouchEvent) => e.preventDefault();
+    const preventTouchScroll = (e: TouchEvent) => {
+      if (!(e.target instanceof Node && stripRef.current?.contains(e.target))) e.preventDefault();
+    };
     document.addEventListener("touchmove", preventTouchScroll, { passive: false });
     return () => {
       body.style.paddingRight = previousBodyPaddingRight;
@@ -160,7 +163,7 @@ export default function Lightbox({ images, index, title, onChange, onClose }: Li
             </button>
             {/* p-1 leaves room for the selected thumb's 2px ring, which the scroll container would clip.
                 relative makes the thumbs' offsetLeft measure from the strip, which the centering below relies on. */}
-            <div ref={stripRef} role="tablist" aria-label="Screenshots" className="relative flex min-w-0 flex-1 gap-2 overflow-x-auto p-1 [scrollbar-width:none] md:flex-none md:max-w-full">
+            <div ref={stripRef} role="tablist" aria-label="Screenshots" className="relative flex min-w-0 flex-1 touch-pan-x gap-2 overflow-x-auto overscroll-x-contain p-1 [scrollbar-width:none] md:flex-none md:max-w-full">
               {images.map((src, i) => (
                 <button
                   key={`${src}-${i}`}
