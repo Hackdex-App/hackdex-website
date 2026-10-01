@@ -51,3 +51,18 @@ export function useDialog(panelRef: React.RefObject<HTMLElement | null>, onClose
     };
   }, [active, panelRef]);
 }
+
+/** For phone-only overlays hidden with `md:hidden`: closes them when the window grows past the breakpoint, so their scroll lock and key handling don't linger invisibly. */
+export function useCloseOnDesktop(onClose: () => void, active = true) {
+  const onCloseRef = React.useRef(onClose);
+  onCloseRef.current = onClose;
+  React.useEffect(() => {
+    if (!active) return;
+    const desktop = window.matchMedia("(min-width: 768px)");
+    const onChange = () => {
+      if (desktop.matches) onCloseRef.current();
+    };
+    desktop.addEventListener("change", onChange);
+    return () => desktop.removeEventListener("change", onChange);
+  }, [active]);
+}

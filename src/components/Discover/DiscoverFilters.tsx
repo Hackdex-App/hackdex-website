@@ -10,7 +10,7 @@ const RAIL_PLATFORMS: Platform[] = ["GBA", "GBC", "GB", "NDS"];
 import { DISCOVER_COMPLETION_STATUSES } from "@/app/discover/search-params";
 import type { DiscoverHack } from "@/types/discover";
 import { AI_FILTERS, matchesAiFilter, type AiFilter } from "@/utils/aiDisclosure";
-import { useDialog } from "@/hooks/useDialog";
+import { useCloseOnDesktop, useDialog } from "@/hooks/useDialog";
 
 /** The filterable part of the Discover URL state. The sheet edits a draft copy of this. */
 export type FilterState = {
@@ -376,6 +376,7 @@ export function FilterSheet({ active, total, onClose, onCommit, onClear, childre
 
   // Focus, scroll lock, Tab trap, and Escape come from the shared dialog hook.
   useDialog(panelRef, onClose, mounted);
+  useCloseOnDesktop(onClose, mounted);
 
   React.useEffect(() => {
     if (!mounted) return;

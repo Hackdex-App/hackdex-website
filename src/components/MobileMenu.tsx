@@ -5,7 +5,7 @@ import React from "react";
 import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { FiX } from "react-icons/fi";
-import { useDialog } from "@/hooks/useDialog";
+import { useCloseOnDesktop, useDialog } from "@/hooks/useDialog";
 
 const PAGES = [
   { href: "/submit", label: "Submit a hack" },
@@ -52,6 +52,7 @@ export default function MobileMenu({ signedIn }: { signedIn: boolean }) {
 
   const close = React.useCallback(() => setOpen(false), []);
   useDialog(panelRef, close, mounted && open);
+  useCloseOnDesktop(close, open);
 
   // Only creators need an account, so the guest links say so; players should never read them as a gate.
   const account = signedIn
