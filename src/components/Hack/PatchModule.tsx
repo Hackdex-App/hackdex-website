@@ -464,6 +464,17 @@ function VersionPicker({
   beacon: boolean;
 }) {
   const rootRef = React.useRef<HTMLDivElement | null>(null);
+  const listRef = React.useRef<HTMLDivElement | null>(null);
+  // Opens upward when the phone tab bar or the viewport edge would cover it and there is more room above.
+  const [up, setUp] = React.useState(false);
+  React.useLayoutEffect(() => {
+    if (!open || !rootRef.current || !listRef.current) return setUp(false);
+    const chip = rootRef.current.getBoundingClientRect();
+    const tabs = document.getElementById("mobile-tabs")?.offsetHeight ?? 0;
+    const below = window.innerHeight - tabs - chip.bottom;
+    setUp(below < listRef.current.offsetHeight + 8 && chip.top > below);
+  }, [open]);
+
   React.useEffect(() => {
     if (!open) return;
     const onDown = (e: PointerEvent) => {
@@ -497,9 +508,10 @@ function VersionPicker({
       {beacon && <OnboardingBeacon className="-top-[3px] -right-[3px]" />}
       {open && (
         <div
+          ref={listRef}
           role="listbox"
           aria-label="Patch version"
-          className="anim-pop absolute left-0 top-full z-30 mt-2 w-60 overflow-hidden rounded-card border border-line bg-surface shadow-overlay max-md:right-0 max-md:left-auto"
+          className={`anim-pop absolute left-0 z-30 w-60 overflow-hidden rounded-card border border-line bg-surface shadow-overlay ${up ? "bottom-full mb-2" : "top-full mt-2"}`}
         >
           {patches.map((patch, index) => {
             const selected = selectedPatchId === patch.id;

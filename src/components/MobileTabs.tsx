@@ -16,6 +16,7 @@ export default function MobileTabs() {
   ];
   return (
     <nav
+      id="mobile-tabs"
       aria-label="Primary"
       className="sticky bottom-0 z-40 grid grid-cols-3 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] md:hidden"
     >
