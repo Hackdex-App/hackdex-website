@@ -72,7 +72,8 @@ export function DraftEditingProvider({ slug, live, children }: { slug: string; l
         toast.error(res.error);
         return false;
       }
-      if (inFlight.current === 0) setStatus("saved");
+      // A save that lands doesn't clear an earlier failure: keep "Couldn't save" and Retry until that one lands too.
+      if (inFlight.current === 0) setStatus(failedSaves.current.size > 0 ? "error" : "saved");
       window.clearTimeout(refreshTimer.current);
       refreshTimer.current = window.setTimeout(() => router.refresh(), 500);
       return true;
