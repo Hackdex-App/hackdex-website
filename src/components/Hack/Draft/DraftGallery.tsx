@@ -3,8 +3,8 @@
 import React from "react";
 import { toast } from "sonner";
 import { FiStar, FiTrash2, FiUpload } from "react-icons/fi";
-import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
-import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
+import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, arrayMove, rectSortingStrategy, sortableKeyboardCoordinates, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { presignCoverUpload, saveHackCovers } from "@/app/hack/actions";
 import type { Platform } from "@/data/baseRoms";
@@ -65,7 +65,10 @@ export default function DraftGallery({ covers: initial, platform }: DraftGallery
   const [covers, setCovers] = React.useState<Cover[]>(initial);
   const [uploading, setUploading] = React.useState(0);
   const inputRef = React.useRef<HTMLInputElement>(null);
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
   const sizes = allowedSizes(platform);
   const sizeHint = sizes.length ? sizes.map((s) => `${s.w}×${s.h}`).join(" or ") : "native resolution";
 
@@ -213,7 +216,7 @@ function Shot({ cover, index, featured, onFeature, onRemove }: { cover: Cover; i
           draggable={false}
           {...attributes}
           {...listeners}
-          aria-label={`Screenshot ${index + 1}${featured ? ", the cover" : ""}. Drag to reorder.`}
+          aria-label={`Screenshot ${index + 1}${featured ? ", the cover" : ""}. Drag, or press Space and use the arrow keys, to reorder.`}
           className="pixelated aspect-[3/2] w-full max-w-[240px] cursor-grab touch-none rounded-frame object-cover object-top active:cursor-grabbing"
         />
         {featured && <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-accent-deep px-2 py-0.5 text-[11px] font-semibold text-white">Cover</span>}
