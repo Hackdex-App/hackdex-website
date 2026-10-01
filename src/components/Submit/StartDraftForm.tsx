@@ -61,7 +61,8 @@ export default function StartDraftForm({ disabled = false, canSubmitForOthers = 
     if (missing.length > 0 || availability === "checking" || busy || disabled) return;
     setBusy(true);
     setError(null);
-    const res = await createDraft(new FormData(e.currentTarget));
+    // Server actions throw on network failures; catch them so the button doesn't stay on "Creating…".
+    const res = await createDraft(new FormData(e.currentTarget)).catch(() => ({ ok: false as const, error: "Couldn't reach Hackdex. Check your connection and try again." }));
     if (!res.ok) {
       setError(res.error);
       setBusy(false);
