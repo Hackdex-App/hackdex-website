@@ -72,16 +72,19 @@ export function DraftStatusStrip({ slug, stage, submittedAt, required, contact, 
           <span className={`inline-flex items-center gap-1 text-xs ${editing.status === "error" ? "text-error" : "text-text-3"}`} aria-live="polite">
             {editing.status === "saved" && <FiCheck className="h-3.5 w-3.5 text-ready" />}
             {editing.status === "saving" ? "Saving…" : editing.status === "saved" ? "Saved" : "Couldn't save"}
+            {editing.status === "error" && editing.failed && (
+              <button type="button" onClick={editing.retry} className="ml-1 font-semibold text-link hover:underline hover:underline-offset-[3px]">
+                Retry
+              </button>
+            )}
           </span>
         )}
         <div className="flex flex-none items-center gap-2 max-md:ml-auto">
           {stage === "listed" ? (
             <>
+              {/* DraftEditingProvider's leave guard confirms the discard. */}
               <Link
                 href={`/hack/${slug}`}
-                onClick={(e) => {
-                  if (editing?.dirty && !window.confirm("Discard your unsaved changes?")) e.preventDefault();
-                }}
                 className="inline-flex h-[38px] items-center gap-1.5 rounded-control bg-surface-2 px-3 text-sm font-medium text-text transition-colors hover:bg-line"
               >
                 {editing?.dirty ? "Discard" : "Done editing"}

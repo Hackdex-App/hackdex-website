@@ -18,8 +18,15 @@ interface DraftEditing {
   status: SaveStatus;
   /** Manual mode only: something is staged and not yet saved. */
   dirty: boolean;
-  /** Runs a save now, reflects it in the strip, and refreshes server data once it lands. */
-  run: (work: () => Promise<Result>) => Promise<boolean>;
+  /** Live mode: saves that failed and haven't been superseded by a later one. */
+  failed: boolean;
+  /**
+   * Runs a save now, reflects it in the strip, and refreshes server data once it lands.
+   * `key` names what it writes (e.g. "title"): a failure is kept for retry until a later save of the same key lands.
+   */
+  run: (work: () => Promise<Result>, key?: string) => Promise<boolean>;
+  /** Reruns every failed save. */
+  retry: () => void;
   /** Partial hack update. Live: saves now. Manual: stages for Save. */
   save: (args: UpdateArgs) => Promise<boolean>;
   /** Manual mode: runs every committer's prepare, then writes the staged fields and the commits. */
@@ -38,9 +45,12 @@ export function DraftEditingProvider({ slug, live, children }: { slug: string; l
   const committers = React.useRef(new Map<string, Committer>());
   const inFlight = React.useRef(0);
   const refreshTimer = React.useRef<number | undefined>(undefined);
+  // Saves are whole-value writes, so retrying the latest failed one per key is safe.
+  const failedSaves = React.useRef(new Map<string, () => Promise<Result>>());
+  const [failedCount, setFailedCount] = React.useState(0);
 
   const run = React.useCallback<DraftEditing["run"]>(
-    async (work) => {
+    async (work, key) => {
       inFlight.current += 1;
       setStatus("saving");
       // Server actions throw on network failures; without this the strip stuck on "Saving…".
@@ -51,6 +61,11 @@ export function DraftEditingProvider({ slug, live, children }: { slug: string; l
         res = { ok: false, error: "Couldn't reach Hackdex. Check your connection and try again." };
       } finally {
         inFlight.current -= 1;
+      }
+      if (key) {
+        if (res.ok) failedSaves.current.delete(key);
+        else failedSaves.current.set(key, work);
+        setFailedCount(failedSaves.current.size);
       }
       if (!res.ok) {
         setStatus("error");
@@ -67,7 +82,7 @@ export function DraftEditingProvider({ slug, live, children }: { slug: string; l
 
   const save = React.useCallback<DraftEditing["save"]>(
     async (args) => {
-      if (live) return run(() => updateHack({ slug, ...args }));
+      if (live) return run(() => updateHack({ slug, ...args }), Object.keys(args).sort().join());
       setPending((prev) => ({ ...prev, ...args }));
       return true;
     },
@@ -111,19 +126,52 @@ export function DraftEditingProvider({ slug, live, children }: { slug: string; l
     return ok;
   }, [pending, run, slug]);
 
+  const retry = React.useCallback(() => {
+    for (const [key, work] of failedSaves.current) void run(work, key);
+  }, [run]);
+
   const dirty = !live && (Object.keys(pending).length > 0 || committerDirty > 0);
+  const failed = live && failedCount > 0;
+  useLeaveGuard(dirty || failed);
 
-  React.useEffect(() => {
-    if (!dirty) return;
-    const warn = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-    };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty]);
-
-  const value = React.useMemo(() => ({ slug, live, status, dirty, run, save, saveAll, register }), [slug, live, status, dirty, run, save, saveAll, register]);
+  const value = React.useMemo(
+    () => ({ slug, live, status, dirty, failed, run, retry, save, saveAll, register }),
+    [slug, live, status, dirty, failed, run, retry, save, saveAll, register],
+  );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+}
+
+/**
+ * Asks before leaving with unsaved work: beforeunload for reloads and other sites,
+ * and a capture-phase click check for in-app links, which never fire beforeunload.
+ */
+function useLeaveGuard(active: boolean) {
+  React.useEffect(() => {
+    if (!active) return;
+    let leaving = false;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!leaving) e.preventDefault();
+    };
+    // Runs before React's handlers, so preventDefault here stops next/link too.
+    const onClick = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const link = e.target instanceof Element ? e.target.closest("a[href]") : null;
+      if (!(link instanceof HTMLAnchorElement) || link.target === "_blank" || link.hasAttribute("download")) return;
+      const url = new URL(link.href);
+      if (url.origin !== location.origin || (url.pathname === location.pathname && url.search === location.search)) return;
+      if (window.confirm("Discard your unsaved changes?")) leaving = true;
+      else {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    document.addEventListener("click", onClick, true);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      document.removeEventListener("click", onClick, true);
+    };
+  }, [active]);
 }
 
 export function useDraftEditing() {

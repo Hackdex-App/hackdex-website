@@ -95,7 +95,7 @@ export default function DraftGallery({ covers: initial, platform }: DraftGallery
 
   const persist = (next: Cover[]) => {
     setCovers(next);
-    if (live) void run(() => saveHackCovers({ slug, coverUrls: keys(next) }));
+    if (live) void run(() => saveHackCovers({ slug, coverUrls: keys(next) }), "covers");
   };
 
   async function addFiles(files: File[]) {
