@@ -4,6 +4,7 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { updateHack } from "@/app/hack/actions";
+import { NETWORK_ERROR } from "@/utils/networkError";
 
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 type Result = { ok: true } | { ok: false; error: string };
@@ -64,7 +65,7 @@ export function DraftEditingProvider({ slug, live, children }: { slug: string; l
       try {
         res = await work();
       } catch {
-        res = { ok: false, error: "Couldn't reach Hackdex. Check your connection and try again." };
+        res = { ok: false, error: NETWORK_ERROR };
       } finally {
         inFlight.current -= 1;
       }

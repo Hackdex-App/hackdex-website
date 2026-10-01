@@ -9,6 +9,7 @@ import { submitForReview } from "@/app/submit/actions";
 import { useDraftEditingOptional } from "@/components/Hack/Draft/DraftEditing";
 import { EditDetailsLink } from "@/components/Hack/Draft/DraftDetails";
 import Modal from "@/components/Primitives/Modal";
+import { NETWORK_ERROR } from "@/utils/networkError";
 
 export type DraftStage = "draft" | "review" | "listed";
 
@@ -146,8 +147,14 @@ function SubmitModal({ slug, contact, onClose }: { slug: string; contact: string
   async function submit(withContact: boolean) {
     setBusy(true);
     const next = withContact && text.trim() !== saved ? text : undefined;
-    const res = await submitForReview(slug, next);
+    const res = await submitForReview(slug, next).catch(() => null);
     setBusy(false);
+    if (!res) {
+      // No answer: it may have gone through anyway, so refresh to show where the hack stands.
+      toast.error(NETWORK_ERROR);
+      router.refresh();
+      return;
+    }
     if (!res.ok) {
       toast.error(res.error);
       return;

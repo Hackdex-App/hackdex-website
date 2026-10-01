@@ -8,6 +8,7 @@ import { checkSlugAvailable, createDraft } from "@/app/submit/actions";
 import { baseRoms, PLATFORM_NAMES, type Platform } from "@/data/baseRoms";
 import Select, { type SelectDivider, type SelectOption } from "@/components/Primitives/Select";
 import { slugify } from "@/utils/format";
+import { NETWORK_ERROR } from "@/utils/networkError";
 
 const PLATFORM_ORDER: Platform[] = ["GBA", "GBC", "GB", "NDS"];
 
@@ -62,7 +63,7 @@ export default function StartDraftForm({ disabled = false, canSubmitForOthers = 
     setBusy(true);
     setError(null);
     // Server actions throw on network failures; catch them so the button doesn't stay on "Creating…".
-    const res = await createDraft(new FormData(e.currentTarget)).catch(() => ({ ok: false as const, error: "Couldn't reach Hackdex. Check your connection and try again." }));
+    const res = await createDraft(new FormData(e.currentTarget)).catch(() => ({ ok: false as const, error: NETWORK_ERROR }));
     if (!res.ok) {
       setError(res.error);
       setBusy(false);

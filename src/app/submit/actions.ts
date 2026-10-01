@@ -617,7 +617,12 @@ export async function submitForReview(slug: string, contact?: string) {
     else if (process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL) await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL, [embed]);
   } catch (error) {
     console.error(`[HackReview] Failed to announce ${slug} for review:`, error);
-    if (process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL) await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL, [embed]);
+    // Best effort: the hack is already in the queue, so a Discord outage mustn't fail the submission.
+    if (process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL) {
+      await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL, [embed]).catch((fallbackError) =>
+        console.error(`[HackReview] Webhook fallback for ${slug} also failed:`, fallbackError),
+      );
+    }
   }
   return { ok: true, submittedAt } as const;
 }

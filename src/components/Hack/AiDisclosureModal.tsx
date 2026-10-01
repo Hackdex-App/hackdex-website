@@ -2,8 +2,10 @@
 
 import React from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 import Modal from "@/components/Primitives/Modal";
 import AiLabel, { AI_AREA_ICONS } from "@/components/Hack/AiLabel";
+import { NETWORK_ERROR } from "@/utils/networkError";
 import { AI_AREAS, AI_FILTERS, AI_LEVEL_LABEL, aiKind, matchesAiFilter, type AiDisclosure, type AiLevel, type AiLevels } from "@/utils/aiDisclosure";
 
 const NOTE_MAX = 1000;
@@ -42,7 +44,11 @@ function AiDisclosureForm({ initial, onCancel, onSave }: { initial: AiDisclosure
   async function save() {
     if (!complete || busy) return;
     setBusy(true);
-    const ok = await onSave(preview, note.trim() || null);
+    // Callers report their own errors; a thrown action (network) would otherwise leave Save stuck.
+    const ok = await onSave(preview, note.trim() || null).catch(() => {
+      toast.error(NETWORK_ERROR);
+      return false;
+    });
     setBusy(false);
     if (ok) onCancel();
   }
