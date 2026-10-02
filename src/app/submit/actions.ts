@@ -1,16 +1,15 @@
 "use server";
 
 import { createClient, createServiceClient } from "@/utils/supabase/server";
-import type { TablesInsert, Database } from "@/types/db";
-import { getMinioClient, objectExists, PATCHES_BUCKET } from "@/utils/minio/server";
+import type { TablesInsert } from "@/types/db";
+import { objectExists, PATCHES_BUCKET } from "@/utils/minio/server";
 import { sendDiscordMessageEmbed } from "@/utils/discord";
 import { APIEmbed } from "discord-api-types/v10";
 import { slugify } from "@/utils/format";
-import { isCoverKeyFor, isPatchKeyFor, newPatchKey } from "@/utils/storageKeys";
-import { MAX_COVERS, SUMMARY_MAX, TITLE_MAX } from "@/data/hackLimits";
+import { isPatchKeyFor } from "@/utils/storageKeys";
+import { SUMMARY_MAX, TITLE_MAX } from "@/data/hackLimits";
 import { baseRoms } from "@/data/baseRoms";
 import { checkEditPermission, checkPatchEditPermission } from "@/utils/hack";
-import { getCachedTagsWithUsage, resolveTagIdsInOrder } from "@/data/tags";
 import type { PatchFormat } from "@/utils/patching";
 import {
   ensureHackReviewThread,
@@ -24,22 +23,6 @@ type HackInsert = TablesInsert<"hacks">;
 
 function patchFormatFromObjectKey(objectKey: string): PatchFormat {
   return objectKey.toLowerCase().endsWith(".xdelta") ? "xdelta" : "bps";
-}
-
-async function ensureUniqueSlug(base: string, supabase: Awaited<ReturnType<typeof createClient>>) {
-  let candidate = base;
-  let suffix = 2;
-  // Loop until slug is unique
-  while (true) {
-    const { data, error } = await supabase
-      .from("hacks")
-      .select("slug")
-      .eq("slug", candidate)
-      .maybeSingle();
-    if (error && error.code !== "PGRST116") throw error;
-    if (!data) return candidate;
-    candidate = `${base}-${suffix++}`;
-  }
 }
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -63,216 +46,6 @@ export async function checkSlugAvailable(slug: string) {
   } = await supabase.auth.getUser();
   if (!user || !SLUG_PATTERN.test(slug) || slug.length > 64) return false;
   return !(await isSlugTaken(slug));
-}
-
-/** The one-shot archive wizard. Everyone else starts a draft (createDraft), which goes through the checklist. */
-export async function prepareSubmission(formData: FormData) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return { ok: false, error: "Unauthorized" } as const;
-  }
-  // Same gate as /submit?mode=wizard (archivers include admins).
-  const { data: canUseWizard } = await supabase.rpc("is_archiver");
-  if (!canUseWizard) return { ok: false, error: "Forbidden" } as const;
-
-  const title = (formData.get("title") as string)?.trim();
-  const summary = (formData.get("summary") as string)?.trim();
-  const description = (formData.get("description") as string)?.trim();
-  const base_rom = (formData.get("base_rom") as string)?.trim();
-  const language = (formData.get("language") as string)?.trim();
-  const completion_status = (formData.get("completion_status") as string)?.trim() || null;
-  const version = (formData.get("version") as string)?.trim();
-  const box_art = (formData.get("box_art") as string)?.trim() || null;
-  const discord = (formData.get("discord") as string)?.trim();
-  const twitter = (formData.get("twitter") as string)?.trim();
-  const pokecommunity = (formData.get("pokecommunity") as string)?.trim();
-  const github = (formData.get("github") as string)?.trim();
-  const tags = (formData.get("tags") as string)?.split(",").map((t) => t.trim()).filter(Boolean) || [];
-  const original_author = (formData.get("original_author") as string)?.trim() || null;
-  const permission_from = (formData.get("permission_from") as string)?.trim() || null;
-  const verification_contact_info = (formData.get("verification_contact_info") as string)?.trim() || null;
-  const is_archive = formData.get("is_archive") === "true";
-
-  // For archives, version is not required; for regular hacks, it is
-  if (!title || !summary || !description || !base_rom || !language || !completion_status || (!is_archive && !version)) {
-    return { ok: false, error: "Missing required fields" } as const;
-  }
-
-  // For archives, original_author is required
-  if (is_archive && !original_author) {
-    return { ok: false, error: "Original author is required for Archive hacks" } as const;
-  }
-
-  const baseSlug = slugify(title);
-  const slug = await ensureUniqueSlug(baseSlug, supabase);
-
-  const social_links: HackInsert["social_links"] =
-    discord || twitter || pokecommunity || github
-      ? {
-          discord: discord || undefined,
-          twitter: twitter || undefined,
-          pokecommunity: pokecommunity || undefined,
-          github: github || undefined,
-        }
-      : null;
-
-  const insertPayload: HackInsert = {
-    slug,
-    title,
-    summary,
-    description,
-    base_rom,
-    language,
-    completion_status: completion_status as Database["public"]["Enums"]["Completion Status"],
-    version: version || "Archive",
-    created_by: user.id,
-    downloads: 0,
-    box_art,
-    social_links,
-    approved: is_archive, // Auto-approve archives
-    is_archive,
-    patch_url: "",
-    original_author: original_author || null,
-    permission_from: permission_from || null,
-    verification_contact_info: verification_contact_info || null,
-    current_patch: null, // Archives don't have patches
-    submitted_at: new Date().toISOString(), // The wizard submits in one go; only createDraft leaves this null.
-  } as HackInsert;
-
-  const { error: insertErr } = await supabase.from("hacks").insert(insertPayload);
-  if (insertErr) {
-    return { ok: false, error: insertErr.message } as const;
-  }
-
-  if (!is_archive) {
-    try {
-      const { data: profile } = await supabase.from("profiles").select("username").eq("id", user.id).single();
-      const reviewThread = await ensureHackReviewThread({
-        slug,
-        title,
-        author: profile?.username ? `@${profile.username}` : user.id,
-        isClaimed: false,
-      });
-      if (!reviewThread && process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL) {
-        await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL, [{
-          title: `Review thread creation failed: ${title}`,
-          description: "The hack was saved, but its Discord review thread could not be created.",
-          color: 0xef4444,
-          url: `${process.env.NEXT_PUBLIC_SITE_URL}/hack/${slug}`,
-        }]);
-      }
-    } catch (error) {
-      console.error(`[HackReview] Failed to create a review thread for ${slug}:`, error);
-      if (process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL) {
-        await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_ADMIN_HACKS_URL, [{
-          title: `Review thread creation failed: ${title}`,
-          description: "The hack was saved, but its Discord review thread could not be created.",
-          color: 0xef4444,
-          url: `${process.env.NEXT_PUBLIC_SITE_URL}/hack/${slug}`,
-        }]);
-      }
-    }
-  }
-
-  // Tags: restrict to existing only (order follows form submission)
-  if (tags.length > 0) {
-    const catalog = await getCachedTagsWithUsage();
-    const resolved = resolveTagIdsInOrder(tags, catalog);
-    if (resolved.length > 0) {
-      const hackTags = resolved.map((t, i) => ({ hack_slug: slug, tag_id: t.id, order: i + 1 }));
-      const { error: htErr } = await supabase.from("hack_tags").insert(hackTags);
-      if (htErr) return { ok: false, error: htErr.message } as const;
-    }
-  }
-
-  return { ok: true, slug } as const;
-}
-
-export async function saveHackCovers(args: { slug: string; coverUrls: string[] }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: "Unauthorized" } as const;
-
-  // Ensure hack exists and user has permission
-  const { data: hack, error: hErr } = await supabase
-    .from("hacks")
-    .select("slug, created_by, current_patch, original_author, permission_from, is_archive")
-    .eq("slug", args.slug)
-    .maybeSingle();
-  if (hErr) return { ok: false, error: hErr.message } as const;
-  if (!hack) return { ok: false, error: "Hack not found" } as const;
-
-  const permission = await checkEditPermission(hack, user.id, supabase);
-  if (!permission.canEdit) {
-    return { ok: false, error: "Forbidden" } as const;
-  }
-
-  if (args.coverUrls.some((u) => !isCoverKeyFor(args.slug, u))) return { ok: false, error: "Invalid screenshot" } as const;
-  if (args.coverUrls.length > MAX_COVERS) return { ok: false, error: `Up to ${MAX_COVERS} screenshots` } as const;
-
-  // Insert covers (overwrite positions)
-  if (args.coverUrls && args.coverUrls.length > 0) {
-    // Clear any existing rows first (idempotency on retry)
-    await supabase.from("hack_covers").delete().eq("hack_slug", args.slug);
-    const rows = args.coverUrls.map((url, idx) => ({ hack_slug: args.slug, url, position: idx + 1 }));
-    const { error: cErr } = await supabase.from("hack_covers").insert(rows);
-    if (cErr) return { ok: false, error: cErr.message } as const;
-  }
-
-  return { ok: true } as const;
-}
-
-export async function presignPatchAndSaveCovers(args: {
-  slug: string;
-  version: string;
-  coverUrls: string[];
-  format: PatchFormat;
-}) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: "Unauthorized" } as const;
-
-  // Ensure hack exists and user has permission
-  const { data: hack, error: hErr } = await supabase
-    .from("hacks")
-    .select("slug, created_by, current_patch, original_author, permission_from, is_archive")
-    .eq("slug", args.slug)
-    .maybeSingle();
-  if (hErr) return { ok: false, error: hErr.message } as const;
-  if (!hack) return { ok: false, error: "Hack not found" } as const;
-
-  const permission = await checkPatchEditPermission(hack, user.id, supabase);
-  if (permission.error) {
-    return { ok: false, error: permission.error } as const;
-  }
-  if (!permission.canEdit) {
-    return { ok: false, error: "Forbidden" } as const;
-  }
-
-  if (args.coverUrls.some((u) => !isCoverKeyFor(args.slug, u))) return { ok: false, error: "Invalid screenshot" } as const;
-  if (args.coverUrls.length > MAX_COVERS) return { ok: false, error: `Up to ${MAX_COVERS} screenshots` } as const;
-
-  // Insert covers (overwrite positions)
-  if (args.coverUrls && args.coverUrls.length > 0) {
-    // Clear any existing rows first (idempotency on retry)
-    await supabase.from("hack_covers").delete().eq("hack_slug", args.slug);
-    const rows = args.coverUrls.map((url, idx) => ({ hack_slug: args.slug, url, position: idx + 1 }));
-    const { error: cErr } = await supabase.from("hack_covers").insert(rows);
-    if (cErr) return { ok: false, error: cErr.message } as const;
-  }
-  const client = getMinioClient();
-  // 10 minutes to upload
-  const objectKey = newPatchKey(args.slug, args.version, args.format === "xdelta" ? "xdelta" : "bps");
-  const url = await client.presignedPutObject(PATCHES_BUCKET, objectKey, 60 * 10);
-
-  return { ok: true, presignedUrl: url, objectKey } as const;
 }
 
 export async function confirmPatchUpload(args: {
@@ -314,9 +87,10 @@ export async function confirmPatchUpload(args: {
   if (keyUses) return { ok: false, error: "That upload was already used. Please upload again." } as const;
 
   // New versions re-confirm the AI label. The client sends the stamp of the label it showed, so a
-  // direct call can't skip the step and a label changed meanwhile isn't confirmed unseen.
+  // direct call can't skip the step and a label changed meanwhile isn't confirmed unseen. Archives
+  // skip it: the label is optional there, since archivers may not know how the creator used AI.
   const { count: priorPatches } = await service.from("patches").select("id", { count: "exact", head: true }).eq("parent_hack", args.slug);
-  const confirmsAi = (priorPatches ?? 0) > 0;
+  const confirmsAi = !hack.is_archive && (priorPatches ?? 0) > 0;
   if (confirmsAi) {
     if (!hack.ai_disclosed_at) return { ok: false, error: "Add the AI label before uploading a new version." } as const;
     if (!args.aiReviewedAt || Date.parse(args.aiReviewedAt) !== Date.parse(hack.ai_disclosed_at)) {
@@ -500,9 +274,9 @@ export async function createDraft(formData: FormData) {
   if (!baseRoms.some((r) => r.id === base_rom)) return { ok: false, error: "Choose a base ROM from the list." } as const;
   if (behalf && (!original_author || !permission_from)) return { ok: false, error: "Name the creator and where they gave permission." } as const;
   if (behalf) {
-    // Listing someone else's hack is admin-only for now.
-    const { data: isAdmin } = await supabase.rpc("is_admin");
-    if (!isAdmin) return { ok: false, error: "Only admins can submit someone else's hack." } as const;
+    // Listing someone else's hack is for archivers (admins included).
+    const { data: isArchiver } = await supabase.rpc("is_archiver");
+    if (!isArchiver) return { ok: false, error: "Only archivers can submit someone else's hack." } as const;
   }
 
   // The form sends the address it showed, so a taken one is an error rather than a silent "-2".

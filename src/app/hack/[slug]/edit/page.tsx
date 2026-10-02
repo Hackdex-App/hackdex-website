@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import HackForm from "@/components/Hack/HackForm";
+import HackEditForm from "@/components/Hack/HackEditForm";
 import { createClient } from "@/utils/supabase/server";
 import { FaChevronLeft } from "react-icons/fa6";
 import Link from "next/link";
@@ -112,7 +112,7 @@ export default async function EditHackPage({ params }: EditPageProps) {
         </div>
       </div>
       <div className="mt-4 lg:mt-8">
-        <HackForm mode="edit" slug={slug} initial={initial} catalogTags={catalogTags} tagsUpdatedAt={tagsUpdatedAt} />
+        <HackEditForm slug={slug} initial={initial} catalogTags={catalogTags} tagsUpdatedAt={tagsUpdatedAt} />
       </div>
       <div className="mt-6">
         <ArchiveAiLabel slug={slug} initial={aiDisclosureFromRow(hack)} />

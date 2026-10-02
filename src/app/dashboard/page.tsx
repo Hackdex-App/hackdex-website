@@ -97,7 +97,8 @@ export default async function DashboardPage() {
     version: h.current_patch?.version || "Pre-release",
     current_patch: h.current_patch?.id || null,
     // Drafts get it from their checklist; this catches hacks from before the label existed.
-    needsAiLabel: h.submitted_at !== null && h.ai_disclosed_at === null,
+    // Archives can go without one: archivers may not know how the creator used AI.
+    needsAiLabel: !h.is_archive && h.submitted_at !== null && h.ai_disclosed_at === null,
   }));
 
   const seriesAll = await getDownloadsSeriesAll({ days: 30 });

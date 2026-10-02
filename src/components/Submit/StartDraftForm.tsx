@@ -50,7 +50,8 @@ export default function StartDraftForm({ disabled = false, canSubmitForOthers = 
   const availability = useSlugAvailability(slug);
   const missing = [
     !title.trim() && "a title",
-    (availability === "taken" || (customSlug !== null && !slug)) && "a different page address",
+    title.trim() && !slug && "a page address",
+    availability === "taken" && "a different page address",
     !baseRom && "a base ROM",
     summary.trim().length < 10 && "a summary",
     who === "behalf" && (!originalAuthor.trim() || !permissionFrom.trim()) && "the creator's permission",
@@ -104,6 +105,14 @@ export default function StartDraftForm({ disabled = false, canSubmitForOthers = 
                 </button>
                 <SlugStatus availability={availability} />
               </>
+            ) : title.trim() ? (
+              // A title with no ASCII letters or digits (e.g. "ポケモン") slugifies to nothing.
+              <>
+                This title doesn&rsquo;t make a page address.
+                <button type="button" onClick={() => setCustomSlug("")} disabled={disabled} className="text-link-hd">
+                  Choose one
+                </button>
+              </>
             ) : (
               "The page address comes from the title."
             )}
@@ -152,7 +161,7 @@ export default function StartDraftForm({ disabled = false, canSubmitForOthers = 
         </span>
       </label>
 
-      {/* Only admins may list someone else's hack for now; everyone else confirms it's theirs. */}
+      {/* Only archivers (admins included) may list someone else's hack; everyone else confirms it's theirs. */}
       {canSubmitForOthers ? (
         <fieldset className="flex flex-col gap-1">
           <legend className={`${label} mb-1.5`}>I am submitting</legend>

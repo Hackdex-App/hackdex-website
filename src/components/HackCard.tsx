@@ -4,8 +4,6 @@ import Link from "next/link";
 import type { LinkProps } from "next/link";
 import { useEffect, useRef, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
-import { usePathname } from "next/navigation";
-import { FaRegImages } from "react-icons/fa6";
 import { FiChevronLeft, FiChevronRight, FiDownload } from "react-icons/fi";
 import { RiArchiveStackFill } from "react-icons/ri";
 import { formatCompactNumber, OrderedTag } from "@/utils/format";
@@ -91,7 +89,7 @@ function snapRendering(img: HTMLImageElement) {
  * chevrons on hover, since dots are small targets. DS shots are 4:3 per screen;
  * a portrait 256×384 shot crops to its top screen here and opens whole in the lightbox.
  */
-function Shots({ images, platform, fill, placeholder }: { images: string[]; platform?: Platform; fill?: boolean; placeholder: boolean }) {
+function Shots({ images, platform, fill }: { images: string[]; platform?: Platform; fill?: boolean }) {
   const many = images.length > 1;
   const [viewportRef, api] = useEmblaCarousel({ loop: true, active: many });
   const [index, setIndex] = useState(0);
@@ -132,31 +130,25 @@ function Shots({ images, platform, fill, placeholder }: { images: string[]; plat
         }
       }}
     >
-      {placeholder ? (
-        <span className={`flex ${ratio} ${shotWidth} items-center justify-center rounded-frame bg-screen/10 text-text-3`}>
-          <FaRegImages className="text-[64px] opacity-40" />
+      <span
+        ref={viewportRef}
+        className={`block overflow-hidden rounded-frame ${many ? "cursor-grab active:cursor-grabbing" : ""} ${shotWidth}`}
+      >
+        <span className="flex">
+          {images.map((src, i) => (
+            <span key={`${src}-${i}`} className="min-w-0 flex-[0_0_100%]">
+              <img
+                src={src}
+                alt=""
+                loading="lazy"
+                draggable={false}
+                onLoad={(e) => snapRendering(e.currentTarget)}
+                className={`block h-auto w-full ${ratio} object-cover object-top`}
+              />
+            </span>
+          ))}
         </span>
-      ) : (
-        <span
-          ref={viewportRef}
-          className={`block overflow-hidden rounded-frame ${many ? "cursor-grab active:cursor-grabbing" : ""} ${shotWidth}`}
-        >
-          <span className="flex">
-            {images.map((src, i) => (
-              <span key={`${src}-${i}`} className="min-w-0 flex-[0_0_100%]">
-                <img
-                  src={src}
-                  alt=""
-                  loading="lazy"
-                  draggable={false}
-                  onLoad={(e) => snapRendering(e.currentTarget)}
-                  className={`block h-auto w-full ${ratio} object-cover object-top`}
-                />
-              </span>
-            ))}
-          </span>
-        </span>
-      )}
+      </span>
       {many && (
         <>
           <button
@@ -252,13 +244,11 @@ export default function HackCard({ hack, clickable = true, prefetch = false, cla
   const { base, ready } = readiness;
   const summary = blurb(hack);
   const images = hack.covers.filter(Boolean);
-  const pathname = usePathname();
-  const placeholder = (pathname || "").startsWith("/submit") && images.length === 0;
   const [pressed, setPressed] = useState(false);
 
   const body = (
     <>
-      <Shots images={images} platform={base?.platform} fill={fill} placeholder={placeholder} />
+      <Shots images={images} platform={base?.platform} fill={fill} />
       <span className="flex flex-col gap-[3px] px-3.5 pb-3.5 pt-3">
         <span className="line-clamp-2 text-[15px] font-semibold leading-tight">{hack.title}</span>
         <span className="flex items-center gap-2 text-[13px] text-text-2">

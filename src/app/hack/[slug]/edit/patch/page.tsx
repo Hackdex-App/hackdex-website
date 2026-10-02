@@ -79,6 +79,7 @@ export default async function EditPatchPage({ params }: EditPatchPageProps) {
           customVersionName={isCustomPatcherActive ? hack.custom_version_name : undefined}
           currentVersion={currentVersion}
           ai={aiDisclosureFromRow(hack)}
+          isArchive={hack.is_archive}
         />
       </div>
 

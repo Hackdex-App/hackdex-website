@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { toast } from "sonner";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
 import { baseRoms } from "@/data/baseRoms";
 import { platformAccept } from "@/utils/idb";
@@ -26,6 +27,8 @@ export interface HackPatchFormProps {
   currentVersion?: string;
   /** The hack's AI label. New versions confirm or update it before upload; the first upload skips this (the draft checklist covers it). */
   ai: AiDisclosure | null;
+  /** Archives skip the AI check: archivers may not know how the creator used AI. */
+  isArchive: boolean;
 }
 
 export default function HackPatchForm(props: HackPatchFormProps) {
@@ -44,7 +47,7 @@ export default function HackPatchForm(props: HackPatchFormProps) {
   // Either way the upload sends the reviewed label's stamp, and the server re-stamps it once the upload lands.
   const [aiCheck, setAiCheck] = React.useState<"pending" | "confirmed" | "updated">("pending");
   const [aiFormOpen, setAiFormOpen] = React.useState(false);
-  const needsAiCheck = existingVersions.length > 0;
+  const needsAiCheck = !props.isArchive && existingVersions.length > 0;
 
   const versionInputRef = React.useRef<HTMLInputElement | null>(null);
   const patchInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -425,7 +428,8 @@ export default function HackPatchForm(props: HackPatchFormProps) {
             onSave={async (levels, note) => {
               const res = await updateHack({ slug, ai: { levels, note } });
               if (!res.ok) {
-                setError(res.error);
+                // A toast, since the inline error sits behind the open modal.
+                toast.error(res.error);
                 return false;
               }
               setDisclosure({ levels, note, disclosedAt: res.aiDisclosedAt ?? new Date().toISOString() });
