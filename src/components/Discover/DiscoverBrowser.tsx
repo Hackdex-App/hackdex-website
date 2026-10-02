@@ -16,6 +16,7 @@ import {
 import type { DiscoverHack, DiscoverSortOption } from "@/types/discover";
 import Select, { SelectOption } from "@/components/Primitives/Select";
 import { useDiscoverUrlState } from "./useDiscoverUrlState";
+import { readSavedAiFilter, saveAiFilter } from "./savedAiFilter";
 import DiscoverLastUpdated from "./DiscoverLastUpdated";
 import {
   countActive,
@@ -78,7 +79,8 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
   const [selectedCompletionStatuses, setSelectedCompletionStatuses] = React.useState<string[]>(() => [...initialState.completionStatuses]);
   const [sort, setSort] = React.useState<DiscoverSortOption>(initialState.sort);
   const [onlyReady, setOnlyReady] = React.useState(initialState.onlyReady);
-  const [ai, setAi] = React.useState<AiFilter>(initialState.ai);
+  const [ai, setAi] = React.useState<AiFilter>(NO_AI_FILTER);
+  const [aiLoaded, setAiLoaded] = React.useState(false);
   const [currentPage, setCurrentPage] = React.useState(initialState.page);
   const [view, setView] = React.useState<View>("grid");
   const listRef = React.useRef<HTMLDivElement | null>(null);
@@ -117,9 +119,8 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
       baseRoms: onlyReady ? [] : selectedBaseRoms,
       completionStatuses: selectedCompletionStatuses,
       onlyReady,
-      ai,
     }),
-    [ai, currentPage, onlyReady, query, selectedBaseRoms, selectedCompletionStatuses, selectedTags, sort]
+    [currentPage, onlyReady, query, selectedBaseRoms, selectedCompletionStatuses, selectedTags, sort]
   );
 
   const applyUrlState = React.useCallback((nextState: DiscoverUrlState) => {
@@ -129,7 +130,6 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
     setSelectedCompletionStatuses([...nextState.completionStatuses]);
     setSort(nextState.sort);
     setOnlyReady(nextState.onlyReady);
-    setAi(nextState.ai);
     setCurrentPage(nextState.page);
   }, []);
 
@@ -173,7 +173,7 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
     });
   }, [ai, catalog, groups, onlyReady, query, readyBaseRomIds, selectedBaseRoms, selectedCompletionStatuses, selectedTags, sort]);
 
-  const showSkeleton = !initialUrlStateApplied || (onlyReady && baseRomsLoading);
+  const showSkeleton = !initialUrlStateApplied || !aiLoaded || (onlyReady && baseRomsLoading);
   const totalPages = Math.max(1, Math.ceil(filtered.length / HACKS_PER_PAGE));
 
   React.useEffect(() => {
@@ -218,15 +218,25 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
       setSelectedCompletionStatuses(next.completionStatuses);
       setOnlyReady(next.onlyReady);
       setAi(next.ai);
+      // Every filter change (rail, sheet, chips, Clear) lands here, so this is the one place the AI pick is saved.
+      saveAiFilter(next.ai);
       setCurrentPage(1);
-      syncUrlWith({ ...next, baseRoms: next.onlyReady ? [] : next.baseRoms, page: 1 }, mode);
+      // The AI pick stays out of the URL.
+      syncUrlWith({ tags: next.tags, baseRoms: next.onlyReady ? [] : next.baseRoms, completionStatuses: next.completionStatuses, onlyReady: next.onlyReady, page: 1 }, mode);
     },
     [syncUrlWith]
   );
   const clearFilters = () => applyFilters(EMPTY_FILTERS);
 
-  // A custom AI pick from the URL opens its checklist, so it's clear what it hides.
-  const [open, setOpen] = React.useState<Set<string>>(() => new Set(["rom:GBA", ...(aiPresetOf(initialState.ai) === "custom" ? [AI_AREAS_DISCLOSURE] : [])]));
+  const [open, setOpen] = React.useState<Set<string>>(() => new Set(["rom:GBA"]));
+  // The saved AI pick loads before paint (results show a skeleton until then), so nothing flashes unfiltered.
+  // A custom pick opens its checklist, so it's clear what it hides.
+  React.useLayoutEffect(() => {
+    const saved = readSavedAiFilter();
+    setAi(saved);
+    if (aiPresetOf(saved) === "custom") setOpen((s) => new Set(s).add(AI_AREAS_DISCLOSURE));
+    setAiLoaded(true);
+  }, []);
   const toggleOpen = (id: string) =>
     setOpen((s) => {
       const next = new Set(s);

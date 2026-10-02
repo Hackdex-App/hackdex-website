@@ -1,7 +1,6 @@
 import { baseRoms } from "@/data/baseRoms";
 import { Constants } from "@/types/db";
 import type { DiscoverSortOption } from "@/types/discover";
-import { aiFilterToken, NO_AI_FILTER, parseAiFilter, type AiFilter } from "@/utils/aiDisclosure";
 
 export interface DiscoverUrlState {
   query: string;
@@ -11,7 +10,6 @@ export interface DiscoverUrlState {
   baseRoms: string[];
   completionStatuses: string[];
   onlyReady: boolean;
-  ai: AiFilter;
 }
 
 type SearchParamsRecord = Record<string, string | string[] | undefined>;
@@ -25,7 +23,6 @@ export const DISCOVER_DEFAULT_STATE: DiscoverUrlState = {
   baseRoms: [],
   completionStatuses: [],
   onlyReady: false,
-  ai: NO_AI_FILTER,
 };
 
 export const DISCOVER_COMPLETION_STATUSES = Constants.public.Enums["Completion Status"];
@@ -43,7 +40,6 @@ export function discoverUrlStatesEqual(a: DiscoverUrlState, b: DiscoverUrlState)
     a.sort === b.sort &&
     a.page === b.page &&
     a.onlyReady === b.onlyReady &&
-    aiFilterToken(a.ai) === aiFilterToken(b.ai) &&
     arraysEqual(a.tags, b.tags) &&
     arraysEqual(a.baseRoms, b.baseRoms) &&
     arraysEqual(a.completionStatuses, b.completionStatuses)
@@ -110,7 +106,6 @@ export function parseDiscoverSearchParams(params: SearchParamsLike): DiscoverUrl
     baseRoms: onlyReady ? [] : baseRomValues,
     completionStatuses: getListValues(params, ["c", "completion"]).filter((status) => VALID_COMPLETION_STATUSES.has(status)),
     onlyReady,
-    ai: parseAiFilter(getFirstValue(params, ["ai"])),
   };
 }
 
@@ -124,7 +119,6 @@ export function buildDiscoverSearchParams(state: DiscoverUrlState): URLSearchPar
   state.baseRoms.forEach((baseRom) => params.append("b", baseRom));
   state.completionStatuses.forEach((status) => params.append("c", status));
   if (state.onlyReady) params.set("r", "1");
-  if (state.ai.hide.length > 0) params.set("ai", aiFilterToken(state.ai));
 
   return params;
 }

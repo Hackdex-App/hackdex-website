@@ -212,7 +212,7 @@ export function FilterFields({ value, onChange, tagGroups, counts, readyCount, o
         ))}
       </Group>
 
-      <Group title="AI use">
+      <Group title="AI use" note="These settings are saved across sessions.">
         <div role="radiogroup" aria-label="AI use">
           {AI_PRESETS.map((p) => (
             <Radio
@@ -291,10 +291,11 @@ export function FilterFields({ value, onChange, tagGroups, counts, readyCount, o
   );
 }
 
-function Group({ title, children }: { title: string; children: React.ReactNode }) {
+function Group({ title, note, children }: { title: string; note?: string; children: React.ReactNode }) {
   return (
     <section className="border-t border-line py-4 first-of-type:border-t-0">
-      <h3 className="mb-2 text-[13px] font-semibold text-text-3">{title}</h3>
+      <h3 className={`${note ? "" : "mb-2 "}text-[13px] font-semibold text-text-3`}>{title}</h3>
+      {note && <p className="mb-2 mt-0.5 text-xs text-text-3">{note}</p>}
       {children}
     </section>
   );

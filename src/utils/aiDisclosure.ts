@@ -103,7 +103,7 @@ export function normalizeAiFilter(f: AiFilter): AiFilter {
   return { hide, smallCode: f.smallCode && hide.includes("code") };
 }
 
-/** URL value: a preset's name, or the areas joined by "." ("code-small" for code with small use allowed). */
+/** Stored value (Discover saves the pick): a preset's name, or the areas joined by "." ("code-small" for code with small use allowed). */
 export function aiFilterToken(f: AiFilter): string {
   const n = normalizeAiFilter(f);
   const preset = AI_PRESETS.find((p) => sameAiFilter(p.filter, n));
