@@ -34,7 +34,8 @@ export default function CollapsibleTags({ tags }: { tags: string[] }) {
       <div
         className={collapsed ? "max-h-10 overflow-hidden [mask-image:linear-gradient(to_bottom,#000_24px,transparent_40px)]" : ""}
       >
-        <ul ref={ref} className="flex flex-wrap gap-1.5" aria-label="Tags">
+        {/* Tabbing into the tags opens them, so focus never lands on a hidden one. */}
+        <ul ref={ref} onFocus={() => collapsed && setOpen(true)} className="flex flex-wrap gap-1.5" aria-label="Tags">
           {tags.map((t) => (
             <li key={t}>
               <Link

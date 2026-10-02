@@ -2,13 +2,16 @@
 
 import type { CSSProperties } from "react";
 import { Toaster } from "sonner";
+import { useDarkMode } from "@/hooks/useDarkMode";
 
 export default function AppToaster() {
+  // Follow the theme toggle; "system" would follow the OS even after the visitor picks the other theme.
+  const dark = useDarkMode();
   return (
     <Toaster
       position="top-center"
       offset="72px"
-      theme="system"
+      theme={dark ? "dark" : "light"}
       toastOptions={{
         classNames: {
           toast:

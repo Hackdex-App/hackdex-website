@@ -1,5 +1,8 @@
 import React from "react";
 
+/** Open dialogs, newest last. Only the top one handles Escape and Tab, so a nested dialog closes before its parent. */
+const openDialogs: object[] = [];
+
 /**
  * Modal plumbing shared by Sheet and Modal: focuses the panel (unless a field inside autofocused), locks page
  * scroll, traps Tab inside the panel, closes on Escape, and hands focus back to
@@ -20,7 +23,10 @@ export function useDialog(panelRef: React.RefObject<HTMLElement | null>, onClose
     const html = document.documentElement;
     const prevOverflow = html.style.overflow;
     html.style.overflow = "hidden";
+    const self = {};
+    openDialogs.push(self);
     const onKey = (e: KeyboardEvent) => {
+      if (openDialogs[openDialogs.length - 1] !== self) return;
       if (e.key === "Escape") {
         // A menu inside the dialog handled it (and closed itself).
         if (e.defaultPrevented) return;
@@ -46,6 +52,7 @@ export function useDialog(panelRef: React.RefObject<HTMLElement | null>, onClose
     document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("keydown", onKey);
+      openDialogs.splice(openDialogs.indexOf(self), 1);
       html.style.overflow = prevOverflow;
       opener?.focus({ preventScroll: true });
     };

@@ -4,6 +4,7 @@ import React, { useActionState, useEffect} from "react";
 import Link from "next/link";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { Turnstile } from "next-turnstile";
+import { useDarkMode } from "@/hooks/useDarkMode";
 import { AuthActionState, login } from "@/app/login/actions";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthContext } from "@/contexts/AuthContext";
@@ -17,6 +18,7 @@ export default function LoginForm() {
   const [turnstileToken, setTurnstileToken] = React.useState<string | undefined>(undefined);
   const [turnstileError, setTurnstileError] = React.useState<string | null>(null);
   const [turnstileKey, setTurnstileKey] = React.useState(0);
+  const dark = useDarkMode();
   const searchParams = useSearchParams();
   const urlError = searchParams.get("error");
   const [state, formAction] = useActionState<AuthActionState, FormData>(login, null);
@@ -137,7 +139,8 @@ export default function LoginForm() {
           <div className="h-3" />
         )}
         <Turnstile
-          key={turnstileKey}
+          // The widget reads its theme once, so a theme change remounts it.
+          key={`${turnstileKey}-${dark}`}
           siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
           onVerify={(token) => {
             setTurnstileToken(token);
@@ -151,7 +154,7 @@ export default function LoginForm() {
           onExpire={() => {
             setTurnstileToken(undefined);
           }}
-          theme="auto"
+          theme={dark ? "dark" : "light"}
         />
         <button
           type="submit"

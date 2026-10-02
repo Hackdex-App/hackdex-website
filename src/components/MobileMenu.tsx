@@ -35,10 +35,15 @@ export default function MobileMenu({ signedIn }: { signedIn: boolean }) {
   const [inView, setInView] = React.useState(false);
   const pathname = usePathname();
   const panelRef = React.useRef<HTMLDivElement>(null);
+  const toggleRef = React.useRef<HTMLButtonElement>(null);
   const drawerId = React.useId();
+  // The header's bottom edge: 57px (56 + border), lower while the notice banner shows above it.
+  const [top, setTop] = React.useState(57);
 
   React.useEffect(() => {
     if (open) {
+      const header = toggleRef.current?.closest("header");
+      if (header) setTop(Math.max(0, header.getBoundingClientRect().bottom));
       setMounted(true);
       const enter = requestAnimationFrame(() => requestAnimationFrame(() => setInView(true)));
       return () => cancelAnimationFrame(enter);
@@ -81,6 +86,7 @@ export default function MobileMenu({ signedIn }: { signedIn: boolean }) {
   return (
     <>
       <button
+        ref={toggleRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
@@ -101,8 +107,8 @@ export default function MobileMenu({ signedIn }: { signedIn: boolean }) {
 
       {mounted &&
         createPortal(
-          // Starts under the header (56px + its 1px border) so the toggle stays visible.
-          <div className="fixed inset-x-0 bottom-0 top-[57px] z-50 md:hidden" role="presentation">
+          // Starts under the header so the toggle stays visible.
+          <div className="fixed inset-x-0 bottom-0 z-50 md:hidden" style={{ top }} role="presentation">
             <button
               type="button"
               tabIndex={-1}
