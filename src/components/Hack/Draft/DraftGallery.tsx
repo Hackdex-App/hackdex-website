@@ -8,7 +8,7 @@ import { SortableContext, arrayMove, rectSortingStrategy, sortableKeyboardCoordi
 import { CSS } from "@dnd-kit/utilities";
 import { presignCoverUpload, saveHackCovers } from "@/app/hack/actions";
 import type { Platform } from "@/data/baseRoms";
-import { getCoverUrls } from "@/utils/format";
+import { getCoverUrls, newCoverKey } from "@/utils/format";
 import { useCommitter, useDraftEditing } from "./DraftEditing";
 import { MAX_COVERS } from "@/data/hackLimits";
 
@@ -69,19 +69,25 @@ export default function DraftGallery({ covers: initial, platform }: DraftGallery
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
+  // A stable id, or dnd-kit's counter differs between server and client and hydration fails.
+  const dndId = React.useId();
   const sizes = allowedSizes(platform);
   const sizeHint = sizes.length ? sizes.map((s) => `${s.w}×${s.h}`).join(" or ") : "native resolution";
 
-  const keys = (list: Cover[]) => list.map((c) => c.key);
-  const changed = keys(covers).join("\n") !== keys(initial).join("\n");
+  const keys = (list: Cover[]) => list.map((c) => c.key).join("\n");
+  // What the server has: the prop until a save lands, then the saved list (the refresh lags behind).
+  const [saved, setSaved] = React.useState(() => keys(initial));
+  const changed = keys(covers) !== saved;
   // The list prepare uploaded; commit saves exactly that, so a shot added mid-save stays staged.
   const saving = React.useRef<Cover[]>([]);
   useCommitter(
     changed,
     async () => {
       const list = saving.current;
-      const res = await saveHackCovers({ slug, coverUrls: keys(list) });
-      if (res.ok) setCovers((prev) => prev.map((c) => (c.file && list.some((s) => s.key === c.key) ? { key: c.key, url: c.url } : c)));
+      const res = await saveHackCovers({ slug, coverUrls: list.map((c) => c.key) });
+      if (!res.ok) return res;
+      setSaved(keys(list));
+      setCovers((prev) => prev.map((c) => (c.file && list.some((s) => s.key === c.key) ? { key: c.key, url: c.url } : c)));
       return res;
     },
     // Uploads run before any of the page's changes publish.
@@ -105,7 +111,7 @@ export default function DraftGallery({ covers: initial, platform }: DraftGallery
   const persist = (next: Cover[]) => {
     coversRef.current = next;
     setCovers(next);
-    if (live) saveQueue.current = saveQueue.current.then(() => run(() => saveHackCovers({ slug, coverUrls: keys(next) }), "covers"));
+    if (live) saveQueue.current = saveQueue.current.then(() => run(() => saveHackCovers({ slug, coverUrls: next.map((c) => c.key) }), "covers"));
   };
 
   async function addFiles(files: File[]) {
@@ -125,9 +131,7 @@ export default function DraftGallery({ covers: initial, platform }: DraftGallery
           rejected += 1;
           continue;
         }
-        // Keys only allow [A-Za-z0-9._-], so a name like "shot 1.PNG " would be rejected by the server.
-        const ext = (file.name.split(".").pop() ?? "").toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
-        const key = `${slug}/${Date.now()}-${i}.${ext}`;
+        const key = newCoverKey(slug, i, file.name);
         if (live) {
           await upload(slug, key, file);
           added.push({ key, url: getCoverUrls([key])[0] });
@@ -171,7 +175,7 @@ export default function DraftGallery({ covers: initial, platform }: DraftGallery
       <p className="max-w-[70ch] text-sm text-text-2">
         Screenshots at {sizeHint}. The starred one is the cover players see in search results. Drag to reorder.
       </p>
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+      <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <SortableContext items={covers.map((c) => c.key)} strategy={rectSortingStrategy}>
           <ul className="grid grid-cols-1 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(264px,1fr))]">
             {covers.map((c, i) => (

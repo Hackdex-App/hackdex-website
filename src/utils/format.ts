@@ -54,6 +54,12 @@ export function getCoverUrls(objectKeys: string[]): string[] {
   return objectKeys.map(key => `${domain}/${key}`);
 }
 
+/** A screenshot key for an upload. The server only accepts [A-Za-z0-9._-] after the slug, so "shot 1.PNG " becomes ".png". */
+export function newCoverKey(slug: string, index: number, fileName: string) {
+  const ext = (fileName.split(".").pop() ?? "").toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
+  return `${slug}/${Date.now()}-${index}.${ext}`;
+}
+
 /** "3 hours ago" inside a day, "4 days ago" inside a week, then "Mar 2025". Used on cards and facts. */
 export function formatRelativeDate(iso: string | null | undefined, now = Date.now()): string | null {
   if (!iso) return null;

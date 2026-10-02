@@ -13,6 +13,8 @@ import Select from "@/components/Primitives/Select";
 import type { Database } from "@/types/db";
 import type { CatalogTagRow } from "@/types/catalogTag";
 import { FiExternalLink } from "react-icons/fi";
+import { newCoverKey } from "@/utils/format";
+import { SUMMARY_MAX, TITLE_MAX } from "@/data/hackLimits";
 import { HACK_FORM_DESCRIPTION_PLACEHOLDER } from "./hackFormConstants";
 
 interface HackEditFormProps {
@@ -217,8 +219,7 @@ export default function HackEditForm({ slug, initial, catalogTags, tagsUpdatedAt
         if (item.type === "existing") {
           keys.push(item.key);
         } else {
-          const ext = item.file.name.split('.').pop();
-          const path = `${slug}/${Date.now()}-${i}.${ext}`;
+          const path = newCoverKey(slug, i, item.file.name);
           const presigned = await presignCoverUpload({ slug, objectKey: path });
           if (!presigned.ok) throw new Error(presigned.error || 'Failed to presign cover upload');
           const put = await fetch(presigned.presignedUrl, { method: 'PUT', body: item.file, headers: { 'Content-Type': item.file.type || 'image/jpeg' } });
@@ -240,7 +241,7 @@ export default function HackEditForm({ slug, initial, catalogTags, tagsUpdatedAt
     }
   }
 
-  const summaryLimit = 120;
+  const summaryLimit = SUMMARY_MAX;
   const summaryTooLong = summary.length > summaryLimit;
   const contentHasErrors = summaryTooLong || (!!boxArt && !urlLike(boxArt)) || !completionStatus;
 
@@ -303,7 +304,7 @@ export default function HackEditForm({ slug, initial, catalogTags, tagsUpdatedAt
                   </div>
                 )}
               </div>
-              <input value={title} onChange={(e) => setTitle(e.target.value)} className={`h-11 rounded-control px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 ${titleChanged ? 'ring-accent bg-surface-2' : 'bg-surface-2 ring-line'}`} />
+              <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={TITLE_MAX} className={`h-11 rounded-control px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 ${titleChanged ? 'ring-accent bg-surface-2' : 'bg-surface-2 ring-line'}`} />
             </div>
             <div className="grid gap-1">
               <div className="flex items-center justify-between">
