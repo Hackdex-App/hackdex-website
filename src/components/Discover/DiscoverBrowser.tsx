@@ -26,9 +26,10 @@ import {
   type FilterState,
   type TagGroup,
   EMPTY_FILTERS,
+  AI_AREAS_DISCLOSURE,
 } from "./DiscoverFilters";
 import { baseGameLabel, baseRoms } from "@/data/baseRoms";
-import { AI_FILTERS, matchesAiFilter, type AiFilter } from "@/utils/aiDisclosure";
+import { aiFilterLabel, aiPresetOf, matchesAiFilter, NO_AI_FILTER, type AiFilter } from "@/utils/aiDisclosure";
 
 const SORT_OPTIONS: SelectOption[] = [
   { value: "trending", label: "Trending", icon: MdWhatshot },
@@ -224,7 +225,8 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
   );
   const clearFilters = () => applyFilters(EMPTY_FILTERS);
 
-  const [open, setOpen] = React.useState<Set<string>>(() => new Set(["rom:GBA"]));
+  // A custom AI pick from the URL opens its checklist, so it's clear what it hides.
+  const [open, setOpen] = React.useState<Set<string>>(() => new Set(["rom:GBA", ...(aiPresetOf(initialState.ai) === "custom" ? [AI_AREAS_DISCLOSURE] : [])]));
   const toggleOpen = (id: string) =>
     setOpen((s) => {
       const next = new Set(s);
@@ -251,6 +253,7 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
         if (g.dumps.length > 1) next.add(`game:${g.key}`);
       }
       for (const g of groups) if (g.tags.some((t) => selectedTags.includes(t))) next.add(`tag:${g.name}`);
+      if (aiPresetOf(ai) === "custom") next.add(AI_AREAS_DISCLOSURE);
       return next;
     });
     setSheet(true);
@@ -303,7 +306,7 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
     chips.push({ key: `b-${id}`, label: baseGameLabel(name), onRemove: () => applyFilters({ ...filterState, baseRoms: selectedBaseRoms.filter((v) => v !== id) }) });
   }
   for (const c of selectedCompletionStatuses) chips.push({ key: `c-${c}`, label: c, onRemove: () => applyFilters({ ...filterState, completionStatuses: selectedCompletionStatuses.filter((v) => v !== c) }) });
-  if (ai !== "any") chips.push({ key: "ai", label: AI_FILTERS.find((f) => f.value === ai)!.label, onRemove: () => applyFilters({ ...filterState, ai: "any" }) });
+  if (ai.hide.length > 0) chips.push({ key: "ai", label: aiFilterLabel(ai), onRemove: () => applyFilters({ ...filterState, ai: NO_AI_FILTER }) });
   for (const t of selectedTags) chips.push({ key: `t-${t}`, label: t, onRemove: () => applyFilters({ ...filterState, tags: selectedTags.filter((v) => v !== t) }) });
 
   const fields = (mode: "rail" | "sheet") => (

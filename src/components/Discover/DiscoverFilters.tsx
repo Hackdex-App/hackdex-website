@@ -9,7 +9,7 @@ import { baseGameLabel, baseRoms, PLATFORM_NAMES, type Platform } from "@/data/b
 const RAIL_PLATFORMS: Platform[] = ["GBA", "GBC", "GB", "NDS"];
 import { DISCOVER_COMPLETION_STATUSES } from "@/app/discover/search-params";
 import type { DiscoverHack } from "@/types/discover";
-import { AI_FILTERS, matchesAiFilter, type AiFilter } from "@/utils/aiDisclosure";
+import { AI_AREAS, AI_PRESETS, aiPresetOf, matchesAiFilter, normalizeAiFilter, NO_AI_FILTER, type AiArea, type AiFilter } from "@/utils/aiDisclosure";
 import { useCloseOnDesktop, useDialog } from "@/hooks/useDialog";
 
 /** The filterable part of the Discover URL state. The sheet edits a draft copy of this. */
@@ -21,7 +21,10 @@ export type FilterState = {
   ai: AiFilter;
 };
 
-export const EMPTY_FILTERS: FilterState = { tags: [], baseRoms: [], completionStatuses: [], onlyReady: false, ai: "any" };
+export const EMPTY_FILTERS: FilterState = { tags: [], baseRoms: [], completionStatuses: [], onlyReady: false, ai: NO_AI_FILTER };
+
+/** Disclosure id of the AI checklist; opened up front when the pick is custom. */
+export const AI_AREAS_DISCLOSURE = "ai:areas";
 
 export type TagGroup = { name: string; tags: string[] };
 
@@ -52,10 +55,10 @@ export const ROM_GAMES: RomGame[] = (() => {
 })();
 
 export function countActive(f: FilterState) {
-  return f.tags.length + f.baseRoms.length + f.completionStatuses.length + (f.onlyReady ? 1 : 0) + (f.ai !== "any" ? 1 : 0);
+  return f.tags.length + f.baseRoms.length + f.completionStatuses.length + (f.onlyReady ? 1 : 0) + (f.ai.hide.length > 0 ? 1 : 0);
 }
 
-export function toggleValue(list: string[], value: string) {
+export function toggleValue<T>(list: readonly T[], value: T) {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 }
 
@@ -110,6 +113,11 @@ export function FilterFields({ value, onChange, tagGroups, counts, readyCount, o
     setBaseRoms(all ? value.baseRoms.filter((id) => !ids.includes(id)) : [...new Set([...value.baseRoms, ...ids])]);
   };
   const toggleDump = (id: string) => setBaseRoms(toggleValue(value.baseRoms, id));
+  const aiPreset = aiPresetOf(value.ai);
+  const setAi = (ai: AiFilter) => onChange({ ...value, ai: normalizeAiFilter(ai) });
+  // Ticking code yourself allows small use by default; only the presets are strict about it.
+  const toggleAiArea = (k: AiArea) =>
+    setAi({ hide: toggleValue(value.ai.hide, k), smallCode: k === "code" ? !value.ai.hide.includes("code") : value.ai.smallCode });
 
   const visibleGames = ROM_GAMES.map((g) => ({ ...g, dumps: g.dumps.filter((d) => !romQuery || g.label.toLowerCase().includes(romQuery) || d.label.toLowerCase().includes(romQuery)) })).filter((g) => g.dumps.length > 0);
   const visibleGroups = tagGroups
@@ -145,8 +153,7 @@ export function FilterFields({ value, onChange, tagGroups, counts, readyCount, o
               key={id}
               id={id}
               label={PLATFORM_NAMES[platform]}
-              count={picked || games.length}
-              picked={picked > 0}
+              detail={picked > 0 ? `${picked} selected` : String(games.length)}
               expanded={open.has(id) || romQuery.length > 0}
               onToggle={() => onToggleOpen(id)}
               tall={tall}
@@ -207,19 +214,47 @@ export function FilterFields({ value, onChange, tagGroups, counts, readyCount, o
 
       <Group title="AI use">
         <div role="radiogroup" aria-label="AI use">
-          {AI_FILTERS.map((f) => (
+          {AI_PRESETS.map((p) => (
             <Radio
-              key={f.value}
+              key={p.value}
               name={aiGroup}
               className={rowH}
-              label={f.label}
-              hint={"hint" in f ? f.hint : undefined}
-              count={counts.ai(f.value)}
-              checked={value.ai === f.value}
-              onChange={() => onChange({ ...value, ai: f.value })}
+              label={p.label}
+              hint={"hint" in p ? p.hint : undefined}
+              count={counts.ai(p.filter)}
+              checked={aiPreset === p.value}
+              onChange={() => setAi(p.filter)}
             />
           ))}
+          {/* Shows while the areas match no preset; ticking back to a preset's areas selects it again. */}
+          {aiPreset === "custom" && (
+            <Radio name={aiGroup} className={`${rowH} animate-[fadeIn_180ms_ease-out]`} label="Custom" count={counts.ai(value.ai)} checked onChange={() => {}} />
+          )}
         </div>
+        <Disclosure
+          id={AI_AREAS_DISCLOSURE}
+          label="Choose areas"
+          detail={value.ai.hide.length > 0 ? `${value.ai.hide.length} hidden` : ""}
+          expanded={open.has(AI_AREAS_DISCLOSURE)}
+          onToggle={() => onToggleOpen(AI_AREAS_DISCLOSURE)}
+          tall={tall}
+        >
+          <p className="mb-0.5 text-xs font-semibold text-text-3">Hide hacks with AI in</p>
+          {AI_AREAS.map((a) => (
+            <React.Fragment key={a.key}>
+              <Check className={rowH} label={a.name} checked={value.ai.hide.includes(a.key)} onChange={() => toggleAiArea(a.key)} />
+              {a.key === "code" && value.ai.hide.includes("code") && (
+                <Check
+                  className={`${rowH} ml-7 animate-[fadeIn_180ms_ease-out]`}
+                  label="Allow small usage"
+                  hint="A bug fix or a few"
+                  checked={value.ai.smallCode}
+                  onChange={() => setAi({ ...value.ai, smallCode: !value.ai.smallCode })}
+                />
+              )}
+            </React.Fragment>
+          ))}
+        </Disclosure>
       </Group>
 
       <Group title="Tags">
@@ -232,8 +267,7 @@ export function FilterFields({ value, onChange, tagGroups, counts, readyCount, o
               key={id}
               id={id}
               label={group.name}
-              count={picked || group.tags.length}
-              picked={picked > 0}
+              detail={picked > 0 ? `${picked} selected` : String(group.tags.length)}
               expanded={open.has(id) || tagQuery.length > 0}
               onToggle={() => onToggleOpen(id)}
               tall={tall}
@@ -282,7 +316,8 @@ function Find({ value, onChange, placeholder }: { value: string; onChange: (v: s
   );
 }
 
-function Disclosure({ id, label, count, picked, expanded, onToggle, tall, children }: { id: string; label: string; count: number; picked: boolean; expanded: boolean; onToggle: () => void; tall?: boolean; children: React.ReactNode }) {
+/** `detail` sits at the right of the row: a count, or how many are picked. */
+function Disclosure({ id, label, detail, expanded, onToggle, tall, children }: { id: string; label: string; detail: string; expanded: boolean; onToggle: () => void; tall?: boolean; children: React.ReactNode }) {
   return (
     <div className="[&+&]:mt-0.5">
       <button
@@ -294,7 +329,7 @@ function Disclosure({ id, label, count, picked, expanded, onToggle, tall, childr
       >
         <FiChevronDown className={`h-4 w-4 flex-none text-text-3 transition-transform duration-[160ms] ${expanded ? "-rotate-180" : ""}`} />
         {label}
-        <small className="ml-auto text-xs font-medium text-text-3">{picked ? `${count} selected` : count}</small>
+        <small className="ml-auto text-xs font-medium text-text-3">{detail}</small>
       </button>
       {expanded && (
         <div id={id} className="pb-2 pl-0.5 pt-1">
@@ -323,16 +358,19 @@ function CheckBox({ checked, indeterminate = false, onChange, ready = false, ari
 }
 
 /**
- * Checkbox row: box, label, count. The whole row toggles. Rows are `relative` so the
+ * Checkbox row: box, label (and hint), count. The whole row toggles. Rows are `relative` so the
  * sr-only input sits in the row: focusing it then scrolls the list, not the sheet's frame.
  */
-function Check({ label, count, checked, onChange, className = "", ready = false }: { label: React.ReactNode; count: number; checked: boolean; onChange: () => void; className?: string; ready?: boolean }) {
+function Check({ label, hint, count, checked, onChange, className = "", ready = false }: { label: React.ReactNode; hint?: string; count?: number; checked: boolean; onChange: () => void; className?: string; ready?: boolean }) {
   return (
-    <label className={`group/check relative flex cursor-pointer select-none items-center gap-2.5 rounded-md text-sm ${className}`}>
+    <label className={`group/check relative flex cursor-pointer select-none gap-2.5 rounded-md text-sm ${hint ? "items-start py-1.5" : "items-center"} ${className}`}>
       <input type="checkbox" checked={checked} onChange={onChange} className="peer sr-only" />
-      <span className={`${BOX} ${ready ? "peer-checked:border-ready peer-checked:bg-ready" : "peer-checked:border-accent-deep peer-checked:bg-accent-deep"}`} />
-      <span className="min-w-0 flex-1 truncate">{label}</span>
-      <small className="text-xs tabular-nums text-text-3">{count}</small>
+      <span className={`${BOX} ${hint ? "mt-px" : ""} ${ready ? "peer-checked:border-ready peer-checked:bg-ready" : "peer-checked:border-accent-deep peer-checked:bg-accent-deep"}`} />
+      <span className="min-w-0 flex-1 truncate">
+        {label}
+        {hint && <small className="mt-0.5 block text-xs leading-[1.35] text-text-3">{hint}</small>}
+      </span>
+      {count !== undefined && <small className="text-xs tabular-nums text-text-3">{count}</small>}
     </label>
   );
 }

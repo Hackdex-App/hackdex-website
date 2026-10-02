@@ -70,18 +70,81 @@ export function aiKind(levels: AiLevels): AiKind {
   return levels.code !== "none" ? "code" : "none";
 }
 
-/** Discover's AI filter. Hacks without a disclosure pass the strict options too; most use no AI, and reports catch the rest. */
-export const AI_FILTERS = [
-  { value: "any", label: "Any" },
-  { value: "no-content", label: "No AI content" },
-  { value: "none", label: "No direct AI usage", hint: "Nothing AI-generated was intentionally added by the creator" },
-] as const;
-export type AiFilter = (typeof AI_FILTERS)[number]["value"];
+/**
+ * Discover's AI filter: hide hacks whose label shows AI in any of `hide`. With `smallCode`, code at
+ * "A little" (a bug fix or a few) still passes. Hacks without a label pass every filter; most use no
+ * AI, and reports catch the rest.
+ */
+export interface AiFilter {
+  hide: readonly AiArea[];
+  smallCode: boolean;
+}
 
-export function matchesAiFilter(kind: AiKind | null, filter: AiFilter) {
-  if (filter === "no-content") return kind !== "content";
-  if (filter === "none") return kind === null || kind === "none";
-  return true;
+const CONTENT_AREAS = AI_AREAS.map((a) => a.key).filter((k) => k !== "code");
+
+/** Named filters, shown as radios; any other pick of areas is "Custom". */
+export const AI_PRESETS = [
+  { value: "any", label: "Any", filter: { hide: [], smallCode: false } },
+  { value: "no-content", label: "No AI content", filter: { hide: CONTENT_AREAS, smallCode: false } },
+  {
+    value: "none",
+    label: "No direct AI usage",
+    hint: "Nothing AI-generated was intentionally added by the creator",
+    filter: { hide: AI_AREAS.map((a) => a.key), smallCode: false },
+  },
+] as const satisfies readonly { value: string; label: string; hint?: string; filter: AiFilter }[];
+export type AiPreset = (typeof AI_PRESETS)[number]["value"];
+
+export const NO_AI_FILTER: AiFilter = AI_PRESETS[0].filter;
+
+/** Areas in label order, and smallCode only while code is hidden, so equal filters serialize the same. */
+export function normalizeAiFilter(f: AiFilter): AiFilter {
+  const hide = AI_AREAS.map((a) => a.key).filter((k) => f.hide.includes(k));
+  return { hide, smallCode: f.smallCode && hide.includes("code") };
+}
+
+/** URL value: a preset's name, or the areas joined by "." ("code-small" for code with small use allowed). */
+export function aiFilterToken(f: AiFilter): string {
+  const n = normalizeAiFilter(f);
+  const preset = AI_PRESETS.find((p) => sameAiFilter(p.filter, n));
+  if (preset) return preset.value;
+  return n.hide.map((k) => (k === "code" && n.smallCode ? "code-small" : k)).join(".");
+}
+
+function sameAiFilter(a: AiFilter, b: AiFilter) {
+  return a.smallCode === b.smallCode && a.hide.length === b.hide.length && a.hide.every((k, i) => k === b.hide[i]);
+}
+
+export function parseAiFilter(token: string | undefined): AiFilter {
+  const preset = AI_PRESETS.find((p) => p.value === token);
+  if (preset || !token) return preset?.filter ?? NO_AI_FILTER;
+  const parts = token.split(".");
+  const hide = AI_AREAS.map((a) => a.key).filter((k) => parts.includes(k) || (k === "code" && parts.includes("code-small")));
+  return normalizeAiFilter({ hide, smallCode: parts.includes("code-small") });
+}
+
+/** The preset a filter matches, or "custom". */
+export function aiPresetOf(f: AiFilter): AiPreset | "custom" {
+  const token = aiFilterToken(f);
+  return AI_PRESETS.find((p) => p.value === token)?.value ?? "custom";
+}
+
+/** Chip text: the preset's name, or the hidden areas ("No AI in graphics, code (small use ok)"). */
+export function aiFilterLabel(f: AiFilter): string {
+  const preset = aiPresetOf(f);
+  if (preset !== "custom") return AI_PRESETS.find((p) => p.value === preset)!.label;
+  const n = normalizeAiFilter(f);
+  const content = n.hide.filter((k) => k !== "code");
+  const code = n.hide.includes("code") ? (n.smallCode ? "code (small use ok)" : "code") : null;
+  // All content hidden and code too would be "No direct AI usage", so code here allows small use.
+  if (content.length === CONTENT_AREAS.length) return "No AI content, small code use ok";
+  const names = content.map((k) => AI_AREAS.find((a) => a.key === k)!.short);
+  return `No AI in ${[...names, ...(code ? [code] : [])].join(", ")}`;
+}
+
+export function matchesAiFilter(levels: AiLevels | null, f: AiFilter) {
+  if (!levels) return true;
+  return f.hide.every((k) => levels[k] === "none" || (k === "code" && f.smallCode && levels.code === "little"));
 }
 
 /** Validates untrusted input (server actions) against each area's allowed levels. */

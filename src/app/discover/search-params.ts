@@ -1,7 +1,7 @@
 import { baseRoms } from "@/data/baseRoms";
 import { Constants } from "@/types/db";
 import type { DiscoverSortOption } from "@/types/discover";
-import { AI_FILTERS, type AiFilter } from "@/utils/aiDisclosure";
+import { aiFilterToken, NO_AI_FILTER, parseAiFilter, type AiFilter } from "@/utils/aiDisclosure";
 
 export interface DiscoverUrlState {
   query: string;
@@ -25,7 +25,7 @@ export const DISCOVER_DEFAULT_STATE: DiscoverUrlState = {
   baseRoms: [],
   completionStatuses: [],
   onlyReady: false,
-  ai: "any",
+  ai: NO_AI_FILTER,
 };
 
 export const DISCOVER_COMPLETION_STATUSES = Constants.public.Enums["Completion Status"];
@@ -43,7 +43,7 @@ export function discoverUrlStatesEqual(a: DiscoverUrlState, b: DiscoverUrlState)
     a.sort === b.sort &&
     a.page === b.page &&
     a.onlyReady === b.onlyReady &&
-    a.ai === b.ai &&
+    aiFilterToken(a.ai) === aiFilterToken(b.ai) &&
     arraysEqual(a.tags, b.tags) &&
     arraysEqual(a.baseRoms, b.baseRoms) &&
     arraysEqual(a.completionStatuses, b.completionStatuses)
@@ -98,10 +98,6 @@ function parseReady(value: string | undefined): boolean {
   return ["1", "true", "yes"].includes(value.toLowerCase());
 }
 
-function parseAiFilter(value: string | undefined): AiFilter {
-  return AI_FILTERS.find((f) => f.value === value)?.value ?? DISCOVER_DEFAULT_STATE.ai;
-}
-
 export function parseDiscoverSearchParams(params: SearchParamsLike): DiscoverUrlState {
   const onlyReady = parseReady(getFirstValue(params, ["r", "ready"]));
   const baseRomValues = getListValues(params, ["b", "baseRom", "baseRoms"]).filter((id) => VALID_BASE_ROM_IDS.has(id));
@@ -128,7 +124,7 @@ export function buildDiscoverSearchParams(state: DiscoverUrlState): URLSearchPar
   state.baseRoms.forEach((baseRom) => params.append("b", baseRom));
   state.completionStatuses.forEach((status) => params.append("c", status));
   if (state.onlyReady) params.set("r", "1");
-  if (state.ai !== DISCOVER_DEFAULT_STATE.ai) params.set("ai", state.ai);
+  if (state.ai.hide.length > 0) params.set("ai", aiFilterToken(state.ai));
 
   return params;
 }

@@ -5,7 +5,7 @@ import { fetchInChunks } from "@/utils/array";
 import type { Tables } from "@/types/db";
 import type { DiscoverData } from "@/types/discover";
 import { resolveHackDisplayVersion } from "@/utils/patches/hack-display-version";
-import { AI_SELECT, aiDisclosureFromRow, aiKind } from "@/utils/aiDisclosure";
+import { AI_SELECT, aiDisclosureFromRow } from "@/utils/aiDisclosure";
 
 const TRENDING_WINDOW_DAYS = 3;
 const DISCOVER_REVALIDATE_SECONDS = 1800;
@@ -243,7 +243,7 @@ async function generateDiscoverData(): Promise<DiscoverData> {
       approvedAt: row.approved_at,
       publishedAt: currentPatch?.published_at ?? null,
       trendingScore: recentDownloads + 8 * Math.log(downloads + 1),
-      ai: aiKindOf(row),
+      ai: aiDisclosureFromRow(row)?.levels ?? null,
     };
   });
 
@@ -255,14 +255,10 @@ async function generateDiscoverData(): Promise<DiscoverData> {
   };
 }
 
-function aiKindOf(row: Parameters<typeof aiDisclosureFromRow>[0]) {
-  const disclosure = aiDisclosureFromRow(row);
-  return disclosure ? aiKind(disclosure.levels) : null;
-}
-
 const getCachedDiscoverData = cache(
   generateDiscoverData,
-  ["discover-data"],
+  // Bump the version when DiscoverHack's shape changes, so a deploy never reads the old shape.
+  ["discover-data", "v2"],
   {
     revalidate: DISCOVER_REVALIDATE_SECONDS,
     tags: ["discover"],
