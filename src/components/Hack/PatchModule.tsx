@@ -210,7 +210,9 @@ export default function PatchModule({
     }
   })();
 
-  function ActionButton({ compact = false }: { compact?: boolean }) {
+  // Called as a function, not rendered as <ActionButton />: a component declared in render
+  // remounts every status tick, which drops keyboard focus and restarts the sweep.
+  function actionButton(compact = false) {
     const shape = compact ? "h-10 w-full px-4 text-sm md:w-auto" : "h-12 w-full px-5 text-[15px]";
     const paint =
       kind === "done" && !patchAgainReady
@@ -218,7 +220,7 @@ export default function PatchModule({
         : busy
           ? "bg-accent-hover text-white"
           : "bg-accent-deep text-white hover:enabled:bg-accent-hover";
-    const cls = `relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-control font-semibold transition-[background-color,transform] duration-[120ms] active:enabled:scale-[.98] disabled:cursor-default ${shape} ${paint}`;
+    const cls = `relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-control font-semibold transition-[background-color,transform] duration-[120ms] active:enabled:not-aria-disabled:scale-[.98] disabled:cursor-default aria-disabled:cursor-default ${shape} ${paint}`;
 
     if (kind === "needs-rom") {
       return (
@@ -252,13 +254,15 @@ export default function PatchModule({
         </span>
       );
     }
-    const disabled = !mounted || kind === "loading" || busy || !patchAgainReady;
+    // Busy and just-patched only read as disabled: a real `disabled` would blur the focused button mid-patch.
+    const blocked = busy || !patchAgainReady;
     return (
       <span className={`relative inline-flex w-full ${compact ? "md:w-auto" : ""}`}>
         <button
           type="button"
-          onClick={onPatch}
-          disabled={disabled}
+          onClick={blocked ? undefined : onPatch}
+          disabled={!mounted || kind === "loading"}
+          aria-disabled={blocked || undefined}
           aria-live="polite"
           data-onboarding-spotlight={compact ? undefined : spotlightAttr("agree")}
           className={`${cls}${kind === "loading" ? " opacity-70" : ""}${compact ? "" : spotlight("agree")}`}
@@ -384,7 +388,7 @@ export default function PatchModule({
         </div>
 
         <div ref={actionRef}>
-          <ActionButton />
+          {actionButton()}
         </div>
         {gate && <HackOnboardingGate variant="row" label={gate.label} onClick={gate.open} beacon={gate.beacon && !onboardingGateHidden} inactive={onboardingGateHidden} />}
 
@@ -425,7 +429,7 @@ export default function PatchModule({
                     {picker("compact")}
                   </div>
                 )}
-                <ActionButton compact />
+                {actionButton(true)}
               </div>
             </div>
           </div>,
