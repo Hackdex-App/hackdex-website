@@ -202,6 +202,18 @@ test("uncertain delivery stops the run and blocks blind resends", async (t) => {
 test("concurrent sending cannot bypass the campaign lock", async (t) => {
   const directory = await temporaryDirectory(t);
   await writeFile(path.join(directory, "send.lock"), "another process owns this");
-  await assert.rejects(sendAnnouncement({ announcement, message, recipients, directory, mailer: new Resend("re_test_key").emails }), /EEXIST/);
+  await assert.rejects(sendAnnouncement({ announcement, message, recipients, directory, mailer: new Resend("re_test_key").emails }), /another send is running/);
   assert.equal(await readFile(path.join(directory, "send.lock"), "utf8"), "another process owns this");
+  // A live owner's PID blocks too.
+  await writeFile(path.join(directory, "send.lock"), String(process.pid));
+  await assert.rejects(sendAnnouncement({ announcement, message, recipients, directory, mailer: new Resend("re_test_key").emails }), /another send is running/);
+});
+
+test("a lock left by a killed run is cleared", async (t) => {
+  const directory = await temporaryDirectory(t);
+  // Above Linux's PID ceiling, so no process has it.
+  await writeFile(path.join(directory, "send.lock"), "99999999");
+  t.mock.method(globalThis, "fetch", async () => Response.json({ id: "accepted-email" }));
+  assert.deepEqual(await sendAnnouncement({ announcement, message, recipients, directory, mailer: new Resend("re_test_key").emails, delayMs: 0 }), { accepted: 1, skipped: 0 });
+  assert.ok(!(await readdir(directory)).includes("send.lock"));
 });
