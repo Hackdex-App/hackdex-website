@@ -239,21 +239,24 @@ export function FilterFields({ value, onChange, tagGroups, counts, readyCount, o
           onToggle={() => onToggleOpen(AI_AREAS_DISCLOSURE)}
           tall={tall}
         >
-          <p className="mb-0.5 text-xs font-semibold text-text-3">Hide hacks with AI in</p>
-          {AI_AREAS.map((a) => (
-            <React.Fragment key={a.key}>
-              <Check className={rowH} label={a.name} checked={value.ai.hide.includes(a.key)} onChange={() => toggleAiArea(a.key)} />
-              {a.key === "code" && value.ai.hide.includes("code") && (
-                <Check
-                  className={`${rowH} ml-7 animate-[fadeIn_180ms_ease-out]`}
-                  label="Allow small usage"
-                  hint="A bug fix or a few"
-                  checked={value.ai.smallCode}
-                  onChange={() => setAi({ ...value.ai, smallCode: !value.ai.smallCode })}
-                />
-              )}
-            </React.Fragment>
-          ))}
+          {/* Indented to line up with the "Choose areas" label, past its chevron. */}
+          <div className="pl-[22px]">
+            <p className="mb-0.5 text-xs font-semibold text-text-3">Hide hacks with AI in</p>
+            {AI_AREAS.map((a) => (
+              <React.Fragment key={a.key}>
+                <Check className={rowH} label={a.name} checked={value.ai.hide.includes(a.key)} onChange={() => toggleAiArea(a.key)} />
+                {a.key === "code" && value.ai.hide.includes("code") && (
+                  <Check
+                    className={`${rowH} ml-7 animate-[fadeIn_180ms_ease-out]`}
+                    label="Allow small usage"
+                    hint="A bug fix or a few"
+                    checked={value.ai.smallCode}
+                    onChange={() => setAi({ ...value.ai, smallCode: !value.ai.smallCode })}
+                  />
+                )}
+              </React.Fragment>
+            ))}
+          </div>
         </Disclosure>
       </Group>
 
