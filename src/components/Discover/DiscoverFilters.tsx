@@ -386,7 +386,7 @@ export function FilterSheet({ active, total, onClose, onCommit, onClear, childre
   }, [mounted]);
 
   if (!mounted) return null;
-  const show = total === 1 ? "Show 1 hack" : `Show ${total.toLocaleString()} hacks`;
+  const show = total === 1 ? "Show 1 hack" : `Show ${total.toLocaleString("en-US")} hacks`;
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex flex-col justify-end overflow-hidden md:hidden" role="presentation">

@@ -263,8 +263,11 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
     const onSheetEntry = Boolean((history.state as { discoverFilters?: boolean } | null)?.discoverFilters);
     if (commit) {
       // Take over the sheet's history entry; pushing on top of it left a duplicate for Back to land on.
+      const before = location.search;
       applyFilters(draft, onSheetEntry ? "replace" : "push");
-      finishClose();
+      // No change leaves the URL alone, so drop the sheet's entry instead (popstate closes the sheet).
+      if (onSheetEntry && location.search === before) history.back();
+      else finishClose();
       return;
     }
     if (onSheetEntry) {
@@ -351,7 +354,7 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
                 setCurrentPage(1);
                 scheduleSearchUrlSync({ ...currentUrlState, query: nextQuery, page: 1 });
               }}
-              placeholder={`Search ${catalog.length.toLocaleString()} hacks`}
+              placeholder={`Search ${catalog.length.toLocaleString("en-US")} hacks`}
               aria-label="Search hacks"
               className="h-11 w-full rounded-[10px] border border-line-strong bg-surface pl-11 pr-3.5 text-base text-text outline-none transition-[border-color,box-shadow] duration-[120ms] placeholder:text-text-3 focus:border-accent focus:shadow-[0_0_0_3px_var(--rose-soft)] md:h-12"
             />
@@ -436,7 +439,7 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
               onClick={copyDiscoverLink}
               aria-label="Copy link to current Discover filters"
               title="Copy link to these filters"
-              className="hidden h-12 w-12 flex-none items-center justify-center rounded-control border border-line-strong bg-surface text-text-2 transition-colors hover:border-text-3 hover:text-text md:inline-flex"
+              className="inline-flex h-10 w-10 flex-none items-center justify-center rounded-control border border-line-strong bg-surface text-text-2 transition-colors hover:border-text-3 hover:text-text md:h-12 md:w-12"
             >
               <FiLink className="h-[18px] w-[18px]" />
             </button>
@@ -489,7 +492,7 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
             <>
               <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
                 <p className="text-[13px] text-text-2" aria-live="polite">
-                  {startIndex + 1}–{endIndex} of {filtered.length.toLocaleString()}
+                  {startIndex + 1}–{endIndex} of {filtered.length.toLocaleString("en-US")}
                 </p>
                 {pager && <Pagination current={currentPage} last={totalPages} onPage={changePage} compact />}
               </div>

@@ -100,7 +100,7 @@ export default async function Home() {
           prefetch={false}
           className="inline-flex h-12 w-full items-center justify-center rounded-control bg-surface-2 px-6 text-[15px] font-semibold text-text transition-colors hover:bg-line md:w-auto"
         >
-          Browse all {catalog.length.toLocaleString()} hacks
+          Browse all {catalog.length.toLocaleString("en-US")} hacks
         </Link>
       </p>
     </div>

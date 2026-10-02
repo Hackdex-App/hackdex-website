@@ -43,7 +43,7 @@ export function HomeHero({ catalog }: HeroProps) {
     return (
       <section className="max-w-[760px] py-5 md:py-10" aria-label="Your ROM">
         <h1 className="font-display text-[30px] leading-[1.08] text-balance md:text-[clamp(32px,3.6vw,44px)]">
-          {readyHacks.length.toLocaleString()} {readyHacks.length === 1 ? "hack is" : "hacks are"} one click away.
+          {readyHacks.length.toLocaleString("en-US")} {readyHacks.length === 1 ? "hack is" : "hacks are"} one click away.
         </h1>
         <p className="mt-3.5 max-w-[58ch] text-[15px] text-text-2 md:text-[17px]">
           Pick a hack and the patched file is yours in seconds. <b className="font-semibold text-text">{roms}</b> {one ? "stays" : "stay"} linked on this
@@ -69,7 +69,7 @@ export function HomeHero({ catalog }: HeroProps) {
       </p>
       <div className="mt-5 flex flex-wrap items-center gap-3 md:mt-6 md:gap-5">
         <Link href="/discover" prefetch={false} className="inline-flex h-12 w-full items-center justify-center rounded-control bg-accent-deep px-6 text-[15px] font-semibold text-white transition-colors hover:bg-accent-hover active:scale-[.98] md:w-auto">
-          Browse {catalog.length.toLocaleString()} hacks
+          Browse {catalog.length.toLocaleString("en-US")} hacks
         </Link>
         <a href="#how" className="text-link-hd">
           How it works
