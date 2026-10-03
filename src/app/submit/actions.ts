@@ -243,7 +243,9 @@ export async function confirmPatchUpload(args: {
     console.error(`[confirmPatchUpload] Notification failed for ${args.slug}:`, error);
   }
 
-  const redirectTo = args.publishAutomatically ? `/hack/${args.slug}` : `/hack/${args.slug}/versions`;
+  // Back to the hack (a draft's checklist) when the patch went live, including a first upload whatever the box said;
+  // an unpublished one goes to Manage Versions, where it can be published.
+  const redirectTo = shouldPublishAutomatically ? `/hack/${args.slug}` : `/hack/${args.slug}/versions`;
   return { ok: true, patchId: patch.id, redirectTo } as const;
 }
 
