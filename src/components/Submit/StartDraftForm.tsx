@@ -182,7 +182,7 @@ export default function StartDraftForm({ disabled = false, canSubmitForOthers = 
               <p className={hint}>Hackdex only lists hacks the creator has agreed to. Name them and say where they gave permission.</p>
               <label className="flex flex-col gap-1.5">
                 <span className={label}>Creator&rsquo;s name</span>
-                <input name="original_author" value={originalAuthor} onChange={(e) => setOriginalAuthor(e.target.value)} placeholder="Skeli" autoComplete="off" className={field} />
+                <input name="original_author" value={originalAuthor} onChange={(e) => setOriginalAuthor(e.target.value)} placeholder="Their name or handle" autoComplete="off" className={field} />
               </label>
               <label className="flex flex-col gap-1.5">
                 <span className={label}>Where they gave permission</span>
