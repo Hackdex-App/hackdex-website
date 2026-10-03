@@ -298,7 +298,7 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
         </div>
         {/* Admins editing someone else's hack keep the menu so Approve stays in reach. */}
         {(!editing || editor.notOwner) && (
-          <div className="flex flex-none items-center gap-2 md:pt-2">
+          <div className="flex flex-none items-center justify-end gap-2 md:pt-2">
           <HackShareButton title={hack.title} url={pageUrl} author={hack.original_author || profile?.username || null} />
           <HackOptionsMenu slug={hack.slug} canEdit={canEdit} canUploadPatch={canUploadPatch} editHref={isArchive ? `/hack/${hack.slug}/edit` : `/hack/${hack.slug}?edit=1`}>
             {isAdmin && !hack.approved && !isDraft && (
