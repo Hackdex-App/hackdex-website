@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { FiChevronLeft, FiChevronRight, FiGrid, FiLink, FiList, FiSearch, FiSliders, FiX } from "react-icons/fi";
 import { MdWhatshot, MdTrendingUp, MdNewReleases, MdUpdate, MdSortByAlpha } from "react-icons/md";
 import HackCard, { HackRow } from "@/components/HackCard";
+import AiOffIcon from "@/components/Icons/AiOffIcon";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
 import {
   buildDiscoverSearchParams,
@@ -20,6 +21,8 @@ import { readSavedAiFilter, saveAiFilter } from "./savedAiFilter";
 import DiscoverLastUpdated from "./DiscoverLastUpdated";
 import {
   countActive,
+  countClearable,
+  flashAiGroup,
   FilterFields,
   FilterSheet,
   ROM_GAMES,
@@ -205,6 +208,7 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
   // ---- filters (rail applies live; the phone sheet edits a draft) ----
   const filterState: FilterState = { tags: selectedTags, baseRoms: selectedBaseRoms, completionStatuses: selectedCompletionStatuses, onlyReady, ai };
   const active = countActive(filterState);
+  const clearable = countClearable(filterState);
   const counts = useFacetCounts(catalog);
   const readyCount = React.useMemo(
     () => catalog.filter((h) => !h.is_archive && h.baseRomId && readyBaseRomIds.has(h.baseRomId)).length,
@@ -226,7 +230,8 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
     },
     [syncUrlWith]
   );
-  const clearFilters = () => applyFilters(EMPTY_FILTERS);
+  // The saved AI filter isn't part of this search, so Clear leaves it.
+  const clearFilters = () => applyFilters({ ...EMPTY_FILTERS, ai });
 
   const [open, setOpen] = React.useState<Set<string>>(() => new Set(["rom:GBA"]));
   // The saved AI pick loads before paint (results show a skeleton until then), so nothing flashes unfiltered.
@@ -253,8 +258,10 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
     [catalog, draft, groups, query, readyBaseRomIds, sheet]
   );
 
-  const openSheet = () => {
+  const openSheet = (focusAi = false) => {
     setDraft(filterState);
+    // After the slide-in (240ms), so the scroll lands in the settled sheet.
+    if (focusAi) setTimeout(() => flashAiGroup(document.getElementById("discover-filter-sheet")), 280);
     setOpen((s) => {
       const next = new Set(s);
       for (const g of ROM_GAMES) {
@@ -316,7 +323,6 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
     chips.push({ key: `b-${id}`, label: baseGameLabel(name), onRemove: () => applyFilters({ ...filterState, baseRoms: selectedBaseRoms.filter((v) => v !== id) }) });
   }
   for (const c of selectedCompletionStatuses) chips.push({ key: `c-${c}`, label: c, onRemove: () => applyFilters({ ...filterState, completionStatuses: selectedCompletionStatuses.filter((v) => v !== c) }) });
-  if (ai.hide.length > 0) chips.push({ key: "ai", label: aiFilterLabel(ai), onRemove: () => applyFilters({ ...filterState, ai: NO_AI_FILTER }) });
   for (const t of selectedTags) chips.push({ key: `t-${t}`, label: t, onRemove: () => applyFilters({ ...filterState, tags: selectedTags.filter((v) => v !== t) }) });
 
   const fields = (mode: "rail" | "sheet") => (
@@ -332,12 +338,21 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
     />
   );
 
-  const hasFilters = active > 0;
+  const hasFilters = clearable > 0;
+  const railRef = React.useRef<HTMLElement>(null);
+  // The AI note under the results: phones open the sheet at "AI use", desktop points at it in the rail.
+  const showAiFilter = () => (window.matchMedia("(min-width: 768px)").matches ? flashAiGroup(railRef.current) : openSheet(true));
+  const aiNote = ai.hide.length > 0 && (
+    <button type="button" onClick={showAiFilter} className="text-link-hd inline-flex items-center gap-1 font-normal">
+      <AiOffIcon className="h-3.5 w-3.5" />
+      {aiFilterLabel(ai)}
+    </button>
+  );
   const pager = totalPages > 1;
 
   return (
     <div className="grid gap-8 md:grid-cols-[240px_minmax(0,1fr)]">
-      <aside className="hidden min-w-0 md:block" aria-label="Filters">
+      <aside ref={railRef} className="hidden min-w-0 md:block" aria-label="Filters">
         <div className="sticky top-[84px]">
           {/* Viewport height minus the sticky offset. Before the rail sticks, its bottom sits a little below the fold. */}
           <div className="max-h-[calc(100dvh-84px)] overflow-y-auto overscroll-contain pb-4 pr-3 pt-1 [scrollbar-gutter:stable] [scrollbar-width:thin]">
@@ -345,7 +360,7 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
               <h2 className="text-[15px] font-semibold">Filters</h2>
               {hasFilters && (
                 <button type="button" className="text-link-hd text-[13px]" onClick={clearFilters}>
-                  Clear {active}
+                  Clear {clearable}
                 </button>
               )}
             </div>
@@ -380,12 +395,12 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
               type="button"
               aria-expanded={sheet}
               aria-controls="discover-filter-sheet"
-              onClick={openSheet}
+              onClick={() => openSheet()}
               className={`inline-flex h-11 items-center justify-center gap-2 rounded-control border bg-surface px-4 font-semibold transition-colors ${sheet ? "border-accent" : "border-line-strong hover:border-text-3"}`}
             >
               <FiSliders className="h-[18px] w-[18px]" />
               Filters
-              {hasFilters && <small className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-deep px-1.5 text-xs font-semibold text-white">{active}</small>}
+              {active > 0 && <small className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-deep px-1.5 text-xs font-semibold text-white">{active}</small>}
             </button>
             {chips.length > 0 && (
               <div className="-mx-6 flex items-center gap-2 overflow-x-auto px-6 [scrollbar-width:none]" aria-label="Applied filters">
@@ -471,7 +486,7 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
               <p className="text-lg font-medium text-text">No hacks found</p>
               <p className="mt-1 text-sm">
                 {query ? <>No results for &quot;{query}&quot;</> : <>No results</>}
-                {hasFilters && <> with the selected filters</>}.
+                {active > 0 && <> with the selected filters</>}.
               </p>
               <div className="mt-4 flex flex-wrap items-center justify-center gap-4">
                 {query && (
@@ -492,6 +507,12 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
                     Clear filters
                   </button>
                 )}
+                {/* Clear keeps the saved AI filter, so offer it here when it may be what's hiding everything. */}
+                {ai.hide.length > 0 && (
+                  <button type="button" className="text-link-hd text-sm" onClick={showAiFilter}>
+                    Change AI filter
+                  </button>
+                )}
               </div>
               <p className="mt-6 text-sm text-text-3">
                 Can&apos;t find the hack you want? Try asking the dev to{" "}
@@ -504,8 +525,16 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
           ) : (
             <>
               <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
-                <p className="text-[13px] text-text-2" aria-live="polite">
-                  {startIndex + 1}–{endIndex} of {filtered.length.toLocaleString("en-US")}
+                <p className="flex flex-wrap items-center gap-x-1.5 text-[13px] text-text-2">
+                  <span aria-live="polite">
+                    {startIndex + 1}–{endIndex} of {filtered.length.toLocaleString("en-US")}
+                  </span>
+                  {aiNote && (
+                    <>
+                      <span aria-hidden>·</span>
+                      {aiNote}
+                    </>
+                  )}
                 </p>
                 {pager && <Pagination current={currentPage} last={totalPages} onPage={changePage} compact />}
               </div>
@@ -534,7 +563,7 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
       </div>
 
       {sheet && (
-        <FilterSheet active={countActive(draft)} total={draftTotal} onClose={() => closeSheet(false)} onCommit={() => closeSheet(true)} onClear={() => setDraft(EMPTY_FILTERS)}>
+        <FilterSheet active={countClearable(draft)} total={draftTotal} onClose={() => closeSheet(false)} onCommit={() => closeSheet(true)} onClear={() => setDraft({ ...EMPTY_FILTERS, ai: draft.ai })}>
           {fields("sheet")}
         </FilterSheet>
       )}

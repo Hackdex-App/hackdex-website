@@ -54,8 +54,14 @@ export const ROM_GAMES: RomGame[] = (() => {
   return [...byKey.values()];
 })();
 
+/** This search's filters, which Clear resets. The AI filter is a saved preference, so it isn't one. */
+export function countClearable(f: FilterState) {
+  return f.tags.length + f.baseRoms.length + f.completionStatuses.length + (f.onlyReady ? 1 : 0);
+}
+
+/** Everything narrowing the results, for the phone's Filters badge. */
 export function countActive(f: FilterState) {
-  return f.tags.length + f.baseRoms.length + f.completionStatuses.length + (f.onlyReady ? 1 : 0) + (f.ai.hide.length > 0 ? 1 : 0);
+  return countClearable(f) + (f.ai.hide.length > 0 ? 1 : 0);
 }
 
 export function toggleValue<T>(list: readonly T[], value: T) {
@@ -212,7 +218,7 @@ export function FilterFields({ value, onChange, tagGroups, counts, readyCount, o
         ))}
       </Group>
 
-      <Group title="AI use" note="These settings are saved across sessions.">
+      <Group title="AI use" note="These settings are saved across sessions." flashTarget>
         <div role="radiogroup" aria-label="AI use">
           {AI_PRESETS.map((p) => (
             <Radio
@@ -294,14 +300,25 @@ export function FilterFields({ value, onChange, tagGroups, counts, readyCount, o
   );
 }
 
-function Group({ title, note, children }: { title: string; note?: string; children: React.ReactNode }) {
+/** `flashTarget` marks the group flashAiGroup scrolls to. */
+function Group({ title, note, flashTarget, children }: { title: string; note?: string; flashTarget?: boolean; children: React.ReactNode }) {
   return (
-    <section className="border-t border-line py-4 first-of-type:border-t-0">
+    <section data-flash-target={flashTarget || undefined} className="border-t border-line py-4 first-of-type:border-t-0">
       <h3 className={`${note ? "" : "mb-2 "}text-[13px] font-semibold text-text-3`}>{title}</h3>
       {note && <p className="mb-2 mt-0.5 text-xs text-text-3">{note}</p>}
       {children}
     </section>
   );
+}
+
+/** Scrolls the AI use group into view inside `root` (the rail or the sheet) and flashes it. */
+export function flashAiGroup(root: ParentNode | null) {
+  const group = root?.querySelector<HTMLElement>("[data-flash-target]");
+  if (!group) return;
+  group.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  group.classList.remove("anim-row-flash");
+  void group.offsetWidth; // restart the animation on a repeat tap
+  group.classList.add("anim-row-flash");
 }
 
 function Find({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {

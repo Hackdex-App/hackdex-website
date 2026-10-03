@@ -129,17 +129,10 @@ export function aiPresetOf(f: AiFilter): AiPreset | "custom" {
   return AI_PRESETS.find((p) => p.value === token)?.value ?? "custom";
 }
 
-/** Chip text: the preset's name, or the hidden areas ("No AI in graphics, code (small use ok)"). */
+/** Discover's note on what the AI filter hides: the preset's name, or a general one for a custom pick. */
 export function aiFilterLabel(f: AiFilter): string {
   const preset = aiPresetOf(f);
-  if (preset !== "custom") return AI_PRESETS.find((p) => p.value === preset)!.label;
-  const n = normalizeAiFilter(f);
-  const content = n.hide.filter((k) => k !== "code");
-  const code = n.hide.includes("code") ? (n.smallCode ? "code (small use ok)" : "code") : null;
-  // All content hidden and code too would be "No direct AI usage", so code here allows small use.
-  if (content.length === CONTENT_AREAS.length) return "No AI content, small code use ok";
-  const names = content.map((k) => AI_AREAS.find((a) => a.key === k)!.short);
-  return `No AI in ${[...names, ...(code ? [code] : [])].join(", ")}`;
+  return preset === "custom" ? "Some AI usage hidden" : AI_PRESETS.find((p) => p.value === preset)!.label;
 }
 
 export function matchesAiFilter(levels: AiLevels | null, f: AiFilter) {
