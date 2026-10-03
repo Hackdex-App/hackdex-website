@@ -43,6 +43,11 @@ Yes, with disclosure. Creators must disclose AI use in both content and code thr
 
 We believe a blanket ban can encourage creators to hide AI use. Requiring disclosure gives creators room to be honest and helps players make an informed choice. Disclosed content must still follow our credits and content rules. See [what creators need to disclose](#ai-disclosure) for details.
 
+### Was this website made with AI? {#site-ai-use}
+Partly. A large portion of Hackdex's code was written with AI assistance, and every change is reviewed and tested by a person before it goes live. This covers the website itself, not the hacks listed on it. Each hack's AI use is disclosed by its creator on the hack's page.
+
+Hackdex is [open source](https://github.com/Hackdex-App/hackdex-website), so you can read the code and its full history on GitHub.
+
 ### How do I report a hack or page that breaks the rules?
 There is a Report option on each hack page. Or you can use the [contact form](/contact). Include the hack's page URL and enough detail for us to locate the issue. For content inside a hack, include the version and where it appears in the game. See our [content guidelines](#content-guidelines) for a summary of what is prohibited.
 
