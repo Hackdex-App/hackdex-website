@@ -84,7 +84,11 @@ export function HomeHero({ catalog }: HeroProps) {
 export function ReadyShelf({ catalog }: { catalog: HackCardAttributes[] }) {
   const readyIds = useReadyBaseRomIds();
   if (readyIds.size === 0) return null;
-  const ready = catalog.filter((h) => h.baseRomId && readyIds.has(h.baseRomId)).slice(0, 12);
+  // Most downloaded first; the catalog itself comes back in no particular order.
+  const ready = catalog
+    .filter((h) => h.baseRomId && readyIds.has(h.baseRomId))
+    .sort((a, b) => b.downloads - a.downloads)
+    .slice(0, 12);
   const names = [...readyIds].map((id) => baseRoms.find((r) => r.id === id)?.name).filter((n): n is string => Boolean(n));
   const title = names.length === 1 ? `Ready for your ${baseGameLabel(names[0])}` : "Ready to patch";
   return <Shelf title={title} blurb="Made for the ROM you linked. Patch any of them now." href="/discover?r=1" hacks={ready} />;
