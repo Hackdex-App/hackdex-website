@@ -5,6 +5,7 @@ import Link from "next/link";
 import { FaChevronLeft } from "react-icons/fa6";
 import { isInformationalArchiveHack, isDownloadableArchiveHack, canEditAsCreator, canEditAsAdmin, canEditAsArchiver } from "@/utils/hack";
 import { getPatcherSelectablePatches } from "@/utils/patches/patcher-selectable-patches";
+import { AI_SELECT, aiDisclosureFromRow } from "@/utils/aiDisclosure";
 
 interface EditPatchPageProps {
   params: Promise<{ slug: string }>;
@@ -20,7 +21,7 @@ export default async function EditPatchPage({ params }: EditPatchPageProps) {
 
   const { data: hack } = await supabase
     .from("hacks")
-    .select("slug,base_rom,created_by,title,current_patch,original_author,permission_from,is_archive,custom_version_name")
+    .select(`slug,base_rom,created_by,title,current_patch,original_author,permission_from,is_archive,custom_version_name,${AI_SELECT}`)
     .eq("slug", slug)
     .maybeSingle();
   if (!hack) return notFound();
@@ -64,9 +65,9 @@ export default async function EditPatchPage({ params }: EditPatchPageProps) {
 
   return (
     <div className="mx-auto max-w-screen-lg px-6 py-10">
-      <h1 className="flex flex-col text-4xl tracking-tight max-w-[480px]">
-        <span className="text-foreground/70 mr-2 text-xl">Upload new version for</span>
-        <span className="gradient-text font-bold">{hack.title}</span>
+      <h1 className="flex max-w-[480px] flex-col gap-1">
+        <span className="text-[15px] font-medium text-text-2">Upload a new version of</span>
+        <span className="font-display text-[32px] leading-[1.1] text-balance">{hack.title}</span>
       </h1>
 
       <div className="mt-8 card p-5 max-w-[480px]">
@@ -77,11 +78,13 @@ export default async function EditPatchPage({ params }: EditPatchPageProps) {
           isCustomPatcherActive={isCustomPatcherActive}
           customVersionName={isCustomPatcherActive ? hack.custom_version_name : undefined}
           currentVersion={currentVersion}
+          ai={aiDisclosureFromRow(hack)}
+          isArchive={hack.is_archive}
         />
       </div>
 
       <div className="mt-8 flex items-center justify-center">
-        <Link href={`/hack/${slug}`} className="items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm font-medium hover:bg-black/5 dark:hover:bg-white/10">
+        <Link href={`/hack/${slug}`} className="items-center justify-center rounded-control border border-line bg-surface-2 px-3 py-2 text-sm font-medium hover:bg-surface-2">
           <FaChevronLeft size={16} className="inline-block mr-1" />
           Back to hack
         </Link>

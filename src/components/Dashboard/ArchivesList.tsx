@@ -94,7 +94,7 @@ export default function ArchivesList({ initialData, isAdmin = false }: { initial
 
   if (!data.ok) {
     return (
-      <div className="rounded-md border border-red-600/30 bg-red-500/10 p-4 text-sm text-red-600 dark:text-red-400">
+      <div className="rounded-control border border-error/40 bg-error-soft p-4 text-sm text-error">
         {data.error}
       </div>
     );
@@ -107,16 +107,16 @@ export default function ArchivesList({ initialData, isAdmin = false }: { initial
       {/* Search and filters */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="relative flex-1 w-full">
-          <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/50" />
+          <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-3" />
           <input
             type="text"
             value={search}
             onChange={handleSearchChange}
             placeholder="Search by title, author, or base ROM..."
-            className="w-full rounded-md bg-[var(--surface-2)] px-10 py-3 md:py-2 text-lg md:text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+            className="w-full rounded-control bg-surface-2 px-10 py-3 md:py-2 text-lg md:text-sm ring-1 ring-inset ring-line focus:outline-none focus:ring-2 focus:ring-accent/40"
           />
           {search !== debouncedSearch && (
-            <FiLoader className="absolute right-3 top-1/2 -translate-y-1/2 h-6 w-6 md:h-4 md:w-4 text-foreground/50 animate-spin" />
+            <FiLoader className="absolute right-3 top-1/2 -translate-y-1/2 h-6 w-6 md:h-4 md:w-4 text-text-3 animate-spin" />
           )}
         </div>
         <div className="flex items-center gap-2 w-full md:w-auto">
@@ -143,7 +143,7 @@ export default function ArchivesList({ initialData, isAdmin = false }: { initial
           <button
             type="button"
             onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-            className="rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-6 md:px-3 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/10"
+            className="rounded-control border border-line bg-surface-2 px-6 md:px-3 py-2 text-sm hover:bg-surface-2"
           >
             <FiArrowDown className={`h-4 w-4 ${sortOrder !== "asc" ? "rotate-180" : ""}`} />
           </button>
@@ -151,20 +151,20 @@ export default function ArchivesList({ initialData, isAdmin = false }: { initial
       </div>
 
       {/* Results count */}
-      <div className="text-sm text-foreground/60">
+      <div className="text-sm text-text-3">
         Showing {archives.length} of {total} archive{total !== 1 ? "s" : ""}
       </div>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-lg border border-[var(--border)]">
+      <div className="overflow-hidden rounded-card border border-line">
         {loading ? (
-          <div className="p-8 text-center text-sm text-foreground/60">Loading...</div>
+          <div className="p-8 text-center text-sm text-text-3">Loading...</div>
         ) : archives.length === 0 ? (
-          <div className="p-8 text-center text-sm text-foreground/60">No archives found</div>
+          <div className="p-8 text-center text-sm text-text-3">No archives found</div>
         ) : (
           <>
             {/* Desktop header */}
-            <div className="hidden lg:grid grid-cols-12 gap-4 bg-[var(--surface-2)] px-4 py-2 text-xs text-foreground/60">
+            <div className="hidden lg:grid grid-cols-12 gap-4 bg-surface-2 px-4 py-2 text-xs text-text-3">
               <div className="col-span-1 text-center">Type</div>
               <div className="col-span-3">Title</div>
               <div className="col-span-2">Original Author</div>
@@ -173,7 +173,7 @@ export default function ArchivesList({ initialData, isAdmin = false }: { initial
               <div className="col-span-1 text-xs">Archived by</div>
               <div className="col-span-2 text-right">Actions</div>
             </div>
-            <div className="divide-y divide-[var(--border)]">
+            <div className="divide-y divide-line">
               {archives.map((archive) => {
                 const baseRom = baseRoms.find((r) => r.id === archive.base_rom);
                 const createdDate = new Date(archive.created_at).toLocaleDateString();
@@ -199,25 +199,25 @@ export default function ArchivesList({ initialData, isAdmin = false }: { initial
                           />
                         )}
                       </div>
-                      <Link href={`/hack/${archive.slug}`} target="_blank" className="group flex items-center gap-3 col-span-3 min-w-0 hover:text-foreground">
+                      <Link href={`/hack/${archive.slug}`} target="_blank" className="group flex items-center gap-3 col-span-3 min-w-0 hover:text-text">
                         <div className="flex flex-col items-start min-w-0">
                           <div className="truncate font-medium group-hover:underline">{archive.title}</div>
-                          <div className="mt-0.5 text-xs text-foreground/60 group-hover:text-foreground group-hover:underline">/{archive.slug}</div>
+                          <div className="mt-0.5 text-xs text-text-3 group-hover:text-text group-hover:underline">/{archive.slug}</div>
                         </div>
-                        <FiExternalLink className="h-4 w-4 text-foreground/80 group-hover:text-foreground flex-shrink-0" />
+                        <FiExternalLink className="h-4 w-4 text-text-2 group-hover:text-text flex-shrink-0" />
                       </Link>
-                      <div className="col-span-2 text-foreground/80">{archive.original_author || "—"}</div>
-                      <div className="col-span-2 text-foreground/80">{archive.permission_from || "—"}</div>
-                      <div className="col-span-1 text-foreground/80">{baseRom?.name || archive.base_rom}</div>
-                      <div className="col-span-1 text-foreground/80 text-xs">
+                      <div className="col-span-2 text-text-2">{archive.original_author || "—"}</div>
+                      <div className="col-span-2 text-text-2">{archive.permission_from || "—"}</div>
+                      <div className="col-span-1 text-text-2">{baseRom?.name || archive.base_rom}</div>
+                      <div className="col-span-1 text-text-2 text-xs">
                         <div className="truncate">{creator}</div>
-                        <div className="text-[10px] text-foreground/60">{createdDate}</div>
+                        <div className="text-[10px] text-text-3">{createdDate}</div>
                       </div>
                       <div className="col-span-2 flex items-center justify-end gap-2">
                         {isDownloadable && (
                           <Link
                             href={`/hack/${archive.slug}/stats`}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-black/5 dark:hover:bg-white/10"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-control hover:bg-surface-2"
                             title="View Stats"
                           >
                             <FiBarChart2 className="h-4 w-4" />
@@ -225,7 +225,7 @@ export default function ArchivesList({ initialData, isAdmin = false }: { initial
                         )}
                         <Link
                           href={`/hack/${archive.slug}/edit`}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-black/5 dark:hover:bg-white/10"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-control hover:bg-surface-2"
                           title="Edit"
                         >
                           <FiEdit2 className="h-4 w-4" />
@@ -235,10 +235,10 @@ export default function ArchivesList({ initialData, isAdmin = false }: { initial
                             type="button"
                             onClick={() => handleDelete(archive.slug)}
                             disabled={deletingSlug === archive.slug}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-red-600/10 disabled:opacity-50"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-control hover:bg-error-soft disabled:opacity-50"
                             title="Delete"
                           >
-                            <FiTrash2 className="h-4 w-4 text-red-600 dark:text-red-400" />
+                            <FiTrash2 className="h-4 w-4 text-error" />
                           </button>
                         )}
                       </div>
@@ -262,26 +262,26 @@ export default function ArchivesList({ initialData, isAdmin = false }: { initial
                           )}
                         <Link href={`/hack/${archive.slug}`} target="_blank">
                           <div className="text-lg font-bold group-hover:underline">{archive.title}</div>
-                          <div className="text-xs text-foreground/60 group-hover:underline">/{archive.slug}</div>
+                          <div className="text-xs text-text-3 group-hover:underline">/{archive.slug}</div>
                         </Link>
                         </div>
-                        <FiExternalLink className="h-4 w-4 text-foreground/80 group-hover:text-foreground flex-shrink-0" />
+                        <FiExternalLink className="h-4 w-4 text-text-2 group-hover:text-text flex-shrink-0" />
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-foreground/60">
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-text-3">
                         <span className="font-bold">Author: {archive.original_author || "—"}</span>
                         <span>|</span>
                         {archive.permission_from && <span className="font-bold">Permission: {archive.permission_from || "—"}</span>}
                         {archive.permission_from && <span>|</span>}
                         <span className="font-bold">Base: {baseRom?.name || archive.base_rom}</span>
                       </div>
-                      <div className="flex flex-wrap items-center text-xs italic text-foreground/60">
+                      <div className="flex flex-wrap items-center text-xs italic text-text-3">
                         Archived by {creator} on {createdDate}
                       </div>
                       <div className="flex items-center gap-2 mt-2">
                         {isDownloadable && (
                           <Link
                             href={`/hack/${archive.slug}/stats`}
-                            className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2 py-1 text-xs hover:bg-black/5 dark:hover:bg-white/10"
+                            className="inline-flex items-center gap-1 rounded-control border border-line bg-surface-2 px-2 py-1 text-xs hover:bg-surface-2"
                           >
                             <FiBarChart2 className="h-3 w-3" />
                             Stats
@@ -289,7 +289,7 @@ export default function ArchivesList({ initialData, isAdmin = false }: { initial
                         )}
                         <Link
                           href={`/hack/${archive.slug}/edit`}
-                          className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2 py-1 text-xs hover:bg-black/5 dark:hover:bg-white/10"
+                          className="inline-flex items-center gap-1 rounded-control border border-line bg-surface-2 px-2 py-1 text-xs hover:bg-surface-2"
                         >
                           <FiEdit2 className="h-3 w-3" />
                           Edit
@@ -299,7 +299,7 @@ export default function ArchivesList({ initialData, isAdmin = false }: { initial
                             type="button"
                             onClick={() => handleDelete(archive.slug)}
                             disabled={deletingSlug === archive.slug}
-                            className="inline-flex items-center gap-1 rounded-md border border-red-600/40 bg-red-600/5 dark:border-red-400/40 dark:bg-red-400/5 px-2 py-1 text-xs text-red-600 dark:text-red-400 hover:bg-red-600/10 dark:hover:bg-red-400/10 disabled:opacity-50"
+                            className="inline-flex items-center gap-1 rounded-control border border-error/40 bg-error-soft px-2 py-1 text-xs text-error hover:bg-error-soft disabled:opacity-50"
                           >
                             <FiTrash2 className="h-3 w-3" />
                             Delete
@@ -322,19 +322,19 @@ export default function ArchivesList({ initialData, isAdmin = false }: { initial
             type="button"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1 || loading}
-            className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1 rounded-control border border-line bg-surface-2 px-3 py-2 text-sm hover:bg-surface-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <FiChevronLeft className="h-4 w-4" />
             Previous
           </button>
-          <div className="text-sm text-foreground/60">
+          <div className="text-sm text-text-3">
             Page {page} of {totalPages}
           </div>
           <button
             type="button"
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page === totalPages || loading}
-            className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1 rounded-control border border-line bg-surface-2 px-3 py-2 text-sm hover:bg-surface-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Next
             <FiChevronRight className="h-4 w-4" />

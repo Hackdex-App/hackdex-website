@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 export default function FAQPage() {
   return (
     <div className="mx-auto max-w-screen-lg px-6 py-6 sm:py-12">
-      <h1 className="text-3xl font-bold">FAQ for Hackdex</h1>
+      <h1 className="font-display text-[28px] leading-[1.1] md:text-[32px]">FAQ for Hackdex</h1>
       <div className="mt-6 prose prose-invert max-w-none faq-prose">
         <Markdown>{entriesMd}</Markdown>
       </div>

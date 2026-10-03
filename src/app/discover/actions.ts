@@ -5,6 +5,7 @@ import { fetchInChunks } from "@/utils/array";
 import type { Tables } from "@/types/db";
 import type { DiscoverData } from "@/types/discover";
 import { resolveHackDisplayVersion } from "@/utils/patches/hack-display-version";
+import { AI_SELECT, aiDisclosureFromRow } from "@/utils/aiDisclosure";
 
 const TRENDING_WINDOW_DAYS = 3;
 const DISCOVER_REVALIDATE_SECONDS = 1800;
@@ -44,7 +45,7 @@ async function generateDiscoverData(): Promise<DiscoverData> {
   const { data: rows, error: hacksError } = await supabase
     .from("hacks")
     .select(
-      "slug,title,summary,base_rom,downloads,created_by,current_patch,custom_version_name,original_author,approved_at,is_archive,completion_status",
+      `slug,title,summary,base_rom,downloads,created_by,current_patch,custom_version_name,original_author,approved_at,is_archive,completion_status,${AI_SELECT}`,
     )
     .eq("approved", true)
     .eq("is_archive", false);
@@ -242,6 +243,7 @@ async function generateDiscoverData(): Promise<DiscoverData> {
       approvedAt: row.approved_at,
       publishedAt: currentPatch?.published_at ?? null,
       trendingScore: recentDownloads + 8 * Math.log(downloads + 1),
+      ai: aiDisclosureFromRow(row)?.levels ?? null,
     };
   });
 
@@ -255,7 +257,8 @@ async function generateDiscoverData(): Promise<DiscoverData> {
 
 const getCachedDiscoverData = cache(
   generateDiscoverData,
-  ["discover-data"],
+  // Bump the version when DiscoverHack's shape changes, so a deploy never reads the old shape.
+  ["discover-data", "v2"],
   {
     revalidate: DISCOVER_REVALIDATE_SECONDS,
     tags: ["discover"],

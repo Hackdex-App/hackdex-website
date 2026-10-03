@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import StickyActionBar from "@/components/Hack/StickyActionBar";
+import PatchModule from "@/components/Hack/PatchModule";
 import BaseRomErrorModal, { type BaseRomErrorModalState } from "@/components/Hack/BaseRomErrorModal";
 import HackOnboardingOverlay from "@/components/Hack/Onboarding/HackOnboardingOverlay";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
@@ -624,7 +624,7 @@ const HackActions: React.FC<HackActionsProps> = ({
 
   return (
     <>
-      <StickyActionBar
+      <PatchModule
         title={title}
         version={selectedVersion}
         selectablePatches={patcherSelector.selectablePatches}
@@ -634,6 +634,7 @@ const HackActions: React.FC<HackActionsProps> = ({
         onboardingHighlight={onboarding.cardOpen ? onboarding.currentStep : null}
         onboardingDimBar={onboarding.cardOpen && onboarding.locked && !onboarding.hideForPicker}
         onboardingGateLabel={onboarding.showGate ? onboarding.gateLabel : null}
+        onboardingGateHidden={onboarding.cardOpen}
         onOnboardingGateClick={onboarding.openFromGate}
         author={author}
         filename={selectedFilename}

@@ -1,32 +1,15 @@
 "use client";
 
-import React, { Fragment } from "react";
+import React from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import HackCard from "@/components/HackCard";
-import { baseRoms } from "@/data/baseRoms";
-import { Listbox, ListboxButton, ListboxOption, ListboxOptions, Transition } from "@headlessui/react";
-import { useFloating, offset, flip, shift, size, autoUpdate } from "@floating-ui/react";
-import { IconType } from "react-icons";
-import { FaLink, FaShare } from "react-icons/fa6";
-import {
-  MdTune,
-  MdWhatshot,
-  MdTrendingUp,
-  MdNewReleases,
-  MdUpdate,
-  MdSortByAlpha,
-  MdChevronLeft,
-  MdChevronRight,
-} from "react-icons/md";
-import { TbProgressCheck } from "react-icons/tb";
-import { IoEllipsisHorizontal } from "react-icons/io5";
-import { BsSdCardFill } from "react-icons/bs";
-import { CATEGORY_ICONS } from "@/components/Icons/tagCategories";
+import { FiChevronLeft, FiChevronRight, FiGrid, FiLink, FiList, FiSearch, FiSliders, FiX } from "react-icons/fi";
+import { MdWhatshot, MdTrendingUp, MdNewReleases, MdUpdate, MdSortByAlpha } from "react-icons/md";
+import HackCard, { HackRow } from "@/components/HackCard";
+import AiOffIcon from "@/components/Icons/AiOffIcon";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
 import {
   buildDiscoverSearchParams,
-  DISCOVER_COMPLETION_STATUSES,
   discoverUrlStatesEqual,
   validateDiscoverTags,
   type DiscoverUrlState,
@@ -34,25 +17,35 @@ import {
 import type { DiscoverHack, DiscoverSortOption } from "@/types/discover";
 import Select, { SelectOption } from "@/components/Primitives/Select";
 import { useDiscoverUrlState } from "./useDiscoverUrlState";
+import { readSavedAiFilter, saveAiFilter } from "./savedAiFilter";
 import DiscoverLastUpdated from "./DiscoverLastUpdated";
-
-const SORT_ICON_MAP: Record<DiscoverSortOption, IconType> = {
-  trending: MdWhatshot,
-  popular: MdTrendingUp,
-  new: MdNewReleases,
-  updated: MdUpdate,
-  alpha: MdSortByAlpha,
-};
+import {
+  countActive,
+  countClearable,
+  flashAiGroup,
+  FilterFields,
+  FilterSheet,
+  ROM_GAMES,
+  useFacetCounts,
+  type FilterState,
+  type TagGroup,
+  EMPTY_FILTERS,
+  AI_AREAS_DISCLOSURE,
+} from "./DiscoverFilters";
+import { baseGameLabel, baseRoms } from "@/data/baseRoms";
+import { aiFilterLabel, aiPresetOf, matchesAiFilter, NO_AI_FILTER, type AiFilter } from "@/utils/aiDisclosure";
 
 const SORT_OPTIONS: SelectOption[] = [
   { value: "trending", label: "Trending", icon: MdWhatshot },
-  { value: "popular", label: "Most popular", icon: MdTrendingUp },
+  { value: "popular", label: "Most downloaded", icon: MdTrendingUp },
   { value: "new", label: "Newest", icon: MdNewReleases },
   { value: "updated", label: "Recently updated", icon: MdUpdate },
-  { value: "alpha", label: "Alphabetical", icon: MdSortByAlpha },
+  { value: "alpha", label: "A–Z", icon: MdSortByAlpha },
 ];
 
-const HACKS_PER_PAGE = 9;
+const HACKS_PER_PAGE = 24;
+const VIEW_KEY = "hackdex-discover-view";
+type View = "grid" | "list";
 
 interface DiscoverBrowserProps {
   catalog: DiscoverHack[];
@@ -62,33 +55,61 @@ interface DiscoverBrowserProps {
   ungroupedTags: string[];
 }
 
-export default function DiscoverBrowser({
-  catalog,
-  generatedAt,
-  initialState,
-  tagGroups,
-  ungroupedTags,
-}: DiscoverBrowserProps) {
+/**
+ * One predicate for the results and the phone sheet's "Show N hacks", so they can't disagree.
+ * Tags are OR within a category and AND across them; "Complete" also matches hacks without a status.
+ */
+function hackMatcher(f: FilterState, query: string, groups: TagGroup[], readyBaseRomIds: Set<string>) {
+  const q = query.toLowerCase();
+  const wanted = groups.map((g) => g.tags.filter((t) => f.tags.includes(t))).filter((picked) => picked.length > 0);
+  return (h: DiscoverHack) =>
+    (!q ||
+      h.title.toLowerCase().includes(q) ||
+      h.author.toLowerCase().includes(q) ||
+      !!h.summary?.toLowerCase().includes(q) ||
+      h.tags.some((t) => t.name.toLowerCase().includes(q))) &&
+    wanted.every((picked) => picked.some((t) => h.tags.some((tag) => tag.name === t))) &&
+    (f.baseRoms.length === 0 || (!!h.baseRomId && f.baseRoms.includes(h.baseRomId))) &&
+    (f.completionStatuses.length === 0 || f.completionStatuses.includes(h.completion_status ?? "Complete")) &&
+    (!f.onlyReady || (!h.is_archive && !!h.baseRomId && readyBaseRomIds.has(h.baseRomId))) &&
+    matchesAiFilter(h.ai, f.ai);
+}
+
+export default function DiscoverBrowser({ catalog, generatedAt, initialState, tagGroups, ungroupedTags }: DiscoverBrowserProps) {
   const [query, setQuery] = React.useState(initialState.query);
   const [selectedTags, setSelectedTags] = React.useState<string[]>(() => [...initialState.tags]);
   const [selectedBaseRoms, setSelectedBaseRoms] = React.useState<string[]>(() => [...initialState.baseRoms]);
   const [selectedCompletionStatuses, setSelectedCompletionStatuses] = React.useState<string[]>(() => [...initialState.completionStatuses]);
   const [sort, setSort] = React.useState<DiscoverSortOption>(initialState.sort);
   const [onlyReady, setOnlyReady] = React.useState(initialState.onlyReady);
+  const [ai, setAi] = React.useState<AiFilter>(NO_AI_FILTER);
+  const [aiLoaded, setAiLoaded] = React.useState(false);
   const [currentPage, setCurrentPage] = React.useState(initialState.page);
+  const [view, setView] = React.useState<View>("grid");
   const listRef = React.useRef<HTMLDivElement | null>(null);
+
+  React.useEffect(() => {
+    try {
+      const stored = localStorage.getItem(VIEW_KEY);
+      if (stored === "list" || stored === "grid") setView(stored);
+    } catch {}
+  }, []);
+  const changeView = (next: View) => {
+    setView(next);
+    try {
+      localStorage.setItem(VIEW_KEY, next);
+    } catch {}
+  };
 
   const { cached, statuses, countReady, loading: baseRomsLoading } = useBaseRoms();
   const readyBaseRomIds = React.useMemo(() => {
     const set = new Set<string>();
-    try {
-      Object.entries(cached || {}).forEach(([id, v]) => {
-        if (v) set.add(id);
-      });
-      Object.entries(statuses || {}).forEach(([id, s]) => {
-        if (s === "granted") set.add(id);
-      });
-    } catch {}
+    Object.entries(cached || {}).forEach(([id, v]) => {
+      if (v) set.add(id);
+    });
+    Object.entries(statuses || {}).forEach(([id, s]) => {
+      if (s === "granted") set.add(id);
+    });
     return set;
   }, [cached, statuses]);
 
@@ -115,72 +136,35 @@ export default function DiscoverBrowser({
     setCurrentPage(nextState.page);
   }, []);
 
-  const {
-    initialUrlStateApplied,
-    syncUrl,
-    syncUrlWith,
-    scheduleSearchUrlSync,
-  } = useDiscoverUrlState({
+  const { initialUrlStateApplied, syncUrl, syncUrlWith, scheduleSearchUrlSync } = useDiscoverUrlState({
     currentState: currentUrlState,
     onUrlStateChange: applyUrlState,
   });
 
-  const validTagNames = React.useMemo(
-    () => new Set([...Object.values(tagGroups).flat(), ...ungroupedTags]),
-    [tagGroups, ungroupedTags]
-  );
+  const groups = React.useMemo<TagGroup[]>(() => {
+    const out = Object.keys(tagGroups)
+      .sort((a, b) => a.localeCompare(b))
+      .map((name) => ({ name, tags: tagGroups[name] }));
+    if (ungroupedTags.length > 0) out.push({ name: "Advanced", tags: ungroupedTags });
+    return out;
+  }, [tagGroups, ungroupedTags]);
+
+  const validTagNames = React.useMemo(() => new Set(groups.flatMap((g) => g.tags)), [groups]);
 
   React.useEffect(() => {
     if (!initialUrlStateApplied || selectedTags.length === 0) return;
-
     const nextState = validateDiscoverTags(currentUrlState, validTagNames);
     if (discoverUrlStatesEqual(nextState, currentUrlState)) return;
-
     setSelectedTags([...nextState.tags]);
     setCurrentPage(1);
     syncUrl({ ...nextState, page: 1 }, "replace");
   }, [currentUrlState, initialUrlStateApplied, selectedTags.length, syncUrl, validTagNames]);
 
   const filtered = React.useMemo(() => {
-    let out = catalog;
-    const q = query.toLowerCase();
-    if (q) {
-      out = out.filter((h) =>
-        h.title.toLowerCase().includes(q) ||
-        h.author.toLowerCase().includes(q) ||
-        h.summary?.toLowerCase().includes(q) ||
-        h.tags.some((t) => t.name.toLowerCase().includes(q))
-      );
-    }
-    // AND filter across selected tags: hack must include all selectedTags
-    if (selectedTags.length > 0) {
-      out = out.filter((h) => selectedTags.every((t) => h.tags.some((tag) => tag.name === t)));
-    }
-    // OR filter across base roms: hack's baseRomId must be in selectedBaseRoms
-    if (selectedBaseRoms.length > 0) {
-      out = out.filter((h) => h.baseRomId && selectedBaseRoms.includes(h.baseRomId));
-    }
-    // OR filter across completion statuses: hack's completion_status must be in selectedCompletionStatuses
-    // If "Complete" is selected, also include hacks with null completion_status
-    if (selectedCompletionStatuses.length > 0) {
-      out = out.filter((h) => {
-        if (!h.completion_status) {
-          // Include null completion_status if "Complete" is selected
-          return selectedCompletionStatuses.includes("Complete");
-        }
-        return selectedCompletionStatuses.includes(h.completion_status);
-      });
-    }
-    // Filter to hacks whose base ROM is ready (linked with permission or cached)
-    if (onlyReady) {
-      out = out.filter((h) => !h.is_archive && h.baseRomId && readyBaseRomIds.has(h.baseRomId));
-    }
-    return [...out].sort((a, b) => {
+    const matches = hackMatcher({ tags: selectedTags, baseRoms: selectedBaseRoms, completionStatuses: selectedCompletionStatuses, onlyReady, ai }, query, groups, readyBaseRomIds);
+    return catalog.filter(matches).sort((a, b) => {
       if (sort === "popular") return b.downloads - a.downloads;
-      if (sort === "new") {
-        return (b.approvedAt ? Date.parse(b.approvedAt) : 0) -
-          (a.approvedAt ? Date.parse(a.approvedAt) : 0);
-      }
+      if (sort === "new") return (b.approvedAt ? Date.parse(b.approvedAt) : 0) - (a.approvedAt ? Date.parse(a.approvedAt) : 0);
       if (sort === "updated") {
         if (!a.publishedAt && !b.publishedAt) return 0;
         if (!a.publishedAt) return 1;
@@ -190,544 +174,490 @@ export default function DiscoverBrowser({
       if (sort === "alpha") return a.title.localeCompare(b.title);
       return b.trendingScore - a.trendingScore;
     });
-  }, [
-    catalog,
-    onlyReady,
-    query,
-    readyBaseRomIds,
-    selectedBaseRoms,
-    selectedCompletionStatuses,
-    selectedTags,
-    sort,
-  ]);
+  }, [ai, catalog, groups, onlyReady, query, readyBaseRomIds, selectedBaseRoms, selectedCompletionStatuses, selectedTags, sort]);
 
-  const showSkeleton =
-    !initialUrlStateApplied || (onlyReady && baseRomsLoading);
-
-  const totalPages = React.useMemo(
-    () => Math.max(1, Math.ceil(filtered.length / HACKS_PER_PAGE)),
-    [filtered.length]
-  );
+  const showSkeleton = !initialUrlStateApplied || !aiLoaded || (onlyReady && baseRomsLoading);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / HACKS_PER_PAGE));
 
   React.useEffect(() => {
-    // Clamp current page if the number of results shrinks
     if (!showSkeleton && currentPage > totalPages) {
       setCurrentPage(totalPages);
       syncUrlWith({ page: totalPages }, "replace");
     }
   }, [currentPage, showSkeleton, syncUrlWith, totalPages]);
 
-  const paginationRange = React.useMemo(() => {
-    const startIndex = (currentPage - 1) * HACKS_PER_PAGE;
-    const endIndex = Math.min(filtered.length, startIndex + HACKS_PER_PAGE);
-    return { startIndex, endIndex };
-  }, [currentPage, filtered.length]);
+  const startIndex = (currentPage - 1) * HACKS_PER_PAGE;
+  const endIndex = Math.min(filtered.length, startIndex + HACKS_PER_PAGE);
+  const paginated = React.useMemo(() => filtered.slice(startIndex, endIndex), [filtered, startIndex, endIndex]);
 
-  const paginated = React.useMemo(
-    () => filtered.slice(paginationRange.startIndex, paginationRange.endIndex),
-    [filtered, paginationRange.startIndex, paginationRange.endIndex]
-  );
-
-  const scrollToListTopOnMobile = React.useCallback(() => {
-    if (typeof window === "undefined" || !listRef.current) return;
-    // Only auto-scroll on small screens so desktop users aren't jolted
-    if (window.innerWidth < 640) {
-      const rect = listRef.current.getBoundingClientRect();
-      const headerOffset = 72; // approximate navbar  with padding
-      const targetY = Math.max(0, rect.top + window.scrollY - headerOffset);
-      window.scrollTo({ top: targetY, behavior: "smooth" });
-    }
+  const scrollToResults = React.useCallback(() => {
+    requestAnimationFrame(() => listRef.current?.scrollIntoView({ block: "start" }));
   }, []);
 
   const changePage = React.useCallback(
     (nextPage: number) => {
       const clamped = Math.min(Math.max(1, nextPage), totalPages);
       if (clamped === currentPage) return;
-
       setCurrentPage(clamped);
       syncUrlWith({ page: clamped });
-      // Defer scroll until after React has applied the state update
-      setTimeout(scrollToListTopOnMobile, 0);
+      scrollToResults();
     },
-    [currentPage, scrollToListTopOnMobile, syncUrlWith, totalPages]
+    [currentPage, scrollToResults, syncUrlWith, totalPages]
   );
 
-  const getPageNumbers = React.useCallback((current: number, total: number): (number | string)[] => {
-    // If 7 or fewer pages, show all
-    if (total <= 6) {
-      return Array.from({ length: total }, (_, i) => i + 1);
-    }
+  // ---- filters (rail applies live; the phone sheet edits a draft) ----
+  const filterState: FilterState = { tags: selectedTags, baseRoms: selectedBaseRoms, completionStatuses: selectedCompletionStatuses, onlyReady, ai };
+  const active = countActive(filterState);
+  const clearable = countClearable(filterState);
+  const counts = useFacetCounts(catalog);
+  const readyCount = React.useMemo(
+    () => catalog.filter((h) => !h.is_archive && h.baseRomId && readyBaseRomIds.has(h.baseRomId)).length,
+    [catalog, readyBaseRomIds]
+  );
 
-    const pages: (number | string)[] = [];
+  const applyFilters = React.useCallback(
+    (next: FilterState, mode: "push" | "replace" = "push") => {
+      setSelectedTags(next.tags);
+      setSelectedBaseRoms(next.baseRoms);
+      setSelectedCompletionStatuses(next.completionStatuses);
+      setOnlyReady(next.onlyReady);
+      setAi(next.ai);
+      // Every filter change (rail, sheet, chips, Clear) lands here, so this is the one place the AI pick is saved.
+      saveAiFilter(next.ai);
+      setCurrentPage(1);
+      // The AI pick stays out of the URL.
+      syncUrlWith({ tags: next.tags, baseRoms: next.onlyReady ? [] : next.baseRoms, completionStatuses: next.completionStatuses, onlyReady: next.onlyReady, page: 1 }, mode);
+    },
+    [syncUrlWith]
+  );
+  // The saved AI filter isn't part of this search, so Clear leaves it.
+  const clearFilters = () => applyFilters({ ...EMPTY_FILTERS, ai });
 
-    // Always show first page
-    pages.push(1);
-
-    if (current <= 3) {
-      // Near the start: show 1, 2, 3, 4, ..., last
-      for (let i = 2; i <= 4; i++) {
-        pages.push(i);
-      }
-      pages.push("ellipsis");
-      pages.push(total);
-    } else if (current >= total - 2) {
-      // Near the end: show 1, ..., total-3, total-2, total-1, total
-      pages.push("ellipsis");
-      for (let i = total - 3; i <= total; i++) {
-        pages.push(i);
-      }
-    } else {
-      // In the middle: show 1, ..., current-1, current, current+1, ..., last
-      pages.push("ellipsis");
-      pages.push(current - 1);
-      pages.push(current);
-      pages.push(current + 1);
-      pages.push("ellipsis");
-      pages.push(total);
-    }
-
-    return pages;
+  const [open, setOpen] = React.useState<Set<string>>(() => new Set(["rom:GBA"]));
+  // The saved AI pick loads before paint (results show a skeleton until then), so nothing flashes unfiltered.
+  // A custom pick opens its checklist, so it's clear what it hides.
+  React.useLayoutEffect(() => {
+    const saved = readSavedAiFilter();
+    setAi(saved);
+    if (aiPresetOf(saved) === "custom") setOpen((s) => new Set(s).add(AI_AREAS_DISCLOSURE));
+    setAiLoaded(true);
   }, []);
+  const toggleOpen = (id: string) =>
+    setOpen((s) => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
-  function clearFilters() {
-    setCurrentPage(1);
-    setSelectedTags([]);
-    setSelectedBaseRoms([]);
-    setSelectedCompletionStatuses([]);
-    setOnlyReady(false);
-    syncUrlWith({ tags: [], baseRoms: [], completionStatuses: [], onlyReady: false, page: 1 });
-  }
+  const [sheet, setSheet] = React.useState(false);
+  const [draft, setDraft] = React.useState<FilterState>(filterState);
+  const filterBtnRef = React.useRef<HTMLButtonElement>(null);
+  const draftTotal = React.useMemo(
+    () => (sheet ? catalog.filter(hackMatcher(draft, query, groups, readyBaseRomIds)).length : 0),
+    [catalog, draft, groups, query, readyBaseRomIds, sheet]
+  );
 
-  const sortIcon = React.useMemo(() => {
-    const SortIcon = SORT_ICON_MAP[sort];
-    return SortIcon ? <SortIcon className="h-5 w-5 text-foreground/80" aria-hidden="true" /> : null;
-  }, [sort]);
+  const openSheet = (focusAi = false) => {
+    setDraft(filterState);
+    // After the slide-in (240ms), so the scroll lands in the settled sheet.
+    if (focusAi) setTimeout(() => flashAiGroup(document.getElementById("discover-filter-sheet")), 280);
+    setOpen((s) => {
+      const next = new Set(s);
+      for (const g of ROM_GAMES) {
+        if (!g.ids.some((id) => selectedBaseRoms.includes(id))) continue;
+        next.add(`rom:${g.platform}`);
+        if (g.dumps.length > 1) next.add(`game:${g.key}`);
+      }
+      for (const g of groups) if (g.tags.some((t) => selectedTags.includes(t))) next.add(`tag:${g.name}`);
+      if (aiPresetOf(ai) === "custom") next.add(AI_AREAS_DISCLOSURE);
+      return next;
+    });
+    setSheet(true);
+  };
+  const finishClose = React.useCallback(() => {
+    setSheet(false);
+    filterBtnRef.current?.focus();
+  }, []);
+  const closeSheet = (commit: boolean) => {
+    const onSheetEntry = Boolean((history.state as { discoverFilters?: boolean } | null)?.discoverFilters);
+    if (commit) {
+      // Take over the sheet's history entry; pushing on top of it left a duplicate for Back to land on.
+      const before = location.search;
+      applyFilters(draft, onSheetEntry ? "replace" : "push");
+      // No change leaves the URL alone, so drop the sheet's entry instead (popstate closes the sheet).
+      if (onSheetEntry && location.search === before) history.back();
+      else finishClose();
+      return;
+    }
+    if (onSheetEntry) {
+      history.back();
+      return;
+    }
+    finishClose();
+  };
+  React.useEffect(() => {
+    if (!sheet) return;
+    history.pushState({ ...(history.state ?? {}), discoverFilters: true }, "");
+    window.addEventListener("popstate", finishClose);
+    return () => window.removeEventListener("popstate", finishClose);
+  }, [sheet, finishClose]);
 
   const copyDiscoverLink = React.useCallback(async () => {
-    if (typeof window === "undefined") return;
-
     const params = buildDiscoverSearchParams({ ...currentUrlState, onlyReady: false }).toString();
     const url = `${window.location.origin}${window.location.pathname}${params ? `?${params}` : ""}`;
-
     try {
       await navigator.clipboard.writeText(url);
-      toast.success(params ? "Filtered Discover link copied" : "Discover link copied", {
-        icon: <FaLink className="h-4 w-4" />,
-      });
+      toast.success(params ? "Filtered Discover link copied" : "Discover link copied", { icon: <FiLink className="h-4 w-4" /> });
     } catch {
       toast.error("Unable to copy Discover link");
     }
   }, [currentUrlState]);
 
+  // Applied chips (phone): one per pick, removable in place.
+  const chips: { key: string; label: string; ready?: boolean; onRemove: () => void }[] = [];
+  if (onlyReady) chips.push({ key: "ready", label: "Ready to patch", ready: true, onRemove: () => applyFilters({ ...filterState, onlyReady: false }) });
+  // One chip per dump, so "FireRed (Rev 1)" reads as exactly what is filtered.
+  for (const id of selectedBaseRoms) {
+    const name = baseRoms.find((r) => r.id === id)?.name ?? id;
+    chips.push({ key: `b-${id}`, label: baseGameLabel(name), onRemove: () => applyFilters({ ...filterState, baseRoms: selectedBaseRoms.filter((v) => v !== id) }) });
+  }
+  for (const c of selectedCompletionStatuses) chips.push({ key: `c-${c}`, label: c, onRemove: () => applyFilters({ ...filterState, completionStatuses: selectedCompletionStatuses.filter((v) => v !== c) }) });
+  for (const t of selectedTags) chips.push({ key: `t-${t}`, label: t, onRemove: () => applyFilters({ ...filterState, tags: selectedTags.filter((v) => v !== t) }) });
+
+  const fields = (mode: "rail" | "sheet") => (
+    <FilterFields
+      value={mode === "sheet" ? draft : filterState}
+      onChange={mode === "sheet" ? setDraft : applyFilters}
+      tagGroups={groups}
+      counts={counts}
+      readyCount={countReady > 0 ? readyCount : 0}
+      open={open}
+      onToggleOpen={toggleOpen}
+      tall={mode === "sheet"}
+    />
+  );
+
+  const hasFilters = clearable > 0;
+  // Phones show it beside Filters, desktop at the end of the sort row; `layout` sets size and visibility.
+  const copyLinkButton = (layout: string) => (
+    <button
+      type="button"
+      onClick={copyDiscoverLink}
+      aria-label="Copy link to current Discover filters"
+      title="Copy link to these filters"
+      className={`flex-none items-center justify-center rounded-control border border-line-strong bg-surface text-text-2 transition-colors hover:border-text-3 hover:text-text ${layout}`}
+    >
+      <FiLink className="h-[18px] w-[18px]" />
+    </button>
+  );
+  const railRef = React.useRef<HTMLElement>(null);
+  // The AI note under the results: phones open the sheet at "AI use", desktop points at it in the rail.
+  const showAiFilter = () => (window.matchMedia("(min-width: 768px)").matches ? flashAiGroup(railRef.current) : openSheet(true));
+  const aiNote = ai.hide.length > 0 && (
+    <button type="button" onClick={showAiFilter} className="text-link-hd inline-flex items-center gap-1 font-normal">
+      <AiOffIcon className="h-3.5 w-3.5" />
+      {aiFilterLabel(ai)}
+    </button>
+  );
+  const pager = totalPages > 1;
+
   return (
-    <div className="max-w-[1200px] mx-auto">
-      <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <input
-            value={query}
-            onChange={(e) => {
-              const nextQuery = e.target.value;
-              const nextState = { ...currentUrlState, query: nextQuery, page: 1 };
-              setQuery(nextQuery);
-              setCurrentPage(1);
-              scheduleSearchUrlSync(nextState);
-            }}
-            placeholder="Search by title, author, or keyword"
-            className="h-11 w-full rounded-md bg-[var(--surface-2)] px-3 text-sm text-foreground placeholder:text-foreground/60 ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-          />
-        </div>
-        <div className="flex w-full items-center gap-2 sm:w-auto">
-          <div className="flex h-11 flex-1 items-center gap-1.5 rounded-md bg-(--surface-2) px-3 text-sm ring-1 ring-inset ring-(--border) sm:inline-flex sm:flex-none">
-            {sortIcon}
-            <div className="relative flex-1 sm:flex-none">
-              <Select
-                value={sort}
-                onChange={(value) => {
-                  const nextSort = value as DiscoverSortOption;
-                  setSort(nextSort);
-                  setCurrentPage(1);
-                  syncUrlWith({ sort: nextSort, page: 1 });
-                }}
-                options={SORT_OPTIONS}
-                // this css gets a little janky, but it gets the job done
-                className="flex h-11 w-full items-center rounded-none bg-transparent px-0 pl-1 pr-8 text-left sm:w-fit !ring-0 focus:ring-0"
-                dropdownClassName="-left-[2.313rem] top-[44px] !min-w-0 !max-w-none !w-[calc(100%_+_3.125rem)] sm:left-auto sm:right-[-12px] sm:!w-max"
-              />
+    <div className="grid gap-8 md:grid-cols-[240px_minmax(0,1fr)]">
+      <aside ref={railRef} className="hidden min-w-0 md:block" aria-label="Filters">
+        <div className="sticky top-[84px]">
+          {/* Viewport height minus the sticky offset. Before the rail sticks, its bottom sits a little below the fold. */}
+          <div className="max-h-[calc(100dvh-84px)] overflow-y-auto overscroll-contain pb-4 pr-3 pt-1 [scrollbar-gutter:stable] [scrollbar-width:thin]">
+            <div className="flex h-12 items-baseline justify-between">
+              <h2 className="text-[15px] font-semibold">Filters</h2>
+              {hasFilters && (
+                <button type="button" className="text-link-hd text-[13px]" onClick={clearFilters}>
+                  Clear {clearable}
+                </button>
+              )}
             </div>
+            {fields("rail")}
           </div>
-          <button
-            type="button"
-            onClick={copyDiscoverLink}
-            aria-label="Copy link to current Discover filters"
-            title="Copy link to these filters"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-(--surface-2) text-foreground/80 ring-1 ring-inset ring-(--border) transition-colors hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--ring) dark:hover:bg-white/10"
-          >
-            <FaShare className="h-5 w-5" aria-hidden="true" />
-          </button>
         </div>
-      </div>
+      </aside>
 
-      {/* Unified filter section: Base ROM dropdown first, category dropdowns next, ungrouped tags last */}
-      <div className="mt-6 flex flex-wrap items-center gap-2">
-        {countReady > 0 && (
-          <button
-            type="button"
-            aria-pressed={onlyReady}
-            onClick={() =>
-              {
-                const nextOnlyReady = !onlyReady;
-                setOnlyReady(nextOnlyReady);
-                if (nextOnlyReady) setSelectedBaseRoms([]);
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-3">
+          <form role="search" onSubmit={(e) => e.preventDefault()} className="relative flex-[1_1_100%] text-text-3 md:flex-1">
+            <FiSearch className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2" />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => {
+                const nextQuery = e.target.value;
+                setQuery(nextQuery);
                 setCurrentPage(1);
-                syncUrlWith({
-                  onlyReady: nextOnlyReady,
-                  baseRoms: nextOnlyReady ? [] : selectedBaseRoms,
-                  page: 1,
-                });
-              }
-            }
-            title="Show only hacks playable on your device (base ROM ready)"
-            className={`flex items-center gap-2 rounded-full px-3 py-1 text-sm ring-1 ring-inset transition-colors ${
-              onlyReady
-                ? "bg-[var(--accent)]/15 text-[var(--foreground)] ring-[var(--accent)]/35"
-                : "bg-[var(--surface-2)] text-foreground/80 ring-[var(--border)] hover:bg-black/5 dark:hover:bg-white/10"
-            }`}
-          >
-            <span className="inline-block h-2 w-2 rounded-full bg-[var(--accent)]" />
-            <span className="truncate">Ready on your device</span>
-            <span className="rounded-full bg-black/5 px-1.5 py-0.5 text-xs leading-none text-foreground/70 dark:bg-white/10">{countReady}</span>
-          </button>
-        )}
-        <MultiSelectDropdown
-          icon={BsSdCardFill}
-          label="Base ROM"
-          options={baseRoms.map((b) => ({ id: b.id, name: b.name }))}
-          values={selectedBaseRoms}
-          onChange={(vals) => {
-            setSelectedBaseRoms(vals);
-            if (vals.length > 0) setOnlyReady(false);
-            setCurrentPage(1);
-            syncUrlWith({ baseRoms: vals, onlyReady: vals.length > 0 ? false : onlyReady, page: 1 });
-          }}
-        />
-        <MultiSelectDropdown
-          icon={TbProgressCheck}
-          label="Completion"
-          options={DISCOVER_COMPLETION_STATUSES.map((s) => ({ id: s, name: s }))}
-          values={selectedCompletionStatuses}
-          onChange={(vals) => {
-            setSelectedCompletionStatuses(vals);
-            setCurrentPage(1);
-            syncUrlWith({ completionStatuses: vals, page: 1 });
-          }}
-        />
-        {Object.keys(tagGroups)
-          .sort((a, b) => a.localeCompare(b))
-          .map((cat) => (
-            <MultiSelectDropdown
-              key={cat}
-              icon={CATEGORY_ICONS[cat]}
-              label={cat}
-              options={tagGroups[cat].map((t) => ({ id: t, name: t }))}
-              values={selectedTags.filter((t) => tagGroups[cat].includes(t))}
-              onChange={(vals) => {
-                // Replace selections for this category while keeping others
-                const others = selectedTags.filter((tag) => !tagGroups[cat].includes(tag));
-                const nextTags = [...others, ...vals];
-                setSelectedTags(nextTags);
-                setCurrentPage(1);
-                syncUrlWith({ tags: nextTags, page: 1 });
+                scheduleSearchUrlSync({ ...currentUrlState, query: nextQuery, page: 1 });
               }}
+              placeholder={`Search ${catalog.length.toLocaleString("en-US")} hacks`}
+              aria-label="Search hacks"
+              className="h-11 w-full rounded-[10px] border border-line-strong bg-surface pl-11 pr-3.5 text-base text-text outline-none transition-[border-color,box-shadow] duration-[120ms] placeholder:text-text-3 focus:border-accent focus:shadow-[0_0_0_3px_var(--rose-soft)] md:h-12"
             />
-          ))}
-        {/* Advanced dropdown for ungrouped tags at the end */}
-        {ungroupedTags.length > 0 && (
-          <MultiSelectDropdown
-            icon={MdTune}
-            label="Advanced"
-            options={ungroupedTags.map((t) => ({ id: t, name: t }))}
-            values={selectedTags.filter((t) => ungroupedTags.includes(t))}
-            onChange={(vals) => {
-              const others = selectedTags.filter((tag) => !ungroupedTags.includes(tag));
-              const nextTags = [...others, ...vals];
-              setSelectedTags(nextTags);
-              setCurrentPage(1);
-              syncUrlWith({ tags: nextTags, page: 1 });
-            }}
-          />
-        )}
-        {(selectedTags.length > 0 || selectedBaseRoms.length > 0 || selectedCompletionStatuses.length > 0 || onlyReady) && (
-          <button
-            onClick={clearFilters}
-            className="ml-2 rounded-full px-3 py-1 text-sm ring-1 ring-inset transition-colors bg-[var(--surface-2)] text-foreground/80 ring-[var(--border)] hover:bg-black/5 dark:hover:bg-white/10"
-          >
-            Clear filters
-          </button>
-        )}
+          </form>
+
+          {/* min-w-0: otherwise the unwrapped chip row sets this column's minimum width, stretching the Filters button past the screen. */}
+          <div className="flex min-w-0 flex-[1_1_100%] flex-col gap-2.5 md:hidden">
+            <div className="flex gap-2.5">
+              <button
+                ref={filterBtnRef}
+                type="button"
+                aria-expanded={sheet}
+                aria-controls="discover-filter-sheet"
+                onClick={() => openSheet()}
+                className={`inline-flex h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-control border bg-surface px-4 font-semibold transition-colors ${sheet ? "border-accent" : "border-line-strong hover:border-text-3"}`}
+              >
+                <FiSliders className="h-[18px] w-[18px]" />
+                Filters
+                {active > 0 && <small className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-deep px-1.5 text-xs font-semibold text-white">{active}</small>}
+              </button>
+              {copyLinkButton("inline-flex h-11 w-11")}
+            </div>
+            {chips.length > 0 && (
+              <div className="-mx-6 flex items-center gap-2 overflow-x-auto px-6 [scrollbar-width:none]" aria-label="Applied filters">
+                {chips.map((c) => (
+                  <span
+                    key={c.key}
+                    className={`inline-flex h-9 flex-none items-center gap-1.5 whitespace-nowrap rounded-full border py-0 pl-3.5 pr-1 text-sm font-medium ${
+                      c.ready ? "border-ready bg-ready-soft" : "border-line-strong bg-surface"
+                    }`}
+                  >
+                    {c.ready && <span className="ready-dot" />}
+                    {c.label}
+                    <button type="button" aria-label={`Remove ${c.label}`} onClick={c.onRemove} className="-mr-0.5 inline-flex h-9 w-9 items-center justify-center rounded-full text-text-3 hover:bg-surface-2 hover:text-text">
+                      <FiX className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                ))}
+                <button type="button" className="text-link-hd ml-1 flex-none px-2 text-[13px]" onClick={clearFilters}>
+                  Clear all
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-1 items-center gap-3 md:flex-none">
+            <div className="min-w-0 flex-1 md:flex-none">
+            <Select
+              id="discover-sort"
+              value={sort}
+              onChange={(value) => {
+                const nextSort = value as DiscoverSortOption;
+                setSort(nextSort);
+                setCurrentPage(1);
+                syncUrlWith({ sort: nextSort, page: 1 });
+              }}
+              options={SORT_OPTIONS}
+              dropdownAlign="right"
+              className="border-line-strong! bg-surface! pl-3.5! text-[15px]! font-medium hover:border-text-3! md:h-12! md:w-auto! md:min-w-[200px]"
+              dropdownClassName="!max-w-[min(90vw,320px)]"
+            />
+            </div>
+            <div role="group" aria-label="View" className="inline-flex h-10 flex-none gap-0.5 rounded-control border border-line-strong bg-surface p-[3px] md:h-12">
+              <button
+                type="button"
+                aria-pressed={view === "grid"}
+                aria-label="Grid view"
+                onClick={() => changeView("grid")}
+                className="inline-flex w-9 items-center justify-center rounded-md text-text-3 transition-colors hover:text-text aria-pressed:bg-surface-2 aria-pressed:text-text md:w-10"
+              >
+                <FiGrid className="h-[18px] w-[18px]" />
+              </button>
+              <button
+                type="button"
+                aria-pressed={view === "list"}
+                aria-label="List view"
+                onClick={() => changeView("list")}
+                className="inline-flex w-9 items-center justify-center rounded-md text-text-3 transition-colors hover:text-text aria-pressed:bg-surface-2 aria-pressed:text-text md:w-10"
+              >
+                <FiList className="h-[18px] w-[18px]" />
+              </button>
+            </div>
+            {copyLinkButton("hidden h-12 w-12 md:inline-flex")}
+          </div>
+        </div>
+
+        <div ref={listRef} className="min-h-[calc(100dvh-160px)] scroll-mt-[76px]">
+          {showSkeleton ? (
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-[repeat(auto-fill,minmax(264px,1fr))] md:gap-5">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <HackCardSkeleton key={i} />
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="my-12 text-center text-text-2">
+              <p className="text-lg font-medium text-text">No hacks found</p>
+              <p className="mt-1 text-sm">
+                {query ? <>No results for &quot;{query}&quot;</> : <>No results</>}
+                {active > 0 && <> with the selected filters</>}.
+              </p>
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-4">
+                {query && (
+                  <button
+                    type="button"
+                    className="text-link-hd text-sm"
+                    onClick={() => {
+                      setQuery("");
+                      setCurrentPage(1);
+                      syncUrlWith({ query: "", page: 1 });
+                    }}
+                  >
+                    Clear search
+                  </button>
+                )}
+                {hasFilters && (
+                  <button type="button" className="text-link-hd text-sm" onClick={clearFilters}>
+                    Clear filters
+                  </button>
+                )}
+                {/* Clear keeps the saved AI filter, so offer it here when it may be what's hiding everything. */}
+                {ai.hide.length > 0 && (
+                  <button type="button" className="text-link-hd text-sm" onClick={showAiFilter}>
+                    Change AI filter
+                  </button>
+                )}
+              </div>
+              <p className="mt-6 text-sm text-text-3">
+                Can&apos;t find the hack you want? Try asking the dev to{" "}
+                <Link href="/faq#creators" prefetch={false} className="text-link-hd">
+                  submit it to Hackdex
+                </Link>
+                .
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+                <p className="flex flex-wrap items-center gap-x-1.5 text-[13px] text-text-2">
+                  <span aria-live="polite">
+                    {startIndex + 1}–{endIndex} of {filtered.length.toLocaleString("en-US")}
+                  </span>
+                  {aiNote && (
+                    <>
+                      <span aria-hidden>·</span>
+                      {aiNote}
+                    </>
+                  )}
+                </p>
+                {pager && <Pagination current={currentPage} last={totalPages} onPage={changePage} compact />}
+              </div>
+              {view === "grid" ? (
+                <div className="mt-4 grid grid-cols-1 gap-3 md:mt-5 md:grid-cols-[repeat(auto-fill,minmax(264px,1fr))] md:gap-5" aria-label="Hacks">
+                  {paginated.map((hack) => (
+                    <HackCard key={hack.slug} hack={hack} fill />
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-4 flex flex-col gap-2.5" aria-label="Hacks">
+                  {paginated.map((hack) => (
+                    <HackRow key={hack.slug} hack={hack} />
+                  ))}
+                </div>
+              )}
+              {pager && (
+                <div className="mb-3 mt-9">
+                  <Pagination current={currentPage} last={totalPages} onPage={changePage} />
+                </div>
+              )}
+            </>
+          )}
+        </div>
+        {!showSkeleton && <DiscoverLastUpdated generatedAt={generatedAt} />}
       </div>
 
-      {showSkeleton ? (
-        <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: HACKS_PER_PAGE }).map((_, i) => (
-            <HackCardSkeleton key={i} />
-          ))}
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="mt-12 flex flex-col items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-8 text-center">
-          <div className="mb-2 text-lg font-medium text-foreground">No hacks found</div>
-          <p className="mb-4 text-sm text-foreground/70">
-            {query ? (
-              <>
-                No results for &quot;{query}&quot;
-              </>
-            ) : (
-              <>No results</>
-            )}
-            {(selectedTags.length > 0 || selectedBaseRoms.length > 0 || selectedCompletionStatuses.length > 0) && (
-              <>
-                {" "}with the selected filters
-              </>
-            )}.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            {query && (
-              <button
-                onClick={() => {
-                  setQuery("");
-                  setCurrentPage(1);
-                  syncUrlWith({ query: "", page: 1 });
-                }}
-                className="rounded-full px-3 py-1 text-sm ring-1 ring-inset transition-colors bg-[var(--surface-2)] text-foreground/80 ring-[var(--border)] hover:bg-black/5 dark:hover:bg-white/10"
-              >
-                Clear search
-              </button>
-            )}
-            {(selectedTags.length > 0 || selectedBaseRoms.length > 0 || selectedCompletionStatuses.length > 0 || onlyReady) && (
-              <button
-                onClick={clearFilters}
-                className="rounded-full px-3 py-1 text-sm ring-1 ring-inset transition-colors bg-[var(--surface-2)] text-foreground/80 ring-[var(--border)] hover:bg-black/5 dark:hover:bg-white/10"
-              >
-                Clear filters
-              </button>
-            )}
-          </div>
-          <p className="mt-4 text-sm text-foreground/60 text-center">Can't find the hack you want? Try asking the dev to <Link href="/faq#creators" prefetch={false} className="text-[var(--accent)] hover:underline">submit it to Hackdex</Link>.</p>
-        </div>
-      ) : (
-        <>
-          <div
-            ref={listRef}
-            className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
-          >
-            {paginated.map((hack) => (
-              <HackCard key={hack.slug} hack={hack} />
-            ))}
-          </div>
-          {totalPages > 1 && (
-            <div className="mt-6 flex flex-col items-center gap-3">
-              <div className="text-xs text-foreground/70 text-center">
-                Showing {paginationRange.startIndex + 1}-{paginationRange.endIndex} of {filtered.length} hacks
-              </div>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-2 w-full">
-                {/* Mobile: Previous/Next buttons row, Desktop: unwraps with contents */}
-                <div className="order-1 sm:contents flex items-center justify-center gap-3 sm:gap-2 w-full sm:w-auto">
-                  <button
-                    type="button"
-                    onClick={() => changePage(currentPage - 1)}
-                    disabled={currentPage === 1}
-                    className={`h-11 sm:h-9 rounded-full px-3 text-sm ring-1 ring-inset transition-colors flex-1 sm:flex-none max-w-[120px] sm:max-w-none min-w-0 sm:min-w-[90px] flex items-center justify-center ${
-                      currentPage === 1
-                        ? "cursor-not-allowed bg-[var(--surface-2)] text-foreground/40 ring-[var(--border)]"
-                        : "bg-[var(--surface-2)] text-foreground/80 ring-[var(--border)] active:bg-black/10 dark:active:bg-white/15 sm:hover:bg-black/5 sm:dark:hover:bg-white/10"
-                    }`}
-                  >
-                    <span className="sm:hidden">
-                      <MdChevronLeft className="h-6 w-6" />
-                    </span>
-                    <span className="hidden sm:inline">Previous</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => changePage(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                    className={`sm:order-3 h-11 sm:h-9 rounded-full px-3 text-sm ring-1 ring-inset transition-colors flex-1 sm:flex-none max-w-[120px] sm:max-w-none min-w-0 sm:min-w-[90px] flex items-center justify-center ${
-                      currentPage === totalPages
-                        ? "cursor-not-allowed bg-[var(--surface-2)] text-foreground/40 ring-[var(--border)]"
-                        : "bg-[var(--surface-2)] text-foreground/80 ring-[var(--border)] active:bg-black/10 dark:active:bg-white/15 sm:hover:bg-black/5 sm:dark:hover:bg-white/10"
-                    }`}
-                  >
-                    <span className="sm:hidden">
-                      <MdChevronRight className="h-6 w-6" />
-                    </span>
-                    <span className="hidden sm:inline">Next</span>
-                  </button>
-                </div>
-                {/* Page numbers - order-2 on mobile (below buttons), order-2 on desktop (between Previous and Next) */}
-                <div className="order-2 flex items-center justify-center gap-1.5 sm:gap-1 flex-wrap">
-                  {getPageNumbers(currentPage, totalPages).map((item, i) => {
-                    if (item === "ellipsis") {
-                      return (
-                        <span
-                          key={`ellipsis-${i}`}
-                          className="h-10 sm:h-8 min-w-6 sm:min-w-5 flex items-center justify-center text-sm sm:text-xs text-foreground/50"
-                          aria-hidden="true"
-                        >
-                          <IoEllipsisHorizontal className="h-5 w-5 sm:h-4 sm:w-4" />
-                        </span>
-                      );
-                    }
-                    const page = item as number;
-                    const isActive = page === currentPage;
-                    return (
-                      <button
-                        key={page}
-                        type="button"
-                        onClick={() => changePage(page)}
-                        className={`h-10 sm:h-8 min-w-10 sm:min-w-8 rounded-full px-2 text-sm sm:text-xs ring-1 ring-inset transition-colors flex items-center justify-center ${
-                          isActive
-                            ? "bg-[var(--accent)] text-[var(--foreground)] font-bold ring-[var(--accent)]/60"
-                            : "bg-[var(--surface-2)] text-foreground/70 font-medium ring-[var(--border)] active:bg-black/10 dark:active:bg-white/15 sm:hover:bg-black/5 sm:dark:hover:bg-white/10"
-                        }`}
-                        aria-current={isActive ? "page" : undefined}
-                      >
-                        {page}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-        </>
+      {sheet && (
+        <FilterSheet active={countClearable(draft)} total={draftTotal} onClose={() => closeSheet(false)} onCommit={() => closeSheet(true)} onClear={() => setDraft({ ...EMPTY_FILTERS, ai: draft.ai })}>
+          {fields("sheet")}
+        </FilterSheet>
       )}
-      {!showSkeleton && <DiscoverLastUpdated generatedAt={generatedAt} />}
     </div>
   );
 }
 
-interface MultiSelectOption {
-  id: string;
-  name: string;
+/** First, last, current ± `sibling`, with gaps as an ellipsis. */
+function pageWindow(current: number, last: number, sibling: number) {
+  const nums = new Set<number>([1, last]);
+  for (let n = current - sibling; n <= current + sibling; n++) {
+    if (n >= 1 && n <= last) nums.add(n);
+  }
+  const items: Array<number | "gap"> = [];
+  for (const n of [...nums].sort((a, b) => a - b)) {
+    const prev = items[items.length - 1];
+    if (typeof prev === "number" && n - prev > 1) items.push("gap");
+    items.push(n);
+  }
+  return items;
 }
 
-interface MultiSelectDropdownProps {
-  icon?: IconType;
-  label: string;
-  options: MultiSelectOption[];
-  values: string[];
-  onChange: (next: string[]) => void;
-}
-
-function MultiSelectDropdown({
-  icon: Icon,
-  label,
-  options,
-  values,
-  onChange,
-}: MultiSelectDropdownProps) {
-  const { refs, floatingStyles, update } = useFloating({
-    placement: "bottom-start",
-    strategy: "fixed",
-    middleware: [
-      offset(8),
-      flip({ padding: 8 }),
-      shift({ padding: 8 }),
-      size({
-        apply({ availableWidth, elements }) {
-          Object.assign(elements.floating.style, {
-            maxWidth: `${Math.min(availableWidth, 420)}px`,
-          });
-        },
-      }),
-    ],
-  });
-  React.useEffect(() => {
-    const reference = refs.reference.current;
-    const floating = refs.floating.current;
-    if (!reference || !floating) return;
-    return autoUpdate(reference, floating, update);
-  }, [refs.reference, refs.floating, update]);
-  const nameById = React.useMemo(() => {
-    const map = new Map<string, string>();
-    options.forEach((o) => map.set(o.id, o.name));
-    return map;
-  }, [options]);
-  const selectedNames = values.map((v) => nameById.get(v) || v);
-  const hasSelection = values.length > 0;
-  return (
-    <Listbox value={values} onChange={onChange} multiple>
-      <div className="relative">
-        <ListboxButton
-          ref={refs.setReference}
-          className={`flex max-w-[22rem] cursor-pointer select-none items-center gap-2 truncate rounded-full px-3 py-1 text-sm ring-1 ring-inset transition-colors ${
-            hasSelection
-              ? "bg-[var(--accent)]/15 text-[var(--foreground)] ring-[var(--accent)]/35"
-              : "bg-[var(--surface-2)] text-foreground/80 ring-[var(--border)] hover:bg-black/5 dark:hover:bg-white/10"
-          } data-open:ring-2 data-open:ring-[var(--ring)]`}
-        >
-          {Icon ? <Icon className="h-4 w-4" /> : null}
-          <span className="truncate">
-            {selectedNames.length > 0 ? `${label}: ${selectedNames.join(", ")}` : label}
+/**
+ * Numbered pages: Previous hidden on the first page, Next on the last. The
+ * wide row shows current ±1; the phone row shows current only so it never wraps.
+ */
+function Pagination({ current, last, onPage, compact = false }: { current: number; last: number; onPage: (n: number) => void; compact?: boolean }) {
+  const size = compact ? "h-[34px] min-w-[34px] text-[13px]" : "h-11 min-w-10 text-sm md:h-9 md:min-w-9";
+  const row = (sibling: number) => (
+    <>
+      {current > 1 && (
+        <button type="button" onClick={() => onPage(current - 1)} className={`inline-flex items-center gap-1 rounded-control px-2.5 font-medium text-text-2 transition-colors hover:bg-surface-2 hover:text-text ${size}`}>
+          <FiChevronLeft className="h-4 w-4" /> {compact ? <span className="sr-only">Previous</span> : "Previous"}
+        </button>
+      )}
+      {pageWindow(current, last, sibling).map((item, i) =>
+        item === "gap" ? (
+          <span key={`gap-${i}`} className={`inline-flex items-center justify-center text-text-3 ${size}`} aria-hidden>
+            …
           </span>
-        </ListboxButton>
-        <Transition
-          as={Fragment}
-          leave="transition ease-in duration-100"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <ListboxOptions ref={refs.setFloating} style={floatingStyles} className="z-50 max-h-64 min-w-[14rem] overflow-auto rounded-md border border-[var(--border)] bg-white/70 dark:bg-zinc-800/70 backdrop-blur-xl p-1 shadow-lg focus:outline-none">
-            {options.map((opt) => (
-              <ListboxOption
-                key={opt.id}
-                value={opt.id}
-                className={({ active }) =>
-                  `cursor-pointer select-none rounded px-2 py-1 text-sm ${active ? "bg-black/5 dark:bg-white/10" : ""}`
-                }
-              >
-                {({ selected }) => (
-                  <div className="flex items-center gap-2">
-                    <input type="checkbox" readOnly checked={selected} className="h-4 w-4 accent-[var(--accent)]" />
-                    <span className="text-foreground/90">{opt.name}</span>
-                  </div>
-                )}
-              </ListboxOption>
-            ))}
-          </ListboxOptions>
-        </Transition>
-      </div>
-    </Listbox>
+        ) : (
+          <button
+            key={item}
+            type="button"
+            onClick={() => onPage(item)}
+            aria-current={item === current ? "page" : undefined}
+            className={`inline-flex items-center justify-center rounded-control px-2 font-medium tabular-nums transition-colors ${size} ${
+              item === current ? "bg-accent-deep text-white hover:bg-accent-hover" : "text-text-2 hover:bg-surface-2 hover:text-text"
+            }`}
+          >
+            <span className="sr-only">Page </span>
+            {item}
+          </button>
+        )
+      )}
+      {current < last && (
+        <button type="button" onClick={() => onPage(current + 1)} className={`inline-flex items-center gap-1 rounded-control px-2.5 font-medium text-text-2 transition-colors hover:bg-surface-2 hover:text-text ${size}`}>
+          {compact ? <span className="sr-only">Next</span> : "Next"} <FiChevronRight className="h-4 w-4" />
+        </button>
+      )}
+    </>
+  );
+  return (
+    <nav aria-label="Pagination" className={compact ? "" : "flex justify-center"}>
+      <div className={`items-center justify-center gap-1 ${compact ? "flex" : "hidden md:flex"}`}>{row(compact ? 0 : 1)}</div>
+      {!compact && <div className="flex items-center justify-center gap-1 md:hidden">{row(0)}</div>}
+    </nav>
   );
 }
-
 
 function HackCardSkeleton() {
   return (
-    <div className="group block">
-      <div className="h-full overflow-hidden rounded-[12px] card ring-1 ring-[var(--border)] flex flex-col">
-        <div className="relative aspect-[3/2] w-full rounded-[12px] overflow-hidden bg-[var(--surface-2)]">
-          <div className="absolute inset-0 animate-pulse bg-gradient-to-b from-black/5 to-black/0 dark:from-white/5 dark:to-white/0" />
+    <div className="overflow-hidden rounded-card border border-line bg-surface">
+      <div className="flex justify-center bg-well p-3">
+        <div className="aspect-[3/2] w-full animate-pulse rounded-frame bg-surface-2 md:w-[240px]" />
+      </div>
+      <div className="flex flex-col gap-2 px-3.5 pb-3.5 pt-3">
+        <div className="h-4 w-2/3 animate-pulse rounded bg-surface-2" />
+        <div className="h-3 w-24 animate-pulse rounded bg-surface-2" />
+        <div className="mt-1 h-3 w-full animate-pulse rounded bg-surface-2" />
+        <div className="h-3 w-5/6 animate-pulse rounded bg-surface-2" />
+        <div className="mt-2 flex gap-1.5">
+          <div className="h-5 w-16 animate-pulse rounded-full bg-surface-2" />
+          <div className="h-5 w-20 animate-pulse rounded-full bg-surface-2" />
         </div>
-        <div className="p-4 flex flex-col flex-1 min-h-0">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <div className="h-[22.5px] w-2/3 animate-pulse rounded bg-[var(--surface-2)]" />
-              <div className="mt-1 h-4 w-24 animate-pulse rounded bg-[var(--surface-2)]" />
-            </div>
-            <div className="h-5 w-12 shrink-0 animate-pulse rounded bg-[var(--surface-2)]" />
-          </div>
-          <div className="mt-2 flex h-10 flex-col justify-around">
-            <div className="h-3 w-full animate-pulse rounded bg-[var(--surface-2)]" />
-            <div className="h-3 w-5/6 animate-pulse rounded bg-[var(--surface-2)]" />
-          </div>
-          <div className="mt-auto flex justify-between pt-3">
-            <div className="h-4 w-32 animate-pulse rounded bg-[var(--surface-2)]" />
-            <div className="h-4 w-16 animate-pulse rounded bg-[var(--surface-2)]" />
-          </div>
-        </div>
+        <div className="mt-2 h-3 w-40 animate-pulse rounded bg-surface-2" />
       </div>
     </div>
   );
 }
-
-

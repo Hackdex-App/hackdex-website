@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient, createServiceClient } from "@/utils/supabase/server";
-import type { TablesInsert, Database } from "@/types/db";
+import type { TablesInsert, TablesUpdate, Database } from "@/types/db";
 import { getMinioClient, PATCHES_BUCKET, COVERS_BUCKET } from "@/utils/minio/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
@@ -18,6 +18,11 @@ import {
   postHackReviewMessage,
 } from "@/utils/hack-review";
 import { revalidateDiscoverCatalog } from "@/app/discover/revalidate";
+import { aiColumns, parseAiLevels, type AiLevels } from "@/utils/aiDisclosure";
+import { isCoverKeyFor, newPatchKey } from "@/utils/storageKeys";
+import { MAX_COVERS, SUMMARY_MAX, TITLE_MAX } from "@/data/hackLimits";
+import { baseRoms } from "@/data/baseRoms";
+import type { PatchFormat } from "@/utils/patching";
 
 export async function updateHack(args: {
   slug: string;
@@ -36,6 +41,12 @@ export async function updateHack(args: {
     github?: string;
   } | null;
   tags?: string[];
+  /** Only for hacks uploaded on someone else's behalf; neither may be cleared. */
+  original_author?: string;
+  permission_from?: string;
+  verification_contact_info?: string | null;
+  /** Replaces the whole AI disclosure and marks it confirmed now. */
+  ai?: { levels: AiLevels; note: string | null };
 }) {
   const supabase = await createClient();
   const {
@@ -45,7 +56,7 @@ export async function updateHack(args: {
 
   const { data: hack, error: hErr } = await supabase
     .from("hacks")
-    .select("slug, created_by, current_patch, original_author, permission_from, is_archive")
+    .select("slug, created_by, current_patch, original_author, permission_from, is_archive, approved, base_rom")
     .eq("slug", args.slug)
     .maybeSingle();
   if (hErr) return { ok: false, error: hErr.message } as const;
@@ -56,11 +67,25 @@ export async function updateHack(args: {
     return { ok: false, error: "Forbidden" } as const;
   }
 
-  const updatePayload: TablesInsert<"hacks"> | any = {};
-  if (args.title !== undefined) updatePayload.title = args.title;
-  if (args.summary !== undefined) updatePayload.summary = args.summary;
+  const updatePayload: TablesUpdate<"hacks"> = {};
+  if (args.title !== undefined) {
+    if (!args.title.trim() || args.title.length > TITLE_MAX) return { ok: false, error: `Keep the title between 1 and ${TITLE_MAX} characters` } as const;
+    updatePayload.title = args.title;
+  }
+  if (args.summary !== undefined) {
+    if (args.summary.length > SUMMARY_MAX) return { ok: false, error: `Keep the summary to ${SUMMARY_MAX} characters` } as const;
+    updatePayload.summary = args.summary;
+  }
   if (args.description !== undefined) updatePayload.description = args.description;
-  if (args.base_rom !== undefined) updatePayload.base_rom = args.base_rom;
+  if (args.base_rom !== undefined) {
+    if (!baseRoms.some((r) => r.id === args.base_rom)) return { ok: false, error: "Choose a base ROM from the list" } as const;
+    // Patches are built against one ROM; switching it after an upload would make players patch the wrong game.
+    if (args.base_rom !== hack.base_rom) {
+      const { count } = await supabase.from("patches").select("id", { count: "exact", head: true }).eq("parent_hack", args.slug);
+      if (count) return { ok: false, error: "The base ROM is locked once a patch is uploaded" } as const;
+    }
+    updatePayload.base_rom = args.base_rom;
+  }
   if (args.language !== undefined) updatePayload.language = args.language;
   if (args.completion_status !== undefined) {
     if (args.completion_status === null) {
@@ -71,9 +96,30 @@ export async function updateHack(args: {
   if (args.version !== undefined) updatePayload.version = args.version;
   if (args.box_art !== undefined) updatePayload.box_art = args.box_art;
   if (args.social_links !== undefined) updatePayload.social_links = args.social_links;
+  if (args.original_author !== undefined || args.permission_from !== undefined) {
+    if (!hack.original_author) {
+      return { ok: false, error: "This hack was not uploaded on someone else's behalf" } as const;
+    }
+    if (args.original_author?.trim() === "" || args.permission_from?.trim() === "") {
+      return { ok: false, error: "Name the creator and where they gave permission" } as const;
+    }
+    if (args.original_author !== undefined) updatePayload.original_author = args.original_author.trim();
+    if (args.permission_from !== undefined) updatePayload.permission_from = args.permission_from.trim();
+  }
+  if (args.verification_contact_info !== undefined) {
+    updatePayload.verification_contact_info = args.verification_contact_info?.trim() || null;
+  }
+  if (args.ai !== undefined) {
+    const levels = parseAiLevels(args.ai.levels);
+    if (!levels) return { ok: false, error: "Pick a level for every area of the AI label" } as const;
+    if ((args.ai.note?.length ?? 0) > 1000) return { ok: false, error: "Keep the AI explanation under 1,000 characters" } as const;
+    Object.assign(updatePayload, aiColumns(levels, args.ai.note));
+  }
 
   if (Object.keys(updatePayload).length > 0) {
-    const { error: uErr } = await supabase
+    // The service role: credits and the AI label are server-only in the database, and the checks above already ran.
+    const service = await createServiceClient();
+    const { error: uErr } = await service
       .from("hacks")
       .update(updatePayload)
       .eq("slug", args.slug);
@@ -91,7 +137,7 @@ export async function updateHack(args: {
       .eq("hack_slug", args.slug);
     if (curErr) return { ok: false, error: curErr.message } as const;
 
-    const currentIds = new Set((currentLinks || []).map((r: any) => r.tag_id as number));
+    const currentIds = new Set((currentLinks || []).map((r) => r.tag_id));
     const desiredSet = new Set(desiredIds);
 
     // Remove links for tags that are no longer present
@@ -132,8 +178,10 @@ export async function updateHack(args: {
 
   revalidateTag(`hack:${args.slug}:metadata`);
   revalidatePath(`/hack/${args.slug}`);
-  revalidateDiscoverCatalog();
-  return { ok: true } as const;
+  // Only listed hacks are in the catalog; drafts autosave constantly and would rebuild it each time.
+  if (hack.approved) revalidateDiscoverCatalog();
+  // The upload step confirms against this stamp.
+  return { ok: true, aiDisclosedAt: updatePayload.ai_disclosed_at ?? null } as const;
 }
 
 export async function saveHackCovers(args: { slug: string; coverUrls: string[] }) {
@@ -145,7 +193,7 @@ export async function saveHackCovers(args: { slug: string; coverUrls: string[] }
 
   const { data: hack, error: hErr } = await supabase
     .from("hacks")
-    .select("slug, created_by, current_patch, original_author, permission_from, is_archive")
+    .select("slug, created_by, current_patch, original_author, permission_from, is_archive, approved")
     .eq("slug", args.slug)
     .maybeSingle();
   if (hErr) return { ok: false, error: hErr.message } as const;
@@ -164,10 +212,15 @@ export async function saveHackCovers(args: { slug: string; coverUrls: string[] }
     .order("position", { ascending: true });
   if (cErr) return { ok: false, error: cErr.message } as const;
 
-  const existingAltMap = new Map((currentRows || []).map((r: any) => [r.url as string, (r.alt as string | null) || null]));
-  const existingIdMap = new Map((currentRows || []).map((r: any) => [r.url as string, r.id as number]));
-  const currentUrls = new Set((currentRows || []).map((r: any) => r.url as string));
+  const existingAltMap = new Map((currentRows || []).map((r) => [r.url, r.alt || null]));
+  const existingIdMap = new Map((currentRows || []).map((r) => [r.url, r.id]));
+  const currentUrls = new Set((currentRows || []).map((r) => r.url));
   const desiredSet = new Set(args.coverUrls);
+  if (args.coverUrls.length > MAX_COVERS) return { ok: false, error: `Up to ${MAX_COVERS} screenshots` } as const;
+  // New keys must be this hack's own uploads; otherwise removing one later would delete another hack's file.
+  if (args.coverUrls.some((u) => !currentUrls.has(u) && !isCoverKeyFor(args.slug, u))) {
+    return { ok: false, error: "Invalid screenshot" } as const;
+  }
 
   const toRemove = Array.from(currentUrls).filter((u) => !desiredSet.has(u));
 
@@ -179,9 +232,9 @@ export async function saveHackCovers(args: { slug: string; coverUrls: string[] }
       .eq("hack_slug", args.slug)
       .in("url", toRemove);
     if (delErr) return { ok: false, error: delErr.message } as const;
-    // Best-effort removal of orphaned files from S3
+    // Best-effort removal of orphaned files from S3, only inside this hack's folder
     const client = getMinioClient();
-    for (const key of toRemove) {
+    for (const key of toRemove.filter((k) => isCoverKeyFor(args.slug, k))) {
       try {
         await client.removeObject(COVERS_BUCKET, key);
       } catch (e) {
@@ -192,12 +245,14 @@ export async function saveHackCovers(args: { slug: string; coverUrls: string[] }
 
   // Upsert desired rows (insert new and update existing positions/alts)
   if (args.coverUrls.length > 0) {
-    const rows = args.coverUrls.map((url, idx) => {
-      const base: any = { hack_slug: args.slug, url, position: idx + 1, alt: existingAltMap.get(url) || null };
-      const id = existingIdMap.get(url);
-      base.id = id || undefined; // include pk for existing rows per Supabase upsert requirement
-      return base;
-    });
+    // Existing rows keep their pk, which the upsert needs.
+    const rows = args.coverUrls.map((url, idx): TablesInsert<"hack_covers"> => ({
+      id: existingIdMap.get(url),
+      hack_slug: args.slug,
+      url,
+      position: idx + 1,
+      alt: existingAltMap.get(url) || null,
+    }));
 
     const updatedRows = rows.filter((r) => r.id !== undefined);
     const newRows = rows.filter((r) => r.id === undefined);
@@ -216,12 +271,13 @@ export async function saveHackCovers(args: { slug: string; coverUrls: string[] }
 
   revalidateTag(`hack:${args.slug}:metadata`);
   revalidatePath(`/hack/${args.slug}`);
-  revalidateDiscoverCatalog();
+  if (hack.approved) revalidateDiscoverCatalog();
   return { ok: true } as const;
 }
 
 
-export async function presignNewPatchVersion(args: { slug: string; version: string; objectKey?: string }) {
+/** Signs an upload for a new version. The key is made here so it can only land in this hack's files. */
+export async function presignNewPatchVersion(args: { slug: string; version: string; format: PatchFormat }) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -255,8 +311,7 @@ export async function presignNewPatchVersion(args: { slug: string; version: stri
     .maybeSingle();
   if (existing) return { ok: false, error: "That version already exists for this hack." } as const;
 
-  const safeVersion = args.version.replace(/[^a-zA-Z0-9._-]+/g, "-");
-  const objectKey = args.objectKey || `${args.slug}-${safeVersion}.bps`;
+  const objectKey = newPatchKey(args.slug, args.version, args.format === "xdelta" ? "xdelta" : "bps");
 
   const client = getMinioClient();
   // 10 minutes to upload
@@ -285,6 +340,7 @@ export async function presignCoverUpload(args: { slug: string; objectKey: string
   if (!permission.canEdit) {
     return { ok: false, error: "Forbidden" } as const;
   }
+  if (!isCoverKeyFor(args.slug, args.objectKey)) return { ok: false, error: "Invalid screenshot path" } as const;
 
   const client = getMinioClient();
   // 10 minutes to upload
@@ -310,11 +366,14 @@ export async function approveHack(slug: string, verified?: boolean) {
   // Check if hack exists
   const { data: hack, error: hErr } = await serviceClient
     .from("hacks")
-    .select("slug, approved, title, created_by")
+    .select("slug, approved, title, created_by, submitted_at, current_patch, is_archive")
     .eq("slug", slug)
     .maybeSingle();
   if (hErr) return { ok: false, error: hErr.message } as const;
   if (!hack) return { ok: false, error: "Hack not found" } as const;
+  // Only the creator can submit; a draft isn't in the queue yet.
+  if (hack.submitted_at === null) return { ok: false, error: "This hack hasn't been submitted for review yet." } as const;
+  if (!hack.approved && !hack.is_archive && hack.current_patch === null) return { ok: false, error: "This hack has no playable patch yet." } as const;
 
   if (verified === true) {
     const { error: updateErr } = await serviceClient
@@ -329,6 +388,7 @@ export async function approveHack(slug: string, verified?: boolean) {
 
   // If already approved, return success
   if (hack.approved) {
+    revalidateTag(`hack:${slug}:metadata`);
     revalidatePath(`/hack/${slug}`);
     revalidateDiscoverCatalog();
     return { ok: true } as const;
@@ -345,7 +405,11 @@ export async function approveHack(slug: string, verified?: boolean) {
     .eq("slug", slug);
 
   if (updateErr) return { ok: false, error: updateErr.message } as const;
+  // Before the notifications, so a failed one can't leave the page cached as unapproved.
   revalidateDiscoverCatalog();
+  revalidateTag(`hack:${slug}:metadata`);
+  revalidateTag(`hack:${slug}:downloads`);
+  revalidatePath(`/hack/${slug}`);
 
   try {
     const { data: creatorData, error: creatorError } = await serviceClient.auth.admin.getUserById(hack.created_by);
@@ -380,25 +444,26 @@ export async function approveHack(slug: string, verified?: boolean) {
   }
 
   if (process.env.DISCORD_WEBHOOK_HACKDEX_HACKS_URL) {
-    const { data: profile } = await serviceClient.from('profiles').select('*').eq('id', hack.created_by).single();
-    const displayName = profile?.username ? `@${profile.username}` : user.id;
-    const embed: APIEmbed = {
-      title: `:tada: ${hack.title} :tada:`,
-      description: `A new hack by **${displayName}** is now live!`,
-      color: 0x40f56a,
-      url: `${process.env.NEXT_PUBLIC_SITE_URL}/hack/${slug}`,
-      footer: {
-        text: `This message brought to you by Hackdex`
+    try {
+      const { data: profile } = await serviceClient.from('profiles').select('*').eq('id', hack.created_by).single();
+      const displayName = profile?.username ? `@${profile.username}` : user.id;
+      const embed: APIEmbed = {
+        title: `:tada: ${hack.title} :tada:`,
+        description: `A new hack by **${displayName}** is now live!`,
+        color: 0x40f56a,
+        url: `${process.env.NEXT_PUBLIC_SITE_URL}/hack/${slug}`,
+        footer: {
+          text: `This message brought to you by Hackdex`
+        }
       }
+      await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_HACKDEX_HACKS_URL, [
+        embed,
+      ]);
+    } catch (error) {
+      console.error(`[HackApprove] Failed to announce ${slug} on Discord:`, error);
     }
-    await sendDiscordMessageEmbed(process.env.DISCORD_WEBHOOK_HACKDEX_HACKS_URL, [
-      embed,
-    ]);
   }
 
-  revalidateTag(`hack:${slug}:metadata`);
-  revalidateTag(`hack:${slug}:downloads`);
-  revalidatePath(`/hack/${slug}`);
   redirect(`/hack/${slug}`);
 }
 

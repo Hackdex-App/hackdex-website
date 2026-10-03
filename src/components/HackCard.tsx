@@ -1,24 +1,22 @@
 "use client";
 
-
-import PixelImage from "./PixelImage";
 import Link from "next/link";
+import type { LinkProps } from "next/link";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import useEmblaCarousel from "embla-carousel-react";
+import { FiChevronLeft, FiChevronRight, FiDownload } from "react-icons/fi";
+import { RiArchiveStackFill } from "react-icons/ri";
 import { formatCompactNumber, OrderedTag } from "@/utils/format";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
-import { baseRoms } from "@/data/baseRoms";
-import { useEffect, useRef, useState } from "react";
-import useEmblaCarousel from "embla-carousel-react";
-import { usePathname } from "next/navigation";
-import { FaRegImages } from "react-icons/fa6";
-import { ImDownload } from "react-icons/im";
-import { RiArchiveStackFill } from "react-icons/ri";
+import { baseGameLabel, baseRoms, type Platform } from "@/data/baseRoms";
 import type { Database } from "@/types/db";
-import type { LinkProps } from "next/link";
+import Handle from "@/components/Primitives/Handle";
 
 export interface HackCardAttributes {
   slug: string;
   title: string;
   author: string;
+  /** Screenshots in display order; the first one is the card cover. */
   covers: string[];
   tags: OrderedTag[];
   downloads: number;
@@ -28,231 +26,369 @@ export interface HackCardAttributes {
   description?: string;
   is_archive: boolean;
   completion_status?: Database["public"]["Enums"]["Completion Status"] | null;
-};
+}
 
 interface HackCardProps {
   hack: HackCardAttributes;
   clickable?: boolean;
   prefetch?: LinkProps["prefetch"];
   className?: string;
+  /** Phone grid: 1× screenshots with the neighbors peeking over a blurred backdrop (see Shots). */
+  fill?: boolean;
 }
 
-export default function HackCard({
-  hack,
-  clickable = true,
-  prefetch = false,
-  className = "",
-}: HackCardProps) {
-  const isArchive = hack.is_archive;
+/**
+ * Whether the player can patch this hack right now. "permission" means the ROM
+ * is linked but the browser needs file access granted again. Archives have no
+ * download, so they are never either.
+ */
+function useReadiness(hack: HackCardAttributes) {
   const { isLinked, hasPermission, hasCached } = useBaseRoms();
-  const match = baseRoms.find((r) => r.id === hack.baseRomId);
-  const baseId = match?.id ?? undefined;
-  const baseName = match?.name ?? undefined;
+  const base = baseRoms.find((r) => r.id === hack.baseRomId);
+  const ready = base && !hack.is_archive ? hasPermission(base.id) || hasCached(base.id) : false;
+  const needsPermission = base && !hack.is_archive && !ready ? isLinked(base.id) : false;
+  return { base, ready, needsPermission };
+}
 
-  // Only compute base ROM readiness for non-archive hacks
-  const linked = !isArchive && baseId ? isLinked(baseId) : false;
-  const ready = !isArchive && baseId ? hasPermission(baseId) || hasCached(baseId) : false;
-  const images = (hack.covers && hack.covers.length > 0 ? hack.covers : []).filter(Boolean);
-  const isCarousel = images.length > 1;
-  const pathname = usePathname();
-  const showTitlePlaceholder = (pathname || "").startsWith("/submit") && images.length === 0;
+/** Summary, or the start of the description for hacks that never got one. */
+function blurb(hack: HackCardAttributes) {
+  if (hack.summary) return hack.summary;
+  const text = hack.description?.trim() ?? "";
+  return text.length > 120 ? text.slice(0, 120).trimEnd() + "…" : text;
+}
 
-  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [isClicked, setIsClicked] = useState(false);
-  const dragStartRef = useRef<{ x: number; y: number } | null>(null);
-  const didDragRef = useRef(false);
+/** Anything short of Complete gets an outline pill so a demo never reads like a finished game. */
+function CompletionBadge({ status }: { status?: HackCardAttributes["completion_status"] }) {
+  if (!status || status === "Complete") return null;
+  return (
+    <span className="flex-none rounded-full border border-line-strong px-[7px] text-[11px] font-semibold leading-[18px] tracking-[.01em] text-text-2">
+      {status}
+    </span>
+  );
+}
+
+/**
+ * Ready (base ROM linked): a light green tint and a faintly green border instead of an outline, so a
+ * grid where every card is ready stays calm. Replaces bg-surface/border-line on the card.
+ */
+const READY_SURFACE =
+  "border-[color-mix(in_srgb,var(--ready)_22%,var(--line))] bg-[color-mix(in_srgb,var(--ready)_4%,var(--surface))] dark:bg-[color-mix(in_srgb,var(--ready)_5%,var(--surface))]";
+const READY_HOVER = "hover:border-[color-mix(in_srgb,var(--ready)_40%,var(--line))]";
+/** Tag pills shade whatever they sit on (about surface-2 on a plain card), so they keep contrast on the Ready tint. */
+const TAG_PILL = "bg-text/[.08]";
+
+/** Pixel art only stays crisp at whole-number scales; anything else is smoothed. */
+function snapRendering(img: HTMLImageElement) {
+  const integer = img.naturalWidth > 0 && img.clientWidth > 0 && img.clientWidth % img.naturalWidth === 0;
+  img.classList.toggle("pixelated", integer);
+}
+
+/**
+ * Swipeable screenshots, first one is the cover. Drag to browse, bars under the shot to jump,
+ * and a drag never counts as a click on the link. Desktop also gets edge chevrons on hover,
+ * since the bars are small targets. DS shots are 4:3 per screen; a portrait 256×384 shot
+ * crops to its top screen here and opens whole in the lightbox.
+ *
+ * `fill` (the phone grid): shots stay at 1× with the neighbors peeking in, dimmed, over a
+ * blurred copy of the current shot that crossfades as you swipe. From md up it's the plain
+ * 1× carousel.
+ */
+function Shots({ images, platform, fill }: { images: string[]; platform?: Platform; fill?: boolean }) {
+  const many = images.length > 1;
+  const [viewportRef, api] = useEmblaCarousel({ loop: true, active: many });
+  const [index, setIndex] = useState(0);
+  const start = useRef<{ x: number; y: number } | null>(null);
+  const dragged = useRef(false);
+  const slideEls = useRef<(HTMLElement | null)[]>([]);
+  const backdropEls = useRef<(HTMLElement | null)[]>([]);
 
   useEffect(() => {
-    if (!emblaApi) return;
-    const onSelect = () => setSelectedIndex(emblaApi.selectedScrollSnap());
-    emblaApi.on("select", onSelect);
-    onSelect();
+    if (!api) return;
+    const onSelect = () => setIndex(api.selectedScrollSnap());
+    api.on("select", onSelect);
     return () => {
-      emblaApi.off("select", onSelect);
+      api.off("select", onSelect);
     };
-  }, [emblaApi]);
+  }, [api]);
 
+  // How many slides each one is from center drives --dim (peeks) and --fade (backdrop).
+  // Set on the elements directly so a swipe doesn't re-render.
   useEffect(() => {
-    // Reset isClicked state when component mounts
-    setIsClicked(false);
-  }, []);
+    if (!api || !fill || !many) return;
+    const update = () => {
+      const progress = api.scrollProgress();
+      const snaps = api.scrollSnapList();
+      const { loopPoints } = api.internalEngine().slideLooper;
+      snaps.forEach((snap, i) => {
+        let diff = snap - progress;
+        // A looped slide sits a full lap away from its snap.
+        for (const point of loopPoints) {
+          const target = point.target();
+          if (point.index === i && target !== 0) diff = target < 0 ? snap - (1 + progress) : snap + (1 - progress);
+        }
+        const away = Math.min(1, Math.abs(diff) * snaps.length);
+        slideEls.current[i]?.style.setProperty("--dim", String(1 - 0.6 * away));
+        backdropEls.current[i]?.style.setProperty("--fade", String(1 - away));
+      });
+    };
+    update();
+    api.on("scroll", update).on("reInit", update);
+    return () => {
+      api.off("scroll", update).off("reInit", update);
+    };
+  }, [api, fill, many]);
 
-  const cardClass = `rounded-[12px] overflow-hidden h-full flex flex-col ${
-    clickable ? `transition-transform duration-300 hover:-translate-y-0.5 hover:shadow-xl ${isClicked ? "anim-float" : ""}` : ""
-  } ring-1 ${ready ? "ring-emerald-400/50 bg-emerald-500/10" : "card ring-[var(--border)]"}`;
-  const gradientBgClass = `bg-gradient-to-b ${ready ? 'from-emerald-300/5 to-emerald-400/30 dark:from-emerald-950/10 dark:to-emerald-600/40' : 'from-black/30 to-black/10 dark:from-black/80 dark:to-black/40'}`;
-  const shadowClass = `shadow-xl ${ready ? "shadow-emerald-700/40 dark:shadow-emerald-200/40" : "shadow-slate-500/40 dark:shadow-slate-300/40"}`;
-  const content = (
-      <div className={cardClass}>
-        <div className="relative aspect-[3/2] w-full rounded-[12px] overflow-hidden">
-          <div className={`absolute inset-0 ${gradientBgClass}`} />
-          {showTitlePlaceholder ? (
-            <div className="h-full w-full flex items-center justify-center">
-              <FaRegImages className={`text-[10rem] ${ready ? "text-emerald-600/40 dark:text-emerald-300/40" : "text-black/20 dark:text-white/30"} select-none text-center`} />
-            </div>
-          ) : isCarousel ? (
-            <div
-              className="overflow-hidden h-full"
-              ref={emblaRef}
-              onPointerDown={(e) => {
-                dragStartRef.current = { x: e.clientX, y: e.clientY };
-                didDragRef.current = false;
-                try {
-                  (e.currentTarget as any).setPointerCapture?.(e.pointerId);
-                } catch {}
+  const nds = platform === "NDS";
+  const ratio = nds ? "aspect-[4/3]" : "aspect-[3/2]";
+  // Literal strings so Tailwind sees them. `fill` slides are a fixed 1× width on phones so the neighbors
+  // peek in; everywhere else the viewport is one native-width shot.
+  const viewportWidth = fill
+    ? nds ? "w-full md:w-[min(256px,100%)]" : "w-full md:w-[min(240px,100%)]"
+    : nds ? "w-[min(256px,100%)]" : "w-[min(240px,100%)]";
+  const slideSize = fill
+    ? nds ? "flex-[0_0_256px] mr-3 md:mr-0 md:flex-[0_0_100%]" : "flex-[0_0_240px] mr-3 md:mr-0 md:flex-[0_0_100%]"
+    : "flex-[0_0_100%]";
+
+  return (
+    <span
+      className={`relative flex select-none items-center justify-center overflow-hidden bg-well px-3 pb-7 pt-3 ${fill ? "max-md:bg-black max-md:px-0" : ""}`}
+      onPointerDown={(e) => {
+        start.current = { x: e.clientX, y: e.clientY };
+        dragged.current = false;
+      }}
+      onPointerMove={(e) => {
+        const s = start.current;
+        if (s && !dragged.current && Math.hypot(e.clientX - s.x, e.clientY - s.y) > 5) dragged.current = true;
+      }}
+      onClickCapture={(e) => {
+        if (dragged.current) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }}
+    >
+      {fill && (
+        <span className="absolute inset-0 md:hidden" aria-hidden>
+          {images.map((src, i) => (
+            <img
+              key={`${src}-${i}`}
+              ref={(el) => {
+                backdropEls.current[i] = el;
               }}
-              onPointerMove={(e) => {
-                const start = dragStartRef.current;
-                if (!start) return;
-                const dx = e.clientX - start.x;
-                const dy = e.clientY - start.y;
-                if (!didDragRef.current && dx * dx + dy * dy > 25) {
-                  didDragRef.current = true; // movement > 5px
-                }
+              src={src}
+              alt=""
+              loading="lazy"
+              draggable={false}
+              style={{ "--fade": i === 0 ? 1 : 0 } as CSSProperties}
+              className="absolute -inset-6 h-[calc(100%+48px)] w-[calc(100%+48px)] max-w-none object-cover blur-[18px] saturate-[1.15] [opacity:calc(var(--fade)*.45)]"
+            />
+          ))}
+        </span>
+      )}
+      <span ref={viewportRef} className={`relative block overflow-hidden ${many ? "cursor-grab active:cursor-grabbing" : ""} ${viewportWidth}`}>
+        <span className="flex">
+          {images.map((src, i) => (
+            <span
+              key={`${src}-${i}`}
+              ref={(el) => {
+                slideEls.current[i] = el;
               }}
-              onPointerUp={(e) => {
-                dragStartRef.current = null;
-                try {
-                  (e.currentTarget as any).releasePointerCapture?.(e.pointerId);
-                } catch {}
-              }}
-              onPointerCancel={() => {
-                dragStartRef.current = null;
-              }}
+              style={fill ? ({ "--dim": i === 0 ? 1 : 0.4 } as CSSProperties) : undefined}
+              className={`min-w-0 ${slideSize} ${fill ? "max-md:[opacity:var(--dim)]" : ""}`}
             >
-              <div className="flex h-full">
-                {images.map((src, idx) => (
-                  <div className="relative h-full flex-[0_0_100%]" key={`${src}-${idx}`}>
-                    <PixelImage
-                      src={src}
-                      alt={hack.title}
-                      mode="contain"
-                      className={`absolute inset-0 ${clickable ? "transition-transform duration-300 group-hover:scale-[1.05]" : ""}`}
-                      imgClassName={shadowClass}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : images[0] ? (
-            <div className="relative h-full">
-              <PixelImage
-                src={images[0]}
-                alt={hack.title}
-                mode="contain"
-                className={`${clickable ? "transition-transform duration-300 group-hover:scale-[1.05]" : ""}`}
-                imgClassName={shadowClass}
+              <img
+                src={src}
+                alt=""
+                loading="lazy"
+                draggable={false}
+                onLoad={(e) => snapRendering(e.currentTarget)}
+                className={`block h-auto w-full ${ratio} rounded-frame object-cover object-top ${fill ? "max-md:shadow-[0_4px_14px_rgba(0,0,0,.35)]" : ""}`}
               />
-            </div>
-          ) : null}
+            </span>
+          ))}
+        </span>
+      </span>
+      {many && (
+        <>
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-label="Previous screenshot"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              api?.scrollPrev();
+            }}
+            className="absolute left-4 top-[calc(50%-8px)] z-[2] hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-[rgba(13,16,23,.6)] text-white opacity-0 transition-opacity duration-[120ms] hover:bg-[rgba(13,16,23,.85)] group-hover/card:opacity-100 md:inline-flex"
+          >
+            <FiChevronLeft className="h-[18px] w-[18px]" />
+          </button>
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-label="Next screenshot"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              api?.scrollNext();
+            }}
+            className="absolute right-4 top-[calc(50%-8px)] z-[2] hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-[rgba(13,16,23,.6)] text-white opacity-0 transition-opacity duration-[120ms] hover:bg-[rgba(13,16,23,.85)] group-hover/card:opacity-100 md:inline-flex"
+          >
+            <FiChevronRight className="h-[18px] w-[18px]" />
+          </button>
+          {/* Bars sit under the shot, never on the art: gray on the well, white over the phone backdrop. */}
+          <span className="pointer-events-none absolute inset-x-0 bottom-px flex justify-center" aria-hidden>
+            {images.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                tabIndex={-1}
+                aria-current={i === index || undefined}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  api?.scrollTo(i);
+                }}
+                className={`pointer-events-auto inline-flex h-[15px] w-[22px] items-center justify-center before:h-[3px] before:w-4 before:rounded-sm before:bg-[color-mix(in_srgb,var(--text-3)_45%,transparent)] before:transition-colors before:duration-150 before:content-[''] hover:before:bg-text-3 aria-[current]:before:bg-text ${
+                  fill ? "max-md:before:bg-white/50 max-md:hover:before:bg-white/80 max-md:aria-[current]:before:bg-white" : ""
+                }`}
+              />
+            ))}
+          </span>
+        </>
+      )}
+    </span>
+  );
+}
 
-          <div className="absolute left-3 top-3 z-10 flex gap-2">
-            {hack.tags.slice(0, isArchive ? 3 : 2).map((t) => (
-              <span
-                key={t.name}
-                className="rounded-full px-2 py-0.5 text-xs ring-1 ring-foreground/20 dark:ring-foreground/30 bg-background/70 text-foreground/90 backdrop-blur-md"
-              >
+function Facts({ hack, version = false, column = false, ...readiness }: ReturnType<typeof useReadiness> & { hack: HackCardAttributes; version?: boolean; column?: boolean }) {
+  const { base, ready, needsPermission } = readiness;
+  return (
+    <span
+      className={`flex items-center gap-2.5 overflow-hidden whitespace-nowrap text-[13px] leading-tight text-text-3 ${
+        column ? "flex-col items-end gap-1 text-right" : "mt-2.5"
+      }`}
+    >
+      {ready ? (
+        <span className="inline-flex flex-none items-center gap-1.5 text-text-2">
+          <span className="ready-dot" /> Ready
+        </span>
+      ) : needsPermission ? (
+        <span className="inline-flex flex-none items-center gap-1.5 text-text-2" title="Your ROM is linked. Allow access again to patch.">
+          <span className="h-2 w-2 rounded-full bg-warn" /> Permission needed
+        </span>
+      ) : (
+        <span className="plat-dot flex-none text-text-2" data-platform={base?.platform}>
+          {base ? baseGameLabel(base.name) : "Unknown base"}
+        </span>
+      )}
+      {version && <span className="truncate">{hack.version}</span>}
+      {hack.is_archive ? (
+        <span className={`inline-flex flex-none items-center gap-1 font-medium text-text-2 ${column ? "" : "ml-auto"}`} title="Listed for the record. No download.">
+          <RiArchiveStackFill className="h-3.5 w-3.5 text-text-3" /> Archive
+        </span>
+      ) : (
+        <span
+          className={`inline-flex flex-none items-center gap-[3px] font-medium ${column ? "text-[15px] text-text" : "ml-auto text-text-2"}`}
+          aria-label={`${formatCompactNumber(hack.downloads)} downloads`}
+        >
+          <FiDownload className="h-3.5 w-3.5 text-text-3" />
+          {formatCompactNumber(hack.downloads)}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/** Grid card: cover carousel, title, author + completion, summary, first two tags, then base / downloads. */
+export default function HackCard({ hack, clickable = true, prefetch = false, className = "", fill = false }: HackCardProps) {
+  const readiness = useReadiness(hack);
+  const { base, ready } = readiness;
+  const summary = blurb(hack);
+  const images = hack.covers.filter(Boolean);
+  const [pressed, setPressed] = useState(false);
+
+  const body = (
+    <>
+      <Shots images={images} platform={base?.platform} fill={fill} />
+      <span className="flex flex-col gap-[3px] px-3.5 pb-3.5 pt-3">
+        <span className="line-clamp-2 text-[15px] font-semibold leading-tight">{hack.title}</span>
+        <span className="flex items-center gap-2 text-[13px] text-text-2">
+          <Handle name={hack.author} className="min-w-0 truncate" />
+          <span className="ml-auto inline-flex flex-none items-center gap-1.5">
+            <CompletionBadge status={hack.completion_status} />
+            {hack.version && <span className="font-mono text-[11px] text-text-3" title="Current version">{hack.version}</span>}
+          </span>
+        </span>
+        {summary && <span className="mt-1 line-clamp-2 text-[13px] leading-[1.4] text-text-2">{summary}</span>}
+        {hack.tags.length > 0 && (
+          <span className="mt-2 flex gap-1.5 overflow-hidden" aria-label="Tags">
+            {hack.tags.slice(0, 2).map((t) => (
+              <span key={t.name} className={`flex-none rounded-full px-2 py-px text-xs text-text-2 ${TAG_PILL}`}>
                 {t.name}
               </span>
             ))}
-            {!isArchive && (
-              <span
-                className={`rounded-full px-2 py-0.5 text-xs ring-1 backdrop-blur-md ${
-                  ready
-                    ? "bg-emerald-600/60 text-white ring-emerald-700/80 dark:bg-emerald-500/25 dark:text-emerald-100 dark:ring-emerald-400/90"
-                    : linked
-                    ? "bg-amber-600/60 text-white ring-amber-700/80 dark:bg-amber-500/50 dark:text-amber-100 dark:ring-amber-400/90"
-                    : "bg-red-600/60 text-white ring-red-700/80 dark:bg-red-500/50 dark:text-red-100 dark:ring-red-400/90"
-                }`}
-              >
-                {ready ? "Ready" : linked ? "Permission needed" : "Base ROM needed"}
-              </span>
-            )}
-          </div>
-          {isArchive && (
-            <div className="absolute right-3 top-3 z-10">
-              <RiArchiveStackFill size={22} className="text-foreground/60" />
-            </div>
-          )}
-          {isCarousel && (
-            <div className="absolute inset-x-0 bottom-2 z-10 flex items-center justify-center gap-3">
-              {images.map((_, i) => (
-                <button
-                  key={i}
-                  aria-label={`Show image ${i + 1}`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    emblaApi && emblaApi.scrollTo(i);
-                  }}
-                  className={`h-1.5 w-1.5 rounded-full ring-1 transition-all ${
-                    i === selectedIndex
-                      ? "bg-[var(--foreground)]/80 ring-[var(--foreground)]/60"
-                      : "bg-[var(--foreground)]/30 ring-[var(--foreground)]/30 hover:bg-[var(--foreground)]/50"
-                  }`}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="p-4 flex flex-col flex-1 min-h-0">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 w-full">
-              <div className={`flex items-center gap-2 ${isArchive ? "justify-between" : "justify-start"}`}>
-                <h3 className="line-clamp-1 text-[15px] font-semibold tracking-tight">
-                  {hack.title}
-                </h3>
-                <span className="shrink-0 rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[11px] font-medium text-foreground/85 ring-1 ring-[var(--border)]">
-                  {hack.version}
-                </span>
-              </div>
-              <p className="mt-1 text-xs text-foreground/60">By {hack.author}</p>
-            </div>
-            {!isArchive && (
-              <div className="flex items-center gap-1 text-sm text-foreground/70">
-              <ImDownload size={16} />
-                <span>{formatCompactNumber(hack.downloads)}</span>
-              </div>
-            )}
-          </div>
-          <p className="mt-2 line-clamp-2 text-sm text-foreground/70">
-            {(() => {
-              const text = (hack as any).summary ?? (hack as any).description ?? "";
-              return text.length > 120 ? text.slice(0, 120).trimEnd() + "…" : text;
-            })()}
-          </p>
-          <div className="flex justify-between items-end mt-auto pt-3 text-xs text-foreground/60">
-            <p>Base: {baseName ?? "Unknown"}</p>
-            {hack.completion_status && hack.completion_status !== "Complete" && <p className="font-bold text-sm">{hack.completion_status}</p>}
-          </div>
-        </div>
-      </div>
+          </span>
+        )}
+        <Facts hack={hack} {...readiness} />
+      </span>
+    </>
   );
-  if (clickable) {
-    return (
-      <Link
-        href={`/hack/${hack.slug}`}
-        className={`group block ${className}`.trim()}
-        draggable={false}
-        prefetch={prefetch}
-        onDragStart={(e) => {
-          e.preventDefault();
-        }}
-        onClick={(e) => {
-          if (didDragRef.current) {
-            e.preventDefault();
-            e.stopPropagation();
-            didDragRef.current = false;
-          }
-          setIsClicked(true);
-        }}
-      >
-        {content}
-      </Link>
-    );
-  }
-  return <div className={`group block ${className}`.trim()}>{content}</div>;
+
+  const shell = `group/card block overflow-hidden rounded-card border shadow-rest transition-[transform,box-shadow,border-color] duration-150 ease-out ${
+    ready ? READY_SURFACE : "border-line bg-surface"
+  } ${clickable ? `hover:-translate-y-0.5 hover:shadow-lift active:scale-[.99] ${ready ? READY_HOVER : "hover:border-line-strong"} ${pressed ? "anim-float" : ""}` : ""} ${className}`.trim();
+
+  if (!clickable) return <div className={shell}>{body}</div>;
+  return (
+    <Link
+      href={`/hack/${hack.slug}`}
+      prefetch={prefetch}
+      className={`${shell} flex h-full flex-col`}
+      // Links are draggable by default, which would beat the carousel's drag.
+      draggable={false}
+      onDragStart={(e) => e.preventDefault()}
+      onClick={() => setPressed(true)}
+    >
+      {body}
+    </Link>
+  );
 }
 
-
+/** List row: 120×80 thumb, title + author, one-line summary, four tags, facts stacked at the right on desktop. */
+export function HackRow({ hack, prefetch = false }: { hack: HackCardAttributes; prefetch?: LinkProps["prefetch"] }) {
+  const readiness = useReadiness(hack);
+  const summary = blurb(hack);
+  const cover = hack.covers.find(Boolean);
+  return (
+    <Link
+      href={`/hack/${hack.slug}`}
+      prefetch={prefetch}
+      className={`grid grid-cols-[120px_minmax(0,1fr)] items-center gap-4 rounded-card border p-3 shadow-rest transition-[box-shadow,border-color] duration-150 hover:shadow-lift md:grid-cols-[120px_minmax(0,1fr)_auto] ${
+        readiness.ready ? `${READY_SURFACE} ${READY_HOVER}` : "border-line bg-surface hover:border-line-strong"
+      }`}
+    >
+      <span className="block h-20 w-[120px] overflow-hidden rounded-frame bg-well">
+        {cover && <img src={cover} alt="" width={120} height={80} loading="lazy" className="h-full w-full object-cover object-top" />}
+      </span>
+      <span className="flex min-w-0 flex-col gap-1">
+        <span className="truncate text-[15px] font-semibold leading-tight">
+          {hack.title} <span className="text-[13px] font-normal text-text-2">by <Handle name={hack.author} /></span>
+        </span>
+        {summary && <span className="truncate text-sm text-text-2">{summary}</span>}
+        {hack.tags.length > 0 && (
+          <span className="flex gap-1.5 overflow-hidden">
+            {hack.tags.slice(0, 4).map((t) => (
+              <span key={t.name} className={`flex-none rounded-full px-2 py-0.5 text-xs text-text-2 ${TAG_PILL}`}>
+                {t.name}
+              </span>
+            ))}
+          </span>
+        )}
+      </span>
+      <span className="hidden md:block">
+        <Facts hack={hack} {...readiness} version column />
+      </span>
+    </Link>
+  );
+}

@@ -315,17 +315,17 @@ export default function PatcherVersionManager({
         visible={showPublishModal}
         onClose={() => !saving && setShowPublishModal(false)}
       >
-        <p className="text-foreground/80 mb-3">
+        <p className="text-text-2 mb-3">
           These patches will be available to choose from in the downloader on your hack&apos;s homepage:
         </p>
         {draftVersionLabels.length > 0 ? (
-          <ul className="mb-4 space-y-1 text-sm text-foreground/75">
+          <ul className="mb-4 space-y-1 text-sm text-text-2">
             {draftVersionLabels.map((label, index) => (
               <li key={label} className="flex items-center gap-2">
                 <span aria-hidden>-</span>
                 <span>{label}</span>
                 {draftOption === "custom" && index === 0 && (
-                  <span className="inline-flex items-center rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                  <span className="inline-flex items-center rounded-full bg-ready-soft px-2 py-0.5 text-[10px] font-medium text-ready">
                     Default
                   </span>
                 )}
@@ -333,20 +333,20 @@ export default function PatcherVersionManager({
             ))}
           </ul>
         ) : (
-          <p className="mb-4 text-sm text-foreground/60">No current patch is set.</p>
+          <p className="mb-4 text-sm text-text-3">No current patch is set.</p>
         )}
         {draftOption === "custom" && (
-          <p className="mb-4 text-sm text-foreground/70">
-            Public version name: <strong className="text-foreground">{draftCustomVersionName.trim()}</strong>
+          <p className="mb-4 text-sm text-text-2">
+            Public version name: <strong className="text-text">{draftCustomVersionName.trim()}</strong>
           </p>
         )}
         {selectedUnpublishedVersionLabels.length > 0 && (
-          <p className="mb-4 text-sm text-amber-600 dark:text-amber-400">
+          <p className="mb-4 text-sm text-warn">
             Selected unpublished versions will be published when these changes are saved.
           </p>
         )}
         {publishError && (
-          <p className="mb-4 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+          <p className="mb-4 rounded-control border border-error/40 bg-error-soft px-3 py-2 text-sm text-error">
             {publishError}
           </p>
         )}
@@ -355,7 +355,7 @@ export default function PatcherVersionManager({
             type="button"
             onClick={confirmPublish}
             disabled={saving}
-            className="flex-1 inline-flex items-center justify-center rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-[var(--accent-foreground)] hover:bg-[var(--accent-700)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 inline-flex items-center justify-center rounded-control bg-accent-deep px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? "Publishing..." : "Publish Changes"}
           </button>
@@ -366,7 +366,7 @@ export default function PatcherVersionManager({
               setPublishError(null);
             }}
             disabled={saving}
-            className="flex-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-4 py-2 text-sm font-medium hover:bg-[var(--surface-3)] disabled:opacity-50"
+            className="flex-1 rounded-control border border-line bg-surface-2 px-4 py-2 text-sm font-medium hover:bg-surface-3 disabled:opacity-50"
           >
             Cancel
           </button>

@@ -1,15 +1,12 @@
 import { Metadata } from "next";
 import Link from "next/link";
-import { FaArrowRightLong } from "react-icons/fa6";
-import { createServiceClient } from "@/utils/supabase/server";
-import HackCard from "@/components/HackCard";
-import Button from "@/components/Button";
+import { FiArrowRight } from "react-icons/fi";
+import { getDiscoverData } from "@/app/discover/actions";
 import MilestoneCelebration from "@/components/Home/MilestoneCelebration";
-import HeroPatchDiagram from "@/components/Home/HeroPatchDiagram";
-import HeroAuthCta from "@/components/Home/HeroAuthCta";
-import { sortOrderedTags, getCoverUrls } from "@/utils/format";
-import { HackCardAttributes } from "@/components/HackCard";
-import { resolveHackDisplayVersion } from "@/utils/patches/hack-display-version";
+import { HomeHero, HowItWorksGate, ReadyShelf } from "@/components/Home/HomeHero";
+import Shelf from "@/components/Home/Shelf";
+import type { HackCardAttributes } from "@/components/HackCard";
+import type { DiscoverHack } from "@/types/discover";
 
 export const metadata: Metadata = {
   alternates: {
@@ -20,255 +17,92 @@ export const metadata: Metadata = {
 export const dynamic = "error";
 export const revalidate = 1800;
 
+const SHELF_SIZE = 12;
+
+const STEPS = [
+  ["Link your base ROM", "Point Hackdex at your legally-obtained ROM file. It's verified and matched automatically."],
+  ["It stays on your device", "Your ROM is cached locally in your browser, never uploaded, and ready whenever you come back."],
+  ["Patch hack after hack", "Pick any hack built for your ROM and patch it in your browser in seconds, with no re-uploading between hacks."],
+] as const;
+
+/** Only what a card needs, so the whole catalog can ride along for the ready shelf without the discover extras. */
+function toCard(h: DiscoverHack): HackCardAttributes {
+  return {
+    slug: h.slug,
+    title: h.title,
+    author: h.author,
+    covers: h.covers,
+    tags: h.tags,
+    downloads: h.downloads,
+    baseRomId: h.baseRomId,
+    version: h.version,
+    summary: h.summary,
+    is_archive: h.is_archive,
+    completion_status: h.completion_status,
+  };
+}
+
+function byDateDesc(key: "approvedAt" | "publishedAt") {
+  return (a: DiscoverHack, b: DiscoverHack) => (b[key] ? Date.parse(b[key]!) : 0) - (a[key] ? Date.parse(a[key]!) : 0);
+}
+
 export default async function Home() {
-  const downloadsMilestone = process.env.NEXT_PUBLIC_DOWNLOADS_MILESTONE?.trim();
-  const supabase = await createServiceClient();
+  const milestone = process.env.NEXT_PUBLIC_DOWNLOADS_MILESTONE?.trim() || undefined;
+  const { hacks } = await getDiscoverData();
+  const catalog = hacks.map(toCard);
 
-  // Fetch top 6 approved hacks ordered by downloads
-  const { data: popularHacks } = await supabase
-    .from("hacks")
-    .select("slug,title,summary,description,base_rom,downloads,created_by,current_patch,custom_version_name,original_author,is_archive")
-    .eq("approved", true)
-    .not("current_patch", "is", null)
-    .is("is_archive", false)
-    .order("downloads", { ascending: false })
-    .limit(6);
+  const trending = [...hacks].sort((a, b) => b.trendingScore - a.trendingScore).slice(0, SHELF_SIZE).map(toCard);
+  const newest = [...hacks].sort(byDateDesc("approvedAt")).slice(0, SHELF_SIZE).map(toCard);
+  const updated = [...hacks].filter((h) => h.publishedAt).sort(byDateDesc("publishedAt")).slice(0, SHELF_SIZE).map(toCard);
 
-  let hackData: HackCardAttributes[] = [];
-  if (popularHacks && popularHacks.length > 0) {
-    const slugs = popularHacks.map((h) => h.slug);
-
-    // Fetch covers
-    const { data: coverRows } = await supabase
-      .from("hack_covers")
-      .select("hack_slug,url,position")
-      .in("hack_slug", slugs)
-      .order("position", { ascending: true });
-
-    const coversBySlug = new Map<string, string[]>();
-    if (coverRows && coverRows.length > 0) {      const coverKeys = coverRows.map((c) => c.url);
-      const signedUrls = getCoverUrls(coverKeys);
-      const urlToSignedUrl = new Map<string, string>();
-      coverKeys.forEach((key, idx) => {
-        urlToSignedUrl.set(key, signedUrls[idx]);
-      });
-
-      coverRows.forEach((c) => {
-        const arr = coversBySlug.get(c.hack_slug) || [];
-        const signed = urlToSignedUrl.get(c.url);
-        if (signed) {
-          arr.push(signed);
-          coversBySlug.set(c.hack_slug, arr);
-        }
-      });
-    }
-
-    // Fetch tags
-    const { data: tagRows } = await supabase
-      .from("hack_tags")
-      .select("hack_slug,order,tags(name,category)")
-      .in("hack_slug", slugs);
-    const tagsBySlug = new Map<string, { name: string; order: number }[]>();
-    (tagRows || []).forEach((r: any) => {
-      if (!r.tags?.name) return;
-      const arr = tagsBySlug.get(r.hack_slug) || [];
-      arr.push({
-        name: r.tags.name,
-        order: r.order,
-      });
-      tagsBySlug.set(r.hack_slug, arr);
-    });
-
-    // Fetch versions
-    const patchIds = popularHacks
-      .map((hack) => hack.current_patch)
-      .filter((id): id is number => typeof id === "number");
-    const versionsByPatchId = new Map<number, string>();
-    if (patchIds.length > 0) {
-      const { data: patchRows } = await supabase
-        .from("patches")
-        .select("id,version")
-        .in("id", patchIds);
-      (patchRows || []).forEach((patch) => {
-        versionsByPatchId.set(patch.id, patch.version || "Pre-release");
-      });
-    }
-
-    const customDefaultVersionsBySlug = new Map<string, string>();
-    const customPatcherSlugs = new Set<string>();
-    const { data: customPatchRows } = await supabase
-      .from("hack_patcher_patches")
-      .select("hack_slug, sort_order, patches!inner(version)")
-      .in("hack_slug", slugs)
-      .order("sort_order", { ascending: true });
-    (customPatchRows || []).forEach((row: any) => {
-      customPatcherSlugs.add(row.hack_slug);
-      if (customDefaultVersionsBySlug.has(row.hack_slug)) return;
-      const patch = Array.isArray(row.patches) ? row.patches[0] : row.patches;
-      if (patch?.version) customDefaultVersionsBySlug.set(row.hack_slug, patch.version);
-    });
-
-    const mappedVersions = new Map<string, string>();
-    popularHacks.forEach((hack) => {
-      const currentPatchVersion = typeof hack.current_patch === "number"
-        ? versionsByPatchId.get(hack.current_patch) || "Pre-release"
-        : "";
-      mappedVersions.set(hack.slug, resolveHackDisplayVersion({
-        isArchive: hack.is_archive,
-        isCustomPatcherActive: customPatcherSlugs.has(hack.slug),
-        customVersionName: hack.custom_version_name,
-        customDefaultPatchVersion: customDefaultVersionsBySlug.get(hack.slug),
-        currentPatchVersion,
-      }));
-    });
-
-    // Fetch profiles
-    const userIds = [...new Set(popularHacks.map((h) => h.created_by).filter(Boolean))];
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("id,username")
-      .in("id", userIds);
-    const usernameById = new Map<string, string>();
-    (profiles || []).forEach((p) => usernameById.set(p.id, p.username ? `@${p.username}` : "Unknown"));
-
-    // Map data to HackCard format
-    hackData = popularHacks.map((r) => ({
-      slug: r.slug,
-      title: r.title,
-      author: r.original_author ? r.original_author : usernameById.get(r.created_by as string) || "Unknown",
-      covers: coversBySlug.get(r.slug) || [],
-      tags: sortOrderedTags(tagsBySlug.get(r.slug) || []),
-      downloads: r.downloads,
-      baseRomId: r.base_rom,
-      version: mappedVersions.get(r.slug) || "Pre-release",
-      summary: r.summary,
-      description: r.description,
-      is_archive: false,
-    }));
-  }
   return (
-    <div>
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-grid opacity-30 pointer-events-none" />
-        <div className="mx-auto max-w-screen-2xl px-6 pt-12 pb-8 sm:py-20">
-          <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,34rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,42rem)]">
-            <div>
-              {downloadsMilestone && (
-                <MilestoneCelebration milestone={downloadsMilestone} />
-              )}
-              <h1 className="mt-5 text-4xl font-bold tracking-tight sm:text-6xl text-balance">
-                Bring your ROM once.
-                <br />
-                <span className="gradient-text">Play everything it unlocks.</span>
-              </h1>
-              <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-foreground/80">
-                Link your legally-obtained base ROM one time and Hackdex caches it on your
-                device. Patch any Pokémon ROM hack built for it, right in your browser,
-                without ever re-uploading. Your files never leave your device.
-              </p>
-              <div className="mt-8 mx-auto flex w-full max-w-[320px] flex-col items-start gap-3 sm:mx-0 sm:max-w-none sm:flex-row sm:items-center">
-                <Link
-                  href="/discover"
-                  prefetch={false}
-                  className="inline-flex h-14 w-full sm:h-12 sm:w-auto items-center justify-center rounded-md bg-[var(--accent)] px-5 text-base font-semibold sm:font-medium text-[var(--accent-foreground)] transition-colors hover:bg-[var(--accent-700)] elevate"
-                >
-                  Explore hacks
-                </Link>
-                <Link
-                  href="/submit"
-                  prefetch={false}
-                  className="inline-flex h-14 w-full sm:h-12 sm:w-auto items-center justify-center rounded-md border border-white/10 bg-white/10 px-5 text-base font-semibold sm:font-medium text-foreground transition-colors hover:bg-white/15 elevate"
-                >
-                  Submit a patch
-                </Link>
-                <HeroAuthCta />
-              </div>
-              <p className="mt-6 text-xs text-foreground/60">
-                Supports Game Boy, Game Boy Color, Game Boy Advance, and Nintendo DS.
-              </p>
-            </div>
-            <HeroPatchDiagram />
-          </div>
-        </div>
-      </section>
+    <div className="mx-auto w-full max-w-[1164px] px-6 pt-2 md:pt-6">
+      {milestone && <MilestoneCelebration milestone={milestone} />}
+      <HomeHero catalog={catalog} />
 
-      <section className={`mx-auto max-w-screen-2xl px-6 ${hackData.length > 0 ? "pt-6 sm:pt-12" : "py-6 sm:py-12"}`}>
-        <h2 className="text-sm font-semibold uppercase tracking-widest text-foreground/60">How it works</h2>
-        <div className="relative mt-4 grid gap-8 sm:grid-cols-3 sm:gap-6">
-          <div
-            className="pointer-events-none absolute top-3.5 right-[calc(16.666%-0.875rem)] left-3.5 hidden h-px bg-[var(--border)] sm:block"
-            aria-hidden="true"
-          />
-          <div>
-            <span className="relative z-10 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--background)] text-[13px] font-semibold text-[var(--accent)] shadow-[0_0_0_8px_var(--background)] ring-2 ring-[var(--accent)]/30">
-              1
-            </span>
-            <div className="mt-3 text-[15px] font-semibold tracking-tight">Link your base ROM</div>
-            <p className="mt-1 max-w-xs text-sm text-foreground/70">
-              Point Hackdex at your legally-obtained ROM file. It&apos;s verified and matched automatically.
-            </p>
-          </div>
-          <div>
-            <span className="relative z-10 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--background)] text-[13px] font-semibold text-[var(--accent)] shadow-[0_0_0_8px_var(--background)] ring-2 ring-[var(--accent)]/30">
-              2
-            </span>
-            <div className="mt-3 text-[15px] font-semibold tracking-tight">It stays on your device</div>
-            <p className="mt-1 max-w-xs text-sm text-foreground/70">
-              Your ROM is cached locally in your browser, never uploaded, and ready whenever you come back.
-            </p>
-          </div>
-          <div>
-            <span className="relative z-10 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--background)] text-[13px] font-semibold text-[var(--accent)] shadow-[0_0_0_8px_var(--background)] ring-2 ring-[var(--accent)]/30">
-              3
-            </span>
-            <div className="mt-3 text-[15px] font-semibold tracking-tight">Patch hack after hack</div>
-            <p className="mt-1 max-w-xs text-sm text-foreground/70">
-              Pick any hack built for your ROM and patch it in your browser in seconds, with no re-uploading between hacks.
-            </p>
-          </div>
-        </div>
-        <div className="mt-12 mb-4 mx-auto flex flex-col items-center max-w-[320px] sm:mt-16">
-          <Link href="/faq" prefetch={false} className="inline-flex items-center rounded-full elevate border border-black/10 bg-black/5 dark:border-white/10 dark:bg-white/5 px-4 py-1.5 text-sm text-foreground hover:bg-black/10 dark:hover:bg-white/10">
-            <span className="font-medium">New to Hackdex?</span>
-            <span className="ml-1 underline underline-offset-2">Read the FAQ</span>
-            <FaArrowRightLong size={12} aria-hidden className="ml-1" />
-          </Link>
-        </div>
-      </section>
+      <ReadyShelf catalog={catalog} />
+      <Shelf title="Trending this week" blurb="Popular over the last few days." href="/discover" hacks={trending} />
+      <Shelf title="New on Hackdex" blurb="The latest hacks to be listed." href="/discover?s=new" hacks={newest} />
+      <Shelf title="Recently updated" blurb="Fresh patches from creators still at work." href="/discover?s=updated" hacks={updated} />
 
-      {hackData.length > 0 && (
-        <section className="mx-auto max-w-screen-2xl px-6 py-12">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight">Popular ROM hacks</h2>
-              <p className="mt-1 text-sm text-foreground/70">Most downloaded patches</p>
-            </div>
-            <Link
-              href="/discover"
-              prefetch={false}
-              className="text-sm font-medium text-foreground/80 hover:text-foreground hover:underline"
-            >
-              View all <FaArrowRightLong className="inline ml-1" size={12} />
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {hackData.map((hack) => (
-              <HackCard key={hack.slug} hack={hack} />
+      <HowItWorksGate>
+        <section className="scroll-mt-[76px] pt-3 md:pt-3" aria-labelledby="how">
+          <h2 id="how" className="mb-4 text-[13px] font-semibold uppercase tracking-[.12em] text-text-3">
+            How it works
+          </h2>
+          <ol className="relative grid gap-5 md:grid-cols-3 md:gap-6">
+            <span className="absolute left-3.5 top-3.5 hidden h-px bg-line-strong md:block md:right-[calc(33.333%-14px)]" aria-hidden />
+            {STEPS.map(([title, body], i) => (
+              <li key={title} className="grid grid-cols-[28px_1fr] gap-x-3 md:block">
+                <span className="relative z-[1] inline-flex h-7 w-7 items-center justify-center rounded-full bg-bg text-[13px] font-bold text-accent-text shadow-[0_0_0_8px_var(--bg),inset_0_0_0_2px_var(--rose)]">
+                  {i + 1}
+                </span>
+                <b className="self-center text-[15px] font-semibold md:mt-3 md:block">{title}</b>
+                <p className="col-start-2 mt-1 text-sm text-text-2 md:max-w-[32ch]">{body}</p>
+              </li>
             ))}
-          </div>
-          <div className="sm:hidden flex justify-center mt-6">
-            <Button
-              variant="secondary"
-              size="lg"
-              className="w-48"
+          </ol>
+          <p className="mt-6 flex justify-center md:mt-8">
+            <Link
+              href="/faq"
+              prefetch={false}
+              className="inline-flex items-center gap-1 rounded-full border border-line-strong bg-surface px-3.5 py-1.5 text-sm shadow-rest transition-colors hover:border-text-3 hover:bg-surface-2"
             >
-              <Link href="/discover" prefetch={false} className="inline-flex items-center">
-                View all
-              </Link>
-            </Button>
-          </div>
+              <span className="mr-0.5 font-medium">New to ROM hacks?</span> Read the FAQ <FiArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </p>
         </section>
-      )}
+      </HowItWorksGate>
+
+      <p className="mt-7 flex justify-center md:mt-10">
+        <Link
+          href="/discover"
+          prefetch={false}
+          className="inline-flex h-12 w-full items-center justify-center rounded-control bg-surface-2 px-6 text-[15px] font-semibold text-text transition-colors hover:bg-line md:w-auto"
+        >
+          Browse all {catalog.length.toLocaleString("en-US")} hacks
+        </Link>
+      </p>
     </div>
   );
 }

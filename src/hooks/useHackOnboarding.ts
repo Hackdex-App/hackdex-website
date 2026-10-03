@@ -130,7 +130,8 @@ export function useHackOnboarding({
     : "How do I download?";
 
   return {
-    showGate: hydrated && romReadyKnown && !cardOpen && leftoverSteps.length > 0,
+    // Still true while the card is open: the module's entry point stays in place (inactive) so nothing shifts.
+    showGate: hydrated && romReadyKnown && leftoverSteps.length > 0,
     gateLabel,
     cardOpen,
     locked,

@@ -63,28 +63,28 @@ export default async function VersionsPage({ params }: VersionsPageProps) {
       <div className="mb-6">
         <Link 
           href={`/hack/${slug}`}
-          className="inline-flex items-center text-sm text-foreground/60 hover:text-foreground mb-3"
+          className="inline-flex items-center text-sm text-text-3 hover:text-text mb-3"
         >
           <FaChevronLeft size={14} className="mr-1" />
           Back to hack
         </Link>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2">
+        <h1 className="font-display text-[28px] leading-[1.1] md:text-[32px] mb-2">
           {canEdit ? "Manage Versions" : "Version History"}
         </h1>
-        <p className="text-sm text-foreground/60 mb-4">
+        <p className="text-sm text-text-3 mb-4">
           {hack.title}
         </p>
         <div className="flex flex-col sm:flex-row gap-2">
           <Link
             href={`/hack/${slug}/changelog`}
-            className="inline-flex items-center justify-center h-10 px-4 text-sm font-medium rounded-md border border-[var(--border)] bg-[var(--surface-2)] hover:bg-[var(--surface-3)] transition-colors"
+            className="inline-flex items-center justify-center h-10 px-4 text-sm font-medium rounded-control border border-line bg-surface-2 hover:bg-surface-3 transition-colors"
           >
             View Changelog
           </Link>
           {canEdit && (
             <Link
               href={`/hack/${slug}/edit/patch`}
-              className="inline-flex items-center justify-center h-10 px-4 text-sm font-semibold rounded-md bg-[var(--accent)] text-[var(--accent-foreground)] hover:bg-[var(--accent-700)] transition-colors"
+              className="inline-flex items-center justify-center h-10 px-4 text-sm font-semibold rounded-control bg-accent-deep text-white hover:bg-accent-hover transition-colors"
             >
               <FaPlus size={14} className="mr-2" />
               Upload New Version
@@ -142,16 +142,16 @@ function VersionStatusGuide({
   return (
     <CollapsibleCard
       title="Version Status Guide"
-      className="mb-6 bg-[var(--surface-1)] border border-[var(--border)]/50 rounded-lg"
+      className="mb-6 bg-surface border border-line/50 rounded-card"
     >
-      <div className="space-y-5 sm:space-y-2.5 text-sm text-foreground/80">
+      <div className="space-y-5 sm:space-y-2.5 text-sm text-text-2">
         {showCurrentGuide && (
         <div className="flex flex-col sm:grid sm:grid-cols-[100px_1fr] gap-2 sm:gap-1 items-start">
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400 shrink-0 w-fit">
+          <span className="inline-flex items-center gap-1 rounded-full bg-ready-soft px-2 py-0.5 text-xs font-medium text-ready shrink-0 w-fit">
             <FaStar size={10} />
             Current
           </span>
-          <p className="text-foreground/70">
+          <p className="text-text-2">
             {canEdit ?
               <>The version used by the <strong>Latest published patch</strong> option. This is the default downloader version when <strong>Custom</strong> patcher versions are not active.</> :
               "This is the version you will download when using the patch button on the hack page."
@@ -161,22 +161,22 @@ function VersionStatusGuide({
         )}
         {canEdit && (
           <div className="flex flex-col sm:grid sm:grid-cols-[100px_1fr] gap-2 sm:gap-1 items-start">
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400 shrink-0 w-fit">
+            <span className="inline-flex items-center gap-1 rounded-full bg-ready-soft px-2 py-0.5 text-xs font-medium text-ready shrink-0 w-fit">
               <FaStar size={10} />
               Default
             </span>
-            <p className="text-foreground/70">
+            <p className="text-text-2">
               The first version in the Custom patcher list. This is the version players will download by default if they don't select a different version.
             </p>
           </div>
         )}
         {showPatchableGuide && (
         <div className="flex flex-col sm:grid sm:grid-cols-[100px_1fr] gap-2 sm:gap-1 items-start">
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400 shrink-0 w-fit">
+          <span className="inline-flex items-center gap-1 rounded-full bg-ready-soft px-2 py-0.5 text-xs font-medium text-ready shrink-0 w-fit">
             <FaStar size={10} />
             Patchable
           </span>
-          <p className="text-foreground/70">
+          <p className="text-text-2">
             {canEdit ?
               "Additional Custom versions available to choose from before using the patch button on the hack page." :
               "This version can be selected before using the patch button on the hack page."
@@ -186,10 +186,10 @@ function VersionStatusGuide({
         )}
         {canEdit && <>
           <div className="flex flex-col sm:grid sm:grid-cols-[100px_1fr] gap-2 sm:gap-1 items-start">
-            <span className="inline-flex items-center rounded-full bg-amber-500/20 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400 shrink-0 w-fit">
+            <span className="inline-flex items-center rounded-full bg-warn-soft px-2 py-0.5 text-xs font-medium text-warn shrink-0 w-fit">
               Unpublished
             </span>
-            <p className="text-foreground/70">
+            <p className="text-text-2">
               Versions that are only visible to you, and will not appear in the public version list or changelog.
             </p>
           </div>
@@ -197,7 +197,7 @@ function VersionStatusGuide({
             <span className="inline-flex items-center rounded-full bg-gray-500/20 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-400 shrink-0 w-fit">
               Archived
             </span>
-            <p className="text-foreground/70">
+            <p className="text-text-2">
               Same as unpublished, but archived versions are hidden from normal view on this page. Check "Show archived versions" to view and restore them.
             </p>
           </div>

@@ -117,6 +117,36 @@ async function loadRecipients(file: string): Promise<Recipient[]> {
   return recipients;
 }
 
+function isRunning(pid: number) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    // EPERM: it exists but belongs to someone else.
+    return isRecord(error) && error.code === "EPERM";
+  }
+}
+
+/**
+ * One sender per campaign. The lock holds the sender's PID, so a lock left by a killed run is
+ * cleared once that process is gone. Anything else in it (a run that hasn't written its PID yet) blocks.
+ */
+async function takeLock(lockPath: string, retry = true): Promise<Awaited<ReturnType<typeof open>>> {
+  try {
+    const lock = await open(lockPath, "wx", 0o600);
+    await lock.writeFile(String(process.pid));
+    return lock;
+  } catch (error) {
+    if (!isRecord(error) || error.code !== "EEXIST") throw error;
+    const owner = (await readOptional(lockPath))?.trim() ?? "";
+    if (retry && /^\d+$/.test(owner) && !isRunning(Number(owner))) {
+      await unlink(lockPath);
+      return takeLock(lockPath, false);
+    }
+    throw new Error(`${lockPath} exists: another send is running${/^\d+$/.test(owner) ? ` (PID ${owner})` : ""}. Delete it only if no send is running.`);
+  }
+}
+
 /** Fail closed on uncertain delivery. Resolve a pending record in Resend before retrying. */
 export async function sendAnnouncement({ announcement, message, recipients, directory, mailer, delayMs = 1000 }: {
   announcement: Announcement;
@@ -131,7 +161,7 @@ export async function sendAnnouncement({ announcement, message, recipients, dire
   }
   await mkdir(directory, { recursive: true, mode: 0o700 });
   const lockPath = path.join(directory, "send.lock");
-  const lock = await open(lockPath, "wx", 0o600);
+  const lock = await takeLock(lockPath);
   try {
     // Freeze both message and audience on first send so retries cannot change either.
     const payloadPath = path.join(directory, "payload.json");

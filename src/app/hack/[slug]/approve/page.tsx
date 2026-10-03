@@ -1,5 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { approveHack } from "@/app/hack/actions";
 import Button from "@/components/Button";
 import Link from "next/link";
@@ -25,11 +25,13 @@ export default async function ApprovePage({ params }: ApprovePageProps) {
   // Fetch hack data
   const { data: hack, error } = await supabase
     .from("hacks")
-    .select("title, approved, approved_at, approved_by, created_by")
+    .select("title, approved, approved_at, approved_by, created_by, submitted_at, ai_disclosed_at")
     .eq("slug", slug)
     .maybeSingle();
 
   if (error || !hack) return notFound();
+  // Drafts can't be approved until the creator submits them.
+  if (!hack.approved && hack.submitted_at === null) redirect(`/hack/${slug}`);
 
   const { data: creatorProfile, error: creatorProfileError } = await supabase
     .from("profiles")
@@ -74,10 +76,10 @@ export default async function ApprovePage({ params }: ApprovePageProps) {
         {hack.approved ? (
           <div className="card p-6">
             <div className="flex items-center gap-3 mb-4">
-              <FaCircleCheck className="text-green-500 flex-shrink-0" size={24} />
+              <FaCircleCheck className="text-ready flex-shrink-0" size={24} />
               <h1 className="text-2xl">{hack.title}</h1>
             </div>
-            <p className="text-foreground/75">
+            <p className="text-text-2">
               This hack has already been approved
               {hack.approved_by && approverUsername
                 ? <span> by <span className="font-semibold">@{approverUsername}</span></span>
@@ -95,19 +97,28 @@ export default async function ApprovePage({ params }: ApprovePageProps) {
         ) : (
           <div className="card p-6">
             <div className="flex items-center gap-4 mb-4">
-              <FaTriangleExclamation className="text-yellow-500 flex-shrink-0" size={24} />
+              <FaTriangleExclamation className="text-warn flex-shrink-0" size={24} />
               <h1 className="text-2xl">
                 Are you sure you want to approve <span className="font-semibold">{hack.title}</span>?
               </h1>
             </div>
-            <p className="text-foreground/75 mb-6">
+            <p className="text-text-2 mb-6">
               By approving this hack, it will become visible to the public.
             </p>
+            {/* Hacks submitted before the label existed skipped the checklist item; the grace period lets them through. */}
+            {!hack.ai_disclosed_at && (
+              <p className="mb-6 flex items-start gap-2 rounded-control bg-warn-soft px-3 py-2 text-sm text-text-2">
+                <FaTriangleExclamation className="mt-0.5 flex-none text-warn" size={14} />
+                <span>
+                  <b className="font-semibold text-text">No AI label yet.</b> You can ask the creator to add one, or approve anyway.
+                </span>
+              </p>
+            )}
             <form action={handleApprove} className="flex flex-col gap-3 justify-center md:justify-start">
               {/* Checkbox to verify the hack creator */}
               <div className="flex items-center gap-2">
                 {creatorProfile.verified ? (
-                  <p className="text-foreground/75"><span className="font-semibold">@{creatorProfile.username}</span> is already verified.</p>
+                  <p className="text-text-2"><span className="font-semibold">@{creatorProfile.username}</span> is already verified.</p>
                 ) : (
                   <>
                     <input type="checkbox" name="verified" id="verified" />

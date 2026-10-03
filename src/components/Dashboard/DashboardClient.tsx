@@ -11,11 +11,13 @@ export type HackRow = {
   slug: string;
   title: string;
   approved: boolean;
+  submitted_at: string | null;
   updated_at: string | null;
   downloads: number;
   current_patch: number | null;
   version: string;
   created_at: string;
+  needsAiLabel: boolean;
 };
 
 export default function DashboardClient({
@@ -30,7 +32,7 @@ export default function DashboardClient({
   const [selectedSlugs, setSelectedSlugs] = React.useState<string[]>(() => hacks.map((h) => h.slug));
 
   const totalDownloads = React.useMemo(() => hacks.reduce((acc, h) => acc + (h.downloads || 0), 0), [hacks]);
-  const pendingCount = hacks.filter((h) => !h.approved).length;
+  const pendingCount = hacks.filter((h) => !h.approved && h.submitted_at !== null).length;
   const localCutover = React.useMemo(() => {
     const now = new Date();
     const utcMidnight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0));
@@ -46,23 +48,23 @@ export default function DashboardClient({
       <div className="mx-auto max-w-screen-2xl">
         <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-3 lg:gap-4">
           <div className="flex flex-col grow-1">
-            <h1 className="text-3xl font-bold tracking-tight">Creator Dashboard</h1>
-            <p className="mt-1 text-[18px] text-foreground/90">Welcome back, {displayName}!</p>
-            <p className="mt-4 text-[15px] text-foreground/60">
+            <h1 className="font-display text-[28px] leading-tight md:text-[32px]">Creator dashboard</h1>
+            <p className="mt-1 text-[17px] text-text-2">Welcome back, {displayName}!</p>
+            <p className="mt-3 text-[13px] text-text-3">
               Analytics update daily at 00:00 UTC. Today&apos;s data will be available after {localCutover}.
             </p>
           </div>
           <div className="flex flex-col ml-auto my-4 w-full md:flex-row md:w-auto md:mb-0 lg:my-0 gap-2">
             <Link
               href="/account"
-              className="inline-flex h-12 px-4 items-center justify-center w-full md:w-auto md:h-10 rounded-md text-sm font-medium ring-1 ring-[var(--border)] hover:bg-[var(--surface-2)] hover:cursor-pointer"
+              className="inline-flex h-11 w-full items-center justify-center rounded-control border border-line-strong bg-surface px-4 text-sm font-medium transition-colors hover:border-text-3 md:h-10 md:w-auto"
             >
               Account Settings
             </Link>
             <form action="/auth/signout" method="post">
               <button
                 type="submit"
-                className="inline-flex h-12 px-8 items-center justify-center w-full md:w-auto md:h-10 rounded-md border border-red-600/40 bg-red-600/5 dark:border-red-400/40 dark:bg-red-400/5 text-sm font-medium text-red-600/90 dark:text-red-400/80 transition-colors hover:bg-red-600/5 dark:hover:bg-red-400/10 hover:cursor-pointer"
+                className="inline-flex h-11 w-full items-center justify-center rounded-control border border-error/40 bg-surface px-6 text-sm font-medium text-error transition-colors hover:bg-error-soft md:h-10 md:w-auto"
               >
                 Sign out
               </button>
@@ -105,9 +107,9 @@ export default function DashboardClient({
 
 function StatCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-4">
-      <div className="text-[13px] text-foreground/70">{label}</div>
-      <div className="mt-1 text-2xl font-semibold">{value}</div>
+    <div className="rounded-card border border-line bg-surface p-4 shadow-rest">
+      <div className="text-[13px] text-text-3">{label}</div>
+      <div className="mt-1 font-display text-2xl tabular-nums">{value}</div>
     </div>
   );
 }
@@ -132,8 +134,8 @@ function SlugMultiSelect({
             onClick={() => onChange(selected ? values.filter((s) => s !== h.slug) : [...values, h.slug])}
             className={`shrink-0 rounded-full px-3 py-2 text-sm ring-1 ring-inset transition-colors hover:cursor-pointer ${
               selected
-                ? "bg-[var(--accent)]/15 text-[var(--foreground)] ring-[var(--accent)]/35"
-                : "bg-[var(--surface-2)] text-foreground/80 ring-[var(--border)] hover:bg-black/5 dark:hover:bg-white/10"
+                ? "bg-accent-deep/15 text-[var(--foreground)] ring-[var(--accent)]/35"
+                : "bg-surface-2 text-text-2 ring-line hover:bg-surface-2"
             }`}
           >
             {h.title}
@@ -144,7 +146,7 @@ function SlugMultiSelect({
         <button
           type="button"
           onClick={() => onChange(hacks.map((h) => h.slug))}
-          className="shrink-0 rounded-full ml-auto px-3 py-2 text-sm ring-1 ring-inset transition-colors bg-[var(--surface-2)] text-foreground/80 ring-[var(--border)] hover:bg-black/5 dark:hover:bg-white/10 hover:cursor-pointer"
+          className="shrink-0 rounded-full ml-auto px-3 py-2 text-sm ring-1 ring-inset transition-colors bg-surface-2 text-text-2 ring-line hover:bg-surface-2 hover:cursor-pointer"
         >
           Select all
         </button>
@@ -153,7 +155,7 @@ function SlugMultiSelect({
         <button
           type="button"
           onClick={() => onChange([])}
-          className={`shrink-0 rounded-full px-3 py-2 text-sm ring-1 ring-inset transition-colors bg-[var(--surface-2)] text-foreground/80 ring-[var(--border)] hover:bg-black/5 dark:hover:bg-white/10 hover:cursor-pointer ${values.length === 0 ? "ml-auto" : ""}`}
+          className={`shrink-0 rounded-full px-3 py-2 text-sm ring-1 ring-inset transition-colors bg-surface-2 text-text-2 ring-line hover:bg-surface-2 hover:cursor-pointer ${values.length === 0 ? "ml-auto" : ""}`}
         >
           Clear
         </button>

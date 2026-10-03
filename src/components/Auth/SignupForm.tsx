@@ -4,6 +4,7 @@ import React, { useActionState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { Turnstile } from "next-turnstile";
+import { useDarkMode } from "@/hooks/useDarkMode";
 import { AuthActionState, signup } from "@/app/signup/actions";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { validateEmail, validatePassword } from "@/utils/auth";
@@ -22,6 +23,7 @@ export default function SignupForm() {
   const [turnstileToken, setTurnstileToken] = React.useState<string | undefined>(undefined);
   const [turnstileError, setTurnstileError] = React.useState<string | null>(null);
   const [turnstileKey, setTurnstileKey] = React.useState(0);
+  const dark = useDarkMode();
 
   const [state, formAction, isPending] = useActionState<AuthActionState, FormData>(signup, { error: null });
   const passwordsMatch = password === confirm;
@@ -63,17 +65,17 @@ export default function SignupForm() {
         <input type="hidden" name="redirectTo" value={redirectTo} />
       )}
       {(state?.error && !isPending) && (
-        <div className="rounded-md bg-red-500/10 ring-1 ring-red-600/40 px-3 py-2 text-sm text-red-300">
+        <div className="rounded-control bg-error-soft px-3 py-2 text-sm text-error">
           {state?.error}
         </div>
       )}
       {turnstileError && (
-        <div className="rounded-md bg-red-500/10 ring-1 ring-red-600/40 px-3 py-2 text-sm text-red-300">
+        <div className="rounded-control bg-error-soft px-3 py-2 text-sm text-error">
           {turnstileError}
         </div>
       )}
       <div className="grid gap-2">
-        <label htmlFor="email" className="text-sm text-foreground/80">Email</label>
+        <label htmlFor="email" className="text-sm font-medium">Email</label>
         <input
           id="email"
           name="email"
@@ -81,20 +83,20 @@ export default function SignupForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
-          className={`h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${
+          className={`h-11 w-full rounded-control border bg-surface-2 px-3 text-sm text-text outline-none transition-[border-color,box-shadow] placeholder:text-text-3 focus:border-line-strong focus:ring-2 focus:ring-accent/40 ${
             email && emailError ?
-              "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" :
-              "bg-[var(--surface-2)] ring-[var(--border)]"
+              "border-error" :
+              "border-line"
           }`}
           required
         />
         {email && emailError && (
-          <span className="text-xs text-red-500/70">{emailError}</span>
+          <span className="text-xs text-error">{emailError}</span>
         )}
       </div>
 
       <div className="grid gap-2">
-        <label htmlFor="password" className="text-sm text-foreground/80">Password</label>
+        <label htmlFor="password" className="text-sm font-medium">Password</label>
         <div className="relative">
           <input
             id="password"
@@ -103,17 +105,17 @@ export default function SignupForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Minimum 6 characters"
-            className={`h-11 w-full rounded-md px-3 pr-10 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${
+            className={`h-11 w-full rounded-control border bg-surface-2 px-3 pr-10 text-sm text-text outline-none transition-[border-color,box-shadow] placeholder:text-text-3 focus:border-line-strong focus:ring-2 focus:ring-accent/40 ${
               password && passwordError ?
-                "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" :
-                "bg-[var(--surface-2)] ring-[var(--border)]"
+                "border-error" :
+                "border-line"
             }`}
             required
           />
           <button
             type="button"
             onClick={() => setShowPassword((v) => !v)}
-            className="absolute inset-y-0 right-2 my-auto inline-flex h-8 w-8 items-center justify-center rounded hover:bg-black/5 dark:hover:bg-white/10"
+            className="absolute inset-y-0 right-2 my-auto inline-flex h-8 w-8 items-center justify-center rounded-control text-text-3 hover:bg-surface hover:text-text"
             aria-label={showPassword ? "Hide password" : "Show password"}
             title={showPassword ? "Hide password" : "Show password"}
           >
@@ -121,12 +123,12 @@ export default function SignupForm() {
           </button>
         </div>
         {password && passwordError && (
-          <span className="text-xs text-red-500/70">{passwordError}</span>
+          <span className="text-xs text-error">{passwordError}</span>
         )}
       </div>
 
       <div className="grid gap-2">
-        <label htmlFor="confirm" className="text-sm text-foreground/80">Confirm password</label>
+        <label htmlFor="confirm" className="text-sm font-medium">Confirm password</label>
         <div className="relative">
           <input
             id="confirm"
@@ -135,17 +137,17 @@ export default function SignupForm() {
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
             placeholder="Re-enter password"
-            className={`h-11 w-full rounded-md px-3 pr-10 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${
+            className={`h-11 w-full rounded-control border bg-surface-2 px-3 pr-10 text-sm text-text outline-none transition-[border-color,box-shadow] placeholder:text-text-3 focus:border-line-strong focus:ring-2 focus:ring-accent/40 ${
               confirm && !passwordsMatch ?
-                "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" :
-                "bg-[var(--surface-2)] ring-[var(--border)]"
+                "border-error" :
+                "border-line"
             }`}
             required
           />
           <button
             type="button"
             onClick={() => setShowPassword((v) => !v)}
-            className="absolute inset-y-0 right-2 my-auto inline-flex h-8 w-8 items-center justify-center rounded hover:bg-black/5 dark:hover:bg-white/10"
+            className="absolute inset-y-0 right-2 my-auto inline-flex h-8 w-8 items-center justify-center rounded-control text-text-3 hover:bg-surface hover:text-text"
             aria-label={showPassword ? "Hide password" : "Show password"}
             title={showPassword ? "Hide password" : "Show password"}
           >
@@ -153,25 +155,25 @@ export default function SignupForm() {
           </button>
         </div>
         {confirm && !passwordsMatch && (
-          <span className="text-xs text-red-500/70">Passwords do not match.</span>
+          <span className="text-xs text-error">Passwords do not match.</span>
         )}
       </div>
 
-      <div className="flex items-center gap-2 text-xs text-foreground/80">
+      <div className="flex items-center gap-2 text-xs text-text-2">
         <input
           id="accept-terms"
           name="acceptTerms"
           type="checkbox"
           checked={acceptedTerms}
           onChange={(e) => setAcceptedTerms(e.target.checked)}
-          className="mt-0.5 h-4 w-4 rounded border-[var(--border)] bg-[var(--surface-2)] text-[var(--ring)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+          className="h-4 w-4 accent-[var(--rose-deep)]"
           required
         />
         <label htmlFor="accept-terms" className="space-x-1">
           <span>I agree to the</span>
           <a
             href="/terms"
-            className="font-medium text-sky-500 hover:text-sky-400 underline underline-offset-2"
+            className="font-medium text-link-hd"
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -182,7 +184,8 @@ export default function SignupForm() {
 
       <div className="flex flex-col items-center gap-3 mt-2">
         <Turnstile
-          key={turnstileKey}
+          // The widget reads its theme once, so a theme change remounts it.
+          key={`${turnstileKey}-${dark}`}
           siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
           onVerify={(token) => {
             setTurnstileToken(token);
@@ -196,13 +199,13 @@ export default function SignupForm() {
           onExpire={() => {
             setTurnstileToken(undefined);
           }}
-          theme="auto"
+          theme={dark ? "dark" : "light"}
         />
         <button
           type="submit"
           formAction={formAction}
           disabled={!isValid || isPending || !turnstileToken}
-          className="shine-wrap btn-premium h-11 min-w-[7.5rem] text-sm font-semibold hover:cursor-pointer dark:disabled:opacity-70 disabled:cursor-not-allowed disabled:[box-shadow:0_0_0_1px_var(--border)]"
+          className="inline-flex h-11 w-full items-center justify-center rounded-control bg-accent-deep px-5 text-sm font-semibold text-white transition-colors hover:enabled:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
         >
           <span>Sign up</span>
         </button>

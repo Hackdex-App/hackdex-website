@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { FiExternalLink, FiEdit2, FiUpload, FiShare2, FiBarChart2, FiMoreVertical, FiCheck } from "react-icons/fi";
+import { FiAlertTriangle, FiExternalLink, FiEdit2, FiUpload, FiShare2, FiBarChart2, FiMoreVertical, FiCheck } from "react-icons/fi";
 import { TbVersions } from "react-icons/tb";
 import { useFloating, offset, flip, shift, autoUpdate } from "@floating-ui/react";
 import ActionSheet from "@/components/Primitives/ActionSheet";
@@ -11,10 +11,31 @@ type HackRow = {
   slug: string;
   title: string;
   approved: boolean;
+  submitted_at: string | null;
   updated_at: string | null;
   downloads: number;
   version: string;
+  needsAiLabel: boolean;
 };
+
+/** Opens the hack's editor with the AI form already up. */
+function NeedsAiLabel({ slug }: { slug: string }) {
+  return (
+    <Link
+      href={`/hack/${slug}?edit=1&ai=1`}
+      className="inline-flex w-fit items-center gap-1 rounded-full bg-warn-soft px-2 py-0.5 text-xs font-medium text-warn ring-1 ring-warn/30 transition-colors hover:ring-warn/60"
+    >
+      <FiAlertTriangle className="h-3 w-3" /> Needs AI label
+    </Link>
+  );
+}
+
+function StatusBadge({ hack, className = "" }: { hack: HackRow; className?: string }) {
+  const base = `inline-flex items-center gap-1 rounded-full px-2 py-0.5 ring-1 ${className}`;
+  if (hack.approved) return <span className={`${base} bg-ready-soft text-ready ring-ready/30`}>Approved</span>;
+  if (hack.submitted_at === null) return <span className={`${base} bg-surface-2 text-text-2 ring-line-strong`}>Draft</span>;
+  return <span className={`${base} bg-warn-soft text-warn ring-warn/30`}>In review</span>;
+}
 
 export default function HackList({ hacks }: { hacks: HackRow[] }) {
   const [activeSlug, setActiveSlug] = React.useState<string | null>(null);
@@ -22,40 +43,37 @@ export default function HackList({ hacks }: { hacks: HackRow[] }) {
 
   if (hacks.length === 0) {
     return (
-      <div className="mt-4 rounded-md border border-[var(--border)] bg-[var(--surface-2)] p-6 text-sm text-foreground/80">
+      <div className="mt-4 rounded-control border border-line bg-surface-2 p-6 text-sm text-text-2">
         You haven&apos;t uploaded any hacks yet. <Link className="underline" href="/submit">Submit a hack</Link> to get started.
       </div>
     );
   }
 
   return (
-    <div className="mt-4 overflow-hidden rounded-lg border border-[var(--border)]">
+    <div className="mt-4 overflow-hidden rounded-card border border-line">
       {/* Header row (desktop only) */}
-      <div className="hidden lg:grid grid-cols-12 bg-[var(--surface-2)] px-4 py-2 text-xs text-foreground/60">
+      <div className="hidden lg:grid grid-cols-12 bg-surface-2 px-4 py-2 text-xs text-text-3">
         <div className="col-span-4">Title</div>
         <div className="col-span-2">Status</div>
         <div className="col-span-2">Version</div>
         <div className="col-span-2">Downloads</div>
         <div className="col-span-2 text-right">Actions</div>
       </div>
-      <div className="divide-y divide-[var(--border)]">
+      <div className="divide-y divide-line">
         {hacks.map((h) => (
           <div key={h.slug} className="px-4 py-3 text-sm">
             {/* Desktop row */}
             <div className="hidden lg:grid grid-cols-12 items-center">
-              <Link href={`/hack/${h.slug}`} target="_blank" className="group flex items-center gap-4 col-span-4 min-w-0 hover:text-foreground">
+              <Link href={`/hack/${h.slug}`} target="_blank" className="group flex items-center gap-4 col-span-4 min-w-0 hover:text-text">
                 <div className="flex flex-col items-start">
                   <div className="truncate font-medium group-hover:underline">{h.title}</div>
-                  <div className="mt-0.5 text-xs text-foreground/60 group-hover:text-foreground group-hover:underline">/{h.slug}</div>
+                  <div className="mt-0.5 text-xs text-text-3 group-hover:text-text group-hover:underline">/{h.slug}</div>
                 </div>
-                <FiExternalLink className="h-4 w-4 text-foreground/80 group-hover:text-foreground" />
+                <FiExternalLink className="h-4 w-4 text-text-2 group-hover:text-text" />
               </Link>
-              <div className="col-span-2">
-                {h.approved ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-400 ring-1 ring-emerald-600/30">Approved</span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs text-amber-400 ring-1 ring-amber-600/30">Pending</span>
-                )}
+              <div className="col-span-2 flex flex-col items-start gap-1">
+                <StatusBadge hack={h} className="text-xs" />
+                {h.needsAiLabel && <NeedsAiLabel slug={h.slug} />}
               </div>
               <div className="col-span-2">{h.version}</div>
               <div className="col-span-2">{h.downloads}</div>
@@ -63,7 +81,7 @@ export default function HackList({ hacks }: { hacks: HackRow[] }) {
                 <IconTooltipButton href={`/hack/${h.slug}/stats`} target="_blank" label="Stats">
                   <FiBarChart2 className="h-4 w-4" />
                 </IconTooltipButton>
-                <IconTooltipButton href={`/hack/${h.slug}/edit`} label="Edit">
+                <IconTooltipButton href={`/hack/${h.slug}?edit=1`} label="Edit">
                   <FiEdit2 className="h-4 w-4" />
                 </IconTooltipButton>
                 <IconTooltipButton href={`/hack/${h.slug}/versions`} label="Manage versions">
@@ -77,16 +95,13 @@ export default function HackList({ hacks }: { hacks: HackRow[] }) {
               <div className="flex flex-col items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className="font-medium break-words">{h.title}</div>
-                  <div className="mt-0.5 text-xs text-foreground/60 break-all">/{h.slug}</div>
+                  <div className="mt-0.5 text-xs text-text-3 break-all">/{h.slug}</div>
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                  {h.approved ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-emerald-400 ring-1 ring-emerald-600/30">Approved</span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-amber-400 ring-1 ring-amber-600/30">Pending</span>
-                  )}
-                  <span className="rounded-full bg-[var(--surface-2)] px-2 py-0.5 ring-1 ring-[var(--border)]">{h.version}</span>
-                  <span className="rounded-full bg-[var(--surface-2)] px-2 py-0.5 ring-1 ring-[var(--border)]">{h.downloads} downloads</span>
+                  <StatusBadge hack={h} />
+                  {h.needsAiLabel && <NeedsAiLabel slug={h.slug} />}
+                  <span className="rounded-full bg-surface-2 px-2 py-0.5 ring-1 ring-line">{h.version}</span>
+                  <span className="rounded-full bg-surface-2 px-2 py-0.5 ring-1 ring-line">{h.downloads} downloads</span>
                 </div>
               </div>
               <IconTooltipButton onClick={() => { setActiveSlug(h.slug); setSheetOpen(true); }} label="More" ariaLabel="More">
@@ -121,7 +136,7 @@ function ShareIconButton({ slug }: { slug: string }) {
 
   return (
     <IconTooltipButton onClick={handleClick} label={copied ? "Copied!" : "Share link"} ariaLabel="Share link">
-      {copied ? <FiCheck className="h-4 w-4 text-emerald-400/80" /> : <FiShare2 className="h-4 w-4" />}
+      {copied ? <FiCheck className="h-4 w-4 text-ready" /> : <FiShare2 className="h-4 w-4" />}
     </IconTooltipButton>
   );
 }
@@ -131,7 +146,7 @@ function buildActions(slug: string | null) {
   return [
     { key: "view", label: "View", href: `/hack/${slug}`, icon: <FiExternalLink className="h-4 w-4" /> },
     { key: "stats", label: "Stats", href: `/hack/${slug}/stats`, icon: <FiBarChart2 className="h-4 w-4" /> },
-    { key: "edit", label: "Edit", href: `/hack/${slug}/edit`, icon: <FiEdit2 className="h-4 w-4" /> },
+    { key: "edit", label: "Edit", href: `/hack/${slug}?edit=1`, icon: <FiEdit2 className="h-4 w-4" /> },
     { key: "versions", label: "Manage versions", href: `/hack/${slug}/versions`, icon: <TbVersions className="h-4 w-4" /> },
     { key: "share", label: "Share link", onClick: () => copyShare(slug), icon: <FiShare2 className="h-4 w-4" /> },
   ];
@@ -168,7 +183,7 @@ function IconTooltipButton({ href, target, onClick, label, ariaLabel, children }
           href={href}
           target={target}
           aria-label={ariaLabel ?? label}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-black/5 dark:hover:bg-white/10"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-control hover:bg-surface-2"
         >
           {children}
         </Link>
@@ -177,7 +192,7 @@ function IconTooltipButton({ href, target, onClick, label, ariaLabel, children }
           type="button"
           onClick={onClick}
           aria-label={ariaLabel ?? label}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-black/5 dark:hover:bg-white/10"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-control hover:bg-surface-2"
         >
           {children}
         </button>
@@ -214,7 +229,7 @@ function Tooltip({ label, children }: { label: string; children: React.ReactNode
         <span
           ref={refs.setFloating as any}
           style={floatingStyles as React.CSSProperties}
-          className="hidden lg:block z-50 whitespace-nowrap rounded-md bg-black/80 px-2 py-1 text-[11px] text-white shadow-md dark:bg-white/90 dark:text-black"
+          className="hidden lg:block z-50 whitespace-nowrap rounded-control bg-black/80 px-2 py-1 text-[11px] text-white shadow-md dark:bg-white/90 dark:text-black"
           role="tooltip"
         >
           {label}

@@ -39,9 +39,14 @@ Use the [Discover page](/discover) to search for hacks or filter by tags, base R
 Download activity is the only input to popularity and trending rankings. Placement does not represent a staff recommendation.
 
 ### Does Hackdex allow AI-generated content?
-Yes, with disclosure. Creators must disclose AI use in both content and code through Hackdex's AI disclosure form. Their disclosure appears on the hack's page to help you decide whether you want to play it.
+Yes, with disclosure. Creators must disclose AI use in both content and code through Hackdex's AI disclosure form. Their disclosure appears on the hack's page to help you decide whether you want to play it. On Discover, you can filter to hacks with no AI content or no direct AI usage.
 
 We believe a blanket ban can encourage creators to hide AI use. Requiring disclosure gives creators room to be honest and helps players make an informed choice. Disclosed content must still follow our credits and content rules. See [what creators need to disclose](#ai-disclosure) for details.
+
+### Was this website made with AI? {#site-ai-use}
+Partly. A large portion of Hackdex's code was written with AI assistance, and every change is reviewed and tested by a person before it goes live. This covers the website itself, not the hacks listed on it. Each hack's AI use is disclosed by its creator on the hack's page.
+
+Hackdex is [open source](https://github.com/Hackdex-App/hackdex-website), so you can read the code and its full history on GitHub.
 
 ### How do I report a hack or page that breaks the rules?
 There is a Report option on each hack page. Or you can use the [contact form](/contact). Include the hack's page URL and enough detail for us to locate the issue. For content inside a hack, include the version and where it appears in the game. See our [content guidelines](#content-guidelines) for a summary of what is prohibited.
@@ -129,6 +134,8 @@ Complete Hackdex's AI disclosure form for each hack, even if you have no AI use 
 Disclose content and code generated or modified with AI that is included in your hack or its Hackdex page. This includes graphics, music, writing, translations, event scripts, and general programming, even a single bug fix. Count work you edited afterward or received from contributors.
 
 Disclosure of AI use for brainstorming and unused experiments is optional when no AI-generated or AI-modified content or code is included in the hack or its page. Disclosure does not replace credits or exempt your hack from our content rules. See [Section 6 of the Terms of Service](/terms#6-creator-responsibilities) for the full requirement.
+
+Pick the level that feels right for how much AI went into each area. It doesn't need to be exact. Code has a finer scale with "A little" and "Most" in between, since one AI bug fix and an AI-written engine are very different. The label covers what you and your team added on purpose, so something like AI code that came with a base you built on doesn't count.
 
 ### Who retains ownership of submitted hacks?
 Creators retain ownership of their work. Hackdex serves as a distribution and discovery platform. Specific rights and responsibilities are outlined in the Terms of Service available on the platform.

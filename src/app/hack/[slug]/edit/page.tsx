@@ -1,11 +1,13 @@
 import { notFound, redirect } from "next/navigation";
-import HackForm from "@/components/Hack/HackForm";
+import HackEditForm from "@/components/Hack/HackEditForm";
 import { createClient } from "@/utils/supabase/server";
-import { FaChevronLeft, FaChevronRight, FaPlus } from "react-icons/fa6";
+import { FaChevronLeft } from "react-icons/fa6";
 import Link from "next/link";
 import { sortOrderedTags, getCoverUrls } from "@/utils/format";
 import { checkEditPermission } from "@/utils/hack";
 import { getCachedTagsWithUsage } from "@/data/tags";
+import { AI_SELECT, aiDisclosureFromRow } from "@/utils/aiDisclosure";
+import ArchiveAiLabel from "@/components/Hack/ArchiveAiLabel";
 
 interface EditPageProps {
   params: Promise<{ slug: string }>;
@@ -22,7 +24,7 @@ export default async function EditHackPage({ params }: EditPageProps) {
 
   const { data: hack } = await supabase
     .from("hacks")
-    .select("slug,title,summary,description,base_rom,language,completion_status,box_art,social_links,created_by,current_patch,original_author,permission_from,is_archive,tags_updated_at")
+    .select(`slug,title,summary,description,base_rom,language,completion_status,box_art,social_links,created_by,current_patch,original_author,permission_from,is_archive,tags_updated_at,approved,submitted_at,${AI_SELECT}`)
     .eq("slug", slug)
     .maybeSingle();
   if (!hack) return notFound();
@@ -35,6 +37,10 @@ export default async function EditHackPage({ params }: EditPageProps) {
 
   if (!permission.canEdit) {
     redirect(`/hack/${slug}`);
+  }
+  // Regular hacks are edited in place on the hack page; only archives use this form.
+  if (!isArchive) {
+    redirect(`/hack/${slug}?edit=1`);
   }
 
   let coverKeys: string[] = [];
@@ -93,37 +99,23 @@ export default async function EditHackPage({ params }: EditPageProps) {
   };
 
   return (
-    <div className="mx-auto max-w-screen-lg px-6 py-10">
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-        <h1 className="flex items-center text-3xl tracking-tight">
-          Edit
-          <FaChevronRight size={22} className="inline-block mx-2 text-foreground/50 align-middle" />
-          <span className="font-bold">{hack.title}</span>
+    <div className="mx-auto w-full max-w-[1164px] px-6 pb-6 pt-4 md:pt-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <h1 className="font-display text-[28px] leading-tight md:text-[32px]">
+          <span className="font-normal text-text-3">Edit</span> {hack.title}
         </h1>
-        <div className="flex items-center gap-2 md:flex-row flex-col md:self-end lg:self-auto mt-8 lg:mt-0">
-          <Link href={`/hack/${slug}`} className="inline-flex items-center justify-center h-12 md:h-10 w-full md:w-auto rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm font-medium hover:bg-black/5 dark:hover:bg-white/10">
-            <FaChevronLeft size={16} className="inline-block mr-1" />
+        <div className="flex flex-col gap-2 md:flex-row md:items-center">
+          <Link href={`/hack/${slug}`} className="inline-flex h-10 items-center justify-center rounded-control border border-line-strong bg-surface px-3 text-sm font-medium transition-colors hover:border-text-3">
+            <FaChevronLeft size={14} className="mr-1.5" />
             Back to hack
           </Link>
-          {!isArchive && <>
-            <Link
-              href={`/hack/${slug}/versions`}
-              className="inline-flex items-center justify-center h-12 md:h-10 w-full md:w-auto px-4 text-sm font-medium rounded-md border border-[var(--border)] bg-[var(--surface-2)] hover:bg-[var(--surface-3)] transition-colors"
-            >
-              Manage Versions
-            </Link>
-            <Link
-              href={`/hack/${slug}/edit/patch`}
-              className="inline-flex items-center justify-center h-12 md:h-10 w-full md:w-auto px-4 text-sm font-semibold rounded-md bg-[var(--accent)] text-[var(--accent-foreground)] hover:bg-[var(--accent-700)] transition-colors"
-            >
-              <FaPlus size={14} className="mr-2" />
-              Upload New Version
-            </Link>
-          </>}
         </div>
       </div>
       <div className="mt-4 lg:mt-8">
-        <HackForm mode="edit" slug={slug} initial={initial} catalogTags={catalogTags} tagsUpdatedAt={tagsUpdatedAt} />
+        <HackEditForm slug={slug} initial={initial} catalogTags={catalogTags} tagsUpdatedAt={tagsUpdatedAt} />
+      </div>
+      <div className="mt-6">
+        <ArchiveAiLabel slug={slug} initial={aiDisclosureFromRow(hack)} />
       </div>
     </div>
   );

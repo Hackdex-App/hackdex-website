@@ -13,6 +13,8 @@ import Select from "@/components/Primitives/Select";
 import type { Database } from "@/types/db";
 import type { CatalogTagRow } from "@/types/catalogTag";
 import { FiExternalLink } from "react-icons/fi";
+import { newCoverKey } from "@/utils/format";
+import { SUMMARY_MAX, TITLE_MAX } from "@/data/hackLimits";
 import { HACK_FORM_DESCRIPTION_PLACEHOLDER } from "./hackFormConstants";
 
 interface HackEditFormProps {
@@ -217,11 +219,11 @@ export default function HackEditForm({ slug, initial, catalogTags, tagsUpdatedAt
         if (item.type === "existing") {
           keys.push(item.key);
         } else {
-          const ext = item.file.name.split('.').pop();
-          const path = `${slug}/${Date.now()}-${i}.${ext}`;
+          const path = newCoverKey(slug, i, item.file.name);
           const presigned = await presignCoverUpload({ slug, objectKey: path });
           if (!presigned.ok) throw new Error(presigned.error || 'Failed to presign cover upload');
-          await fetch(presigned.presignedUrl, { method: 'PUT', body: item.file, headers: { 'Content-Type': item.file.type || 'image/jpeg' } });
+          const put = await fetch(presigned.presignedUrl, { method: 'PUT', body: item.file, headers: { 'Content-Type': item.file.type || 'image/jpeg' } });
+          if (!put.ok) throw new Error('Screenshot upload failed');
           keys.push(path);
         }
       }
@@ -239,7 +241,7 @@ export default function HackEditForm({ slug, initial, catalogTags, tagsUpdatedAt
     }
   }
 
-  const summaryLimit = 120;
+  const summaryLimit = SUMMARY_MAX;
   const summaryTooLong = summary.length > summaryLimit;
   const contentHasErrors = summaryTooLong || (!!boxArt && !urlLike(boxArt)) || !completionStatus;
 
@@ -271,20 +273,20 @@ export default function HackEditForm({ slug, initial, catalogTags, tagsUpdatedAt
                   Revert all
                 </button>
               )}
-              <button onClick={onSaveMeta} disabled={saving || !contentChanged || contentHasErrors} className="shine-wrap btn-premium h-8 min-w-[6rem] text-sm font-semibold dark:disabled:opacity-70 disabled:cursor-not-allowed disabled:[box-shadow:0_0_0_1px_var(--border)]">
+              <button onClick={onSaveMeta} disabled={saving || !contentChanged || contentHasErrors} className="inline-flex items-center justify-center rounded-control bg-accent-deep px-5 text-white transition-colors hover:enabled:bg-accent-hover disabled:opacity-60 h-8 min-w-[6rem] text-sm font-semibold disabled:cursor-not-allowed">
                 <span>{saving ? "Saving…" : "Save Content/Details"}</span>
               </button>
             </div>
           </div>
           {!completionStatus && (
-            <div className="mt-4 rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-100">
+            <div className="mt-4 rounded-control border border-warn/40 bg-warn-soft p-3 text-sm text-warn">
               <div className="flex items-start gap-2">
                 <div className="flex items-center justify-center w-5 h-5 shrink-0 mt-0.5">
-                  <div className="inline-block h-2 w-2 rounded-full bg-amber-400" />
+                  <div className="inline-block h-2 w-2 rounded-full bg-warn" />
                 </div>
                 <div className="flex flex-col gap-1">
                   <p className="font-semibold">Missing Completion Status</p>
-                  <p className="text-xs text-amber-800 dark:text-amber-200">
+                  <p className="text-xs text-warn">
                     This is a new required field. Please select a completion status in the Details section to save your changes.
                   </p>
                 </div>
@@ -294,23 +296,23 @@ export default function HackEditForm({ slug, initial, catalogTags, tagsUpdatedAt
           <div className="mt-4 grid gap-4">
             <div className="grid gap-2">
               <div className="flex items-center justify-between">
-                <label className="text-sm text-foreground/80">Title</label>
+                <label className="text-sm text-text-2">Title</label>
                 {titleChanged && (
-                  <div className="flex items-center gap-2 text-[11px] text-foreground/70">
+                  <div className="flex items-center gap-2 text-[11px] text-text-2">
                     <span>Modified</span>
                     <button type="button" onClick={() => setTitle(baseline.title)} className="inline-flex items-center underline underline-offset-2 text-[11px] cursor-pointer">Revert</button>
                   </div>
                 )}
               </div>
-              <input value={title} onChange={(e) => setTitle(e.target.value)} className={`h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 ${titleChanged ? 'ring-[var(--ring)] bg-[var(--surface-2)]' : 'bg-[var(--surface-2)] ring-[var(--border)]'}`} />
+              <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={TITLE_MAX} className={`h-11 rounded-control px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 ${titleChanged ? 'ring-accent bg-surface-2' : 'bg-surface-2 ring-line'}`} />
             </div>
             <div className="grid gap-1">
               <div className="flex items-center justify-between">
-                <label className="text-sm text-foreground/80">Summary</label>
+                <label className="text-sm text-text-2">Summary</label>
                 <div className="flex items-center gap-2">
                   {summaryChanged && (
                     <>
-                      <span className="text-[11px] text-foreground/70 ml-2">Modified</span>
+                      <span className="text-[11px] text-text-2 ml-2">Modified</span>
                       <button type="button" onClick={() => setSummary(baseline.summary)} className="inline-flex items-center underline underline-offset-2 text-[11px] cursor-pointer">Revert</button>
                     </>
                   )}
@@ -320,30 +322,30 @@ export default function HackEditForm({ slug, initial, catalogTags, tagsUpdatedAt
                 <input
                   value={summary}
                   onChange={(e) => setSummary(e.target.value)}
-                  className={`w-full h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 pr-16 ${summary.length > summaryLimit ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : summaryChanged ? 'ring-[var(--ring)] bg-[var(--surface-2)]' : 'bg-[var(--surface-2)] ring-[var(--border)]'}`}
+                  className={`w-full h-11 rounded-control px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 pr-16 ${summary.length > summaryLimit ? "ring-error/40 bg-error-soft dark:ring-error/40 dark:bg-error-soft" : summaryChanged ? 'ring-accent bg-surface-2' : 'bg-surface-2 ring-line'}`}
                 />
-                <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-[11px] ${summary.length > summaryLimit ? "text-red-300" : "text-foreground/60"}`}>
+                <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-[11px] ${summary.length > summaryLimit ? "text-error" : "text-text-3"}`}>
                   {summary.length}/{summaryLimit}
                 </span>
               </div>
             </div>
             <div className="grid gap-2">
               <div className="flex items-center justify-between">
-                <label className="text-sm text-foreground/80">Description</label>
+                <label className="text-sm text-text-2">Description</label>
                 <div className="flex items-center gap-1 text-xs">
-                  <button type="button" onClick={() => setShowMdPreview(false)} className={`px-2 py-1 rounded ${!showMdPreview ? "bg-[var(--surface-2)] ring-1 ring-[var(--border)]" : "text-foreground/70"}`}>Write</button>
-                  <button type="button" onClick={() => setShowMdPreview(true)} className={`px-2 py-1 rounded ${showMdPreview ? "bg-[var(--surface-2)] ring-1 ring-[var(--border)]" : "text-foreground/70"}`}>Preview</button>
+                  <button type="button" onClick={() => setShowMdPreview(false)} className={`px-2 py-1 rounded ${!showMdPreview ? "bg-surface-2 ring-1 ring-line" : "text-text-2"}`}>Write</button>
+                  <button type="button" onClick={() => setShowMdPreview(true)} className={`px-2 py-1 rounded ${showMdPreview ? "bg-surface-2 ring-1 ring-line" : "text-text-2"}`}>Preview</button>
                   {descriptionChanged && (
                     <div className="flex items-center gap-2 ml-2">
-                      <span className="text-[11px] text-foreground/70">Modified</span>
+                      <span className="text-[11px] text-text-2">Modified</span>
                       <button type="button" onClick={() => setDescription(baseline.description)} className="inline-flex items-center underline underline-offset-2 text-[11px] cursor-pointer">Revert</button>
                     </div>
                   )}
                 </div>
               </div>
-              <p className="text-xs text-foreground/60">
+              <p className="text-xs text-text-3">
                 A credits section is required.{" "}
-                <a href="https://www.markdownguide.org/basic-syntax/" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground/80 transition-colors">Supports Markdown <FiExternalLink className="inline-block h-3 w-3" /></a>
+                <a href="https://www.markdownguide.org/basic-syntax/" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-text-2 transition-colors">Supports Markdown <FiExternalLink className="inline-block h-3 w-3" /></a>
               </p>
               {!showMdPreview ? (
                 <textarea
@@ -351,10 +353,10 @@ export default function HackEditForm({ slug, initial, catalogTags, tagsUpdatedAt
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder={HACK_FORM_DESCRIPTION_PLACEHOLDER}
-                  className={`rounded-md px-3 py-2 min-h-[14rem] text-sm ring-1 ring-inset focus:outline-none focus:ring-2 ${descriptionChanged ? 'ring-[var(--ring)] bg-[var(--surface-2)]' : 'bg-[var(--surface-2)] ring-[var(--border)]'}`}
+                  className={`rounded-control px-3 py-2 min-h-[14rem] text-sm ring-1 ring-inset focus:outline-none focus:ring-2 ${descriptionChanged ? 'ring-accent bg-surface-2' : 'bg-surface-2 ring-line'}`}
                 />
               ) : (
-                <div className={`prose max-w-none rounded-md min-h-[14rem] px-3 py-2 ring-1 ring-inset ${descriptionChanged ? 'ring-[var(--ring)] bg-[var(--surface-2)]' : 'bg-[var(--surface-2)] ring-[var(--border)]'} ${description ? "" : "text-foreground/60 text-sm"}`}>
+                <div className={`prose max-w-none rounded-control min-h-[14rem] px-3 py-2 ring-1 ring-inset ${descriptionChanged ? 'ring-accent bg-surface-2' : 'bg-surface-2 ring-line'} ${description ? "" : "text-text-3 text-sm"}`}>
                   <Markdown headingLevelOffset={1}>{description || "Nothing to preview yet."}</Markdown>
                 </div>
               )}
@@ -362,15 +364,15 @@ export default function HackEditForm({ slug, initial, catalogTags, tagsUpdatedAt
 
             <div className="grid gap-2">
               <div className="flex items-center justify-between">
-                <label className="text-sm text-foreground/80">Tags</label>
+                <label className="text-sm text-text-2">Tags</label>
                 {tagsChanged && (
-                  <div className="flex items-center gap-2 text-[11px] text-foreground/70">
+                  <div className="flex items-center gap-2 text-[11px] text-text-2">
                     <span>Modified</span>
                     <button type="button" onClick={() => setTags(baseline.tags.slice())} className="inline-flex items-center underline underline-offset-2 text-[11px] cursor-pointer">Revert</button>
                   </div>
                 )}
               </div>
-              <div className={`rounded-md ring-1 ring-inset ${tagsChanged ? 'ring-[var(--ring)] bg-[var(--surface-2)]' : 'ring-transparent'} p-1`}>
+              <div className={`rounded-control ring-1 ring-inset ${tagsChanged ? 'ring-accent bg-surface-2' : 'ring-transparent'} p-1`}>
                 <TagSelector value={tags} onChange={setTags} catalogTags={catalogTags} newTagsCutoff={tagsUpdatedAt} />
               </div>
             </div>
@@ -382,27 +384,27 @@ export default function HackEditForm({ slug, initial, catalogTags, tagsUpdatedAt
               <h2 className="text-xl font-semibold tracking-tight">Screenshots</h2>
               <div className="flex items-center gap-2">
                 {coversChanged && (
-                  <button type="button" onClick={() => setCoverItems(coversBaseline.keys.map((k, i) => ({ type: 'existing' as const, key: k, url: coversBaseline.urls[i] || '' })))} className="inline-flex h-8 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 text-[12px] cursor-pointer">
+                  <button type="button" onClick={() => setCoverItems(coversBaseline.keys.map((k, i) => ({ type: 'existing' as const, key: k, url: coversBaseline.urls[i] || '' })))} className="inline-flex h-8 items-center justify-center rounded-control border border-line bg-surface-2 px-3 text-[12px] cursor-pointer">
                     Revert
                   </button>
                 )}
-                <button onClick={onSaveCovers} disabled={saving || !coversChanged || overLimit} className="inline-flex shine-wrap btn-premium h-8 min-w-[6rem] text-sm font-semibold dark:disabled:opacity-70 disabled:cursor-not-allowed disabled:[box-shadow:0_0_0_1px_var(--border)]">
+                <button onClick={onSaveCovers} disabled={saving || !coversChanged || overLimit} className="inline-flex items-center justify-center rounded-control bg-accent-deep px-5 text-white transition-colors hover:enabled:bg-accent-hover disabled:opacity-60 h-8 min-w-[6rem] text-sm font-semibold disabled:cursor-not-allowed">
                   <span>{saving ? "Saving…" : "Save images"}</span>
                 </button>
               </div>
             </div>
           <div className="mt-4 grid gap-4">
             {allowedSizes.length > 0 && (
-              <p className="text-xs text-foreground/60">Allowed sizes: {allowedSizes.map((s) => `${s.w}x${s.h}`).join(", ")}</p>
+              <p className="text-xs text-text-3">Allowed sizes: {allowedSizes.map((s) => `${s.w}x${s.h}`).join(", ")}</p>
             )}
             {tutorialInfo && (
-              <p className="text-xs text-foreground/60">
+              <p className="text-xs text-text-3">
                 Need help taking screenshots? Watch our{" "}
                 <a
                   href={tutorialInfo.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 underline underline-offset-2 hover:text-foreground/80 transition-colors"
+                  className="inline-flex items-center gap-1 underline underline-offset-2 hover:text-text-2 transition-colors"
                 >
                   {tutorialInfo.emulatorName} tutorial
                   <FiExternalLink className="h-3 w-3" />
@@ -414,11 +416,11 @@ export default function HackEditForm({ slug, initial, catalogTags, tagsUpdatedAt
               multiple
               accept="image/*"
               onChange={(e) => onAddFiles(Array.from(e.target.files || []))}
-              className="w-full rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none"
+              className="w-full rounded-control bg-surface-2 px-3 py-2 text-sm ring-1 ring-inset ring-line focus:outline-none"
             />
 
             {coverItems.length === 0 ? (
-              <p className="text-sm text-foreground/70">No screenshots yet.</p>
+              <p className="text-sm text-text-2">No screenshots yet.</p>
             ) : (
               <SortableCovers
                 items={coverItems.map((item, i) => ({
@@ -432,9 +434,9 @@ export default function HackEditForm({ slug, initial, catalogTags, tagsUpdatedAt
               />
             )}
 
-            <div className="text-xs text-foreground/60 flex justify-between">
-              <p>Images: <span className={overLimit ? "text-red-300 font-bold" : "text-foreground/60"}>{coverItems.length}</span>/{MAX_COVERS}</p>
-              {overLimit && <p className="text-red-300/80 italic">Remove some to save.</p>}
+            <div className="text-xs text-text-3 flex justify-between">
+              <p>Images: <span className={overLimit ? "text-error font-bold" : "text-text-3"}>{coverItems.length}</span>/{MAX_COVERS}</p>
+              {overLimit && <p className="text-error italic">Remove some to save.</p>}
             </div>
           </div>
         </div>
@@ -445,16 +447,16 @@ export default function HackEditForm({ slug, initial, catalogTags, tagsUpdatedAt
           <h3 className="text-[15px] font-semibold tracking-tight">Details</h3>
           <div className="mt-3 grid gap-3 text-sm">
             <div className="grid gap-2">
-              <label className="text-sm text-foreground/80">Base ROM</label>
-              <p className="flex items-center h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] text-foreground/60 select-none cursor-not-allowed">
+              <label className="text-sm text-text-2">Base ROM</label>
+              <p className="flex items-center h-11 rounded-control bg-surface-2 px-3 text-sm ring-1 ring-inset ring-line focus:outline-none focus:ring-2 focus:ring-accent/40 text-text-3 select-none cursor-not-allowed">
                 {baseRoms.find(r => r.id === baseRom)?.name || baseRom}
               </p>
             </div>
             <div className="grid gap-2">
               <div className="flex items-center justify-between">
-                <label className="text-sm text-foreground/80">Language</label>
+                <label className="text-sm text-text-2">Language</label>
                 {languageChanged && (
-                  <div className="ml-auto flex items-center gap-2 text-[11px] text-foreground/70">
+                  <div className="ml-auto flex items-center gap-2 text-[11px] text-text-2">
                     <span>Modified</span>
                     <button type="button" onClick={() => setLanguage(baseline.language)} className="inline-flex items-center underline underline-offset-2 text-[11px] cursor-pointer">Revert</button>
                   </div>
@@ -463,7 +465,7 @@ export default function HackEditForm({ slug, initial, catalogTags, tagsUpdatedAt
               <Select
                 value={language}
                 onChange={setLanguage}
-                className={languageChanged ? 'ring-[var(--ring)]' : ''}
+                className={languageChanged ? 'ring-accent' : ''}
                 options={['English','Spanish','French','German','Italian','Portuguese','Japanese','Chinese','Korean','Other'].map(l => ({
                   value: l,
                   label: l,
@@ -472,12 +474,12 @@ export default function HackEditForm({ slug, initial, catalogTags, tagsUpdatedAt
             </div>
             <div className="grid gap-2">
               <div className="flex items-center justify-between">
-                <label className={`text-sm ${!completionStatus ? 'text-red-500 font-semibold' : 'text-foreground/80'}`}>
-                  Completion Status <span className="text-red-500">*</span>
-                  {!completionStatus && <span className="ml-2 text-xs font-normal text-red-500/80">(Required)</span>}
+                <label className={`text-sm ${!completionStatus ? 'text-error font-semibold' : 'text-text-2'}`}>
+                  Completion Status <span className="text-error">*</span>
+                  {!completionStatus && <span className="ml-2 text-xs font-normal text-error">(Required)</span>}
                 </label>
                 {completionStatusChanged && (
-                  <div className="ml-auto flex items-center gap-2 text-[11px] text-foreground/70">
+                  <div className="ml-auto flex items-center gap-2 text-[11px] text-text-2">
                     <span>Modified</span>
                     <button type="button" onClick={() => setCompletionStatus(baseline.completionStatus)} className="inline-flex items-center underline underline-offset-2 text-[11px] cursor-pointer">Revert</button>
                   </div>
@@ -487,55 +489,55 @@ export default function HackEditForm({ slug, initial, catalogTags, tagsUpdatedAt
                 value={completionStatus || ""}
                 onChange={(value) => setCompletionStatus(value as Database["public"]["Enums"]["Completion Status"] | null)}
                 placeholder="Select completion status"
-                className={!completionStatus ? 'ring-2 ring-red-500/60 bg-red-500/10 dark:ring-red-400/60 dark:bg-red-950/20' : completionStatusChanged ? 'ring-[var(--ring)]' : ''}
+                className={!completionStatus ? 'ring-2 ring-error/40 bg-error-soft dark:ring-error/40 dark:bg-error-soft' : completionStatusChanged ? 'ring-accent' : ''}
                 options={['Complete','Demo','Alpha','Beta'].map(s => ({
                   value: s,
                   label: s,
                 }))}
               />
               {!completionStatus && (
-                <p className="text-xs text-red-500/80 dark:text-red-400/80">
+                <p className="text-xs text-error">
                   This is a new required field. Please select a completion status to save your changes.
                 </p>
               )}
             </div>
             <div className="grid gap-2">
-              <label className="text-sm text-foreground/80">Current version</label>
-              <p className="flex items-center h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] text-foreground/60 select-none cursor-not-allowed">
+              <label className="text-sm text-text-2">Current version</label>
+              <p className="flex items-center h-11 rounded-control bg-surface-2 px-3 text-sm ring-1 ring-inset ring-line focus:outline-none focus:ring-2 focus:ring-accent/40 text-text-3 select-none cursor-not-allowed">
                 {version}
               </p>
             </div>
             <div className="grid gap-2">
-              <label className="text-sm text-foreground/80">Box art URL</label>
+              <label className="text-sm text-text-2">Box art URL</label>
               <div className="flex items-center justify-between">
-                <input value={boxArt} onChange={(e) => setBoxArt(e.target.value)} placeholder="https://..." className={`flex-1 h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 ${boxArt && !urlLike(boxArt) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : boxArtChanged ? 'ring-[var(--ring)] bg-[var(--surface-2)]' : 'bg-[var(--surface-2)] ring-[var(--border)]'}`} />
+                <input value={boxArt} onChange={(e) => setBoxArt(e.target.value)} placeholder="https://..." className={`flex-1 h-11 rounded-control px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 ${boxArt && !urlLike(boxArt) ? "ring-error/40 bg-error-soft dark:ring-error/40 dark:bg-error-soft" : boxArtChanged ? 'ring-accent bg-surface-2' : 'bg-surface-2 ring-line'}`} />
                 {boxArtChanged && (
                   <button type="button" onClick={() => setBoxArt(baseline.boxArt)} className="ml-3 text-[11px] underline underline-offset-2 cursor-pointer">Revert</button>
                 )}
               </div>
               {boxArt && urlLike(boxArt) && (
-                <div className="relative aspect-square w-full max-h-[300px] overflow-hidden rounded ring-1 ring-[var(--border)]">
+                <div className="relative aspect-square w-full max-h-[300px] overflow-hidden rounded ring-1 ring-line">
                   <Image src={boxArt} alt="Box art preview" fill className="object-contain" unoptimized />
                 </div>
               )}
             </div>
             <div className="grid gap-2">
-              <label className="text-sm text-foreground/80">Social links</label>
+              <label className="text-sm text-text-2">Social links</label>
               <div className="grid gap-2">
                 <div className="flex items-center gap-2">
-                  <input value={discord} onChange={(e) => setDiscord(e.target.value)} placeholder="Discord invite URL" className={`flex-1 h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 ${discord && !urlLike(discord) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : discordChanged ? 'ring-[var(--ring)] bg-[var(--surface-2)]' : 'bg-[var(--surface-2)] ring-[var(--border)]'}`} />
+                  <input value={discord} onChange={(e) => setDiscord(e.target.value)} placeholder="Discord invite URL" className={`flex-1 h-11 rounded-control px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 ${discord && !urlLike(discord) ? "ring-error/40 bg-error-soft dark:ring-error/40 dark:bg-error-soft" : discordChanged ? 'ring-accent bg-surface-2' : 'bg-surface-2 ring-line'}`} />
                   {discordChanged && <button type="button" onClick={() => setDiscord(baseline.discord)} className="text-[11px] underline underline-offset-2 cursor-pointer">Revert</button>}
                 </div>
                 <div className="flex items-center gap-2">
-                  <input value={twitter} onChange={(e) => setTwitter(e.target.value)} placeholder="Twitter/X profile URL" className={`flex-1 h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 ${twitter && !urlLike(twitter) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : twitterChanged ? 'ring-[var(--ring)] bg-[var(--surface-2)]' : 'bg-[var(--surface-2)] ring-[var(--border)]'}`} />
+                  <input value={twitter} onChange={(e) => setTwitter(e.target.value)} placeholder="Twitter/X profile URL" className={`flex-1 h-11 rounded-control px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 ${twitter && !urlLike(twitter) ? "ring-error/40 bg-error-soft dark:ring-error/40 dark:bg-error-soft" : twitterChanged ? 'ring-accent bg-surface-2' : 'bg-surface-2 ring-line'}`} />
                   {twitterChanged && <button type="button" onClick={() => setTwitter(baseline.twitter)} className="text-[11px] underline underline-offset-2 cursor-pointer">Revert</button>}
                 </div>
                 <div className="flex items-center gap-2">
-                  <input value={pokecommunity} onChange={(e) => setPokecommunity(e.target.value)} placeholder="PokeCommunity thread URL" className={`flex-1 h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 ${pokecommunity && !urlLike(pokecommunity) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : pokeChanged ? 'ring-[var(--ring)] bg-[var(--surface-2)]' : 'bg-[var(--surface-2)] ring-[var(--border)]'}`} />
+                  <input value={pokecommunity} onChange={(e) => setPokecommunity(e.target.value)} placeholder="PokeCommunity thread URL" className={`flex-1 h-11 rounded-control px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 ${pokecommunity && !urlLike(pokecommunity) ? "ring-error/40 bg-error-soft dark:ring-error/40 dark:bg-error-soft" : pokeChanged ? 'ring-accent bg-surface-2' : 'bg-surface-2 ring-line'}`} />
                   {pokeChanged && <button type="button" onClick={() => setPokecommunity(baseline.pokecommunity)} className="text-[11px] underline underline-offset-2 cursor-pointer">Revert</button>}
                 </div>
                 <div className="flex items-center gap-2">
-                  <input value={github} onChange={(e) => setGithub(e.target.value)} placeholder="GitHub repository URL" className={`flex-1 h-11 rounded-md px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 ${github && !urlLike(github) ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : githubChanged ? 'ring-[var(--ring)] bg-[var(--surface-2)]' : 'bg-[var(--surface-2)] ring-[var(--border)]'}`} />
+                  <input value={github} onChange={(e) => setGithub(e.target.value)} placeholder="GitHub repository URL" className={`flex-1 h-11 rounded-control px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 ${github && !urlLike(github) ? "ring-error/40 bg-error-soft dark:ring-error/40 dark:bg-error-soft" : githubChanged ? 'ring-accent bg-surface-2' : 'bg-surface-2 ring-line'}`} />
                   {githubChanged && <button type="button" onClick={() => setGithub(baseline.github)} className="text-[11px] underline underline-offset-2 cursor-pointer">Revert</button>}
                 </div>
               </div>

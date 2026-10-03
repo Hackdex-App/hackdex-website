@@ -48,10 +48,10 @@ export default function CreateReviewThreadMenuItem({
       type="button"
       disabled={isPending}
       onClick={handleCreate}
-      className="block w-full px-3 py-2 text-left text-sm text-foreground/80 font-medium data-focus:bg-black/5 dark:data-focus:bg-white/10 disabled:opacity-50"
+      className="block w-full px-3 py-2 text-left text-sm text-text-2 font-medium data-focus:bg-surface-2 disabled:opacity-50"
     >
       <FaDiscord
-        className="mr-2 inline-block align-middle mb-0.5 text-foreground/80"
+        className="mr-2 inline-block align-middle mb-0.5 text-text-2"
         size={12}
       />
       {isPending ? "Creating review thread…" : "Create review thread"}

@@ -1,234 +1,23 @@
 "use server";
 
 import { createClient, createServiceClient } from "@/utils/supabase/server";
-import { getMinioClient, PATCHES_BUCKET } from "@/utils/minio/server";
+import { getMinioClient, objectExists, PATCHES_BUCKET } from "@/utils/minio/server";
 import { buildPatchDownloadUrl } from "@/utils/patches/patch-download-url";
 import { isInformationalArchiveHack, canEditAsCreator, canEditAsAdmin } from "@/utils/hack";
 import { sendDiscordMessageEmbed } from "@/utils/discord";
 import { headers } from "next/headers";
 import { validateEmail } from "@/utils/auth";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { unstable_cache as cache } from "next/cache";
-import { sortOrderedTags, getCoverUrls } from "@/utils/format";
 import { Database, Constants } from "@/types/db";
 import { getPatcherSelectablePatches } from "@/utils/patches/patcher-selectable-patches";
-import { CUSTOM_VERSION_NAME_MAX_LENGTH, resolveHackDisplayVersion } from "@/utils/patches/hack-display-version";
-import type { SelectablePatch } from "@/types/patcher";
+import { CUSTOM_VERSION_NAME_MAX_LENGTH } from "@/utils/patches/hack-display-version";
 import { revalidateDiscoverCatalog } from "@/app/discover/revalidate";
+import { isPatchKeyFor, newPatchKey } from "@/utils/storageKeys";
+import type { PatchFormat } from "@/utils/patching";
 
 const PATCHES_DOWNLOAD_PERMISSION_VALUES = Constants.public.Enums[
   "Patches Download Permission"
 ] as readonly Database["public"]["Enums"]["Patches Download Permission"][];
-
-export interface HackMetadata {
-  hack: {
-    slug: string;
-    title: string;
-    summary: string;
-    description: string;
-    base_rom: string;
-    created_at: string;
-    updated_at: string | null;
-    current_patch: number | null;
-    box_art: string | null;
-    social_links: unknown;
-    created_by: string;
-    approved: boolean;
-    original_author: string | null;
-    permission_from: string | null;
-    language: string | null;
-    is_archive: boolean;
-    completion_status: Database["public"]["Enums"]["Completion Status"] | null;
-    verification_contact_info: string | null;
-  };
-  displayVersion: string;
-  images: string[];
-  tags: string[];
-  profile: {
-    username: string | null;
-    avatar_url: string | null;
-    verified: boolean;
-    email: string | null;
-  } | null;
-  otherHacks: {
-    slug: string;
-    title: string;
-    summary: string;
-  }[];
-  patch: {
-    id: number;
-    filename: string;
-    version: string | null;
-    created_at: string;
-    changelog: string | null;
-  } | null;
-  patcherSelector: {
-    selectablePatches: SelectablePatch[];
-    defaultPatchId: number | null;
-  };
-}
-
-export async function getHackMetadata(slug: string): Promise<HackMetadata | null> {
-  const runner = cache(
-    async () => {
-      const supabase = await createServiceClient();
-
-      const { data: hack, error } = await supabase
-        .from("hacks")
-        .select("slug,title,summary,description,base_rom,created_at,updated_at,current_patch,custom_version_name,box_art,social_links,created_by,approved,original_author,permission_from,language,is_archive,completion_status,verification_contact_info")
-        .eq("slug", slug)
-        .maybeSingle();
-
-      if (error || !hack) return null;
-
-      // Security: Don't return verification_contact_info if hack is approved
-      if (hack.approved) {
-        hack.verification_contact_info = null;
-      }
-
-      // Fetch covers
-      let images: string[] = [];
-      const { data: covers } = await supabase
-        .from("hack_covers")
-        .select("url, position")
-        .eq("hack_slug", slug)
-        .order("position", { ascending: true });
-      if (covers && covers.length > 0) {
-        images = getCoverUrls(covers.map(c => c.url));
-      }
-
-      // Fetch tags
-      const { data: tagRows } = await supabase
-        .from("hack_tags")
-        .select("order,tags(name)")
-        .eq("hack_slug", slug);
-
-      const tags = sortOrderedTags(
-        (tagRows || [])
-          .map((r) => ({
-            name: r.tags.name,
-            order: r.order,
-          }))
-      ).map((t) => t.name);
-
-      // Fetch profile
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id,username,avatar_url,verified")
-        .eq("id", hack.created_by as string)
-        .maybeSingle();
-
-      // Meant to only be available to admins (gated in server-side page rendering)
-      let userEmail: string | null = null;
-      if (profile) {
-        const { data: userData } = await supabase.auth.admin.getUserById(profile.id);
-        userEmail = userData?.user?.email || null;
-      }
-
-      // Get other approved hacks by the same author (non-archive hacks only)
-      let otherHacks: {
-        slug: string;
-        title: string;
-        summary: string;
-      }[] = [];
-      if (!hack.is_archive && !hack.original_author) {
-        const { data: otherHacksData } = await supabase
-          .from("hacks")
-          .select("slug,title,summary")
-          .eq("created_by", hack.created_by)
-          .eq("approved", true)
-          .eq("is_archive", false)
-          .neq("slug", hack.slug)
-          .order("downloads", { ascending: false })
-          .limit(10);
-        otherHacks = otherHacksData ?? [];
-      }
-
-      // Get patch info
-      let patch: {
-        id: number;
-        filename: string;
-        version: string | null;
-        created_at: string;
-        changelog: string | null;
-      } | null = null;
-      if (hack.current_patch != null) {
-        const { data: patchData } = await supabase
-          .from("patches")
-          .select("id,bucket,filename,version,created_at,changelog")
-          .eq("id", hack.current_patch)
-          .maybeSingle();
-        if (patchData) {
-          patch = {
-            id: patchData.id,
-            filename: patchData.filename,
-            version: patchData.version || null,
-            created_at: patchData.created_at,
-            changelog: patchData.changelog || null,
-          };
-        }
-      }
-
-      const { savedPatchIds, selectablePatches, defaultPatchId } = await getPatcherSelectablePatches(supabase, slug, hack.current_patch);
-      const displayVersion = resolveHackDisplayVersion({
-        isArchive: hack.is_archive,
-        isCustomPatcherActive: savedPatchIds.length > 0,
-        customVersionName: hack.custom_version_name,
-        customDefaultPatchVersion: selectablePatches[0]?.version,
-        currentPatchVersion: patch?.version,
-      });
-
-      return {
-        hack,
-        displayVersion,
-        images,
-        tags,
-        profile: profile ? {
-          username: profile.username,
-          avatar_url: profile.avatar_url,
-          verified: profile.verified,
-          email: userEmail,
-        } : null,
-        otherHacks,
-        patch,
-        patcherSelector: {
-          selectablePatches,
-          defaultPatchId,
-        }
-      };
-    },
-    [`hack:${slug}:metadata`],
-    {
-      revalidate: 14400, // 4 hours
-      tags: ["hack", `hack:${slug}:metadata`],
-    }
-  );
-
-  return runner();
-}
-
-export async function getHackDownloads(slug: string): Promise<number | null> {
-  const runner = cache(
-    async () => {
-      const supabase = await createServiceClient();
-      const { data: hack, error } = await supabase
-        .from("hacks")
-        .select("downloads")
-        .eq("slug", slug)
-        .maybeSingle();
-      
-      if (error || !hack) return null;
-      return hack.downloads || 0;
-    },
-    [`hack:${slug}:downloads`],
-    {
-      revalidate: 600, // 10 minutes
-      tags: ["hack", `hack:${slug}:downloads`],
-    }
-  );
-
-  return runner();
-}
 
 type GetSignedPatchUrlResult = {
   ok: true;
@@ -723,7 +512,8 @@ export async function rollbackToVersion(slug: string, patchId: number): Promise<
   }
 
   // Update current_patch
-  const { error: updateHackErr } = await supabase
+  // current_patch is server-only in the database.
+  const { error: updateHackErr } = await (await createServiceClient())
     .from("hacks")
     .update({ current_patch: patchId })
     .eq("slug", slug);
@@ -852,6 +642,7 @@ export async function updatePatchVersion(slug: string, patchId: number, version:
     .update({ version: trimmedVersion, updated_at: new Date().toISOString() })
     .eq("id", patchId);
 
+  if (updateErr?.code === "23505") return { ok: false, error: "That version already exists for this hack." };
   if (updateErr) return { ok: false, error: updateErr.message };
 
   revalidateTag(`hack:${slug}:metadata`);
@@ -926,7 +717,7 @@ export async function publishPatchVersion(slug: string, patchId: number): Promis
 
   // If newer than current_patch and no patcher patches, update current_patch
   if (willBecomeCurrent) {
-    const { error: updateHackErr } = await supabase
+    const { error: updateHackErr } = await serviceClient
       .from("hacks")
       .update({ current_patch: patchId })
       .eq("slug", slug);
@@ -940,11 +731,12 @@ export async function publishPatchVersion(slug: string, patchId: number): Promis
   return { ok: true, willBecomeCurrent };
 }
 
+/** Signs a replacement upload for an existing version; the key is made here, inside this hack's files. */
 export async function reuploadPatchVersion(
   slug: string,
   patchId: number,
-  objectKey: string
-): Promise<{ ok: true; presignedUrl: string } | { ok: false; error: string }> {
+  format: PatchFormat
+): Promise<{ ok: true; presignedUrl: string; objectKey: string } | { ok: false; error: string }> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Unauthorized" };
@@ -968,7 +760,7 @@ export async function reuploadPatchVersion(
   // Verify patch belongs to this hack
   const { data: patch, error: pErr } = await supabase
     .from("patches")
-    .select("id, parent_hack, filename")
+    .select("id, parent_hack, filename, version")
     .eq("id", patchId)
     .maybeSingle();
   if (pErr || !patch || patch.parent_hack !== slug) {
@@ -976,11 +768,12 @@ export async function reuploadPatchVersion(
   }
 
   // Generate presigned URL for upload
+  const objectKey = newPatchKey(slug, `${patch.version ?? "patch"}-reupload`, format === "xdelta" ? "xdelta" : "bps");
   const client = getMinioClient();
   const url = await client.presignedPutObject(PATCHES_BUCKET, objectKey, 60 * 10);
 
   // Update patch filename after upload (caller should handle the actual upload and update)
-  return { ok: true, presignedUrl: url };
+  return { ok: true, presignedUrl: url, objectKey };
 }
 
 export async function confirmReuploadPatchVersion(
@@ -1018,9 +811,15 @@ export async function confirmReuploadPatchVersion(
     return { ok: false, error: "Patch not found" };
   }
 
+  // Only a key reuploadPatchVersion signed for this hack.
+  if (!isPatchKeyFor(slug, objectKey)) return { ok: false, error: "Invalid patch upload" };
+  if (!(await objectExists(PATCHES_BUCKET, objectKey))) return { ok: false, error: "The patch didn't finish uploading. Please try again." };
+
   // Update patch filename and format (derived from object key extension)
   const format = objectKey.toLowerCase().endsWith(".xdelta") ? "xdelta" : "bps";
   const serviceClient = await createServiceClient();
+  const { count: keyUses } = await serviceClient.from("patches").select("id", { count: "exact", head: true }).eq("filename", objectKey);
+  if (keyUses) return { ok: false, error: "That upload was already used. Please upload again." };
   const { error: updateErr } = await serviceClient
     .from("patches")
     .update({ filename: objectKey, format, updated_at: new Date().toISOString() })

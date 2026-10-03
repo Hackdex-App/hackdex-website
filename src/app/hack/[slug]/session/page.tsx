@@ -1,9 +1,11 @@
-import { getHackDownloads, getHackMetadata } from "@/app/hack/[slug]/actions";
+import { getHackDownloads, getHackMetadata } from "@/app/hack/[slug]/metadata";
 import {
   getHackPageMetadata,
   type HackDetailPageProps,
 } from "@/app/hack/[slug]/hack-page-shared";
-import HackDetailView from "@/components/Hack/HackDetailView";
+import HackDetailView, { type DraftEditorData } from "@/components/Hack/HackDetailView";
+import { getDraftChecklist } from "@/app/submit/actions";
+import { getCachedTagsWithUsage } from "@/data/tags";
 import {
   checkEditPermission,
   checkPatchEditPermission,
@@ -16,17 +18,24 @@ import { notFound } from "next/navigation";
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: HackDetailPageProps) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
   const { slug } = await params;
-  return getHackPageMetadata(slug, Boolean(user));
+  const metadata = await getHackMetadata(slug);
+  let includeRestricted = false;
+  if (metadata && (!metadata.hack.approved || isArchiveHack(metadata.hack))) {
+    // Same gate as the page body; otherwise any signed-in visitor got a draft's title in <title>.
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    includeRestricted = !!user && (await checkEditPermission(metadata.hack, user.id, supabase)).canEdit;
+  }
+  return getHackPageMetadata(slug, includeRestricted);
 }
 
 export default async function HackSessionDetail({
   params,
-}: HackDetailPageProps) {
+  searchParams,
+}: HackDetailPageProps & { searchParams: Promise<{ preview?: string; edit?: string }> }) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -87,6 +96,39 @@ export default async function HackSessionDetail({
       ? Boolean(await getHackReviewThread(hack.slug))
       : false;
 
+  // Hacks are edited in place here. Unlisted ones open in edit mode for their
+  // creator (?preview=1 shows the player view); listed ones, and anyone else's
+  // (an admin reviewing), show the player view until ?edit=1.
+  const { preview, edit } = await searchParams;
+  const isOwner = hack.created_by === userId;
+  const editsInPlace = canEdit && !isArchive && ((isOwner && !hack.approved) || edit === "1");
+  let editor: DraftEditorData | undefined;
+  if (editsInPlace) {
+    const [checklist, catalogTags, { data: covers }, { data: row }, { count: patchCount }] = await Promise.all([
+      getDraftChecklist(slug),
+      getCachedTagsWithUsage(),
+      supabase.from("hack_covers").select("url").eq("hack_slug", slug).order("position", { ascending: true }),
+      supabase.from("hacks").select("tags_updated_at").eq("slug", slug).maybeSingle(),
+      supabase.from("patches").select("id", { count: "exact", head: true }).eq("parent_hack", slug),
+    ]);
+    if (checklist) {
+      editor = {
+        stage: hack.approved ? "listed" : hack.submitted_at === null ? "draft" : "review",
+        notOwner: !isOwner,
+        checklist,
+        catalogTags,
+        tagsUpdatedAt: row?.tags_updated_at ?? new Date(0).toISOString(),
+        coverKeys: (covers ?? []).map((c) => c.url),
+        preview: !hack.approved && preview === "1",
+        hasPatches: (patchCount ?? 0) > 0,
+      };
+    }
+  }
+
+  // Admins looking at someone else's unsubmitted draft see how far along it is.
+  const adminDraftChecklist = isAdmin && !editor && !hack.approved && hack.submitted_at === null ? await getDraftChecklist(slug) : null;
+  const draftProgress = adminDraftChecklist ? { done: adminDraftChecklist.required.filter((r) => r.done).length, total: adminDraftChecklist.required.length } : undefined;
+
   return (
     <HackDetailView
       metadata={metadata}
@@ -95,6 +137,8 @@ export default async function HackSessionDetail({
       canUploadPatch={canUploadPatch}
       isAdmin={isAdmin}
       hasReviewThread={hasReviewThread}
+      editor={editor}
+      draftProgress={draftProgress}
     />
   );
 }
