@@ -117,7 +117,9 @@ export async function updateHack(args: {
   }
 
   if (Object.keys(updatePayload).length > 0) {
-    const { error: uErr } = await supabase
+    // The service role: credits and the AI label are server-only in the database, and the checks above already ran.
+    const service = await createServiceClient();
+    const { error: uErr } = await service
       .from("hacks")
       .update(updatePayload)
       .eq("slug", args.slug);

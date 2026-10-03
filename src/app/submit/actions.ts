@@ -157,7 +157,7 @@ export async function confirmPatchUpload(args: {
     }
 
     if (shouldUpdateCurrentPatch) {
-      const { error: uErr } = await supabase
+      const { error: uErr } = await service
         .from("hacks")
         .update({ current_patch: patch.id })
         .eq("slug", args.slug);
@@ -167,7 +167,7 @@ export async function confirmPatchUpload(args: {
   }
 
   if (confirmsAi) {
-    const { error: aiErr } = await supabase.from("hacks").update({ ai_disclosed_at: new Date().toISOString() }).eq("slug", args.slug);
+    const { error: aiErr } = await service.from("hacks").update({ ai_disclosed_at: new Date().toISOString() }).eq("slug", args.slug);
     if (aiErr) console.error(`[confirmPatchUpload] Couldn't re-stamp the AI label for ${args.slug}:`, aiErr);
   }
 
@@ -303,7 +303,9 @@ export async function createDraft(formData: FormData) {
     current_patch: null,
     submitted_at: null,
   };
-  const { error } = await supabase.from("hacks").insert(insertPayload);
+  // The service role, since the database only lets the server set original_author and permission_from.
+  const service = await createServiceClient();
+  const { error } = await service.from("hacks").insert(insertPayload);
   if (error) return { ok: false, error: error.message } as const;
   // Someone may have visited this address before it existed; that "not found" is cached.
   revalidateTag(`hack:${slug}:metadata`);
@@ -369,7 +371,9 @@ export async function submitForReview(slug: string, contact?: string) {
 
   const submittedAt = new Date().toISOString();
   const verification = contact === undefined ? hack.verification_contact_info : contact.trim() || null;
-  const { error: uErr } = await supabase.from("hacks").update({ submitted_at: submittedAt, verification_contact_info: verification }).eq("slug", slug);
+  // submitted_at is server-only in the database, so the checks above can't be skipped.
+  const service = await createServiceClient();
+  const { error: uErr } = await service.from("hacks").update({ submitted_at: submittedAt, verification_contact_info: verification }).eq("slug", slug);
   if (uErr) return { ok: false, error: uErr.message } as const;
   // The page reads cached metadata; without this it keeps showing "Draft".
   revalidateTag(`hack:${slug}:metadata`);

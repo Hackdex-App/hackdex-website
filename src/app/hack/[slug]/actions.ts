@@ -512,7 +512,8 @@ export async function rollbackToVersion(slug: string, patchId: number): Promise<
   }
 
   // Update current_patch
-  const { error: updateHackErr } = await supabase
+  // current_patch is server-only in the database.
+  const { error: updateHackErr } = await (await createServiceClient())
     .from("hacks")
     .update({ current_patch: patchId })
     .eq("slug", slug);
@@ -716,7 +717,7 @@ export async function publishPatchVersion(slug: string, patchId: number): Promis
 
   // If newer than current_patch and no patcher patches, update current_patch
   if (willBecomeCurrent) {
-    const { error: updateHackErr } = await supabase
+    const { error: updateHackErr } = await serviceClient
       .from("hacks")
       .update({ current_patch: patchId })
       .eq("slug", slug);
