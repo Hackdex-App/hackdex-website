@@ -83,7 +83,7 @@ export default function StartDraftForm({ disabled = false, canSubmitForOthers = 
       <div className="flex flex-col gap-1.5">
         <label className="flex flex-col gap-1.5">
           <span className={label}>Title</span>
-          <input name="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Pokémon Fire of Sky" maxLength={64} autoFocus className={field} disabled={disabled} />
+          <input name="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="My Pokémon Romhack" maxLength={64} autoFocus className={field} disabled={disabled} />
         </label>
         <input type="hidden" name="slug" value={slug} />
         {customSlug === null ? (
