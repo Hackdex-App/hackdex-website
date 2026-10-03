@@ -151,7 +151,7 @@ function Shots({ images, platform, fill }: { images: string[]; platform?: Platfo
 
   return (
     <span
-      className={`relative flex items-center justify-center overflow-hidden bg-well px-3 pb-7 pt-3 ${fill ? "max-md:bg-black max-md:px-0" : ""}`}
+      className={`relative flex select-none items-center justify-center overflow-hidden bg-well px-3 pb-7 pt-3 ${fill ? "max-md:bg-black max-md:px-0" : ""}`}
       onPointerDown={(e) => {
         start.current = { x: e.clientX, y: e.clientY };
         dragged.current = false;
