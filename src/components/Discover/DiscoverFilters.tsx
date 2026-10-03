@@ -9,7 +9,7 @@ import { baseGameLabel, baseRoms, PLATFORM_NAMES, type Platform } from "@/data/b
 const RAIL_PLATFORMS: Platform[] = ["GBA", "GBC", "GB", "NDS"];
 import { DISCOVER_COMPLETION_STATUSES } from "@/app/discover/search-params";
 import type { DiscoverHack } from "@/types/discover";
-import { AI_AREAS, AI_PRESETS, aiPresetOf, matchesAiFilter, normalizeAiFilter, NO_AI_FILTER, type AiArea, type AiFilter } from "@/utils/aiDisclosure";
+import { AI_AREAS, AI_PRESETS, aiFilterActive, aiPresetOf, matchesAiFilter, normalizeAiFilter, NO_AI_FILTER, type AiArea, type AiFilter } from "@/utils/aiDisclosure";
 import { useCloseOnDesktop, useDialog } from "@/hooks/useDialog";
 
 /** The filterable part of the Discover URL state. The sheet edits a draft copy of this. */
@@ -61,7 +61,7 @@ export function countClearable(f: FilterState) {
 
 /** Everything narrowing the results, for the phone's Filters badge. */
 export function countActive(f: FilterState) {
-  return countClearable(f) + (f.ai.hide.length > 0 ? 1 : 0);
+  return countClearable(f) + (aiFilterActive(f.ai) ? 1 : 0);
 }
 
 export function toggleValue<T>(list: readonly T[], value: T) {
@@ -122,8 +122,9 @@ export function FilterFields({ value, onChange, tagGroups, counts, readyCount, o
   const aiPreset = aiPresetOf(value.ai);
   const setAi = (ai: AiFilter) => onChange({ ...value, ai: normalizeAiFilter(ai) });
   // Ticking code yourself allows small use by default; only the presets are strict about it.
+  // Ticking an area leaves Minor, since it's a limit across all areas rather than a pick of them.
   const toggleAiArea = (k: AiArea) =>
-    setAi({ hide: toggleValue(value.ai.hide, k), smallCode: k === "code" ? !value.ai.hide.includes("code") : value.ai.smallCode });
+    setAi({ hide: toggleValue(value.ai.hide, k), smallCode: k === "code" ? !value.ai.hide.includes("code") : value.ai.smallCode, minor: false });
 
   const visibleGames = ROM_GAMES.map((g) => ({ ...g, dumps: g.dumps.filter((d) => !romQuery || g.label.toLowerCase().includes(romQuery) || d.label.toLowerCase().includes(romQuery)) })).filter((g) => g.dumps.length > 0);
   const visibleGroups = tagGroups
@@ -240,13 +241,14 @@ export function FilterFields({ value, onChange, tagGroups, counts, readyCount, o
         <Disclosure
           id={AI_AREAS_DISCLOSURE}
           label="Choose areas"
-          detail={value.ai.hide.length > 0 ? `${value.ai.hide.length} hidden` : ""}
+          detail={value.ai.minor ? "Limit on all areas" : value.ai.hide.length > 0 ? `${value.ai.hide.length} hidden` : ""}
           expanded={open.has(AI_AREAS_DISCLOSURE)}
           onToggle={() => onToggleOpen(AI_AREAS_DISCLOSURE)}
           tall={tall}
         >
           {/* Indented to line up with the "Choose areas" label, past its chevron. */}
           <div className="pl-[22px]">
+            {value.ai.minor && <p className="mb-2 text-xs leading-[1.4] text-text-2">Minor AI usage sets a limit across all areas. Pick areas to build your own filter instead.</p>}
             <p className="mb-0.5 text-xs font-semibold text-text-3">Hide hacks with AI in</p>
             {AI_AREAS.map((a) => (
               <React.Fragment key={a.key}>

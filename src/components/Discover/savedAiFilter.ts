@@ -1,4 +1,4 @@
-import { aiFilterToken, NO_AI_FILTER, parseAiFilter, type AiFilter } from "@/utils/aiDisclosure";
+import { aiFilterActive, aiFilterToken, NO_AI_FILTER, parseAiFilter, type AiFilter } from "@/utils/aiDisclosure";
 
 const KEY = "hackdex:discover-ai";
 
@@ -16,7 +16,7 @@ export function readSavedAiFilter(): AiFilter {
 /** "Any" clears it. */
 export function saveAiFilter(filter: AiFilter) {
   try {
-    if (filter.hide.length > 0) localStorage.setItem(KEY, aiFilterToken(filter));
+    if (aiFilterActive(filter)) localStorage.setItem(KEY, aiFilterToken(filter));
     else localStorage.removeItem(KEY);
   } catch {}
 }
