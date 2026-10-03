@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { LinkProps } from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import { FiChevronLeft, FiChevronRight, FiDownload } from "react-icons/fi";
 import { RiArchiveStackFill } from "react-icons/ri";
@@ -33,7 +33,7 @@ interface HackCardProps {
   clickable?: boolean;
   prefetch?: LinkProps["prefetch"];
   className?: string;
-  /** Phone grid: stretch the screenshot to the card width so grid and list read as different views. */
+  /** Phone grid: 1× screenshots with the neighbors peeking over a blurred backdrop (see Shots). */
   fill?: boolean;
 }
 
@@ -84,10 +84,14 @@ function snapRendering(img: HTMLImageElement) {
 }
 
 /**
- * Swipeable screenshots, first one is the cover. Drag to browse, dots to jump,
- * and a drag never counts as a click on the link. Desktop also gets edge
- * chevrons on hover, since dots are small targets. DS shots are 4:3 per screen;
- * a portrait 256×384 shot crops to its top screen here and opens whole in the lightbox.
+ * Swipeable screenshots, first one is the cover. Drag to browse, bars under the shot to jump,
+ * and a drag never counts as a click on the link. Desktop also gets edge chevrons on hover,
+ * since the bars are small targets. DS shots are 4:3 per screen; a portrait 256×384 shot
+ * crops to its top screen here and opens whole in the lightbox.
+ *
+ * `fill` (the phone grid): shots stay at 1× with the neighbors peeking in, dimmed, over a
+ * blurred copy of the current shot that crossfades as you swipe. From md up it's the plain
+ * 1× carousel.
  */
 function Shots({ images, platform, fill }: { images: string[]; platform?: Platform; fill?: boolean }) {
   const many = images.length > 1;
@@ -95,6 +99,8 @@ function Shots({ images, platform, fill }: { images: string[]; platform?: Platfo
   const [index, setIndex] = useState(0);
   const start = useRef<{ x: number; y: number } | null>(null);
   const dragged = useRef(false);
+  const slideEls = useRef<(HTMLElement | null)[]>([]);
+  const backdropEls = useRef<(HTMLElement | null)[]>([]);
 
   useEffect(() => {
     if (!api) return;
@@ -105,16 +111,47 @@ function Shots({ images, platform, fill }: { images: string[]; platform?: Platfo
     };
   }, [api]);
 
+  // How many slides each one is from center drives --dim (peeks) and --fade (backdrop).
+  // Set on the elements directly so a swipe doesn't re-render.
+  useEffect(() => {
+    if (!api || !fill || !many) return;
+    const update = () => {
+      const progress = api.scrollProgress();
+      const snaps = api.scrollSnapList();
+      const { loopPoints } = api.internalEngine().slideLooper;
+      snaps.forEach((snap, i) => {
+        let diff = snap - progress;
+        // A looped slide sits a full lap away from its snap.
+        for (const point of loopPoints) {
+          const target = point.target();
+          if (point.index === i && target !== 0) diff = target < 0 ? snap - (1 + progress) : snap + (1 - progress);
+        }
+        const away = Math.min(1, Math.abs(diff) * snaps.length);
+        slideEls.current[i]?.style.setProperty("--dim", String(1 - 0.6 * away));
+        backdropEls.current[i]?.style.setProperty("--fade", String(1 - away));
+      });
+    };
+    update();
+    api.on("scroll", update).on("reInit", update);
+    return () => {
+      api.off("scroll", update).off("reInit", update);
+    };
+  }, [api, fill, many]);
+
   const nds = platform === "NDS";
   const ratio = nds ? "aspect-[4/3]" : "aspect-[3/2]";
-  // Native width on desktop; `fill` stretches to the card on phones (literal strings so Tailwind sees them).
-  const shotWidth = fill
+  // Literal strings so Tailwind sees them. `fill` slides are a fixed 1× width on phones so the neighbors
+  // peek in; everywhere else the viewport is one native-width shot.
+  const viewportWidth = fill
     ? nds ? "w-full md:w-[min(256px,100%)]" : "w-full md:w-[min(240px,100%)]"
     : nds ? "w-[min(256px,100%)]" : "w-[min(240px,100%)]";
+  const slideSize = fill
+    ? nds ? "flex-[0_0_256px] mr-3 md:mr-0 md:flex-[0_0_100%]" : "flex-[0_0_240px] mr-3 md:mr-0 md:flex-[0_0_100%]"
+    : "flex-[0_0_100%]";
 
   return (
     <span
-      className="relative flex items-center justify-center bg-well p-3"
+      className={`relative flex items-center justify-center overflow-hidden bg-well px-3 pb-7 pt-3 ${fill ? "max-md:bg-black max-md:px-0" : ""}`}
       onPointerDown={(e) => {
         start.current = { x: e.clientX, y: e.clientY };
         dragged.current = false;
@@ -130,20 +167,42 @@ function Shots({ images, platform, fill }: { images: string[]; platform?: Platfo
         }
       }}
     >
-      <span
-        ref={viewportRef}
-        className={`block overflow-hidden rounded-frame ${many ? "cursor-grab active:cursor-grabbing" : ""} ${shotWidth}`}
-      >
+      {fill && (
+        <span className="absolute inset-0 md:hidden" aria-hidden>
+          {images.map((src, i) => (
+            <img
+              key={`${src}-${i}`}
+              ref={(el) => {
+                backdropEls.current[i] = el;
+              }}
+              src={src}
+              alt=""
+              loading="lazy"
+              draggable={false}
+              style={{ "--fade": i === 0 ? 1 : 0 } as CSSProperties}
+              className="absolute -inset-6 h-[calc(100%+48px)] w-[calc(100%+48px)] max-w-none object-cover blur-[18px] saturate-[1.15] [opacity:calc(var(--fade)*.45)]"
+            />
+          ))}
+        </span>
+      )}
+      <span ref={viewportRef} className={`relative block overflow-hidden ${many ? "cursor-grab active:cursor-grabbing" : ""} ${viewportWidth}`}>
         <span className="flex">
           {images.map((src, i) => (
-            <span key={`${src}-${i}`} className="min-w-0 flex-[0_0_100%]">
+            <span
+              key={`${src}-${i}`}
+              ref={(el) => {
+                slideEls.current[i] = el;
+              }}
+              style={fill ? ({ "--dim": i === 0 ? 1 : 0.4 } as CSSProperties) : undefined}
+              className={`min-w-0 ${slideSize} ${fill ? "max-md:[opacity:var(--dim)]" : ""}`}
+            >
               <img
                 src={src}
                 alt=""
                 loading="lazy"
                 draggable={false}
                 onLoad={(e) => snapRendering(e.currentTarget)}
-                className={`block h-auto w-full ${ratio} object-cover object-top`}
+                className={`block h-auto w-full ${ratio} rounded-frame object-cover object-top ${fill ? "max-md:shadow-[0_4px_14px_rgba(0,0,0,.35)]" : ""}`}
               />
             </span>
           ))}
@@ -160,7 +219,7 @@ function Shots({ images, platform, fill }: { images: string[]; platform?: Platfo
               e.stopPropagation();
               api?.scrollPrev();
             }}
-            className="absolute left-4 top-1/2 z-[2] hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-[rgba(13,16,23,.6)] text-white opacity-0 transition-opacity duration-[120ms] hover:bg-[rgba(13,16,23,.85)] group-hover/card:opacity-100 md:inline-flex"
+            className="absolute left-4 top-[calc(50%-8px)] z-[2] hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-[rgba(13,16,23,.6)] text-white opacity-0 transition-opacity duration-[120ms] hover:bg-[rgba(13,16,23,.85)] group-hover/card:opacity-100 md:inline-flex"
           >
             <FiChevronLeft className="h-[18px] w-[18px]" />
           </button>
@@ -173,11 +232,12 @@ function Shots({ images, platform, fill }: { images: string[]; platform?: Platfo
               e.stopPropagation();
               api?.scrollNext();
             }}
-            className="absolute right-4 top-1/2 z-[2] hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-[rgba(13,16,23,.6)] text-white opacity-0 transition-opacity duration-[120ms] hover:bg-[rgba(13,16,23,.85)] group-hover/card:opacity-100 md:inline-flex"
+            className="absolute right-4 top-[calc(50%-8px)] z-[2] hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-[rgba(13,16,23,.6)] text-white opacity-0 transition-opacity duration-[120ms] hover:bg-[rgba(13,16,23,.85)] group-hover/card:opacity-100 md:inline-flex"
           >
             <FiChevronRight className="h-[18px] w-[18px]" />
           </button>
-          <span className="pointer-events-none absolute inset-x-0 bottom-[18px] flex justify-center gap-1.5" aria-hidden>
+          {/* Bars sit under the shot, never on the art: gray on the well, white over the phone backdrop. */}
+          <span className="pointer-events-none absolute inset-x-0 bottom-px flex justify-center" aria-hidden>
             {images.map((_, i) => (
               <button
                 key={i}
@@ -189,7 +249,9 @@ function Shots({ images, platform, fill }: { images: string[]; platform?: Platfo
                   e.stopPropagation();
                   api?.scrollTo(i);
                 }}
-                className="pointer-events-auto inline-flex h-3.5 w-3.5 items-center justify-center before:h-1.5 before:w-1.5 before:rounded-full before:bg-white/50 before:shadow-[0_0_0_1px_rgba(0,0,0,.4)] before:transition-[background-color,transform] before:duration-[120ms] before:content-[''] hover:before:bg-white/80 aria-[current]:before:scale-125 aria-[current]:before:bg-white"
+                className={`pointer-events-auto inline-flex h-[15px] w-[22px] items-center justify-center before:h-[3px] before:w-4 before:rounded-sm before:bg-[color-mix(in_srgb,var(--text-3)_45%,transparent)] before:transition-colors before:duration-150 before:content-[''] hover:before:bg-text-3 aria-[current]:before:bg-text ${
+                  fill ? "max-md:before:bg-white/50 max-md:hover:before:bg-white/80 max-md:aria-[current]:before:bg-white" : ""
+                }`}
               />
             ))}
           </span>
