@@ -339,6 +339,18 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
   );
 
   const hasFilters = clearable > 0;
+  // Phones show it beside Filters, desktop at the end of the sort row; `layout` sets size and visibility.
+  const copyLinkButton = (layout: string) => (
+    <button
+      type="button"
+      onClick={copyDiscoverLink}
+      aria-label="Copy link to current Discover filters"
+      title="Copy link to these filters"
+      className={`flex-none items-center justify-center rounded-control border border-line-strong bg-surface text-text-2 transition-colors hover:border-text-3 hover:text-text ${layout}`}
+    >
+      <FiLink className="h-[18px] w-[18px]" />
+    </button>
+  );
   const railRef = React.useRef<HTMLElement>(null);
   // The AI note under the results: phones open the sheet at "AI use", desktop points at it in the rail.
   const showAiFilter = () => (window.matchMedia("(min-width: 768px)").matches ? flashAiGroup(railRef.current) : openSheet(true));
@@ -390,18 +402,21 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
 
           {/* min-w-0: otherwise the unwrapped chip row sets this column's minimum width, stretching the Filters button past the screen. */}
           <div className="flex min-w-0 flex-[1_1_100%] flex-col gap-2.5 md:hidden">
-            <button
-              ref={filterBtnRef}
-              type="button"
-              aria-expanded={sheet}
-              aria-controls="discover-filter-sheet"
-              onClick={() => openSheet()}
-              className={`inline-flex h-11 items-center justify-center gap-2 rounded-control border bg-surface px-4 font-semibold transition-colors ${sheet ? "border-accent" : "border-line-strong hover:border-text-3"}`}
-            >
-              <FiSliders className="h-[18px] w-[18px]" />
-              Filters
-              {active > 0 && <small className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-deep px-1.5 text-xs font-semibold text-white">{active}</small>}
-            </button>
+            <div className="flex gap-2.5">
+              <button
+                ref={filterBtnRef}
+                type="button"
+                aria-expanded={sheet}
+                aria-controls="discover-filter-sheet"
+                onClick={() => openSheet()}
+                className={`inline-flex h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-control border bg-surface px-4 font-semibold transition-colors ${sheet ? "border-accent" : "border-line-strong hover:border-text-3"}`}
+              >
+                <FiSliders className="h-[18px] w-[18px]" />
+                Filters
+                {active > 0 && <small className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-deep px-1.5 text-xs font-semibold text-white">{active}</small>}
+              </button>
+              {copyLinkButton("inline-flex h-11 w-11")}
+            </div>
             {chips.length > 0 && (
               <div className="-mx-6 flex items-center gap-2 overflow-x-auto px-6 [scrollbar-width:none]" aria-label="Applied filters">
                 {chips.map((c) => (
@@ -462,15 +477,7 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
                 <FiList className="h-[18px] w-[18px]" />
               </button>
             </div>
-            <button
-              type="button"
-              onClick={copyDiscoverLink}
-              aria-label="Copy link to current Discover filters"
-              title="Copy link to these filters"
-              className="inline-flex h-10 w-10 flex-none items-center justify-center rounded-control border border-line-strong bg-surface text-text-2 transition-colors hover:border-text-3 hover:text-text md:h-12 md:w-12"
-            >
-              <FiLink className="h-[18px] w-[18px]" />
-            </button>
+            {copyLinkButton("hidden h-12 w-12 md:inline-flex")}
           </div>
         </div>
 
