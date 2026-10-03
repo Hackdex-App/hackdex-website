@@ -60,8 +60,9 @@ export default function Shelf({ title, blurb, href, hacks }: ShelfProps) {
           ref={track}
           className="-mx-6 flex snap-x snap-mandatory gap-3 overflow-x-auto px-6 pb-2 pt-1 [scroll-padding-inline:24px] [scrollbar-width:none] md:gap-5 [&::-webkit-scrollbar]:hidden"
         >
+          {/* 240px shot + 12px padding + 1px border each side, so the art sits at exactly 1×. */}
           {hacks.map((hack) => (
-            <HackCard key={hack.slug} hack={hack} className="w-[264px] flex-none snap-start" />
+            <HackCard key={hack.slug} hack={hack} className="w-[266px] flex-none snap-start" />
           ))}
         </div>
         {!ends.start && (
