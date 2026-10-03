@@ -318,7 +318,7 @@ export async function createDraft(formData: FormData) {
 export async function getDraftChecklist(slug: string) {
   const supabase = await createClient();
   const [{ data: hack }, { count: covers }, { count: tags }] = await Promise.all([
-    supabase.from("hacks").select("base_rom,summary,description,completion_status,language,original_author,permission_from,ai_disclosed_at,current_patch").eq("slug", slug).maybeSingle(),
+    supabase.from("hacks").select("base_rom,summary,description,completion_status,language,ai_disclosed_at,current_patch").eq("slug", slug).maybeSingle(),
     supabase.from("hack_covers").select("id", { count: "exact", head: true }).eq("hack_slug", slug),
     supabase.from("hack_tags").select("tag_id", { count: "exact", head: true }).eq("hack_slug", slug),
   ]);
@@ -334,7 +334,6 @@ export async function getDraftChecklist(slug: string) {
     { key: "shots", label: "At least one screenshot", done: (covers ?? 0) > 0 },
     { key: "tags", label: "At least one tag", done: (tags ?? 0) > 0 },
     { key: "ai", label: "AI label filled in", done: !!hack.ai_disclosed_at },
-    ...(hack.original_author ? [{ key: "permission", label: "Where the creator gave permission", done: !!hack.permission_from }] : []),
   ];
   const recommended = [
     { key: "tags3", label: "Add at least 3 tags so players can find it", done: (tags ?? 0) >= 3 },

@@ -97,7 +97,8 @@ export async function updateHack(args: {
   if (args.box_art !== undefined) updatePayload.box_art = args.box_art;
   if (args.social_links !== undefined) updatePayload.social_links = args.social_links;
   if (args.original_author !== undefined || args.permission_from !== undefined) {
-    if (!hack.original_author) {
+    // A custom display name alone (original_author without permission_from) isn't an upload on someone's behalf.
+    if (!hack.permission_from) {
       return { ok: false, error: "This hack was not uploaded on someone else's behalf" } as const;
     }
     if (args.original_author?.trim() === "" || args.permission_from?.trim() === "") {

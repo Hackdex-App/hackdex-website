@@ -17,8 +17,8 @@ export interface DraftDetailsValues {
   completion_status: Completion | null;
   box_art: string | null;
   social_links: Social | null;
-  /** Set on hacks uploaded on someone else's behalf; shows the creator fields. */
   original_author: string | null;
+  /** Set on hacks uploaded on someone else's behalf; shows the creator fields. An original_author alone is just a custom display name. */
   permission_from: string | null;
   /** Left out once the hack is listed, since admins only read it during review. */
   verification_contact_info?: string | null;
@@ -99,7 +99,7 @@ export default function DraftDetails({ values, baseLocked, children }: DraftDeta
         <DetailsSheet
           initial={applied}
           baseLocked={baseLocked}
-          behalf={values.original_author !== null}
+          behalf={values.permission_from !== null}
           askContact={values.verification_contact_info !== undefined}
           onApplied={(form) => {
             setApplied(form);
