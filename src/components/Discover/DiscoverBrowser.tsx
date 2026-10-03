@@ -33,7 +33,7 @@ import {
   AI_AREAS_DISCLOSURE,
 } from "./DiscoverFilters";
 import { baseGameLabel, baseRoms } from "@/data/baseRoms";
-import { aiFilterLabel, aiPresetOf, matchesAiFilter, NO_AI_FILTER, type AiFilter } from "@/utils/aiDisclosure";
+import { aiFilterActive, aiFilterLabel, aiPresetOf, matchesAiFilter, NO_AI_FILTER, type AiFilter } from "@/utils/aiDisclosure";
 
 const SORT_OPTIONS: SelectOption[] = [
   { value: "trending", label: "Trending", icon: MdWhatshot },
@@ -354,7 +354,7 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
   const railRef = React.useRef<HTMLElement>(null);
   // The AI note under the results: phones open the sheet at "AI use", desktop points at it in the rail.
   const showAiFilter = () => (window.matchMedia("(min-width: 768px)").matches ? flashAiGroup(railRef.current) : openSheet(true));
-  const aiNote = ai.hide.length > 0 && (
+  const aiNote = aiFilterActive(ai) && (
     <button type="button" onClick={showAiFilter} className="text-link-hd inline-flex items-center gap-1 font-normal">
       <AiOffIcon className="h-3.5 w-3.5" />
       {aiFilterLabel(ai)}
@@ -515,7 +515,7 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
                   </button>
                 )}
                 {/* Clear keeps the saved AI filter, so offer it here when it may be what's hiding everything. */}
-                {ai.hide.length > 0 && (
+                {aiFilterActive(ai) && (
                   <button type="button" className="text-link-hd text-sm" onClick={showAiFilter}>
                     Change AI filter
                   </button>

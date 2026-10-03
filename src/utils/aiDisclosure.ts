@@ -72,35 +72,51 @@ export function aiKind(levels: AiLevels): AiKind {
 
 /**
  * Discover's AI filter: hide hacks whose label shows AI in any of `hide`. With `smallCode`, code at
- * "A little" (a bug fix or a few) still passes. Hacks without a label pass every filter; most use no
- * AI, and reports catch the rest.
+ * "A little" (a bug fix or a few) still passes. `minor` is a separate mode that ignores `hide`: AI in
+ * at most MINOR_MAX_AREAS areas, none above Some. Hacks without a label pass every filter; most use
+ * no AI, and reports catch the rest.
  */
 export interface AiFilter {
   hide: readonly AiArea[];
   smallCode: boolean;
+  minor: boolean;
 }
+
+const MINOR_MAX_AREAS = 2;
 
 const CONTENT_AREAS = AI_AREAS.map((a) => a.key).filter((k) => k !== "code");
 
 /** Named filters, shown as radios; any other pick of areas is "Custom". */
 export const AI_PRESETS = [
-  { value: "any", label: "Any", filter: { hide: [], smallCode: false } },
-  { value: "no-content", label: "No AI content", filter: { hide: CONTENT_AREAS, smallCode: false } },
+  { value: "any", label: "Any", filter: { hide: [], smallCode: false, minor: false } },
+  {
+    value: "minor",
+    label: "Minor AI usage",
+    hint: `Up to ${MINOR_MAX_AREAS} areas, none above Some`,
+    filter: { hide: [], smallCode: false, minor: true },
+  },
+  { value: "no-content", label: "No AI content", filter: { hide: CONTENT_AREAS, smallCode: false, minor: false } },
   {
     value: "none",
     label: "No direct AI usage",
     hint: "Nothing AI-generated was intentionally added by the creator",
-    filter: { hide: AI_AREAS.map((a) => a.key), smallCode: false },
+    filter: { hide: AI_AREAS.map((a) => a.key), smallCode: false, minor: false },
   },
 ] as const satisfies readonly { value: string; label: string; hint?: string; filter: AiFilter }[];
 export type AiPreset = (typeof AI_PRESETS)[number]["value"];
 
 export const NO_AI_FILTER: AiFilter = AI_PRESETS[0].filter;
 
-/** Areas in label order, and smallCode only while code is hidden, so equal filters serialize the same. */
+/** Areas in label order, smallCode only while code is hidden, and no areas with minor, so equal filters serialize the same. */
 export function normalizeAiFilter(f: AiFilter): AiFilter {
+  if (f.minor) return { hide: [], smallCode: false, minor: true };
   const hide = AI_AREAS.map((a) => a.key).filter((k) => f.hide.includes(k));
-  return { hide, smallCode: f.smallCode && hide.includes("code") };
+  return { hide, smallCode: f.smallCode && hide.includes("code"), minor: false };
+}
+
+/** Whether the filter hides anything; "Any" doesn't. */
+export function aiFilterActive(f: AiFilter) {
+  return f.minor || f.hide.length > 0;
 }
 
 /** Stored value (Discover saves the pick): a preset's name, or the areas joined by "." ("code-small" for code with small use allowed). */
@@ -112,7 +128,7 @@ export function aiFilterToken(f: AiFilter): string {
 }
 
 function sameAiFilter(a: AiFilter, b: AiFilter) {
-  return a.smallCode === b.smallCode && a.hide.length === b.hide.length && a.hide.every((k, i) => k === b.hide[i]);
+  return a.minor === b.minor && a.smallCode === b.smallCode && a.hide.length === b.hide.length && a.hide.every((k, i) => k === b.hide[i]);
 }
 
 export function parseAiFilter(token: string | undefined): AiFilter {
@@ -120,7 +136,7 @@ export function parseAiFilter(token: string | undefined): AiFilter {
   if (preset || !token) return preset?.filter ?? NO_AI_FILTER;
   const parts = token.split(".");
   const hide = AI_AREAS.map((a) => a.key).filter((k) => parts.includes(k) || (k === "code" && parts.includes("code-small")));
-  return normalizeAiFilter({ hide, smallCode: parts.includes("code-small") });
+  return normalizeAiFilter({ hide, smallCode: parts.includes("code-small"), minor: false });
 }
 
 /** The preset a filter matches, or "custom". */
@@ -137,6 +153,10 @@ export function aiFilterLabel(f: AiFilter): string {
 
 export function matchesAiFilter(levels: AiLevels | null, f: AiFilter) {
   if (!levels) return true;
+  if (f.minor) {
+    const used = AI_AREAS.filter((a) => levels[a.key] !== "none");
+    return used.length <= MINOR_MAX_AREAS && used.every((a) => AI_LEVEL_STEP[levels[a.key]] <= AI_LEVEL_STEP.some);
+  }
   return f.hide.every((k) => levels[k] === "none" || (k === "code" && f.smallCode && levels.code === "little"));
 }
 
