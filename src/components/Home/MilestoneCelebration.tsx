@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef } from "react";
 import { PiConfettiBold } from "react-icons/pi";
 
 const COLORS = ["#f43f5e", "#f97316", "#f59e0b", "#fb7185"];
+/** Over the page and the sticky header (z-40), under the phone menu drawer (z-50). */
+const CONFETTI_Z = 45;
 
 /** The note under the headline. Edit per milestone; the number comes from NEXT_PUBLIC_DOWNLOADS_MILESTONE. */
 const NOTE = "To celebrate, Hackdex got a fresh coat of paint: a faster Discover, drafts for creators, and AI labels on every hack page.";
@@ -60,6 +62,7 @@ export default function MilestoneCelebration({ milestone }: { milestone: string 
         origin: { x: 0, y: originY },
         colors: COLORS,
         disableForReducedMotion: true,
+        zIndex: CONFETTI_Z,
       });
       confetti({
         particleCount,
@@ -69,6 +72,7 @@ export default function MilestoneCelebration({ milestone }: { milestone: string 
         origin: { x: 1, y: originY },
         colors: COLORS,
         disableForReducedMotion: true,
+        zIndex: CONFETTI_Z,
       });
 
       frameRef.current = requestAnimationFrame(frame);
