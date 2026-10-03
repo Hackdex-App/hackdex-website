@@ -38,7 +38,7 @@ async function isSlugTaken(slug: string) {
   return (count ?? 0) > 0;
 }
 
-/** Live availability check for the start form's page address. */
+/** Live availability check for the start form's page URL. */
 export async function checkSlugAvailable(slug: string) {
   const supabase = await createClient();
   const {
@@ -283,8 +283,8 @@ export async function createDraft(formData: FormData) {
 
   // The form sends the address it showed, so a taken one is an error rather than a silent "-2".
   const slug = (formData.get("slug") as string | null)?.trim() || slugify(title);
-  if (!SLUG_PATTERN.test(slug) || slug.length > 64) return { ok: false, error: "Use lowercase letters, numbers, and dashes for the page address." } as const;
-  if (await isSlugTaken(slug)) return { ok: false, error: "Another hack already uses this page address." } as const;
+  if (!SLUG_PATTERN.test(slug) || slug.length > 64) return { ok: false, error: "Use lowercase letters, numbers, and dashes for the page URL." } as const;
+  if (await isSlugTaken(slug)) return { ok: false, error: "Another hack already uses this page URL." } as const;
 
   const insertPayload: HackInsert = {
     slug,

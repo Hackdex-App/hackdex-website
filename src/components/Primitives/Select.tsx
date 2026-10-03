@@ -98,6 +98,8 @@ export default function Select({
               onChange={(event) => setQuery(event.target.value)}
               placeholder={placeholder}
               disabled={disabled}
+              // A filter box: never offer saved addresses or past entries.
+              autoComplete="off"
               className={`relative h-10 w-full rounded-control border border-line bg-surface-2 px-3 pr-10 text-left text-sm text-text outline-none transition-[border-color,box-shadow] placeholder:text-text-3 focus:border-line-strong focus:ring-2 focus:ring-accent/40 disabled:cursor-not-allowed disabled:opacity-50 ${
                 !selectedOption ? "text-text-3" : ""
               } ${className}`}

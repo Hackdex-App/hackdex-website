@@ -50,8 +50,8 @@ export default function StartDraftForm({ disabled = false, canSubmitForOthers = 
   const availability = useSlugAvailability(slug);
   const missing = [
     !title.trim() && "a title",
-    title.trim() && !slug && "a page address",
-    availability === "taken" && "a different page address",
+    title.trim() && !slug && "a page URL",
+    availability === "taken" && "a different page URL",
     !baseRom && "a base ROM",
     summary.trim().length < 10 && "a summary",
     who === "behalf" && (!originalAuthor.trim() || !permissionFrom.trim()) && "the creator's permission",
@@ -83,7 +83,7 @@ export default function StartDraftForm({ disabled = false, canSubmitForOthers = 
       <div className="flex flex-col gap-1.5">
         <label className="flex flex-col gap-1.5">
           <span className={label}>Title</span>
-          <input name="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="My Pokémon Romhack" maxLength={64} autoFocus className={field} disabled={disabled} />
+          <input name="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="My Pokémon Romhack" maxLength={64} autoComplete="off" autoFocus className={field} disabled={disabled} />
         </label>
         <input type="hidden" name="slug" value={slug} />
         {customSlug === null ? (
@@ -95,8 +95,8 @@ export default function StartDraftForm({ disabled = false, canSubmitForOthers = 
                 </span>
                 <button
                   type="button"
-                  aria-label="Edit page address"
-                  title="Edit page address"
+                  aria-label="Edit page URL"
+                  title="Edit page URL"
                   onClick={() => setCustomSlug(slug)}
                   disabled={disabled}
                   className="tap-target inline-flex h-[26px] w-[26px] flex-none items-center justify-center rounded-md text-text-3 transition-colors hover:bg-surface-2 hover:text-text"
@@ -108,13 +108,13 @@ export default function StartDraftForm({ disabled = false, canSubmitForOthers = 
             ) : title.trim() ? (
               // A title with no ASCII letters or digits (e.g. "ポケモン") slugifies to nothing.
               <>
-                This title doesn&rsquo;t make a page address.
+                This title doesn&rsquo;t make a page URL.
                 <button type="button" onClick={() => setCustomSlug("")} disabled={disabled} className="text-link-hd">
                   Choose one
                 </button>
               </>
             ) : (
-              "The page address comes from the title."
+              "The page URL comes from the title."
             )}
           </span>
         ) : (
@@ -152,6 +152,7 @@ export default function StartDraftForm({ disabled = false, canSubmitForOthers = 
           onChange={(e) => setSummary(e.target.value)}
           rows={2}
           maxLength={100}
+          autoComplete="off"
           placeholder="A new region, a new story, and a difficulty curve that respects your time."
           className={`${field} h-auto resize-none py-2.5 leading-normal`}
           disabled={disabled}
@@ -181,11 +182,11 @@ export default function StartDraftForm({ disabled = false, canSubmitForOthers = 
               <p className={hint}>Hackdex only lists hacks the creator has agreed to. Name them and say where they gave permission.</p>
               <label className="flex flex-col gap-1.5">
                 <span className={label}>Creator&rsquo;s name</span>
-                <input name="original_author" value={originalAuthor} onChange={(e) => setOriginalAuthor(e.target.value)} placeholder="Skeli" className={field} />
+                <input name="original_author" value={originalAuthor} onChange={(e) => setOriginalAuthor(e.target.value)} placeholder="Skeli" autoComplete="off" className={field} />
               </label>
               <label className="flex flex-col gap-1.5">
                 <span className={label}>Where they gave permission</span>
-                <input name="permission_from" value={permissionFrom} onChange={(e) => setPermissionFrom(e.target.value)} placeholder="Discord DM, PokéCommunity thread, email…" className={field} />
+                <input name="permission_from" value={permissionFrom} onChange={(e) => setPermissionFrom(e.target.value)} placeholder="Discord DM, PokéCommunity thread, email…" autoComplete="off" className={field} />
               </label>
             </div>
           )}
@@ -272,7 +273,7 @@ function SlugStatus({ availability, showAvailable = false }: { availability: Ava
   return null;
 }
 
-/** The pencil's "Page address" field: prefix addon, cleanup as you type (so no rules to read), and a way back to following the title. */
+/** The pencil's "Page URL" field (not "address", which phones read as a street address and autofill the form): prefix addon, cleanup as you type (so no rules to read), and a way back to following the title. */
 function SlugField({
   value,
   onChange,
@@ -293,7 +294,7 @@ function SlugField({
   return (
     <div className="mt-2 flex flex-col gap-1.5">
       <label htmlFor={id} className={label}>
-        Page address
+        Page URL
       </label>
       <span
         className={`flex h-[42px] overflow-hidden rounded-control border bg-surface transition-[border-color,box-shadow] duration-[120ms] ${
@@ -311,6 +312,7 @@ function SlugField({
           onChange={(e) => onChange(typingSlug(e.target.value))}
           onBlur={() => onChange(value.replace(/-+$/, ""))}
           autoFocus
+          autoComplete="off"
           spellCheck={false}
           autoCapitalize="off"
           aria-invalid={bad}
@@ -319,7 +321,7 @@ function SlugField({
         />
       </span>
       <span className={`${hint} flex items-center justify-between gap-3`}>
-        {empty ? <span className="text-error">Add a page address.</span> : <SlugStatus availability={availability} showAvailable />}
+        {empty ? <span className="text-error">Add a page URL.</span> : <SlugStatus availability={availability} showAvailable />}
         <button type="button" onClick={onMatchTitle} className="text-link-hd flex-none cursor-pointer">
           Match title
         </button>
