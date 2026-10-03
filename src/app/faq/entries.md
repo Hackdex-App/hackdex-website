@@ -135,7 +135,7 @@ Disclose content and code generated or modified with AI that is included in your
 
 Disclosure of AI use for brainstorming and unused experiments is optional when no AI-generated or AI-modified content or code is included in the hack or its page. Disclosure does not replace credits or exempt your hack from our content rules. See [Section 6 of the Terms of Service](/terms#6-creator-responsibilities) for the full requirement.
 
-Pick the level that feels right for how much AI went into each area. It doesn't need to be exact. Code also has "A little" and "All", since one AI bug fix and an AI-written engine are very different. The label covers what you and your team added on purpose, so something like AI code that came with a base you built on doesn't count.
+Pick the level that feels right for how much AI went into each area. It doesn't need to be exact. Code has a finer scale with "A little" and "Most" in between, since one AI bug fix and an AI-written engine are very different. The label covers what you and your team added on purpose, so something like AI code that came with a base you built on doesn't count.
 
 ### Who retains ownership of submitted hacks?
 Creators retain ownership of their work. Hackdex serves as a distribution and discovery platform. Specific rights and responsibilities are outlined in the Terms of Service available on the platform.

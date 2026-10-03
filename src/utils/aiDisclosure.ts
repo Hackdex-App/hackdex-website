@@ -2,8 +2,8 @@ import type { Database, Tables } from "@/types/db";
 
 export type AiLevel = Database["public"]["Enums"]["ai_level"];
 
-/** Content areas pick from None / Some / Most; only code needs the finer scale. */
-export const CONTENT_LEVELS = ["none", "some", "most"] as const satisfies readonly AiLevel[];
+/** Content areas pick from None / Some / All; only code needs the finer scale. */
+export const CONTENT_LEVELS = ["none", "some", "all"] as const satisfies readonly AiLevel[];
 export const CODE_LEVELS = ["none", "little", "some", "most", "all"] as const satisfies readonly AiLevel[];
 
 export const AI_LEVEL_LABEL: Record<AiLevel, string> = { none: "None", little: "A little", some: "Some", most: "Most", all: "All" };
@@ -20,12 +20,12 @@ export const AI_AREAS = [
     name: "Graphics",
     short: "graphics",
     levels: CONTENT_LEVELS,
-    hints: { some: "Some of the new art, like a title screen or a set of sprites", most: "Most or all of the new art" },
+    hints: { some: "Some of the new art, like a title screen or a set of sprites", all: "Most or all of the new art" },
   },
-  { key: "music", name: "Music & sound", short: "music", levels: CONTENT_LEVELS, hints: { some: "A few tracks or sound effects", most: "Most or all of the new music" } },
-  { key: "story", name: "Story & dialogue", short: "story", levels: CONTENT_LEVELS, hints: { some: "Some lines, characters, or a side story", most: "Most or all of the writing" } },
-  { key: "translation", name: "Translation", short: "translation", levels: CONTENT_LEVELS, hints: { some: "Parts of the script, like menus or a few maps", most: "Most or all of the translation" } },
-  { key: "events", name: "Event scripts", short: "events", levels: CONTENT_LEVELS, hints: { some: "A few scenes or a side quest", most: "Most or all of the events" } },
+  { key: "music", name: "Music & sound", short: "music", levels: CONTENT_LEVELS, hints: { some: "A few tracks or sound effects", all: "Most or all of the new music" } },
+  { key: "story", name: "Story & dialogue", short: "story", levels: CONTENT_LEVELS, hints: { some: "Some lines, characters, or a side story", all: "Most or all of the writing" } },
+  { key: "translation", name: "Translation", short: "translation", levels: CONTENT_LEVELS, hints: { some: "Parts of the script, like menus or a few maps", all: "Most or all of the translation" } },
+  { key: "events", name: "Event scripts", short: "events", levels: CONTENT_LEVELS, hints: { some: "A few scenes or a side quest", all: "Most or all of the events" } },
   {
     key: "code",
     name: "Code",

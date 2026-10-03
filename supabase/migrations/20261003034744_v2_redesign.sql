@@ -37,13 +37,13 @@ alter table public.hacks
     num_nulls(ai_graphics, ai_music, ai_story, ai_translation, ai_events, ai_code) in (0, 6)
     and (ai_code is null) = (ai_disclosed_at is null)
   ),
-  -- Content areas only use None / Some / Most; the finer scale is for code.
+  -- Content areas only use None / Some / All; the finer scale is for code.
   add constraint hacks_ai_content_levels check (
-    coalesce(ai_graphics, 'none') in ('none', 'some', 'most')
-    and coalesce(ai_music, 'none') in ('none', 'some', 'most')
-    and coalesce(ai_story, 'none') in ('none', 'some', 'most')
-    and coalesce(ai_translation, 'none') in ('none', 'some', 'most')
-    and coalesce(ai_events, 'none') in ('none', 'some', 'most')
+    coalesce(ai_graphics, 'none') in ('none', 'some', 'all')
+    and coalesce(ai_music, 'none') in ('none', 'some', 'all')
+    and coalesce(ai_story, 'none') in ('none', 'some', 'all')
+    and coalesce(ai_translation, 'none') in ('none', 'some', 'all')
+    and coalesce(ai_events, 'none') in ('none', 'some', 'all')
   ),
   add constraint hacks_ai_note_length check (char_length(ai_note) <= 1000);
 
