@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import useEmblaCarousel from "embla-carousel-react";
 import { FiMaximize2 } from "react-icons/fi";
 import PixelImage from "@/components/PixelImage";
 import Lightbox from "@/components/Hack/Lightbox";
@@ -92,12 +93,7 @@ export default function HackTabs({ slug, title, author, images, about, changes, 
           {images.length > 0 && (
             <section aria-label="Screenshots">
               <figure className="m-0 rounded-card bg-well p-3 md:p-4">
-                <button type="button" onClick={() => view(shot)} aria-label="Open screenshot full size" className="group/stage relative mx-auto block w-full max-w-[720px] overflow-hidden rounded-frame">
-                  <PixelImage src={images[shot]} alt={`${title} screenshot ${shot + 1} of ${images.length}`} mode="contain" className="aspect-[3/2] w-full" />
-                  <span className="pointer-events-none absolute bottom-2.5 right-2.5 inline-flex translate-y-1 items-center gap-1.5 rounded-md bg-[rgba(13,16,23,.78)] px-2.5 py-1 text-xs font-medium text-white opacity-0 transition-[opacity,transform] duration-150 group-hover/stage:translate-y-0 group-hover/stage:opacity-100 group-focus-visible/stage:translate-y-0 group-focus-visible/stage:opacity-100">
-                    <FiMaximize2 className="h-4 w-4" /> {shot + 1} of {images.length}
-                  </span>
-                </button>
+                <ScreenshotStage images={images} title={title} shot={shot} onShot={setShot} onOpen={view} />
               </figure>
               {images.length > 1 && (
                 <div
@@ -214,6 +210,52 @@ export default function HackTabs({ slug, title, author, images, about, changes, 
       )}
 
       {open && images.length > 0 && <Lightbox images={images} index={shot} title={title} onChange={setShot} onClose={() => setOpen(false)} />}
+    </div>
+  );
+}
+
+/**
+ * The About tab's big screenshot: swipe or drag between shots (looping), click to open the lightbox.
+ * `shot` is shared with the thumbnails and the lightbox, so a pick in either scrolls here too.
+ */
+function ScreenshotStage({ images, title, shot, onShot, onOpen }: { images: string[]; title: string; shot: number; onShot: (i: number) => void; onOpen: (i: number) => void }) {
+  const many = images.length > 1;
+  const [viewportRef, api] = useEmblaCarousel({ loop: true, active: many });
+
+  React.useEffect(() => {
+    if (!api) return;
+    const onSelect = () => onShot(api.selectedScrollSnap());
+    api.on("select", onSelect);
+    return () => {
+      api.off("select", onSelect);
+    };
+  }, [api, onShot]);
+
+  React.useEffect(() => {
+    if (api && api.selectedScrollSnap() !== shot) api.scrollTo(shot);
+  }, [api, shot]);
+
+  return (
+    <div ref={viewportRef} className={`group/stage relative mx-auto w-full max-w-[720px] overflow-hidden rounded-frame ${many ? "cursor-grab active:cursor-grabbing" : ""}`}>
+      <div className="flex">
+        {images.map((src, i) => (
+          // Embla swallows the click that ends a drag, so a swipe never opens the lightbox.
+          <button
+            key={`${src}-${i}`}
+            type="button"
+            onClick={() => onOpen(i)}
+            aria-label={`Open screenshot ${i + 1} full size`}
+            tabIndex={i === shot ? 0 : -1}
+            aria-hidden={i !== shot}
+            className="block min-w-0 flex-[0_0_100%]"
+          >
+            <PixelImage src={src} alt={`${title} screenshot ${i + 1} of ${images.length}`} mode="contain" className="aspect-[3/2] w-full" />
+          </button>
+        ))}
+      </div>
+      <span className="pointer-events-none absolute bottom-2.5 right-2.5 inline-flex translate-y-1 items-center gap-1.5 rounded-md bg-[rgba(13,16,23,.78)] px-2.5 py-1 text-xs font-medium text-white opacity-0 transition-[opacity,transform] duration-150 group-hover/stage:translate-y-0 group-hover/stage:opacity-100 group-has-[:focus-visible]/stage:translate-y-0 group-has-[:focus-visible]/stage:opacity-100">
+        <FiMaximize2 className="h-4 w-4" /> {shot + 1} of {images.length}
+      </span>
     </div>
   );
 }
