@@ -9,12 +9,16 @@ import { FRESH_LOOK_STORAGE_KEY } from "@/utils/initScripts";
 /** Player-facing pages. Home has the milestone card instead; editors, dashboards, and admin pages skip it. */
 const PAGES = [/^\/discover$/, /^\/hack\/[^/]+$/, /^\/faq$/, /^\/roms$/];
 
+/** The copy thanks players for this milestone, so the banner only runs while it's the one celebrated. */
+const SHOWN = process.env.NEXT_PUBLIC_DOWNLOADS_MILESTONE?.trim() === "1000000";
+
 /**
  * "Hackdex has a fresh new look" strip under the header, for visitors who land
  * somewhere other than the homepage. Dismissing hides it on this device until the
  * next event (see FRESH_LOOK_STORAGE_KEY); freshLookInitScript hides it before paint.
  */
 export default function FreshLookBanner() {
+  if (!SHOWN) return null;
   return (
     // The fallback is what the server renders (search params aren't known for static pages).
     <React.Suspense fallback={<Banner />}>
