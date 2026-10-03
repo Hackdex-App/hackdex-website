@@ -45,7 +45,7 @@ function Banner() {
   return (
     <div className="fresh-look-banner border-b border-[color-mix(in_srgb,var(--rose)_22%,var(--line))] bg-[color-mix(in_srgb,var(--rose)_8%,var(--surface))]">
       <div className="mx-auto flex max-w-[1164px] items-center gap-2.5 py-2 pl-6 pr-3 text-[13.5px] leading-[1.45] md:pr-4">
-        <PiConfettiBold aria-hidden className="mt-[3px] h-4 w-4 flex-none self-start text-accent-text" />
+        <PiConfettiBold aria-hidden className="h-4 w-4 flex-none text-accent-text" />
         <p className="min-w-0 flex-1">
           <b className="font-bold text-text">Hackdex has a fresh new look.</b>{" "}
           <span className="text-text-2">A thank you for 1,000,000 downloads: faster browsing, clearer hack pages, and a better user experience.</span>
