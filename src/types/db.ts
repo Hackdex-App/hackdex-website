@@ -240,6 +240,7 @@ export type Database = {
           rejected_by: string | null
           rejected_reason: string | null
           search: unknown
+          show_emulators: boolean
           slug: string
           social_links: Json | null
           submitted_at: string | null
@@ -287,6 +288,7 @@ export type Database = {
           rejected_by?: string | null
           rejected_reason?: string | null
           search?: unknown
+          show_emulators?: boolean
           slug: string
           social_links?: Json | null
           submitted_at?: string | null
@@ -334,6 +336,7 @@ export type Database = {
           rejected_by?: string | null
           rejected_reason?: string | null
           search?: unknown
+          show_emulators?: boolean
           slug?: string
           social_links?: Json | null
           submitted_at?: string | null
