@@ -17,6 +17,7 @@ export interface DraftDetailsValues {
   completion_status: Completion | null;
   box_art: string | null;
   social_links: Social | null;
+  show_emulators: boolean;
   original_author: string | null;
   /** Set on hacks uploaded on someone else's behalf; shows the creator fields. An original_author alone is just a custom display name. */
   permission_from: string | null;
@@ -62,6 +63,7 @@ type Form = {
   completion: Completion | "";
   boxArt: string;
   social: Record<keyof Social, string>;
+  emulators: boolean;
   creator: string;
   permission: string;
   contact: string;
@@ -79,13 +81,14 @@ function toForm(values: DraftDetailsValues): Form {
       pokecommunity: values.social_links?.pokecommunity ?? "",
       github: values.social_links?.github ?? "",
     },
+    emulators: values.show_emulators,
     creator: values.original_author ?? "",
     permission: values.permission_from ?? "",
     contact: values.verification_contact_info ?? "",
   };
 }
 
-/** Wraps the rail and owns the details sheet for the fields that are not edited in place: base ROM, language, completion, box art, links, and the creator and review fields. Saves (or stages, on listed hacks) on the footer button. */
+/** Wraps the rail and owns the details sheet for the fields that are not edited in place: base ROM, language, completion, box art, links, the emulator list, and the creator and review fields. Saves (or stages, on listed hacks) on the footer button. */
 export default function DraftDetails({ values, baseLocked, children }: DraftDetailsProps) {
   const [open, setOpen] = React.useState(false);
   // What the sheet opens with: the last saved or applied values, so Cancel drops only this session's edits.
@@ -126,7 +129,7 @@ function DetailsSheet({ initial, baseLocked, behalf, askContact, onApplied, onCl
   const { save, live } = useDraftEditing();
   const [saving, setSaving] = React.useState(false);
   const [form, setForm] = React.useState(initial);
-  const { base, language, completion, boxArt, social, creator, permission, contact } = form;
+  const { base, language, completion, boxArt, social, emulators, creator, permission, contact } = form;
   const set = <K extends keyof Form>(key: K, value: Form[K]) => setForm((prev) => ({ ...prev, [key]: value }));
 
   const invalid = !urlLike(boxArt) || SOCIAL.some((s) => !urlLike(social[s.key])) || (behalf && (!creator.trim() || !permission.trim()));
@@ -140,6 +143,7 @@ function DetailsSheet({ initial, baseLocked, behalf, askContact, onApplied, onCl
       ...(completion ? { completion_status: completion } : {}),
       box_art: boxArt.trim() || null,
       social_links: Object.keys(links).length ? links : null,
+      show_emulators: emulators,
       ...(behalf ? { original_author: creator, permission_from: permission } : {}),
       ...(askContact ? { verification_contact_info: contact } : {}),
     });
@@ -191,6 +195,13 @@ function DetailsSheet({ initial, baseLocked, behalf, askContact, onApplied, onCl
         <Field label="Completion status">
           <Select value={completion} onChange={(v) => set("completion", v as Completion)} placeholder="Choose one" options={COMPLETION.map((c) => ({ value: c, label: c }))} />
         </Field>
+        <div className="flex flex-col gap-1.5">
+          <label className="flex cursor-pointer items-center gap-2.5 text-sm font-medium">
+            <input type="checkbox" checked={emulators} onChange={(e) => set("emulators", e.target.checked)} className="h-4 w-4 accent-[var(--rose-deep)]" />
+            Show recommended emulators
+          </label>
+          <span className="text-xs text-text-3">Hide these to list your own in the About section.</span>
+        </div>
         <Field label="Box art URL" hint="Optional. Shown in the rail with a download link.">
           <input value={boxArt} onChange={(e) => set("boxArt", e.target.value)} placeholder="https://…" className={`${FIELD} h-10 ${urlLike(boxArt) ? "" : "border-error"}`} />
         </Field>

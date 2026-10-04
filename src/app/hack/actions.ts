@@ -45,6 +45,7 @@ export async function updateHack(args: {
   original_author?: string;
   permission_from?: string;
   verification_contact_info?: string | null;
+  show_emulators?: boolean;
   /** Replaces the whole AI disclosure and marks it confirmed now. */
   ai?: { levels: AiLevels; note: string | null };
 }) {
@@ -96,6 +97,7 @@ export async function updateHack(args: {
   if (args.version !== undefined) updatePayload.version = args.version;
   if (args.box_art !== undefined) updatePayload.box_art = args.box_art;
   if (args.social_links !== undefined) updatePayload.social_links = args.social_links;
+  if (args.show_emulators !== undefined) updatePayload.show_emulators = args.show_emulators;
   if (args.original_author !== undefined || args.permission_from !== undefined) {
     // A custom display name alone (original_author without permission_from) isn't an upload on someone's behalf.
     if (!hack.permission_from) {

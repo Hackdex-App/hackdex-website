@@ -321,7 +321,7 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
       </header>
 
       {/* Wraps the whole body so the review card can open the details sheet too. */}
-      <RailEditor editing={editing} values={{ base_rom: hack.base_rom, language: hack.language ?? "English", completion_status: hack.completion_status, box_art: hack.box_art, social_links: social, original_author: hack.original_author, permission_from: hack.permission_from, ...(hack.approved ? {} : { verification_contact_info: hack.verification_contact_info }) }} baseLocked={patchId !== null || !!editor?.hasPatches}>
+      <RailEditor editing={editing} values={{ base_rom: hack.base_rom, language: hack.language ?? "English", completion_status: hack.completion_status, box_art: hack.box_art, social_links: social, show_emulators: hack.show_emulators, original_author: hack.original_author, permission_from: hack.permission_from, ...(hack.approved ? {} : { verification_contact_info: hack.verification_contact_info }) }} baseLocked={patchId !== null || !!editor?.hasPatches}>
       <div className="grid items-start gap-6 md:grid-cols-[minmax(0,1fr)_300px] md:grid-rows-[auto_1fr] md:[grid-template-areas:'main_patch'_'main_rail']">
         <div className="order-1 md:order-none md:[grid-area:patch]">
           {editing ? (
@@ -406,8 +406,14 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
             )}
           </RailGroup>
 
-          {!isInformationalArchive && (
-            <RailGroup title="How to play">
+          {!isInformationalArchive && editing && !hack.show_emulators && (
+            <RailGroup title="How to play" action={<EditDetailsLink />}>
+              <p className="text-[13px] leading-[1.45] text-text-3">Hidden. Players won’t see recommended emulators, so list yours in About.</p>
+            </RailGroup>
+          )}
+
+          {!isInformationalArchive && hack.show_emulators && (
+            <RailGroup title="How to play" action={editing && <EditDetailsLink />}>
               <p className="mb-2.5 text-[13px] leading-[1.45] text-text-2">
                 Load the patched ROM in {baseRom ? `a ${baseRom.platform} emulator` : "an emulator"}, or on real hardware with a flash cart. Creators recommend:
               </p>

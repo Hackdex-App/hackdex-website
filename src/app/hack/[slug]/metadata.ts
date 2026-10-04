@@ -34,6 +34,8 @@ export interface HackMetadata {
     verification_contact_info: string | null;
     /** null while the creator is still drafting; set once they submit for review. */
     submitted_at: string | null;
+    /** Off when the creator lists their own emulators in the description. */
+    show_emulators: boolean;
   };
   /** null until the creator fills in the AI disclosure form. */
   ai: AiDisclosure | null;
@@ -71,7 +73,7 @@ export async function getHackMetadata(slug: string): Promise<HackMetadata | null
 
       const { data: hack, error } = await supabase
         .from("hacks")
-        .select(`slug,title,summary,description,base_rom,created_at,updated_at,current_patch,custom_version_name,box_art,social_links,created_by,approved,original_author,permission_from,language,is_archive,completion_status,verification_contact_info,submitted_at,${AI_SELECT}`)
+        .select(`slug,title,summary,description,base_rom,created_at,updated_at,current_patch,custom_version_name,box_art,social_links,created_by,approved,original_author,permission_from,language,is_archive,completion_status,verification_contact_info,submitted_at,show_emulators,${AI_SELECT}`)
         .eq("slug", slug)
         .maybeSingle();
 
