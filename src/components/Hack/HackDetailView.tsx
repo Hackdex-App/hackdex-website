@@ -27,6 +27,7 @@ import { formatRelativeDate } from "@/utils/format";
 import { MenuItem } from "@headlessui/react";
 import Image from "next/image";
 import Link from "next/link";
+import { AI_DISCLOSURE_DEADLINE } from "@/utils/aiDisclosure";
 import { FaCircleCheck, FaDiscord, FaGithub, FaTwitter } from "react-icons/fa6";
 import { FiAlertTriangle, FiArrowUpRight, FiInfo, FiMail, FiUpload } from "react-icons/fi";
 import { RiArchiveStackFill } from "react-icons/ri";
@@ -387,7 +388,22 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
           </RailGroup>
 
           <RailGroup title="AI use">
-            {editing ? <DraftAiLabel initial={metadata.ai} /> : metadata.ai ? <AiLabel disclosure={metadata.ai} /> : <AiLabelMissing />}
+            {editing ? <DraftAiLabel initial={metadata.ai} /> : metadata.ai ? (
+              <AiLabel disclosure={metadata.ai} />
+            ) : (
+              // Archives may never get a label, so the deadline is only for creators' own uploads.
+              <AiLabelMissing>
+                {!isArchive && (
+                  <p className="mt-1.5 text-[12.5px]">
+                    The{" "}
+                    <Link href="/terms" prefetch={false} className="text-link-hd">
+                      Terms
+                    </Link>{" "}
+                    give creators until {AI_DISCLOSURE_DEADLINE} to fill it in.
+                  </p>
+                )}
+              </AiLabelMissing>
+            )}
           </RailGroup>
 
           {!isInformationalArchive && (

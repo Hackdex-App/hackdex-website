@@ -50,6 +50,9 @@ export interface AiDisclosure {
 
 type AiRow = Pick<Tables<"hacks">, `ai_${AiArea}` | "ai_note" | "ai_disclosed_at">;
 
+/** When hacks from before disclosure was required must have a label, per the Terms (Section 6). */
+export const AI_DISCLOSURE_DEADLINE = "November 2";
+
 /** Columns to select wherever a hack's label is needed. */
 export const AI_SELECT = "ai_graphics,ai_music,ai_story,ai_translation,ai_events,ai_code,ai_note,ai_disclosed_at";
 
@@ -73,13 +76,15 @@ export function aiKind(levels: AiLevels): AiKind {
 /**
  * Discover's AI filter: hide hacks whose label shows AI in any of `hide`. With `smallCode`, code at
  * "A little" (a bug fix or a few) still passes. `minor` is a separate mode that ignores `hide`: AI in
- * at most MINOR_MAX_AREAS areas, none above Some. Hacks without a label pass every filter; most use
- * no AI, and reports catch the rest.
+ * at most MINOR_MAX_AREAS areas, none above Some. Hacks without a label pass unless `disclosedOnly`;
+ * most use no AI, and reports catch the rest. `disclosedOnly` sits beside the pick, so switching
+ * presets keeps it.
  */
 export interface AiFilter {
   hide: readonly AiArea[];
   smallCode: boolean;
   minor: boolean;
+  disclosedOnly: boolean;
 }
 
 const MINOR_MAX_AREAS = 2;
@@ -88,19 +93,19 @@ const CONTENT_AREAS = AI_AREAS.map((a) => a.key).filter((k) => k !== "code");
 
 /** Named filters, shown as radios; any other pick of areas is "Custom". */
 export const AI_PRESETS = [
-  { value: "any", label: "Any", filter: { hide: [], smallCode: false, minor: false } },
+  { value: "any", label: "Any", filter: { hide: [], smallCode: false, minor: false, disclosedOnly: false } },
   {
     value: "minor",
     label: "Minor AI usage",
     hint: `Up to ${MINOR_MAX_AREAS} areas, none above Some`,
-    filter: { hide: [], smallCode: false, minor: true },
+    filter: { hide: [], smallCode: false, minor: true, disclosedOnly: false },
   },
-  { value: "no-content", label: "No AI content", filter: { hide: CONTENT_AREAS, smallCode: false, minor: false } },
+  { value: "no-content", label: "No AI content", filter: { hide: CONTENT_AREAS, smallCode: false, minor: false, disclosedOnly: false } },
   {
     value: "none",
     label: "No direct AI usage",
     hint: "Nothing AI-generated was intentionally added by the creator",
-    filter: { hide: AI_AREAS.map((a) => a.key), smallCode: false, minor: false },
+    filter: { hide: AI_AREAS.map((a) => a.key), smallCode: false, minor: false, disclosedOnly: false },
   },
 ] as const satisfies readonly { value: string; label: string; hint?: string; filter: AiFilter }[];
 export type AiPreset = (typeof AI_PRESETS)[number]["value"];
@@ -109,50 +114,62 @@ export const NO_AI_FILTER: AiFilter = AI_PRESETS[0].filter;
 
 /** Areas in label order, smallCode only while code is hidden, and no areas with minor, so equal filters serialize the same. */
 export function normalizeAiFilter(f: AiFilter): AiFilter {
-  if (f.minor) return { hide: [], smallCode: false, minor: true };
+  const { disclosedOnly } = f;
+  if (f.minor) return { hide: [], smallCode: false, minor: true, disclosedOnly };
   const hide = AI_AREAS.map((a) => a.key).filter((k) => f.hide.includes(k));
-  return { hide, smallCode: f.smallCode && hide.includes("code"), minor: false };
+  return { hide, smallCode: f.smallCode && hide.includes("code"), minor: false, disclosedOnly };
 }
 
-/** Whether the filter hides anything; "Any" doesn't. */
+/** Whether the filter hides anything; "Any" alone doesn't. */
 export function aiFilterActive(f: AiFilter) {
-  return f.minor || f.hide.length > 0;
+  return f.minor || f.hide.length > 0 || f.disclosedOnly;
 }
 
-/** Stored value (Discover saves the pick): a preset's name, or the areas joined by "." ("code-small" for code with small use allowed). */
+const DISCLOSED_TOKEN = "disclosed";
+
+/**
+ * Stored value (Discover saves the pick): a preset's name, or the areas joined by "." ("code-small" for
+ * code with small use allowed), then ".disclosed" with disclosedOnly.
+ */
 export function aiFilterToken(f: AiFilter): string {
   const n = normalizeAiFilter(f);
-  const preset = AI_PRESETS.find((p) => sameAiFilter(p.filter, n));
-  if (preset) return preset.value;
-  return n.hide.map((k) => (k === "code" && n.smallCode ? "code-small" : k)).join(".");
+  const preset = aiPresetOf(n);
+  const pick = preset !== "custom" ? preset : n.hide.map((k) => (k === "code" && n.smallCode ? "code-small" : k)).join(".");
+  return n.disclosedOnly ? `${pick}.${DISCLOSED_TOKEN}` : pick;
 }
 
-function sameAiFilter(a: AiFilter, b: AiFilter) {
+/** Compares the pick only; disclosedOnly doesn't change which preset a filter is. */
+function samePick(a: AiFilter, b: AiFilter) {
   return a.minor === b.minor && a.smallCode === b.smallCode && a.hide.length === b.hide.length && a.hide.every((k, i) => k === b.hide[i]);
 }
 
 export function parseAiFilter(token: string | undefined): AiFilter {
-  const preset = AI_PRESETS.find((p) => p.value === token);
-  if (preset || !token) return preset?.filter ?? NO_AI_FILTER;
+  if (!token) return NO_AI_FILTER;
   const parts = token.split(".");
+  const disclosedOnly = parts.includes(DISCLOSED_TOKEN);
+  const preset = AI_PRESETS.find((p) => parts.includes(p.value));
+  if (preset) return { ...preset.filter, disclosedOnly };
   const hide = AI_AREAS.map((a) => a.key).filter((k) => parts.includes(k) || (k === "code" && parts.includes("code-small")));
-  return normalizeAiFilter({ hide, smallCode: parts.includes("code-small"), minor: false });
+  return normalizeAiFilter({ hide, smallCode: parts.includes("code-small"), minor: false, disclosedOnly });
 }
 
-/** The preset a filter matches, or "custom". */
+/** The preset a filter's pick matches, or "custom". */
 export function aiPresetOf(f: AiFilter): AiPreset | "custom" {
-  const token = aiFilterToken(f);
-  return AI_PRESETS.find((p) => p.value === token)?.value ?? "custom";
+  const n = normalizeAiFilter(f);
+  return AI_PRESETS.find((p) => samePick(p.filter, n))?.value ?? "custom";
 }
 
 /** Discover's note on what the AI filter hides: the preset's name, or a general one for a custom pick. */
 export function aiFilterLabel(f: AiFilter): string {
   const preset = aiPresetOf(f);
-  return preset === "custom" ? "Some AI usage hidden" : AI_PRESETS.find((p) => p.value === preset)!.label;
+  if (preset === "custom") return "Some AI usage hidden";
+  // "Any" is only active with disclosedOnly.
+  if (preset === "any") return "Hacks without an AI label hidden";
+  return AI_PRESETS.find((p) => p.value === preset)!.label;
 }
 
 export function matchesAiFilter(levels: AiLevels | null, f: AiFilter) {
-  if (!levels) return true;
+  if (!levels) return !f.disclosedOnly;
   if (f.minor) {
     const used = AI_AREAS.filter((a) => levels[a.key] !== "none");
     return used.length <= MINOR_MAX_AREAS && used.every((a) => AI_LEVEL_STEP[levels[a.key]] <= AI_LEVEL_STEP.some);
