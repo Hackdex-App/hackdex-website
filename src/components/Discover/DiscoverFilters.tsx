@@ -9,7 +9,7 @@ import { baseGameLabel, baseRoms, PLATFORM_NAMES, type Platform } from "@/data/b
 const RAIL_PLATFORMS: Platform[] = ["GBA", "GBC", "GB", "NDS"];
 import { DISCOVER_COMPLETION_STATUSES } from "@/app/discover/search-params";
 import type { DiscoverHack } from "@/types/discover";
-import { AI_AREAS, AI_PRESETS, aiFilterActive, aiPresetOf, matchesAiFilter, normalizeAiFilter, NO_AI_FILTER, type AiArea, type AiFilter } from "@/utils/aiDisclosure";
+import { AI_AREAS, AI_DISCLOSURE_DEADLINE, AI_PRESETS, aiFilterActive, aiPresetOf, matchesAiFilter, normalizeAiFilter, NO_AI_FILTER, type AiArea, type AiFilter } from "@/utils/aiDisclosure";
 import { useCloseOnDesktop, useDialog } from "@/hooks/useDialog";
 
 /** The filterable part of the Discover URL state. The sheet edits a draft copy of this. */
@@ -124,7 +124,7 @@ export function FilterFields({ value, onChange, tagGroups, counts, readyCount, o
   // Ticking code yourself allows small use by default; only the presets are strict about it.
   // Ticking an area leaves Minor, since it's a limit across all areas rather than a pick of them.
   const toggleAiArea = (k: AiArea) =>
-    setAi({ hide: toggleValue(value.ai.hide, k), smallCode: k === "code" ? !value.ai.hide.includes("code") : value.ai.smallCode, minor: false });
+    setAi({ ...value.ai, hide: toggleValue(value.ai.hide, k), smallCode: k === "code" ? !value.ai.hide.includes("code") : value.ai.smallCode, minor: false });
 
   const visibleGames = ROM_GAMES.map((g) => ({ ...g, dumps: g.dumps.filter((d) => !romQuery || g.label.toLowerCase().includes(romQuery) || d.label.toLowerCase().includes(romQuery)) })).filter((g) => g.dumps.length > 0);
   const visibleGroups = tagGroups
@@ -228,9 +228,9 @@ export function FilterFields({ value, onChange, tagGroups, counts, readyCount, o
               className={rowH}
               label={p.label}
               hint={"hint" in p ? p.hint : undefined}
-              count={counts.ai(p.filter)}
+              count={counts.ai({ ...p.filter, disclosedOnly: value.ai.disclosedOnly })}
               checked={aiPreset === p.value}
-              onChange={() => setAi(p.filter)}
+              onChange={() => setAi({ ...p.filter, disclosedOnly: value.ai.disclosedOnly })}
             />
           ))}
           {/* Shows while the areas match no preset; ticking back to a preset's areas selects it again. */}
@@ -266,6 +266,14 @@ export function FilterFields({ value, onChange, tagGroups, counts, readyCount, o
             ))}
           </div>
         </Disclosure>
+        <Check
+          className={`mt-1 ${rowH}`}
+          label="Hide hacks without an AI label"
+          hint={`Creators have until ${AI_DISCLOSURE_DEADLINE} to add missing labels, per the Terms.`}
+          count={counts.ai({ ...value.ai, disclosedOnly: true })}
+          checked={value.ai.disclosedOnly}
+          onChange={() => setAi({ ...value.ai, disclosedOnly: !value.ai.disclosedOnly })}
+        />
       </Group>
 
       <Group title="Tags">
@@ -389,7 +397,8 @@ function Check({ label, hint, count, checked, onChange, className = "", ready = 
     <label className={`group/check relative flex cursor-pointer select-none gap-2.5 rounded-md text-sm ${hint ? "items-start py-1.5" : "items-center"} ${className}`}>
       <input type="checkbox" checked={checked} onChange={onChange} className="peer sr-only" />
       <span className={`${BOX} ${hint ? "mt-px" : ""} ${ready ? "peer-checked:border-ready peer-checked:bg-ready" : "peer-checked:border-accent-deep peer-checked:bg-accent-deep"}`} />
-      <span className="min-w-0 flex-1 truncate">
+      {/* A hint wraps, like Radio's; truncating would cut it to one line. */}
+      <span className={`min-w-0 flex-1 ${hint ? "" : "truncate"}`}>
         {label}
         {hint && <small className="mt-0.5 block text-xs leading-[1.35] text-text-3">{hint}</small>}
       </span>
