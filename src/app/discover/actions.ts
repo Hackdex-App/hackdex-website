@@ -48,7 +48,8 @@ async function generateDiscoverData(): Promise<DiscoverData> {
       `slug,title,summary,base_rom,downloads,created_by,current_patch,custom_version_name,original_author,approved_at,is_archive,completion_status,${AI_SELECT}`,
     )
     .eq("approved", true)
-    .eq("is_archive", false);
+    .eq("is_archive", false)
+    .is("deleted_at", null);
   if (hacksError) throw hacksError;
 
   const slugs = rows.map((row) => row.slug);

@@ -155,6 +155,7 @@ test("recipient selection paginates, excludes empty drafts, and deduplicates cre
       const url = new URL(new Request(input, init).url);
       if (url.pathname === "/rest/v1/hacks") {
         assert.equal(url.searchParams.get("is_archive"), "eq.false");
+        assert.equal(url.searchParams.get("deleted_at"), "is.null");
         const columns = new Set(["slug", "created_by", "current_patch", "patch_url", "approved"]);
         const unknown = url.searchParams.get("select")?.split(",").find((column) => !columns.has(column));
         if (unknown) return Response.json({ message: `column hacks.${unknown} does not exist`, code: "42703" }, { status: 400 });

@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { FiMoreVertical, FiEdit2, FiBarChart2 } from "react-icons/fi";
+import { FiMoreVertical, FiEdit2, FiBarChart2, FiTrash2 } from "react-icons/fi";
 import { TbVersions } from "react-icons/tb";
 import { Menu, MenuButton, MenuItem, MenuItems, MenuSeparator } from "@headlessui/react";
 import ReportModal from "@/components/Hack/ReportModal";
+import DeleteHackModal from "@/components/Hack/DeleteHackModal";
 
 interface HackOptionsMenuProps {
   slug: string;
@@ -12,6 +13,8 @@ interface HackOptionsMenuProps {
   canUploadPatch: boolean;
   /** Where Edit goes: the in-place editor for regular hacks, the form for archives. */
   editHref: string;
+  /** Admins only: adds Delete at the bottom. */
+  canDelete?: boolean;
   children?: React.ReactNode;
 }
 
@@ -20,9 +23,11 @@ export default function HackOptionsMenu({
   canEdit,
   editHref,
   canUploadPatch,
+  canDelete = false,
   children,
 }: HackOptionsMenuProps) {
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const hasRenderableChildren = useMemo(() => {
     return React.Children.toArray(children).some(Boolean);
@@ -102,10 +107,24 @@ export default function HackOptionsMenu({
             <MenuSeparator className="my-1 h-px bg-line" />
             {children}
           </>}
+          {canDelete && <>
+            <MenuSeparator className="my-1 h-px bg-line" />
+            <MenuItem
+              as="button"
+              onClick={() => setShowDeleteModal(true)}
+              className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm font-medium text-error data-focus:bg-error-soft"
+            >
+              <FiTrash2 className="h-4 w-4" />
+              Delete
+            </MenuItem>
+          </>}
         </MenuItems>
       </Menu>
       {showReportModal && (
         <ReportModal slug={slug} onClose={() => setShowReportModal(false)} />
+      )}
+      {showDeleteModal && (
+        <DeleteHackModal slug={slug} onClose={() => setShowDeleteModal(false)} />
       )}
     </>
   );

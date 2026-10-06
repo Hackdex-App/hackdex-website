@@ -1,4 +1,4 @@
-import { getHackDownloads, getHackMetadata } from "@/app/hack/[slug]/metadata";
+import { getHackDownloads, getHackMetadata, hackNotFound } from "@/app/hack/[slug]/metadata";
 import {
   getHackPageMetadata,
   type HackDetailPageProps,
@@ -47,7 +47,7 @@ export default async function HackSessionDetail({
     getHackDownloads(slug),
   ]);
   if (!metadata) {
-    notFound();
+    return hackNotFound(slug);
   }
 
   if (!user) {

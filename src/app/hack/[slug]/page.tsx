@@ -1,4 +1,4 @@
-import { getHackDownloads, getHackMetadata } from "@/app/hack/[slug]/metadata";
+import { getHackDownloads, getHackMetadata, hackNotFound } from "@/app/hack/[slug]/metadata";
 import {
   getHackPageMetadata,
   type HackDetailPageProps,
@@ -24,6 +24,7 @@ export async function generateStaticParams() {
     .select("slug")
     .eq("approved", true)
     .eq("is_archive", false)
+    .is("deleted_at", null)
     .order("downloads", { ascending: false })
     .limit(750);
 
@@ -38,9 +39,10 @@ export async function generateMetadata({ params }: HackDetailPageProps) {
 export default async function HackDetail({ params }: HackDetailPageProps) {
   const { slug } = await params;
   const metadata = await getHackMetadata(slug);
+  if (!metadata) return hackNotFound(slug);
 
   // Archive entries are currently available only through the signed-in route.
-  if (!metadata || !metadata.hack.approved || isArchiveHack(metadata.hack)) {
+  if (!metadata.hack.approved || isArchiveHack(metadata.hack)) {
     notFound();
   }
 
