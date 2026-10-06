@@ -3,7 +3,8 @@
 import React from "react";
 import Link from "next/link";
 import { FiExternalLink, FiEdit2, FiTrash2, FiChevronLeft, FiChevronRight, FiArrowDown, FiSearch, FiLoader, FiDownload, FiInfo, FiBarChart2 } from "react-icons/fi";
-import { getArchives, deleteArchive } from "@/app/dashboard/archives/actions";
+import { getArchives } from "@/app/dashboard/archives/actions";
+import { deleteHack } from "@/app/hack/actions";
 import { baseRoms } from "@/data/baseRoms";
 import Select from "@/components/Primitives/Select";
 
@@ -68,13 +69,13 @@ export default function ArchivesList({ initialData, isAdmin = false }: { initial
   }, [loadArchives]);
 
   async function handleDelete(slug: string) {
-    if (!confirm(`Are you sure you want to delete the archive "${slug}"? This action cannot be undone.`)) {
+    if (!confirm(`Delete the archive "${slug}"? Its page will 404 for everyone, and only a database edit can bring it back.`)) {
       return;
     }
 
     setDeletingSlug(slug);
     try {
-      const result = await deleteArchive(slug);
+      const result = await deleteHack({ slug });
       if (!result.ok) {
         alert(result.error || "Failed to delete archive");
         return;

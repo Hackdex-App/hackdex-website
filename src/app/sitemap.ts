@@ -10,10 +10,14 @@ export default async function Sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const supabase = await createClient();
 
-  const { data: hacks } = await supabase.from("hacks").select("slug,updated_at,approved");
+  // Archive entries 404 for signed-out visitors. RLS already hides deleted hacks.
+  const { data: hacks } = await supabase
+    .from("hacks")
+    .select("slug,updated_at")
+    .eq("approved", true)
+    .eq("is_archive", false);
   if (hacks) {
-    const approvedHacks = hacks.filter((hack) => hack.approved);
-    routes.push(...approvedHacks.map((hack) => ({
+    routes.push(...hacks.map((hack) => ({
       url: `/hack/${hack.slug}`,
       changeFrequency: "weekly" as const,
       lastModified: hack.updated_at || new Date().toISOString(),

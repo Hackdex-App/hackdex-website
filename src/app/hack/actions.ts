@@ -23,6 +23,7 @@ import { isCoverKeyFor, newPatchKey } from "@/utils/storageKeys";
 import { MAX_COVERS, SUMMARY_MAX, TITLE_MAX } from "@/data/hackLimits";
 import { baseRoms } from "@/data/baseRoms";
 import type { PatchFormat } from "@/utils/patching";
+import { parseHackRedirect } from "@/utils/hackRedirect";
 
 export async function updateHack(args: {
   slug: string;
@@ -371,6 +372,7 @@ export async function approveHack(slug: string, verified?: boolean) {
     .from("hacks")
     .select("slug, approved, title, created_by, submitted_at, current_patch, is_archive")
     .eq("slug", slug)
+    .is("deleted_at", null)
     .maybeSingle();
   if (hErr) return { ok: false, error: hErr.message } as const;
   if (!hack) return { ok: false, error: "Hack not found" } as const;
@@ -485,6 +487,7 @@ export async function createHackReviewThread(slug: string) {
     .from("hacks")
     .select("slug, title, created_by, assigned_admin, is_archive")
     .eq("slug", slug)
+    .is("deleted_at", null)
     .maybeSingle();
   if (hackError) return { ok: false, error: hackError.message } as const;
   if (!hack) return { ok: false, error: "Hack not found" } as const;
@@ -540,3 +543,50 @@ export async function createHackReviewThread(slug: string) {
   }
 }
 
+
+/**
+ * Admin-only soft delete. The row and its files stay, but the hack is gone
+ * everywhere: its page 404s for everyone, or permanently redirects to
+ * `redirectUrl`. Restoring is a manual database edit (see the
+ * hack_soft_delete migration).
+ */
+export async function deleteHack(args: { slug: string; redirectUrl?: string }) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Unauthorized" } as const;
+
+  const { data: isAdmin } = await supabase.rpc("is_admin");
+  if (!isAdmin) return { ok: false, error: "Forbidden" } as const;
+
+  const target = parseHackRedirect(args.redirectUrl ?? "", args.slug);
+  if (!target.ok) return target;
+
+  // The service role: RLS won't let anyone write a deleted_at.
+  const service = await createServiceClient();
+  const { data: hack, error } = await service
+    .from("hacks")
+    .update({
+      deleted_at: new Date().toISOString(),
+      deleted_by: user.id,
+      redirect_url: target.url,
+    })
+    .eq("slug", args.slug)
+    .is("deleted_at", null)
+    .select("approved, created_by")
+    .maybeSingle();
+  if (error) return { ok: false, error: error.message } as const;
+  if (!hack) return { ok: false, error: "Hack not found" } as const;
+
+  revalidateTag(`hack:${args.slug}:metadata`);
+  revalidateTag(`hack:${args.slug}:downloads`);
+  revalidatePath(`/hack/${args.slug}`);
+  if (hack.approved) {
+    revalidateDiscoverCatalog();
+    // The creator's other pages list this one under "other hacks by this creator".
+    const { data: siblings } = await service.from("hacks").select("slug").eq("created_by", hack.created_by).neq("slug", args.slug);
+    for (const { slug } of siblings ?? []) revalidateTag(`hack:${slug}:metadata`);
+  }
+  return { ok: true } as const;
+}

@@ -1,5 +1,6 @@
 import { createServiceClient } from "@/utils/supabase/server";
 import { unstable_cache as cache } from "next/cache";
+import { notFound, permanentRedirect } from "next/navigation";
 import { AI_SELECT, aiDisclosureFromRow, type AiDisclosure } from "@/utils/aiDisclosure";
 import { sortOrderedTags, getCoverUrls } from "@/utils/format";
 import { Database } from "@/types/db";
@@ -66,6 +67,7 @@ export interface HackMetadata {
   };
 }
 
+/** null for deleted hacks too; pages that get null should call `hackNotFound`. */
 export async function getHackMetadata(slug: string): Promise<HackMetadata | null> {
   const runner = cache(
     async () => {
@@ -75,6 +77,7 @@ export async function getHackMetadata(slug: string): Promise<HackMetadata | null
         .from("hacks")
         .select(`slug,title,summary,description,base_rom,created_at,updated_at,current_patch,custom_version_name,box_art,social_links,created_by,approved,original_author,permission_from,language,is_archive,completion_status,verification_contact_info,submitted_at,show_emulators,${AI_SELECT}`)
         .eq("slug", slug)
+        .is("deleted_at", null)
         .maybeSingle();
 
       if (error || !hack) return null;
@@ -136,6 +139,7 @@ export async function getHackMetadata(slug: string): Promise<HackMetadata | null
           .eq("created_by", hack.created_by)
           .eq("approved", true)
           .eq("is_archive", false)
+          .is("deleted_at", null)
           .neq("slug", hack.slug)
           .order("downloads", { ascending: false })
           .limit(10);
@@ -227,4 +231,33 @@ export async function getHackDownloads(slug: string): Promise<number | null> {
   );
 
   return runner();
+}
+
+/**
+ * Ends a hack page render when the hack is missing. A deleted hack with a
+ * redirect_url sends visitors there (308); anything else 404s.
+ */
+export async function hackNotFound(slug: string): Promise<never> {
+  const runner = cache(
+    async () => {
+      const supabase = await createServiceClient();
+      const { data } = await supabase
+        .from("hacks")
+        .select("redirect_url")
+        .eq("slug", slug)
+        .not("deleted_at", "is", null)
+        .maybeSingle();
+      return data?.redirect_url ?? null;
+    },
+    [`hack:${slug}:redirect`],
+    {
+      revalidate: 14400, // 4 hours
+      // Shares the metadata tag so deleting a hack refreshes both.
+      tags: ["hack", `hack:${slug}:metadata`],
+    }
+  );
+
+  const redirectUrl = await runner();
+  if (redirectUrl) permanentRedirect(redirectUrl);
+  notFound();
 }

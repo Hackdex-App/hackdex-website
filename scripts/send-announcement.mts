@@ -72,7 +72,7 @@ export async function collectRecipients(supabase: SupabaseClient<Database>): Pro
   for (let offset = 0; ; offset += pageSize) {
     const { data, error } = await supabase.from("hacks")
       .select("slug,created_by,current_patch,patch_url,approved")
-      .eq("is_archive", false).order("slug").range(offset, offset + pageSize - 1);
+      .eq("is_archive", false).is("deleted_at", null).order("slug").range(offset, offset + pageSize - 1);
     if (error) throw new Error(`Cannot load hacks: ${error.message}`);
     if (!data) throw new Error("No response when loading hacks.");
     for (const hack of data) {

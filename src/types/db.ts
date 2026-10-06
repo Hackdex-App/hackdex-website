@@ -225,6 +225,8 @@ export type Database = {
           created_by: string
           current_patch: number | null
           custom_version_name: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           description: string
           downloads: number
           estimated_release: string | null
@@ -235,6 +237,7 @@ export type Database = {
           patches_download_permission: Database["public"]["Enums"]["Patches Download Permission"]
           permission_from: string | null
           published: boolean
+          redirect_url: string | null
           rejected: boolean
           rejected_at: string | null
           rejected_by: string | null
@@ -273,6 +276,8 @@ export type Database = {
           created_by: string
           current_patch?: number | null
           custom_version_name?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           description: string
           downloads?: number
           estimated_release?: string | null
@@ -283,6 +288,7 @@ export type Database = {
           patches_download_permission?: Database["public"]["Enums"]["Patches Download Permission"]
           permission_from?: string | null
           published?: boolean
+          redirect_url?: string | null
           rejected?: boolean
           rejected_at?: string | null
           rejected_by?: string | null
@@ -321,6 +327,8 @@ export type Database = {
           created_by?: string
           current_patch?: number | null
           custom_version_name?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           description?: string
           downloads?: number
           estimated_release?: string | null
@@ -331,6 +339,7 @@ export type Database = {
           patches_download_permission?: Database["public"]["Enums"]["Patches Download Permission"]
           permission_from?: string | null
           published?: boolean
+          redirect_url?: string | null
           rejected?: boolean
           rejected_at?: string | null
           rejected_by?: string | null

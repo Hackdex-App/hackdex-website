@@ -301,7 +301,7 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
         {(!editing || editor.notOwner) && (
           <div className="flex flex-none items-center justify-end gap-2 md:pt-2">
           <HackShareButton title={hack.title} url={pageUrl} author={hack.original_author || profile?.username || null} />
-          <HackOptionsMenu slug={hack.slug} canEdit={canEdit} canUploadPatch={canUploadPatch} editHref={isArchive ? `/hack/${hack.slug}/edit` : `/hack/${hack.slug}?edit=1`}>
+          <HackOptionsMenu slug={hack.slug} canEdit={canEdit} canUploadPatch={canUploadPatch} editHref={isArchive ? `/hack/${hack.slug}/edit` : `/hack/${hack.slug}?edit=1`} canDelete={isAdmin}>
             {isAdmin && !hack.approved && !isDraft && (
               <MenuItem as="a" href={`/hack/${hack.slug}/approve`} className="block w-full px-3 py-2 text-left text-sm font-medium text-ready data-focus:bg-surface-2">
                 <FaCircleCheck className="mb-0.5 mr-2 inline-block align-middle" size={12} />
