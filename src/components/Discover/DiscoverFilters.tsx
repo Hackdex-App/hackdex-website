@@ -248,7 +248,7 @@ export function FilterFields({ value, onChange, tagGroups, counts, readyCount, o
         >
           {/* Indented to line up with the "Choose areas" label, past its chevron. */}
           <div className="pl-[22px]">
-            {value.ai.minor && <p className="mb-2 text-xs leading-[1.4] text-text-2">Minor AI usage sets a limit across all areas. Pick areas to build your own filter instead.</p>}
+            {value.ai.minor && <p className="mb-2 text-xs leading-[1.4] text-text-2">"Minor AI or less" sets a limit across all areas. Pick areas to build your own filter instead.</p>}
             <p className="mb-0.5 text-xs font-semibold text-text-3">Hide hacks with AI in</p>
             {AI_AREAS.map((a) => (
               <React.Fragment key={a.key}>

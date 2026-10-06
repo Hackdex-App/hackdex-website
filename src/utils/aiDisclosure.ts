@@ -96,7 +96,7 @@ export const AI_PRESETS = [
   { value: "any", label: "Any", filter: { hide: [], smallCode: false, minor: false, disclosedOnly: false } },
   {
     value: "minor",
-    label: "Minor AI usage",
+    label: "Minor AI or less",
     hint: `Up to ${MINOR_MAX_AREAS} areas, none above Some`,
     filter: { hide: [], smallCode: false, minor: true, disclosedOnly: false },
   },
