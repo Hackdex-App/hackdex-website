@@ -122,8 +122,10 @@ function AiDisclosureForm({ initial, onCancel, onSave }: { initial: AiDisclosure
       <div className="md:sticky md:top-0">
         <p className="mb-2 text-[11.5px] font-semibold text-text-3">Players will see</p>
         <AiLabel id="ai-breakdown-preview" disclosure={{ levels: preview, note: note.trim() || null, disclosedAt: new Date().toISOString() }} defaultOpen />
-        <p className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-text-3">
-          Shows under
+        <p className="mt-3 text-xs text-text-3">
+          Shows under the following Discover filters
+        </p>
+        <p className="mt-1.5 flex flex-wrap items-center gap-1.5">
           {AI_PRESETS.map((f) => (
             <FilterChip key={f.value} on={matchesAiFilter(preview, f.filter)}>
               {f.label}
