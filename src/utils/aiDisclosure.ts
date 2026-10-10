@@ -56,7 +56,7 @@ export const AI_DISCLOSURE_DEADLINE = "November 2";
 /** Columns to select wherever a hack's label is needed. */
 export const AI_SELECT = "ai_graphics,ai_music,ai_story,ai_translation,ai_events,ai_code,ai_note,ai_disclosed_at";
 
-export const AI_HEADLINES = { content: "Contains AI", code: "AI in code only", none: "No direct AI usage" } as const;
+export const AI_HEADLINES = { content: "Contains AI", code: "AI in code only", none: "No AI usage" } as const;
 /** Which headline a disclosure gets; Discover filters on this. */
 export type AiKind = keyof typeof AI_HEADLINES;
 
@@ -100,10 +100,15 @@ export const AI_PRESETS = [
     hint: `Up to ${MINOR_MAX_AREAS} areas, none above Some`,
     filter: { hide: [], smallCode: false, minor: true, disclosedOnly: false },
   },
-  { value: "no-content", label: "No AI content", filter: { hide: CONTENT_AREAS, smallCode: false, minor: false, disclosedOnly: false } },
+  {
+    value: "no-content",
+    label: "No AI content",
+    hint: "Nothing AI-generated except usage in code",
+    filter: { hide: CONTENT_AREAS, smallCode: false, minor: false, disclosedOnly: false }
+  },
   {
     value: "none",
-    label: "No direct AI usage",
+    label: "No AI usage",
     hint: "Nothing AI-generated was intentionally added by the creator",
     filter: { hide: AI_AREAS.map((a) => a.key), smallCode: false, minor: false, disclosedOnly: false },
   },
