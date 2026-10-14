@@ -14,7 +14,7 @@ export default function Spoiler({ children }: SpoilerProps) {
       onClick={() => setRevealed(true)}
       className={`inline rounded px-1 transition-colors duration-150 ${
         revealed
-          ? "bg-foreground/20 text-foreground cursor-text"
+          ? "bg-foreground/20 text-text cursor-text"
           : "bg-foreground/50 text-transparent cursor-pointer hover:bg-foreground/60"
       }`}
     >

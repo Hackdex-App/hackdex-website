@@ -11,6 +11,7 @@
     "seed:storage": "node --env-file=.env.local --env-file=.env.development.local scripts/seed-storage.mjs",
     "discord:register": "node scripts/register-discord-commands.mjs",
     "email:announcement": "node --env-file-if-exists=.env.local --env-file-if-exists=.env.announcements scripts/send-announcement.mts",
+    "test": "node --test 'src/**/*.test.ts'",
     "test:announcement": "node --test scripts/send-announcement.test.mts",
     "postinstall": "patch-package"
   },

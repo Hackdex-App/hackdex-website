@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/db";
 
 type HackWithArchiveFields = {
   is_archive: boolean;
@@ -43,7 +44,7 @@ export function canEditAsCreator(hack: HackWithArchiveFields, userId: string): b
 export async function canEditAsAdmin(
   hack: HackWithArchiveFields,
   userId: string,
-  supabase: SupabaseClient<any>,
+  supabase: SupabaseClient<Database>,
   options?: {
     roles?: {
       isAdmin: boolean;
@@ -71,7 +72,7 @@ export async function canEditAsAdmin(
 export async function canEditAsArchiver(
   hack: HackWithArchiveFields,
   userId: string,
-  supabase: SupabaseClient<any>,
+  supabase: SupabaseClient<Database>,
   options?: {
     roles?: {
       isAdmin?: boolean;
@@ -106,7 +107,7 @@ export async function canEditAsArchiver(
 export async function checkEditPermission(
   hack: HackWithArchiveFields,
   userId: string,
-  supabase: SupabaseClient<any>
+  supabase: SupabaseClient<Database>
 ): Promise<{
   canEdit: boolean;
   canEditAsCreator: boolean;
@@ -154,7 +155,7 @@ export async function checkEditPermission(
 export async function checkPatchEditPermission(
   hack: HackWithArchiveFields,
   userId: string,
-  supabase: SupabaseClient<any>
+  supabase: SupabaseClient<Database>
 ): Promise<{
   canEdit: boolean;
   canEditAsCreator: boolean;

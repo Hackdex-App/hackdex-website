@@ -13,9 +13,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Pinned: the type check below compares against the CLI's exact output, and
+      # 2.119.0 stopped formatting generated types. Bump together with src/types/db.ts.
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.111.0
 
       - name: Check new migrations are after main
         run: |

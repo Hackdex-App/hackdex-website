@@ -31,8 +31,8 @@ export default async function UpdatePasswordPage({ searchParams }: UpdatePasswor
         </div>
       )}
       <div className="card p-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Change your password</h1>
-        <p className="mt-1 text-sm text-foreground/70">Enter a new password for your account.</p>
+        <h1 className="font-display text-[28px] leading-[1.1] md:text-[32px]">Change your password</h1>
+        <p className="mt-1 text-sm text-text-2">Enter a new password for your account.</p>
         <div className="mt-6">
           <UpdatePasswordForm />
         </div>

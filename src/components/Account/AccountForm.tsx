@@ -73,62 +73,62 @@ export default function AccountForm({ user, profile }: { user: User | null, prof
             updateProfile({ fullname, website, avatar_url: url })
           }}
         />
-        <div className="text-sm text-foreground/70">
-          <div className="text-xl text-center sm:text-left font-semibold text-foreground">{fullname || <span className="italic text-foreground/80">No name</span>}</div>
-          <div className="text-sm text-center sm:text-left text-foreground/70">{username ? `@${username}` : <span className="italic text-foreground/60">No username</span>}</div>
+        <div className="text-sm text-text-2">
+          <div className="text-xl text-center sm:text-left font-semibold text-text">{fullname || <span className="italic text-text-2">No name</span>}</div>
+          <div className="text-sm text-center sm:text-left text-text-2">{username ? `@${username}` : <span className="italic text-text-3">No username</span>}</div>
           <div className="mt-3">Update your profile details and avatar.</div>
         </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid gap-2 sm:col-span-2">
-          <label htmlFor="email" className="text-sm text-foreground/80">Email</label>
-          <input id="email" type="text" value={user?.email || ''} disabled className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm text-foreground/70 ring-1 ring-inset ring-[var(--border)]" />
+          <label htmlFor="email" className="text-sm text-text-2">Email</label>
+          <input id="email" type="text" value={user?.email || ''} disabled className="h-11 rounded-control bg-surface-2 px-3 text-sm text-text-2 ring-1 ring-inset ring-line" />
         </div>
 
         <div className="grid gap-2">
-          <label htmlFor="fullName" className="text-sm text-foreground/80">Name</label>
+          <label htmlFor="fullName" className="text-sm text-text-2">Name</label>
           <input
             id="fullName"
             type="text"
             value={fullname || ''}
             onChange={(e) => setFullname(e.target.value)}
-            className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+            className="h-11 rounded-control bg-surface-2 px-3 text-sm ring-1 ring-inset ring-line focus:outline-none focus:ring-2 focus:ring-accent/40"
           />
         </div>
 
         <div className="grid gap-2">
-          <label htmlFor="username" className="text-sm text-foreground/80">Username</label>
+          <label htmlFor="username" className="text-sm text-text-2">Username</label>
           <input
             id="username"
             type="text"
             value={username || ''}
             disabled
-            className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm text-foreground/70 ring-1 ring-inset ring-[var(--border)]"
+            className="h-11 rounded-control bg-surface-2 px-3 text-sm text-text-2 ring-1 ring-inset ring-line"
           />
         </div>
 
         <div className="grid gap-2 sm:col-span-2">
-          <label htmlFor="website" className="text-sm text-foreground/80">Website <span className="text-foreground/50">(optional)</span></label>
+          <label htmlFor="website" className="text-sm text-text-2">Website <span className="text-text-3">(optional)</span></label>
           <input
             id="website"
             type="url"
             value={website || ''}
             onChange={(e) => setWebsite(e.target.value)}
-            className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+            className="h-11 rounded-control bg-surface-2 px-3 text-sm ring-1 ring-inset ring-line focus:outline-none focus:ring-2 focus:ring-accent/40"
           />
         </div>
 
         <div className="sm:col-span-2 flex flex-col justify-center items-center gap-4 mt-4 sm:flex-row sm:justify-end">
           <button
-            className="shine-wrap btn-premium h-14 min-w-48 sm:h-11 sm:min-w-[7.5rem] text-sm font-semibold dark:disabled:opacity-70 disabled:cursor-not-allowed disabled:[box-shadow:0_0_0_1px_var(--border)]"
+            className="inline-flex items-center justify-center rounded-control bg-accent-deep px-5 text-white transition-colors hover:enabled:bg-accent-hover disabled:opacity-60 h-14 min-w-48 sm:h-11 sm:min-w-[7.5rem] text-sm font-semibold disabled:cursor-not-allowed"
             onClick={() => updateProfile({ fullname, website, avatar_url })}
             disabled={loading || !hasChanges}
           >
             <span>{loading ? 'Saving...' : 'Update profile'}</span>
           </button>
           <form action="/auth/signout" method="post">
-            <button className="inline-flex h-14 min-w-48 sm:h-11 sm:min-w-[7.5rem] items-center justify-center rounded-md border border-red-600/40 bg-red-600/5 dark:border-red-400/40 dark:bg-red-400/5 px-4 text-sm font-medium text-red-600/90 dark:text-red-400/80 transition-colors hover:bg-red-600/5 dark:hover:bg-red-400/10" type="submit">
+            <button className="inline-flex h-14 min-w-48 sm:h-11 sm:min-w-[7.5rem] items-center justify-center rounded-control border border-error/40 bg-error-soft px-4 text-sm font-medium text-error transition-colors hover:bg-error-soft" type="submit">
               Sign out
             </button>
           </form>

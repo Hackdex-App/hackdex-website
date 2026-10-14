@@ -1,18 +1,22 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Archivo, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import MobileFooterSpacer from "@/components/MobileFooterSpacer";
 import { BaseRomProvider } from "@/contexts/BaseRomContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import NoticeBanner from "@/components/NoticeBanner";
 import AppToaster from "@/components/AppToaster";
+import MobileTabs from "@/components/MobileTabs";
+import FreshLookBanner from "@/components/FreshLookBanner";
+import { freshLookInitScript, themeInitScript } from "@/utils/initScripts";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+/** One family. Body at full width; headings use the width axis (see `font-display` in globals.css). */
+const archivo = Archivo({
+  variable: "--font-archivo",
   subsets: ["latin"],
+  axes: ["wdth"],
 });
 
 const geistMono = Geist_Mono({
@@ -39,20 +43,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript + freshLookInitScript }} />
+      </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
+        className={`${archivo.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
         <AuthProvider>
           <BaseRomProvider>
-            <div className="fixed inset-0 -z-10">
-              <div className="aurora" />
-            </div>
             <NoticeBanner />
             <Header />
+            <FreshLookBanner />
             <main className="flex-1 flex flex-col">{children}</main>
             <Footer />
-            <MobileFooterSpacer />
+            <MobileTabs />
           </BaseRomProvider>
         </AuthProvider>
         <AppToaster />

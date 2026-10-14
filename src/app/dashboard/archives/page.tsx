@@ -21,10 +21,10 @@ export default async function ArchivesPage() {
   const initialData = await getArchives({ page: 1, limit: 50 });
 
   return (
-    <div className="mx-auto my-12 max-w-screen-xl px-6 py-8 w-full">
+    <div className="mx-auto w-full max-w-[1164px] px-6 py-10">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Archive Management</h1>
-        <p className="mt-2 text-[15px] text-foreground/80">
+        <h1 className="font-display text-[28px] leading-[1.1] md:text-[32px]">Archive Management</h1>
+        <p className="mt-2 text-[15px] text-text-2">
           Manage all Archive hacks. Archive hacks are informational entries preserved for historical reference.
         </p>
       </div>

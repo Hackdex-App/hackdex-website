@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import StickyActionBar from "@/components/Hack/StickyActionBar";
+import PatchModule from "@/components/Hack/PatchModule";
 import BaseRomErrorModal, { type BaseRomErrorModalState } from "@/components/Hack/BaseRomErrorModal";
 import HackOnboardingOverlay from "@/components/Hack/Onboarding/HackOnboardingOverlay";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
@@ -24,7 +24,7 @@ import {
 } from "@/utils/patches/download-telemetry";
 import { downloadPatch, DownloadPatchError } from "@/utils/patches/download-patch";
 import type { SelectablePatch } from "@/types/patcher";
-import { patchDisplayName } from "@/utils/patches/patch-variant";
+import { isPatchVariantChoice, patchDisplayName } from "@/utils/patches/patch-variant";
 import { baseRomName } from "@/utils/hacks/base-roms";
 import { applyPatch, patchFormatFromFilename, type PatchFormat } from "@/utils/patching";
 import { createOutputSink, SaveCancelledError, type OutputSink } from "@/utils/patching/save";
@@ -98,7 +98,9 @@ const HackActions: React.FC<HackActionsProps> = ({
   const [termsAgreed, setTermsAgreed] = React.useState(false);
   const [romErrorModal, setRomErrorModal] = React.useState<BaseRomErrorModalState | null>(null);
   const [isVerifyingRom, setIsVerifyingRom] = React.useState(false);
-  const requiresPatchChoice = patcherSelector.selectablePatches.length > 1;
+  // Named patches (one per base ROM, or variants of one version) have no sensible default, so the
+  // player picks one first. A custom patcher list of plain versions keeps its default.
+  const requiresPatchChoice = isPatchVariantChoice(patcherSelector.selectablePatches);
   const [selectedPatchId, setSelectedPatchId] = React.useState<number | null>(
     requiresPatchChoice ? null : patcherSelector.defaultPatchId,
   );
@@ -131,7 +133,7 @@ const HackActions: React.FC<HackActionsProps> = ({
     fetchSessionIdRef.current = id;
     return id;
   }
-  const selectedBaseRomName = React.useMemo(() => baseRomName(effectiveBaseRomId), [effectiveBaseRomId]);
+  const selectedBaseRomName = React.useMemo(() => (effectiveBaseRomId ? baseRomName(effectiveBaseRomId) : null), [effectiveBaseRomId]);
   const effectivePlatform = React.useMemo(
     () => platform ?? baseRoms.find(r => r.id === effectiveBaseRomId)?.platform,
     [platform, effectiveBaseRomId],
@@ -140,10 +142,19 @@ const HackActions: React.FC<HackActionsProps> = ({
     ? patchDisplayName(selectedPatch)
     : (requiresPatchChoice ? "Select patch" : version);
   const selectedFilename = selectedPatch?.filename ?? patchFilename;
+  // Labels name the patch, so the version still goes in the file name to tell releases apart.
+  const outputVersion = selectedPatch?.label?.trim()
+    ? `${selectedPatch.label.trim()} ${selectedPatch.version}`
+    : selectedVersion;
 
   function isRomReadyForPatch() {
     return !!file || hasCached(effectiveBaseRomId) || (isLinked(effectiveBaseRomId) && hasPermission(effectiveBaseRomId));
   }
+
+  React.useEffect(() => {
+    if (requiresPatchChoice) return;
+    setSelectedPatchId(patcherSelector.defaultPatchId);
+  }, [requiresPatchChoice, patcherSelector.defaultPatchId]);
 
   React.useEffect(() => {
     if (!romReady || !linkInteractionPendingRef.current) return;
@@ -473,7 +484,7 @@ const HackActions: React.FC<HackActionsProps> = ({
       // Create xdelta sink during the click gesture, before any other awaits that
       // would drop transient user activation (terms download, ROM permission, etc.).
       const outExt = platform ? platform.toLowerCase() : "bin";
-      const outputName = `${title} (${selectedVersion}).${outExt}`;
+      const outputName = `${title} (${outputVersion}).${outExt}`;
       const earlyFormat = patchFormat ?? patchFormatFromFilename(selectedFilename);
       if (earlyFormat === "xdelta" && status !== "patching") {
         try {
@@ -630,16 +641,18 @@ const HackActions: React.FC<HackActionsProps> = ({
 
   return (
     <>
-      <StickyActionBar
+      <PatchModule
         title={title}
         version={selectedVersion}
         selectablePatches={patcherSelector.selectablePatches}
         selectedPatchId={selectedPatch?.id ?? selectedPatchId}
+        patchChoice={requiresPatchChoice}
         onVersionChange={onVersionChange}
         onVersionPickerOpenChange={setVersionPickerOpen}
         onboardingHighlight={onboarding.cardOpen ? onboarding.currentStep : null}
         onboardingDimBar={onboarding.cardOpen && onboarding.locked && !onboarding.hideForPicker}
         onboardingGateLabel={onboarding.showGate ? onboarding.gateLabel : null}
+        onboardingGateHidden={onboarding.cardOpen}
         onOnboardingGateClick={onboarding.openFromGate}
         author={author}
         filename={selectedFilename}
@@ -667,6 +680,7 @@ const HackActions: React.FC<HackActionsProps> = ({
           onGotIt={onboarding.gotIt}
           onDismiss={onboarding.dismissCard}
           baseRomName={selectedBaseRomName}
+          patchChoice={requiresPatchChoice}
         />
       )}
       {romErrorModal && (

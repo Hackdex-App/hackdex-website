@@ -41,9 +41,9 @@ export async function middleware(request: NextRequest) {
 
   if (hackSession) {
     const slug = pathSegments(pathname)[1];
-    const redirectResponse = NextResponse.redirect(
-      new URL(`/hack/${slug}`, request.url),
-    );
+    const target = new URL(`/hack/${slug}`, request.url);
+    target.search = request.nextUrl.search;
+    const redirectResponse = NextResponse.redirect(target);
     sessionResponse.cookies.getAll().forEach((cookie) => {
       redirectResponse.cookies.set(cookie);
     });
@@ -52,9 +52,10 @@ export async function middleware(request: NextRequest) {
 
   if (hackDetail) {
     const slug = pathSegments(pathname)[1];
-    const rewriteResponse = NextResponse.rewrite(
-      new URL(`/hack/${slug}/session`, request.url),
-    );
+    // Query strings (?edit=1, ?preview=1) drive the in-place editor, so keep them.
+    const target = new URL(`/hack/${slug}/session`, request.url);
+    target.search = request.nextUrl.search;
+    const rewriteResponse = NextResponse.rewrite(target);
     sessionResponse.cookies.getAll().forEach((cookie) => {
       rewriteResponse.cookies.set(cookie);
     });

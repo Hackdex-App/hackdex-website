@@ -1,53 +1,61 @@
 "use client";
 
 import React from "react";
+import { toast } from "sonner";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
 import { baseRoms } from "@/data/baseRoms";
 import { platformAccept } from "@/utils/idb";
 import { sha1Hex } from "@/utils/hash";
 import BinFile from "rom-patcher-js/rom-patcher-js/modules/BinFile.js";
 import BPS from "rom-patcher-js/rom-patcher-js/modules/RomPatcher.format.bps.js";
-import { presignNewPatchVersion } from "@/app/hack/actions";
-import { confirmPatchUpload } from "@/app/submit/actions";
+import { presignNewPatchVersion, updateHack } from "@/app/hack/actions";
+import AiLabel from "@/components/Hack/AiLabel";
+import AiDisclosureModal from "@/components/Hack/AiDisclosureModal";
+import type { AiDisclosure } from "@/utils/aiDisclosure";
+import { confirmPatchUpload, confirmPatchUploads } from "@/app/submit/actions";
 import { FaInfoCircle } from "react-icons/fa";
-import { FiAlertTriangle } from "react-icons/fi";
+import { FiAlertTriangle, FiCheck } from "react-icons/fi";
 import { patchFormatFromFilename } from "@/utils/patching";
 import { encodeXdelta, trialDecodeXdelta, friendlyXdeltaError } from "@/utils/patching/xdelta";
-import { confirmPatchUploads } from "@/app/submit/actions";
-import PatchSlotCard, { createPatchSlotDraft, isPatchSlotReady, type PatchSlotDraft, type PatchSlotStatus } from "@/components/Hack/PatchSlotCard";
+import PatchSlotCard, { createPatchSlotDraft, emptyPatchSlotStatus, isPatchSlotReady, type PatchSlotDraft, type PatchSlotStatus } from "@/components/Hack/PatchSlotCard";
 import { normalizePatchLabel } from "@/utils/patches/patch-variant";
+import { MAX_MULTI_PATCHES } from "@/utils/hacks/multi-entry";
+import { shortBaseRomName } from "@/utils/hacks/base-roms";
 
 export interface HackPatchFormProps {
   slug: string;
   baseRomId: string;
+  /** Every base ROM of the hack; patches in a multi-source upload each pick one. */
   baseRomIds?: string[];
   existingVersions: string[];
+  /** `${version}::${label}` for every existing patch, so a multi-source upload can't reuse a name. */
   existingPatchKeys?: string[];
   isCustomPatcherActive: boolean;
   customVersionName?: string | null;
   currentVersion?: string;
+  /** The hack's AI label. New versions confirm or update it before upload; the first upload skips this (the draft checklist covers it). */
+  ai: AiDisclosure | null;
+  /** Archives skip the AI check: archivers may not know how the creator used AI. */
+  isArchive: boolean;
+  /** Upload one named patch per option (usually per base ROM) instead of a single file. */
   multiSource?: boolean;
-  initialPatches?: Array<{
-    label: string | null;
-    info: string | null;
-    base_rom: string | null;
-  }>;
-}
-
-function emptySlotStatus(): PatchSlotStatus {
-  return {
-    file: null,
-    genStatus: "idle",
-    genError: "",
-    checksumStatus: "idle",
-    checksumError: "",
-  };
+  /** Names, notes, and ROMs of the latest version's patches, to start the next version from. */
+  initialPatches?: Array<{ label: string | null; info: string | null; base_rom: string | null }>;
 }
 
 export default function HackPatchForm(props: HackPatchFormProps) {
-  const { slug, baseRomId, baseRomIds, existingVersions, existingPatchKeys = [], isCustomPatcherActive, currentVersion, multiSource = false, initialPatches = [] } = props;
-  const allowedBaseRomIds = baseRomIds?.length ? baseRomIds : (baseRomId ? [baseRomId] : []);
+  const { slug, baseRomId, existingVersions, isCustomPatcherActive, currentVersion, existingPatchKeys = [], multiSource = false, initialPatches = [] } = props;
+  const allowedBaseRomIds = props.baseRomIds?.length ? props.baseRomIds : baseRomId ? [baseRomId] : [];
   const [version, setVersion] = React.useState("");
+  const [globalChangelog, setGlobalChangelog] = React.useState("");
+  // One card per patch; statuses hold the files, which can't live in the draft.
+  const [patchSlots, setPatchSlots] = React.useState<PatchSlotDraft[]>(() =>
+    initialPatches.length > 0
+      ? initialPatches.map((p) => createPatchSlotDraft({ label: p.label || "", info: p.info || "", baseRomId: p.base_rom || "" }))
+      : allowedBaseRomIds.map((id) => createPatchSlotDraft({ baseRomId: id, label: shortBaseRomName(id) })),
+  );
+  const [patchSlotStatuses, setPatchSlotStatuses] = React.useState<PatchSlotStatus[]>(() => patchSlots.map(() => emptyPatchSlotStatus()));
+  const [uploadStep, setUploadStep] = React.useState("");
   const [patchMode, setPatchMode] = React.useState<"bps" | "rom">("rom");
   const [patchFile, setPatchFile] = React.useState<File | null>(null);
   const [genStatus, setGenStatus] = React.useState<"idle" | "generating" | "ready" | "error">("idle");
@@ -57,25 +65,11 @@ export default function HackPatchForm(props: HackPatchFormProps) {
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string>("");
   const [publishAutomatically, setPublishAutomatically] = React.useState(false);
-  const [globalChangelog, setGlobalChangelog] = React.useState("");
-  const [patchSlots, setPatchSlots] = React.useState<PatchSlotDraft[]>(() => {
-    if (multiSource && initialPatches.length > 0) {
-      return initialPatches.map((patch) => createPatchSlotDraft({
-        label: patch.label || "",
-        info: patch.info || "",
-        baseRomId: patch.base_rom || "",
-      }));
-    }
-    return multiSource
-      ? allowedBaseRomIds.map((id) => createPatchSlotDraft({ baseRomId: id }))
-      : [createPatchSlotDraft({ baseRomId })];
-  });
-  const [patchSlotStatuses, setPatchSlotStatuses] = React.useState<PatchSlotStatus[]>(() => (
-    (multiSource && initialPatches.length > 0
-      ? initialPatches
-      : (multiSource ? allowedBaseRomIds : [baseRomId])
-    ).map(() => emptySlotStatus())
-  ));
+  const [disclosure, setDisclosure] = React.useState(props.ai);
+  // Either way the upload sends the reviewed label's stamp, and the server re-stamps it once the upload lands.
+  const [aiCheck, setAiCheck] = React.useState<"pending" | "confirmed" | "updated">("pending");
+  const [aiFormOpen, setAiFormOpen] = React.useState(false);
+  const needsAiCheck = !props.isArchive && existingVersions.length > 0;
 
   const versionInputRef = React.useRef<HTMLInputElement | null>(null);
   const patchInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -91,25 +85,25 @@ export default function HackPatchForm(props: HackPatchFormProps) {
   const baseRomMissing = !!baseRomId && !isLinked(baseRomId) && !hasCached(baseRomId);
 
   const isVersionTaken = !multiSource && !!version.trim() && existingVersions.includes(version.trim());
-  const hasDuplicateLabels = multiSource && new Set(patchSlots.map((slot) => slot.label.trim().toLowerCase()).filter(Boolean)).size !== patchSlots.filter((slot) => slot.label.trim()).length;
+  const slotLabels = patchSlots.map((slot) => normalizePatchLabel(slot.label).toLowerCase());
+  const hasDuplicateLabels = multiSource && new Set(slotLabels.filter(Boolean)).size !== slotLabels.filter(Boolean).length;
   const hasExistingVariant = multiSource && patchSlots.some((slot) => existingPatchKeys.includes(`${version.trim()}::${normalizePatchLabel(slot.label)}`));
-  const multiReady = !multiSource || (
-    patchSlots.length >= 2
-    && patchSlots.every((slot, index) => isPatchSlotReady(slot, patchSlotStatuses[index] || emptySlotStatus()))
+  const multiReady = patchSlots.length >= 2
+    && patchSlots.every((slot, index) => isPatchSlotReady(slot, patchSlotStatuses[index] ?? emptyPatchSlotStatus()))
     && !hasDuplicateLabels
-    && !hasExistingVariant
-  );
+    && !hasExistingVariant;
   const canSubmit = React.useMemo(() => {
     if (multiSource) {
-      return !!version.trim() && multiReady && !submitting;
+      return !!version.trim() && multiReady && !submitting && (!needsAiCheck || aiCheck !== "pending");
     }
     return !!version.trim()
       && ((!!patchFile && patchMode === "bps") || (patchMode === "rom" && genStatus === "ready"))
       && !isVersionTaken
       && !submitting
       && checksumStatus !== "invalid"
-      && checksumStatus !== "validating";
-  }, [version, patchFile, patchMode, genStatus, isVersionTaken, submitting, checksumStatus, multiSource, multiReady]);
+      && checksumStatus !== "validating"
+      && (!needsAiCheck || aiCheck !== "pending");
+  }, [version, patchFile, patchMode, genStatus, isVersionTaken, submitting, checksumStatus, needsAiCheck, aiCheck, multiSource, multiReady]);
 
   React.useEffect(() => {
     versionInputRef.current?.focus();
@@ -288,70 +282,68 @@ export default function HackPatchForm(props: HackPatchFormProps) {
     setSubmitting(true);
     setError("");
     try {
-      const safeVersion = version.trim().replace(/[^a-zA-Z0-9._-]+/g, "-");
       if (multiSource) {
+        // Every file goes up first; the rows are only written once all of them landed.
         const uploaded: { objectKey: string; label: string; info: string; base_rom: string }[] = [];
         for (let i = 0; i < patchSlots.length; i++) {
           const slot = patchSlots[i];
-          const status = patchSlotStatuses[i] || emptySlotStatus();
-          if (!status.file) throw new Error(`Patch ${i + 1} is missing a file.`);
-          const patchExt = patchFormatFromFilename(status.file.name) === "xdelta" ? "xdelta" : "bps";
-          const safeLabel = slot.label.trim().replace(/[^a-zA-Z0-9._-]+/g, "-") || `patch-${i + 1}`;
-          const objectKey = `${slug}-${safeVersion}-${safeLabel}-${i}.${patchExt}`;
-          const presigned = await presignNewPatchVersion({
-            slug,
-            version: version.trim(),
-            objectKey,
-            allowExistingVersion: true,
-          });
+          const file = patchSlotStatuses[i]?.file;
+          if (!file) throw new Error(`Patch ${i + 1} is missing a file.`);
+          setUploadStep(`Uploading ${slot.label.trim() || `patch ${i + 1}`} (${i + 1} of ${patchSlots.length})…`);
+          const presigned = await presignNewPatchVersion({ slug, version: version.trim(), format: patchFormatFromFilename(file.name), allowExistingVersion: true });
           if (!presigned.ok) throw new Error(presigned.error || 'Failed to presign');
-          await fetch(presigned.presignedUrl!, { method: 'PUT', body: status.file, headers: { 'Content-Type': 'application/octet-stream' } });
-          uploaded.push({
-            objectKey: presigned.objectKey!,
-            label: slot.label.trim(),
-            info: slot.info.trim(),
-            base_rom: slot.baseRomId,
-          });
+          const put = await fetch(presigned.presignedUrl!, { method: 'PUT', body: file, headers: { 'Content-Type': 'application/octet-stream' } });
+          if (!put.ok) throw new Error('Upload failed. Please try again.');
+          uploaded.push({ objectKey: presigned.objectKey!, label: slot.label.trim(), info: slot.info.trim(), base_rom: slot.baseRomId });
         }
+        setUploadStep("Saving the version…");
         const finalized = await confirmPatchUploads({
           slug,
           version: version.trim(),
           publishAutomatically,
           changelog: globalChangelog,
           patches: uploaded,
+          aiReviewedAt: needsAiCheck ? disclosure?.disclosedAt ?? null : null,
         });
         if (!finalized.ok) throw new Error(finalized.error || 'Failed to finalize');
         window.location.href = finalized.redirectTo!;
         return;
       }
-      const patchExt = patchFormatFromFilename(patchFile?.name) === "xdelta" ? "xdelta" : "bps";
-      const objectKey = `${slug}-${safeVersion}.${patchExt}`;
-      const presigned = await presignNewPatchVersion({ slug, version: version.trim(), objectKey });
+      const presigned = await presignNewPatchVersion({ slug, version: version.trim(), format: patchFormatFromFilename(patchFile?.name) });
       if (!presigned.ok) throw new Error(presigned.error || 'Failed to presign');
-      await fetch(presigned.presignedUrl!, { method: 'PUT', body: patchFile!, headers: { 'Content-Type': 'application/octet-stream' } });
-      const finalized = await confirmPatchUpload({ slug, objectKey: presigned.objectKey!, version: version.trim(), publishAutomatically, base_rom: baseRomId });
+      const put = await fetch(presigned.presignedUrl!, { method: 'PUT', body: patchFile!, headers: { 'Content-Type': 'application/octet-stream' } });
+      if (!put.ok) throw new Error('Upload failed. Please try again.');
+      const finalized = await confirmPatchUpload({
+        slug,
+        objectKey: presigned.objectKey!,
+        version: version.trim(),
+        publishAutomatically,
+        // The label the uploader just reviewed; the server re-stamps it with the upload.
+        aiReviewedAt: needsAiCheck ? disclosure?.disclosedAt ?? null : null,
+      });
       if (!finalized.ok) throw new Error(finalized.error || 'Failed to finalize');
       window.location.href = finalized.redirectTo!;
     } catch (e: any) {
       setError(e.message || 'Upload failed');
     } finally {
       setSubmitting(false);
+      setUploadStep("");
     }
   };
 
   return (
-    <div className="grid gap-5">
+    <div className="grid min-w-0 gap-5">
       {currentVersion !== undefined && (
-        <div className="flex items-center rounded-md border border-[var(--border)]/70 bg-[var(--surface-2)]/20 px-3 py-2">
+        <div className="flex items-center rounded-control border border-line/70 bg-surface-2/20 px-3 py-2">
           <div className="min-w-[24px]">
-            <FaInfoCircle size={12} className="mr-1 text-foreground/80" />
+            <FaInfoCircle size={12} className="mr-1 text-text-2" />
           </div>
           <div className="flex flex-col">
-            <p data-has-custom-patcher={isCustomPatcherActive} className="text-xs text-foreground/60 data-[has-custom-patcher=true]:text-foreground/90 data-[has-custom-patcher=true]:text-sm">
-              {isCustomPatcherActive ? 'Public version name:' : 'Current version:'} <span className="text-foreground/90 font-bold">{currentVersion || 'Not set'}</span>
+            <p data-has-custom-patcher={isCustomPatcherActive} className="text-xs text-text-3 data-[has-custom-patcher=true]:text-text data-[has-custom-patcher=true]:text-sm">
+              {isCustomPatcherActive ? 'Public version name:' : 'Current version:'} <span className="text-text font-bold">{currentVersion || 'Not set'}</span>
             </p>
             {isCustomPatcherActive && (
-              <p className="text-xs text-foreground/60 mt-1">
+              <p className="text-xs text-text-3 mt-1">
                 <span className="font-bold">Custom</span> selected for the <span className="font-bold">Patcher Version Settings</span>.
               </p>
             )}
@@ -359,44 +351,43 @@ export default function HackPatchForm(props: HackPatchFormProps) {
         </div>
       )}
       <div className="grid gap-2">
-        <label className="text-sm text-foreground/80">New Version <span className="text-red-500">*</span></label>
+        <label className="text-sm text-text-2">New Version <span className="text-error">*</span></label>
         <input
           ref={versionInputRef}
           value={version}
           onChange={(e) => setVersion(e.target.value)}
           placeholder="e.g. v1.2.0"
-          className={`h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ${isVersionTaken ? 'ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20' : 'ring-[var(--border)]'} focus:outline-none focus:ring-2 focus:ring-[var(--ring)]`}
+          className={`h-11 rounded-control bg-surface-2 px-3 text-sm ring-1 ring-inset ${isVersionTaken ? 'ring-error/40 bg-error-soft dark:ring-error/40 dark:bg-error-soft' : 'ring-line'} focus:outline-none focus:ring-2 focus:ring-accent/40`}
         />
-        <div className="text-xs text-foreground/60">
+        <div className={`text-xs ${hasExistingVariant ? "text-error" : "text-text-3"}`}>
           {isVersionTaken ? 'Already used by this hack.' : hasExistingVariant ? 'One of these patch names already exists for this version.' : 'Use semantic versions like v1.2.0.'}
         </div>
         {existingVersions.length > 0 && (
-          <div className="text-[11px] text-foreground/60">Existing versions: {existingVersions.join(', ')}</div>
+          <div className="text-[11px] text-text-3">Existing versions: {[...new Set(existingVersions)].join(', ')}</div>
         )}
       </div>
 
       {multiSource && (
         <div className="grid gap-2">
-          <label className="text-sm text-foreground/80">Global changelog</label>
+          <label htmlFor="patch-changelog" className="text-sm text-text-2">Changelog</label>
           <textarea
+            id="patch-changelog"
             value={globalChangelog}
             onChange={(e) => setGlobalChangelog(e.target.value)}
-            rows={6}
-            className="w-full rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-            placeholder="Enter changelog in Markdown format..."
+            rows={5}
+            placeholder="What changed in this version, in Markdown."
+            className="w-full rounded-control bg-surface-2 px-3 py-2 text-sm ring-1 ring-inset ring-line focus:outline-none focus:ring-2 focus:ring-accent/40"
           />
-          <p className="text-xs text-foreground/60">
-            This will be added to the start of every patch changelog for this version.
-          </p>
+          <p className="text-xs text-text-3">Shared by every patch in this version. You can edit each one later in Manage Versions.</p>
         </div>
       )}
 
       {multiSource ? (
-        <div className="grid gap-4">
+        <div className="grid gap-3">
           <div>
-            <label className="text-sm text-foreground/80">Provide patches <span className="text-red-500">*</span></label>
-            <p className="mt-1 text-xs text-foreground/60">
-              Upload every patch option for this version. Players will choose which one to apply.
+            <div className="text-sm text-text-2">Patches <span className="text-error">*</span></div>
+            <p className="mt-0.5 text-xs text-text-3">
+              One for each option players can pick, usually one per base ROM. Name each one and say who it&rsquo;s for. {patchSlots.length}/{MAX_MULTI_PATCHES}
             </p>
           </div>
           {patchSlots.map((slot, index) => (
@@ -404,40 +395,35 @@ export default function HackPatchForm(props: HackPatchFormProps) {
               key={slot.id}
               index={index}
               draft={slot}
-              status={patchSlotStatuses[index] || emptySlotStatus()}
+              status={patchSlotStatuses[index] ?? emptyPatchSlotStatus()}
               allowedBaseRomIds={allowedBaseRomIds}
               canRemove={patchSlots.length > 2}
-              fileNameHint={`${slug}-${version || "patch"}-${slot.label || index + 1}`}
-              onDraftChange={(next) => {
-                setPatchSlots((prev) => prev.map((item, itemIndex) => itemIndex === index ? next : item));
-              }}
-              onStatusChange={(next) => {
-                setPatchSlotStatuses((prev) => {
-                  const copy = [...prev];
-                  copy[index] = next;
-                  return copy;
-                });
-              }}
+              fileNameHint={`${slug}-${(version || "patch").replace(/[^a-zA-Z0-9._-]+/g, "-")}-${(slot.label || String(index + 1)).replace(/[^a-zA-Z0-9._-]+/g, "-")}`}
+              duplicateLabel={!!slot.label.trim() && slotLabels.filter((l) => l === normalizePatchLabel(slot.label).toLowerCase()).length > 1}
+              onDraftChange={(next) => setPatchSlots((prev) => prev.map((item, i) => (i === index ? next : item)))}
+              onStatusChange={(next) => setPatchSlotStatuses((prev) => prev.map((item, i) => (i === index ? next : item)))}
               onRemove={() => {
-                setPatchSlots((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
-                setPatchSlotStatuses((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
+                setPatchSlots((prev) => prev.filter((_, i) => i !== index));
+                setPatchSlotStatuses((prev) => prev.filter((_, i) => i !== index));
               }}
             />
           ))}
-          <button
-            type="button"
-            onClick={() => {
-              setPatchSlots((prev) => [...prev, createPatchSlotDraft()]);
-              setPatchSlotStatuses((prev) => [...prev, emptySlotStatus()]);
-            }}
-            className="inline-flex h-11 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-4 text-sm font-semibold text-foreground transition-colors hover:bg-black/5 dark:hover:bg-white/10"
-          >
-            Add another patch
-          </button>
+          {patchSlots.length < MAX_MULTI_PATCHES && (
+            <button
+              type="button"
+              onClick={() => {
+                setPatchSlots((prev) => [...prev, createPatchSlotDraft()]);
+                setPatchSlotStatuses((prev) => [...prev, emptyPatchSlotStatus()]);
+              }}
+              className="inline-flex h-10 w-fit items-center rounded-control border border-line-strong bg-surface px-4 text-sm font-medium transition-colors hover:border-text-3"
+            >
+              Add another patch
+            </button>
+          )}
         </div>
       ) : (
       <div className="grid gap-3">
-        <label className="text-sm text-foreground/80">Provide patch <span className="text-red-500">*</span></label>
+        <label className="text-sm text-text-2">Provide patch <span className="text-error">*</span></label>
         <div className="flex flex-col gap-3">
           {patchMode === "bps" && (
             <div className="grid gap-2">
@@ -446,20 +432,20 @@ export default function HackPatchForm(props: HackPatchFormProps) {
                 onChange={onUploadPatch}
                 type="file"
                 accept=".bps,.xdelta"
-                className="cursor-pointer rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] file:bg-black/10 dark:file:bg-[var(--surface-2)] file:text-foreground/80 file:text-sm file:font-medium file:not-italic file:rounded-md file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer"
+                className="w-full min-w-0 cursor-pointer rounded-control bg-surface-2 px-3 py-2 text-sm italic text-text-3 ring-1 ring-inset ring-line file:bg-black/10 dark:file:bg-surface-2 file:text-text-2 file:text-sm file:font-medium file:not-italic file:rounded-control file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer"
               />
-              <p className="flex items-center gap-1.5 text-xs text-foreground/60">
-                <FiAlertTriangle className="h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" />
+              <p className="flex items-center gap-1.5 text-xs text-text-3">
+                <FiAlertTriangle className="h-3 w-3 shrink-0 text-warn" />
                 <span>Patch file upload is a fallback. Hackdex cannot always guarantee that an uploaded patch is compatible with the chosen base ROM. Auto-generating from a modified ROM is recommended.</span>
               </p>
-              {checksumStatus === "validating" && <div className="text-xs text-foreground/70">Validating checksum…</div>}
-              {checksumStatus === "valid" && <div className="text-xs text-emerald-400/90">Checksum valid.</div>}
-              {checksumStatus === "invalid" && !!checksumError && <div className="text-xs text-red-400">{checksumError}</div>}
-              {checksumStatus === "unknown" && !!checksumError && <div className="text-xs text-amber-400/90">{checksumError}</div>}
+              {checksumStatus === "validating" && <div className="text-xs text-text-2">Validating checksum…</div>}
+              {checksumStatus === "valid" && <div className="text-xs text-ready">Checksum valid.</div>}
+              {checksumStatus === "invalid" && !!checksumError && <div className="text-xs text-error">{checksumError}</div>}
+              {checksumStatus === "unknown" && !!checksumError && <div className="text-xs text-warn">{checksumError}</div>}
               <button
                 type="button"
                 onClick={() => setPatchMode("rom")}
-                className="w-fit cursor-pointer text-xs text-foreground/60 underline underline-offset-2 transition-colors hover:text-foreground/80"
+                className="w-fit cursor-pointer text-xs text-text-3 underline underline-offset-2 transition-colors hover:text-text-2"
               >
                 Generate from a modified ROM instead (Recommended)
               </button>
@@ -468,45 +454,45 @@ export default function HackPatchForm(props: HackPatchFormProps) {
 
           {patchMode === "rom" && (
             <div className="grid gap-3">
-              <div className="rounded-md border border-[var(--border)] p-3 bg-[var(--surface-2)]/50">
-                <div className="text-xs text-foreground/75">Required base ROM</div>
+              <div className="rounded-control border border-line p-3 bg-surface-2/50">
+                <div className="text-xs text-text-2">Required base ROM</div>
                 <div className="mt-1 text-sm font-medium">{baseRomEntry ? `${baseRomEntry.name} (${baseRomEntry.platform})` : "Select base ROM in main Edit page"}</div>
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                  <span className={`rounded-full px-2 py-0.5 ring-1 ${baseRomReady ? "bg-emerald-600/60 text-white ring-emerald-700/80 dark:bg-emerald-500/25 dark:text-emerald-100 dark:ring-emerald-400/90" : baseRomNeedsPermission ? "bg-amber-600/60 text-white ring-amber-700/80 dark:bg-amber-500/50 dark:text-amber-100 dark:ring-amber-400/90" : "bg-red-600/60 text-white ring-red-700/80 dark:bg-red-500/50 dark:text-red-100 dark:ring-red-400/90"}`}>
+                  <span className={`rounded-full px-2 py-0.5 ring-1 ${baseRomReady ? "bg-ready-soft text-ready ring-ready/40" : baseRomNeedsPermission ? "bg-warn-soft text-warn ring-warn/40" : "bg-error-soft text-error ring-error/40"}`}>
                     {baseRomReady ? "Ready" : baseRomNeedsPermission ? "Permission needed" : "Base ROM needed"}
                   </span>
                   {baseRomNeedsPermission && (
-                    <button type="button" onClick={onGrantPermission} disabled={!supported} className="rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2 py-1 disabled:opacity-60 disabled:cursor-not-allowed">Grant permission</button>
+                    <button type="button" onClick={onGrantPermission} disabled={!supported} className="rounded-control border border-line bg-surface-2 px-2 py-1 disabled:opacity-60 disabled:cursor-not-allowed">Grant permission</button>
                   )}
                   {baseRomMissing && (
-                    <label className="inline-flex items-center gap-2 text-xs text-foreground/80">
-                      <input type="file" onChange={onUploadBaseRom} className="cursor-pointer rounded-md bg-[var(--surface-2)] px-2 py-1 text-xs italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] file:bg-black/10 dark:file:bg-[var(--surface-2)] file:text-foreground/80 file:text-xs file:font-medium file:not-italic file:rounded-md file:border-0 file:px-2 file:py-1 file:mr-2 file:cursor-pointer" />
+                    <label className="flex w-full min-w-0 flex-col items-start gap-1.5 text-xs text-text-2">
                       <span>Upload base ROM</span>
+                      <input type="file" onChange={onUploadBaseRom} className="w-full min-w-0 cursor-pointer rounded-control bg-surface-2 px-2 py-1 text-xs italic text-text-3 ring-1 ring-inset ring-line file:bg-black/10 dark:file:bg-surface-2 file:text-text-2 file:text-xs file:font-medium file:not-italic file:rounded-control file:border-0 file:px-2 file:py-1 file:mr-2 file:cursor-pointer" />
                     </label>
                   )}
                 </div>
-                {!!genError && <div className="mt-2 text-xs text-red-400">{genError}</div>}
+                {!!genError && <div className="mt-2 text-xs text-error">{genError}</div>}
               </div>
 
               <div className="grid gap-2">
-                <label className="text-sm text-foreground/80">Modified ROM <span className="text-foreground/60">(Recommended)</span></label>
+                <label className="text-sm text-text-2">Modified ROM <span className="text-text-3">(Recommended)</span></label>
                 <input
                   ref={modifiedRomInputRef}
                   type="file"
                   accept={baseRomPlatform ? platformAccept(baseRomPlatform) : "*/*"}
                   disabled={!baseRomEntry || !baseRomReady || !baseRomPlatform}
                   onChange={onUploadModifiedRom}
-                  className="cursor-pointer rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] file:bg-black/10 dark:file:bg-[var(--surface-2)] file:text-foreground/80 file:text-sm file:font-medium file:not-italic file:rounded-md file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full min-w-0 cursor-pointer rounded-control bg-surface-2 px-3 py-2 text-sm italic text-text-3 ring-1 ring-inset ring-line file:bg-black/10 dark:file:bg-surface-2 file:text-text-2 file:text-sm file:font-medium file:not-italic file:rounded-control file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 />
-                <p className="text-xs text-foreground/60">We'll generate a .xdelta patch on-device. No ROMs are uploaded.</p>
-                {genStatus === "generating" && <div className="text-xs text-foreground/70">Generating patch…</div>}
-                {genStatus === "ready" && patchFile && <div className="text-xs text-emerald-400/90">Patch ready: {patchFile.name}</div>}
-                {genStatus === "error" && !!genError && <div className="text-xs text-red-400">{genError}</div>}
+                <p className="text-xs text-text-3">We'll generate a .xdelta patch on-device. No ROMs are uploaded.</p>
+                {genStatus === "generating" && <div className="text-xs text-text-2">Generating patch…</div>}
+                {genStatus === "ready" && patchFile && <div className="text-xs text-ready">Patch ready: {patchFile.name}</div>}
+                {genStatus === "error" && !!genError && <div className="text-xs text-error">{genError}</div>}
               </div>
               <button
                 type="button"
                 onClick={() => setPatchMode("bps")}
-                className="w-fit cursor-pointer text-xs text-foreground/60 underline underline-offset-2 transition-colors hover:text-foreground/80"
+                className="w-fit cursor-pointer text-xs text-text-3 underline underline-offset-2 transition-colors hover:text-text-2"
               >
                 Already have a .bps or .xdelta file?
               </button>
@@ -516,9 +502,63 @@ export default function HackPatchForm(props: HackPatchFormProps) {
       </div>
       )}
 
-      {!!error && <div className="text-sm text-red-400">{error}</div>}
+      {needsAiCheck && (
+        <div className="grid gap-2.5 border-t border-line pt-4">
+          <div>
+            <div className="text-sm font-medium text-text">Is the AI label still accurate?</div>
+            <p className="mt-0.5 text-xs text-text-3">Count anything AI-generated you added since the last version.</p>
+          </div>
+          {disclosure ? (
+            <AiLabel disclosure={disclosure} />
+          ) : (
+            <p className="rounded-card border border-dashed border-line-strong px-3.5 py-3 text-[13px] text-text-3">This hack has no AI label yet. Every hack needs one, even with no AI use.</p>
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {disclosure && aiCheck !== "updated" && (
+              <button
+                type="button"
+                aria-pressed={aiCheck === "confirmed"}
+                onClick={() => setAiCheck(aiCheck === "confirmed" ? "pending" : "confirmed")}
+                className="inline-flex h-9 items-center gap-1.5 rounded-control border border-line-strong bg-surface px-3 text-sm font-medium transition-colors hover:border-text-3 aria-pressed:border-ready aria-pressed:bg-ready-soft aria-pressed:text-ready"
+              >
+                {aiCheck === "confirmed" && <FiCheck className="h-4 w-4" />} Still accurate
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setAiFormOpen(true)}
+              className="inline-flex h-9 items-center rounded-control border border-line-strong bg-surface px-3 text-sm font-medium transition-colors hover:border-text-3"
+            >
+              {disclosure ? "Update" : "Add AI label"}
+            </button>
+            {aiCheck === "updated" && (
+              <span className="inline-flex items-center gap-1 text-xs text-ready">
+                <FiCheck className="h-3.5 w-3.5" /> Saved
+              </span>
+            )}
+          </div>
+          <AiDisclosureModal
+            visible={aiFormOpen}
+            initial={disclosure}
+            onClose={() => setAiFormOpen(false)}
+            onSave={async (levels, note) => {
+              const res = await updateHack({ slug, ai: { levels, note } });
+              if (!res.ok) {
+                // A toast, since the inline error sits behind the open modal.
+                toast.error(res.error);
+                return false;
+              }
+              setDisclosure({ levels, note, disclosedAt: res.aiDisclosedAt ?? new Date().toISOString() });
+              setAiCheck("updated");
+              return true;
+            }}
+          />
+        </div>
+      )}
 
-      <div className="flex items-start gap-3 border-t border-[var(--border)] pt-4 mt-2">
+      {!!error && <div className="text-sm text-error">{error}</div>}
+
+      <div className="flex items-start gap-3 border-t border-line pt-4 mt-2">
         <label className="flex items-start gap-2 cursor-pointer has-disabled:cursor-not-allowed">
           <input
             type="checkbox"
@@ -528,17 +568,17 @@ export default function HackPatchForm(props: HackPatchFormProps) {
               if (isCustomPatcherActive) return;
               setPublishAutomatically(e.target.checked);
             }}
-            className="mt-0.5 rounded border-[var(--border)] text-emerald-600 focus:ring-emerald-600"
+            className="mt-0.5 rounded border-line text-ready focus:ring-ready/40"
           />
           <div className="text-sm">
-            <div className="font-medium text-foreground/90">Publish Automatically</div>
+            <div className="font-medium text-text">Publish Automatically</div>
             {isCustomPatcherActive ? (
-              <div className="italic text-foreground/60 mt-0.5">
+              <div className="italic text-text-3 mt-0.5">
                 <p>Because you have "Custom" selected for the Patcher Version Settings, this version <span className="font-bold">cannot</span> be published automatically.</p>
                 <p className="mt-1">To make this patch available for download, you will need to manually select it after pressing the <span className="font-bold">"Edit patcher versions"</span> button.</p>
               </div>
             ): (
-              <div className="text-foreground/60 mt-0.5">
+              <div className="text-text-3 mt-0.5">
                 If checked, this version will be published and set as the current patch immediately after upload.
               </div>
             )}
@@ -547,11 +587,12 @@ export default function HackPatchForm(props: HackPatchFormProps) {
       </div>
 
       <div className="flex items-center justify-end gap-3">
+        {submitting && uploadStep && <span className="text-xs text-text-3" aria-live="polite">{uploadStep}</span>}
         <button
           type="button"
           onClick={onSubmit}
           disabled={!canSubmit}
-          className="shine-wrap btn-premium h-11 min-w-[7.5rem] text-sm font-semibold dark:disabled:opacity-70 disabled:cursor-not-allowed disabled:[box-shadow:0_0_0_1px_var(--border)]"
+          className="inline-flex items-center justify-center rounded-control bg-accent-deep px-5 text-white transition-colors hover:enabled:bg-accent-hover disabled:opacity-60 h-11 min-w-[7.5rem] text-sm font-semibold disabled:cursor-not-allowed"
         >
           <span>{submitting ? 'Uploading…' : 'Upload version'}</span>
         </button>

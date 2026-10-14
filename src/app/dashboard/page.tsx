@@ -18,8 +18,9 @@ export default async function DashboardPage() {
   if (isAdmin) {
     const { data: pendingHacksData } = await supa
       .from("hacks")
-      .select("slug,title,approved,updated_at,downloads,current_patch,version,created_at,created_by,assigned_admin")
+      .select("slug,title,approved,submitted_at,updated_at,downloads,current_patch,version,created_at,created_by,assigned_admin")
       .eq("approved", false)
+      .not("submitted_at", "is", null)
       .order("created_at", { ascending: false });
 
     if (pendingHacksData && pendingHacksData.length > 0) {
@@ -86,7 +87,7 @@ export default async function DashboardPage() {
 
   const { data: hacks } = await supa
     .from("hacks")
-    .select("slug,title,approved,updated_at,downloads,current_patch(id,version),created_at,original_author,is_archive")
+    .select("slug,title,approved,submitted_at,updated_at,downloads,current_patch(id,version),created_at,original_author,is_archive,ai_disclosed_at")
     .is("is_archive", false)
     .eq("created_by", user.id)
     .order("updated_at", { ascending: false });
@@ -95,12 +96,15 @@ export default async function DashboardPage() {
     ...h,
     version: h.current_patch?.version || "Pre-release",
     current_patch: h.current_patch?.id || null,
+    // Drafts get it from their checklist; this catches hacks from before the label existed.
+    // Archives can go without one: archivers may not know how the creator used AI.
+    needsAiLabel: !h.is_archive && h.submitted_at !== null && h.ai_disclosed_at === null,
   }));
 
   const seriesAll = await getDownloadsSeriesAll({ days: 30 });
 
   return (
-    <div className="mx-auto my-auto max-w-screen-2xl px-6 py-8">
+    <div className="mx-auto my-auto w-full max-w-[1164px] px-6 pb-6 pt-4 md:pt-6">
       <DashboardClient
         hacks={hacksWithVersions ?? []}
         initialSeriesAll={seriesAll}
@@ -117,12 +121,12 @@ export default async function DashboardPage() {
             <h2 className="text-xl font-semibold">Archive Management</h2>
             <Link
               href="/dashboard/archives"
-              className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm font-medium hover:bg-black/5 dark:hover:bg-white/10"
+              className="inline-flex h-9 items-center gap-1 rounded-control border border-line-strong bg-surface px-3 text-sm font-medium transition-colors hover:border-text-3"
             >
               View all archives
             </Link>
           </div>
-          <p className="text-sm text-foreground/60">
+          <p className="text-sm text-text-3">
             Archive hacks are informational entries preserved for historical reference. They do not include patch files.
           </p>
         </div>

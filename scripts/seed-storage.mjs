@@ -48,6 +48,7 @@ const COMPLETE_HACK_SLUGS = [
   "seed-archived-version",
   "seed-third-party",
   "seed-xdelta-demo",
+  "seed-multi-source",
 ];
 
 const COVER_PALETTES = [

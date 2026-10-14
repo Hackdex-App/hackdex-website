@@ -40,6 +40,10 @@ export function createPatchSlotDraft(partial?: Partial<PatchSlotDraft>): PatchSl
   };
 }
 
+export function emptyPatchSlotStatus(): PatchSlotStatus {
+  return { file: null, genStatus: "idle", genError: "", checksumStatus: "idle", checksumError: "" };
+}
+
 export function isPatchSlotReady(draft: PatchSlotDraft, status: PatchSlotStatus): boolean {
   return !!draft.label.trim()
     && !!draft.baseRomId
@@ -49,6 +53,11 @@ export function isPatchSlotReady(draft: PatchSlotDraft, status: PatchSlotStatus)
     && (draft.patchMode === "bps" || status.genStatus === "ready" || status.checksumStatus === "valid" || status.checksumStatus === "unknown");
 }
 
+const INPUT = "h-10 w-full rounded-control bg-surface-2 px-3 text-sm ring-1 ring-inset ring-line focus:outline-none focus:ring-2 focus:ring-accent/40";
+const FILE_INPUT = "w-full min-w-0 cursor-pointer rounded-control bg-surface-2 px-3 py-2 text-sm italic text-text-3 ring-1 ring-inset ring-line file:bg-black/10 dark:file:bg-surface-2 file:text-text-2 file:text-sm file:font-medium file:not-italic file:rounded-control file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed";
+const LINK_BUTTON = "w-fit cursor-pointer text-xs text-text-3 underline underline-offset-2 transition-colors hover:text-text-2";
+
+/** One patch of a multi-source upload: its name, player note, base ROM, and file (generated from a modified ROM, or uploaded). */
 export default function PatchSlotCard({
   index,
   draft,
@@ -56,7 +65,7 @@ export default function PatchSlotCard({
   allowedBaseRomIds,
   canRemove,
   fileNameHint,
-  dummy = false,
+  duplicateLabel = false,
   onDraftChange,
   onStatusChange,
   onRemove,
@@ -67,7 +76,8 @@ export default function PatchSlotCard({
   allowedBaseRomIds: string[];
   canRemove: boolean;
   fileNameHint: string;
-  dummy?: boolean;
+  /** Another patch in this upload already uses this name. */
+  duplicateLabel?: boolean;
   onDraftChange: (next: PatchSlotDraft) => void;
   onStatusChange: (next: PatchSlotStatus) => void;
   onRemove: () => void;
@@ -75,6 +85,7 @@ export default function PatchSlotCard({
   const patchInputRef = React.useRef<HTMLInputElement | null>(null);
   const modifiedRomInputRef = React.useRef<HTMLInputElement | null>(null);
   const { isLinked, hasPermission, hasCached, importUploadedBlob, ensurePermission, getFileBlob, supported } = useBaseRoms();
+  const idPrefix = React.useId();
 
   const baseRomEntry = React.useMemo(() => baseRoms.find((rom) => rom.id === draft.baseRomId) || null, [draft.baseRomId]);
   const baseRomPlatform = baseRomEntry?.platform;
@@ -85,7 +96,7 @@ export default function PatchSlotCard({
 
   const allowedOptions = allowedBaseRomIds.map((id) => {
     const rom = baseRoms.find((item) => item.id === id);
-    return { value: id, label: rom ? `${rom.name} (${rom.platform})` : id };
+    return { value: id, label: rom ? rom.name : id };
   });
 
   React.useEffect(() => {
@@ -97,13 +108,7 @@ export default function PatchSlotCard({
   }, [allowedBaseRomIds.join("|"), draft.baseRomId]);
 
   function resetFileState() {
-    onStatusChange({
-      file: null,
-      genStatus: "idle",
-      genError: "",
-      checksumStatus: "idle",
-      checksumError: "",
-    });
+    onStatusChange(emptyPatchSlotStatus());
     if (patchInputRef.current) patchInputRef.current.value = "";
     if (modifiedRomInputRef.current) modifiedRomInputRef.current.value = "";
   }
@@ -125,10 +130,7 @@ export default function PatchSlotCard({
       }
       if (matchedId !== draft.baseRomId) {
         const matchedName = baseRoms.find((rom) => rom.id === matchedId)?.name;
-        onStatusChange({
-          ...status,
-          genError: `This ROM matches "${matchedName ?? matchedId}", but this patch requires "${baseRomName}".`,
-        });
+        onStatusChange({ ...status, genError: `This ROM matches "${matchedName ?? matchedId}", but this patch requires "${baseRomName}".` });
       }
     } catch {
       onStatusChange({ ...status, genError: "Failed to import base ROM." });
@@ -155,13 +157,12 @@ export default function PatchSlotCard({
           return;
         }
       }
-      const fileName = fileNameHint || draft.label || "patch";
       const { result, patch } = await encodeXdelta({ sourceFile: baseFile, targetFile: mod });
       if (!result.ok || !patch) {
         onStatusChange({ ...status, genStatus: "error", genError: friendlyXdeltaError(result) });
         return;
       }
-      const out = new File([patch], `${fileName}.xdelta`, { type: "application/octet-stream" });
+      const out = new File([patch], `${fileNameHint || "patch"}.xdelta`, { type: "application/octet-stream" });
       onStatusChange({ ...status, file: out, genStatus: "ready", genError: "", checksumStatus: "valid", checksumError: "" });
     } catch (err: any) {
       onStatusChange({ ...status, genStatus: "error", genError: err?.message || "Failed to generate patch." });
@@ -235,8 +236,7 @@ export default function PatchSlotCard({
         return;
       }
 
-      const baseRomChecksum = parseInt(baseRomEntry.crc32, 16);
-      if (bps.sourceChecksum !== baseRomChecksum) {
+      if (bps.sourceChecksum !== parseInt(baseRomEntry.crc32, 16)) {
         onStatusChange({
           ...status,
           file: null,
@@ -258,145 +258,120 @@ export default function PatchSlotCard({
   }
 
   return (
-    <div className="grid gap-3 rounded-md border border-[var(--border)] bg-[var(--surface-2)]/40 p-3">
+    <fieldset className="grid min-w-0 gap-3 rounded-card border border-line bg-surface p-3.5">
+      <legend className="sr-only">Patch {index + 1}</legend>
       <div className="flex items-center justify-between gap-2">
         <div className="text-sm font-semibold">Patch {index + 1}</div>
-        {canRemove && !dummy && (
-          <button
-            type="button"
-            onClick={onRemove}
-            className="inline-flex h-8 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2 text-xs text-red-600 transition-colors hover:bg-black/5 dark:text-red-300 dark:hover:bg-white/10"
-          >
+        {canRemove && (
+          <button type="button" onClick={onRemove} className="inline-flex h-8 items-center rounded-control px-2 text-xs font-medium text-error transition-colors hover:bg-error-soft">
             Remove
           </button>
         )}
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2">
         <div className="grid gap-1">
-          <label className="text-sm text-foreground/80">Name <span className="text-red-500">*</span></label>
-          {dummy ? (
-            <div className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none">
-              {draft.label || "e.g. FireRed"}
-            </div>
-          ) : (
-            <input
-              value={draft.label}
-              maxLength={PATCH_LABEL_MAX_LENGTH}
-              onChange={(e) => onDraftChange({ ...draft, label: e.target.value })}
-              placeholder="e.g. FireRed"
-              className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-            />
-          )}
+          <span className="text-xs font-medium text-text-2">Applies to <span className="text-error">*</span></span>
+          <Select
+            value={draft.baseRomId}
+            onChange={(value) => {
+              // Name it after its ROM until the creator types a name of their own.
+              const nextLabel = draft.label.trim() || shortBaseRomName(value);
+              onDraftChange({ ...draft, baseRomId: value, label: nextLabel });
+              resetFileState();
+            }}
+            disabled={allowedBaseRomIds.length === 0}
+            placeholder={allowedBaseRomIds.length === 0 ? "Choose base ROMs first" : "Choose a base ROM"}
+            options={allowedOptions}
+          />
         </div>
         <div className="grid gap-1">
-          <label className="text-sm text-foreground/80">Applies to <span className="text-red-500">*</span></label>
-          {dummy ? (
-            <div className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] flex items-center text-foreground/60 select-none">
-              {baseRomName || "Select a base ROM"}
-            </div>
-          ) : (
-            <Select
-              value={draft.baseRomId}
-              onChange={(value) => {
-                const nextLabel = draft.label.trim() || shortBaseRomName(value);
-                onDraftChange({ ...draft, baseRomId: value, label: nextLabel });
-                resetFileState();
-              }}
-              disabled={allowedBaseRomIds.length === 0}
-              placeholder={allowedBaseRomIds.length === 0 ? "Select base ROMs first" : "Select base ROM"}
-              options={allowedOptions}
-            />
-          )}
+          <label htmlFor={`${idPrefix}-name`} className="text-xs font-medium text-text-2">Name <span className="text-error">*</span></label>
+          <input
+            id={`${idPrefix}-name`}
+            value={draft.label}
+            maxLength={PATCH_LABEL_MAX_LENGTH}
+            onChange={(e) => onDraftChange({ ...draft, label: e.target.value })}
+            placeholder="e.g. FireRed"
+            aria-invalid={duplicateLabel || undefined}
+            className={`${INPUT} ${duplicateLabel ? "ring-error/60" : ""}`}
+          />
+          {duplicateLabel && <span className="text-xs text-error">Another patch already uses this name.</span>}
         </div>
       </div>
 
       <div className="grid gap-1">
-        <label className="text-sm text-foreground/80">Player information</label>
-        {dummy ? (
-          <div className="min-h-[4.5rem] rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm ring-1 ring-inset ring-[var(--border)] text-foreground/60 select-none">
-            {draft.info || "Explain what this patch is for."}
-          </div>
-        ) : (
-          <textarea
-            rows={3}
-            maxLength={PATCH_INFO_MAX_LENGTH}
-            value={draft.info}
-            onChange={(e) => onDraftChange({ ...draft, info: e.target.value })}
-            placeholder="Explain what this patch is for, any differences from the others, and which players should pick it."
-            className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-          />
-        )}
-        <div className="text-[11px] text-foreground/55">{draft.info.length}/{PATCH_INFO_MAX_LENGTH}</div>
+        <label htmlFor={`${idPrefix}-info`} className="text-xs font-medium text-text-2">Note for players</label>
+        <textarea
+          id={`${idPrefix}-info`}
+          rows={2}
+          maxLength={PATCH_INFO_MAX_LENGTH}
+          value={draft.info}
+          onChange={(e) => onDraftChange({ ...draft, info: e.target.value })}
+          placeholder="What's different about this patch, and who should pick it."
+          className="rounded-control bg-surface-2 px-3 py-2 text-sm ring-1 ring-inset ring-line focus:outline-none focus:ring-2 focus:ring-accent/40"
+        />
+        <div className="text-[11px] text-text-3">{draft.info.length}/{PATCH_INFO_MAX_LENGTH}</div>
       </div>
 
-      {dummy ? (
-        <div className="rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] select-none">
-          Choose file
-        </div>
-      ) : draft.patchMode === "bps" ? (
+      {draft.patchMode === "bps" ? (
         <div className="grid gap-2">
-          <input
-            ref={patchInputRef}
-            onChange={onUploadPatch}
-            type="file"
-            accept=".bps,.xdelta"
-            className="cursor-pointer rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] file:bg-black/10 dark:file:bg-[var(--surface-2)] file:text-foreground/80 file:text-sm file:font-medium file:not-italic file:rounded-md file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer"
-          />
-          <p className="flex items-center gap-1.5 text-xs text-foreground/60">
-            <FiAlertTriangle className="h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" />
+          <input ref={patchInputRef} onChange={onUploadPatch} type="file" accept=".bps,.xdelta" disabled={!draft.baseRomId} className={FILE_INPUT} />
+          <p className="flex items-center gap-1.5 text-xs text-text-3">
+            <FiAlertTriangle className="h-3 w-3 shrink-0 text-warn" />
             <span>Patch file upload is a fallback. Auto-generating from a modified ROM is recommended.</span>
           </p>
-          {status.checksumStatus === "validating" && <div className="text-xs text-foreground/70">Validating checksum…</div>}
-          {status.checksumStatus === "valid" && <div className="text-xs text-emerald-400/90">Checksum valid.</div>}
-          {status.checksumStatus === "invalid" && !!status.checksumError && <div className="text-xs text-red-400">{status.checksumError}</div>}
-          {status.checksumStatus === "unknown" && !!status.checksumError && <div className="text-xs text-amber-400/90">{status.checksumError}</div>}
+          {status.checksumStatus === "validating" && <div className="text-xs text-text-2">Validating checksum…</div>}
+          {status.checksumStatus === "valid" && <div className="text-xs text-ready">Checksum valid.</div>}
+          {status.checksumStatus === "invalid" && !!status.checksumError && <div className="text-xs text-error">{status.checksumError}</div>}
+          {status.checksumStatus === "unknown" && !!status.checksumError && <div className="text-xs text-warn">{status.checksumError}</div>}
           <button
             type="button"
             onClick={() => {
               onDraftChange({ ...draft, patchMode: "rom" });
               resetFileState();
             }}
-            className="w-fit cursor-pointer text-xs text-foreground/60 underline underline-offset-2 transition-colors hover:text-foreground/80"
+            className={LINK_BUTTON}
           >
             Generate from a modified ROM instead (Recommended)
           </button>
         </div>
       ) : (
         <div className="grid gap-3">
-          <div className="rounded-md border border-[var(--border)] p-3 bg-[var(--surface-2)]/50">
-            <div className="text-xs text-foreground/75">Required base ROM</div>
-            <div className="mt-1 text-sm font-medium">{baseRomEntry ? `${baseRomEntry.name} (${baseRomEntry.platform})` : "Select a base ROM for this patch"}</div>
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-              <span className={`rounded-full px-2 py-0.5 ring-1 ${baseRomReady ? "bg-emerald-600/60 text-white ring-emerald-700/80 dark:bg-emerald-500/25 dark:text-emerald-100 dark:ring-emerald-400/90" : baseRomNeedsPermission ? "bg-amber-600/60 text-white ring-amber-700/80 dark:bg-amber-500/50 dark:text-amber-100 dark:ring-amber-400/90" : "bg-red-600/60 text-white ring-red-700/80 dark:bg-red-500/50 dark:text-red-100 dark:ring-red-400/90"}`}>
-                {baseRomReady ? "Ready" : baseRomNeedsPermission ? "Permission needed" : "Base ROM needed"}
+          {draft.baseRomId && (
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className={`rounded-full px-2 py-0.5 ring-1 ${baseRomReady ? "bg-ready-soft text-ready ring-ready/40" : baseRomNeedsPermission ? "bg-warn-soft text-warn ring-warn/40" : "bg-error-soft text-error ring-error/40"}`}>
+                {baseRomReady ? `${shortBaseRomName(draft.baseRomId)} ready` : baseRomNeedsPermission ? "Permission needed" : `${shortBaseRomName(draft.baseRomId)} ROM needed`}
               </span>
               {baseRomNeedsPermission && (
-                <button type="button" onClick={onGrantPermission} disabled={!supported} className="rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2 py-1 disabled:opacity-60 disabled:cursor-not-allowed">Grant permission</button>
+                <button type="button" onClick={onGrantPermission} disabled={!supported} className="rounded-control border border-line bg-surface-2 px-2 py-1 disabled:cursor-not-allowed disabled:opacity-60">
+                  Grant permission
+                </button>
               )}
               {baseRomMissing && (
-                <label className="inline-flex items-center gap-2 text-xs text-foreground/80">
-                  <input type="file" onChange={onUploadBaseRom} className="cursor-pointer rounded-md bg-[var(--surface-2)] px-2 py-1 text-xs italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] file:bg-black/10 dark:file:bg-[var(--surface-2)] file:text-foreground/80 file:text-xs file:font-medium file:not-italic file:rounded-md file:border-0 file:px-2 file:py-1 file:mr-2 file:cursor-pointer" />
-                  <span>Upload base ROM</span>
+                <label className="flex w-full min-w-0 flex-col items-start gap-1.5 text-xs text-text-2">
+                  <span>Upload your clean {baseRomName} ROM</span>
+                  <input type="file" onChange={onUploadBaseRom} className="w-full min-w-0 cursor-pointer rounded-control bg-surface-2 px-2 py-1 text-xs italic text-text-3 ring-1 ring-inset ring-line file:bg-black/10 dark:file:bg-surface-2 file:text-text-2 file:text-xs file:font-medium file:not-italic file:rounded-control file:border-0 file:px-2 file:py-1 file:mr-2 file:cursor-pointer" />
                 </label>
               )}
             </div>
-            {!!status.genError && draft.patchMode === "rom" && status.genStatus !== "error" && <div className="mt-2 text-xs text-red-400">{status.genError}</div>}
-          </div>
-          <div className="grid gap-2">
-            <label className="text-sm text-foreground/80">Modified ROM <span className="text-foreground/60">(Recommended)</span></label>
+          )}
+          {!!status.genError && status.genStatus !== "error" && <div className="text-xs text-error">{status.genError}</div>}
+          <div className="grid gap-1.5">
+            <label htmlFor={`${idPrefix}-mod`} className="text-xs font-medium text-text-2">Modified ROM <span className="text-text-3">(Recommended)</span></label>
             <input
+              id={`${idPrefix}-mod`}
               ref={modifiedRomInputRef}
               type="file"
               accept={baseRomPlatform ? platformAccept(baseRomPlatform) : "*/*"}
               disabled={!baseRomEntry || !baseRomReady || !baseRomPlatform}
               onChange={onUploadModifiedRom}
-              className="cursor-pointer rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm italic text-foreground/50 ring-1 ring-inset ring-[var(--border)] file:bg-black/10 dark:file:bg-[var(--surface-2)] file:text-foreground/80 file:text-sm file:font-medium file:not-italic file:rounded-md file:border-0 file:px-3 file:py-2 file:mr-2 file:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className={FILE_INPUT}
             />
-            <p className="text-xs text-foreground/60">We&apos;ll generate a .xdelta patch on-device. No ROMs are uploaded.</p>
-            {status.genStatus === "generating" && <div className="text-xs text-foreground/70">Generating patch…</div>}
-            {status.genStatus === "ready" && status.file && <div className="text-xs text-emerald-400/90">Patch ready: {status.file.name}</div>}
-            {status.genStatus === "error" && !!status.genError && <div className="text-xs text-red-400">{status.genError}</div>}
+            <p className="text-xs text-text-3">{draft.baseRomId ? "We'll generate a .xdelta patch on-device. No ROMs are uploaded." : "Choose which base ROM this patch applies to first."}</p>
+            {status.genStatus === "generating" && <div className="text-xs text-text-2">Generating patch…</div>}
+            {status.genStatus === "ready" && status.file && <div className="text-xs text-ready">Patch ready: {status.file.name}</div>}
+            {status.genStatus === "error" && !!status.genError && <div className="text-xs text-error">{status.genError}</div>}
           </div>
           <button
             type="button"
@@ -404,12 +379,12 @@ export default function PatchSlotCard({
               onDraftChange({ ...draft, patchMode: "bps" });
               resetFileState();
             }}
-            className="w-fit cursor-pointer text-xs text-foreground/60 underline underline-offset-2 transition-colors hover:text-foreground/80"
+            className={LINK_BUTTON}
           >
             Already have a .bps or .xdelta file?
           </button>
         </div>
       )}
-    </div>
+    </fieldset>
   );
 }

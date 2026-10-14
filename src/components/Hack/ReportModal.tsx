@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { FiX } from "react-icons/fi";
+import React, { useState } from "react";
 import { FaCircleCheck } from "react-icons/fa6";
+import Modal from "@/components/Primitives/Modal";
 import { submitHackReport } from "@/app/hack/[slug]/actions";
 
 type ReportType = "hateful" | "harassment" | "misleading" | "stolen";
@@ -20,27 +20,6 @@ const ReportModal: React.FC<ReportModalProps> = ({ slug, onClose }) => {
   const [isImpersonating, setIsImpersonating] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const html = document.documentElement;
-    const body = document.body;
-    const previousHtmlOverflow = html.style.overflow;
-    const previousBodyOverflow = body.style.overflow;
-    const previousBodyPaddingRight = body.style.paddingRight;
-    const scrollBarWidth = window.innerWidth - html.clientWidth;
-
-    html.style.overflow = "hidden";
-    body.style.overflow = "hidden";
-    if (scrollBarWidth > 0) {
-      body.style.paddingRight = `${scrollBarWidth}px`;
-    }
-
-    return () => {
-      html.style.overflow = previousHtmlOverflow;
-      body.style.overflow = previousBodyOverflow;
-      body.style.paddingRight = previousBodyPaddingRight;
-    };
-  }, []);
 
   const canSubmit = () => {
     if (!reportType) return false;
@@ -84,84 +63,48 @@ const ReportModal: React.FC<ReportModalProps> = ({ slug, onClose }) => {
     }
   };
 
+  const reset = () => {
+    setCurrentPage("select");
+    setReportType(null);
+    setDetails("");
+    setEmail("");
+    setIsImpersonating(false);
+    setError(null);
+  };
+
+  const field = "w-full rounded-control border border-line bg-surface-2 px-3 text-sm text-text outline-none transition-[border-color,box-shadow] placeholder:text-text-3 focus:border-line-strong focus:ring-2 focus:ring-accent/40";
+  const primary = "inline-flex h-11 w-full items-center justify-center rounded-control bg-accent-deep px-4 text-sm font-semibold text-white transition-colors hover:enabled:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60";
+  const secondary = "inline-flex h-11 w-full items-center justify-center rounded-control border border-line-strong px-4 text-sm font-medium text-text-2 transition-colors hover:enabled:border-text-3 hover:enabled:text-text disabled:cursor-not-allowed disabled:opacity-50";
+
   const renderSelectPage = () => (
-    <div className="flex flex-col gap-8 sm:gap-4">
-      <div className="mb-2">
-        <div className="text-xl font-semibold">Report Hack</div>
-        <p className="mt-1 text-sm text-foreground/80">
-          Please select the reason for reporting this hack.
-        </p>
-      </div>
-      <div className="flex flex-col gap-3">
-        <button
-          type="button"
-          onClick={() => {
-            setReportType("hateful");
-            setCurrentPage("details");
-          }}
-          className="inline-flex h-14 sm:h-11 w-full items-center justify-center rounded-md px-4 text-sm font-semibold ring-1 ring-[var(--border)] hover:bg-[var(--surface-2)]"
-        >
-          Hateful content
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setReportType("harassment");
-            setCurrentPage("details");
-          }}
-          className="inline-flex h-14 sm:h-11 w-full items-center justify-center rounded-md px-4 text-sm font-semibold ring-1 ring-[var(--border)] hover:bg-[var(--surface-2)]"
-        >
-          Harassment
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setReportType("misleading");
-            setCurrentPage("details");
-          }}
-          className="inline-flex h-14 sm:h-11 w-full items-center justify-center rounded-md px-4 text-sm font-semibold ring-1 ring-[var(--border)] hover:bg-[var(--surface-2)]"
-        >
-          Misleading
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setReportType("stolen");
-            setCurrentPage("details");
-          }}
-          className="inline-flex h-14 sm:h-11 w-full items-center justify-center rounded-md px-4 text-sm font-semibold ring-1 ring-[var(--border)] hover:bg-[var(--surface-2)]"
-        >
-          My hack was stolen
-        </button>
+    <div className="flex flex-col gap-4">
+      <p className="text-sm text-text-2">What is wrong with this hack?</p>
+      <div className="flex flex-col gap-2">
+        {REASONS.map(([type, label]) => (
+          <button
+            key={type}
+            type="button"
+            onClick={() => {
+              setReportType(type);
+              setCurrentPage("details");
+            }}
+            className="flex h-12 w-full items-center rounded-control border border-line px-4 text-left text-sm font-medium transition-colors hover:border-line-strong hover:bg-surface-2"
+          >
+            {label}
+          </button>
+        ))}
       </div>
     </div>
   );
 
   const renderSuccessPage = () => (
-    <div className="flex flex-col gap-6 sm:gap-4">
-      <div className="mb-2">
-        <div className="text-xl font-semibold">Report Submitted</div>
-        <p className="mt-1 text-sm text-foreground/80">
-          Thank you for your report. We will review it and take appropriate action.
-        </p>
-      </div>
-
-      <div className="p-4 rounded-md bg-green-500/10 border border-green-500/20">
-        <p className="text-green-500 font-semibold flex items-center justify-center gap-2">
-          <FaCircleCheck size={18} />
-          Report successfully sent!
-        </p>
-      </div>
-
-      <div className="flex flex-col gap-3 pt-2">
-        <button
-          type="button"
-          onClick={onClose}
-          className="inline-flex items-center justify-center h-14 sm:h-11 w-full text-sm font-semibold rounded-md bg-[var(--accent)] text-[var(--accent-foreground)] enabled:hover:bg-[var(--accent-700)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
-        >
-          Done
-        </button>
-      </div>
+    <div className="flex flex-col gap-5">
+      <p className="flex items-center gap-2 rounded-control bg-ready-soft px-3 py-2.5 text-sm font-medium text-ready">
+        <FaCircleCheck size={16} /> Thanks. We will review your report.
+      </p>
+      <button type="button" onClick={onClose} className={primary}>
+        Done
+      </button>
     </div>
   );
 
@@ -169,157 +112,71 @@ const ReportModal: React.FC<ReportModalProps> = ({ slug, onClose }) => {
     const isStolen = reportType === "stolen";
 
     return (
-      <div className="flex flex-col gap-6 sm:gap-4">
-        <div className="mb-2">
-          <div className="text-xl font-semibold">
-            {reportType === "hateful" && "Hateful Content"}
-            {reportType === "harassment" && "Harassment"}
-            {reportType === "misleading" && "Misleading"}
-            {reportType === "stolen" && "My Hack Was Stolen"}
-          </div>
-          <p className="mt-1 text-sm text-foreground/80">
-            {isStolen
-              ? "Please provide your contact information and details about the stolen hack."
-              : "Please provide additional details."}
-          </p>
-        </div>
+      <div className="flex flex-col gap-4">
+        <p className="text-sm text-text-2">
+          {isStolen ? "Tell us how to reach you and how we can confirm the hack is yours." : "Tell us what you found."}
+        </p>
 
         {isStolen && (
-          <div>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={isImpersonating}
-                onChange={(e) => setIsImpersonating(e.target.checked)}
-                className="w-4 h-4"
-              />
-              <span className="text-sm font-semibold">Is the uploader impersonating you?</span>
-            </label>
-          </div>
+          <label className="flex cursor-pointer items-center gap-2.5 text-sm font-medium">
+            <input type="checkbox" checked={isImpersonating} onChange={(e) => setIsImpersonating(e.target.checked)} className="h-4 w-4 accent-[var(--rose-deep)]" />
+            The uploader is pretending to be me
+          </label>
         )}
 
-        <div>
-          <label className="text-sm font-semibold mb-2 block">
-            Contact Email
-            {isStolen ? (
-              <span className="text-red-500"> *</span>
-            ) : (
-              <span className="text-foreground/60 text-xs ml-1">(optional)</span>
-            )}
-          </label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="your@email.com"
-            required={isStolen}
-            className="w-full px-3 py-2 rounded-md border border-[var(--border)] bg-[var(--surface-1)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-          />
-        </div>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium">
+            Contact email {isStolen ? <span className="text-error">*</span> : <span className="text-xs font-normal text-text-3">(optional)</span>}
+          </span>
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com" required={isStolen} className={`${field} h-10`} />
+        </label>
 
-        <div>
-          <label className="text-sm font-semibold mb-2 block">
-            Additional Details <span className="text-red-500">*</span>
-          </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium">
+            Details <span className="text-error">*</span>
+          </span>
           <textarea
             value={details}
             onChange={(e) => setDetails(e.target.value)}
-            placeholder={
-              isStolen
-                ? "Please provide important context, proof of ownership, and any other relevant information..."
-                : "Please provide additional context..."
-            }
-            rows={6}
+            placeholder={isStolen ? "Proof that you made it, links, anything that helps…" : "What did you see, and where?"}
+            rows={5}
             required
-            className="w-full px-3 py-2 rounded-md border border-[var(--border)] bg-[var(--surface-1)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)] resize-none"
+            className={`${field} resize-none py-2`}
           />
-        </div>
+        </label>
 
-        {isStolen && (
-          <div className="p-4 rounded-md bg-[var(--surface-2)] border border-[var(--border)]">
-            <p className="text-sm text-foreground/90">
-              <strong>Note:</strong> We will reach out to you via email. Please ensure you have sufficient proof that you are the original creator of this hack.
-            </p>
-          </div>
-        )}
+        <p className="text-xs text-text-3">
+          {isStolen ? "We will email you. Have proof ready that you made this hack." : "If we have questions, we will email you."}
+        </p>
 
-        {!isStolen && (
-          <div className="p-4 rounded-md bg-[var(--surface-2)] border border-[var(--border)]">
-            <p className="text-sm text-foreground/90">
-              <strong>Note:</strong> If we have questions, we will reach out via email for clarification.
-            </p>
-          </div>
-        )}
+        {error && <p className="rounded-control bg-error-soft px-3 py-2 text-sm text-error">{error}</p>}
 
-        {error && (
-          <div className="p-4 rounded-md bg-red-500/10 border border-red-500/20">
-            <p className="text-sm text-red-500">{error}</p>
-          </div>
-        )}
-
-        <div className="flex flex-col gap-3 pt-2">
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={!canSubmit() || isSubmitting}
-            className="inline-flex items-center justify-center h-14 sm:h-11 w-full text-sm font-semibold rounded-md bg-[var(--accent)] text-[var(--accent-foreground)] enabled:hover:bg-[var(--accent-700)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {isSubmitting ? "Submitting..." : "Submit Report"}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setCurrentPage("select");
-              setReportType(null);
-              setDetails("");
-              setEmail("");
-              setIsImpersonating(false);
-              setError(null);
-            }}
-            disabled={isSubmitting}
-            className="inline-flex h-14 sm:h-11 w-full items-center justify-center rounded-md px-4 text-sm font-semibold ring-1 ring-[var(--border)] hover:bg-[var(--surface-2)] disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+        <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row">
+          <button type="button" onClick={reset} disabled={isSubmitting} className={secondary}>
             Back
+          </button>
+          <button type="button" onClick={handleSubmit} disabled={!canSubmit() || isSubmitting} className={primary}>
+            {isSubmitting ? "Sending…" : "Send report"}
           </button>
         </div>
       </div>
     );
   };
 
+  const title = currentPage === "success" ? "Report sent" : currentPage === "details" ? REASONS.find(([t]) => t === reportType)?.[1] ?? "Report" : "Report this hack";
+
   return (
-    <div className="fixed left-0 right-0 top-0 bottom-0 z-[100] flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black/50 dark:bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={
-          currentPage === "select"
-            ? "Select report type"
-            : currentPage === "success"
-            ? "Report submitted"
-            : "Report details"
-        }
-        className="relative z-[101] mb-16 card backdrop-blur-lg dark:!bg-black/70 p-6 max-w-md max-h-[85vh] overflow-y-auto w-full rounded-lg"
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close report modal"
-          className="absolute top-4 right-4 p-1.5 rounded-md text-foreground/60 hover:text-foreground hover:bg-[var(--surface-2)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-        >
-          <FiX size={20} />
-        </button>
-        {currentPage === "select"
-          ? renderSelectPage()
-          : currentPage === "success"
-          ? renderSuccessPage()
-          : renderDetailsPage()}
-      </div>
-    </div>
+    <Modal visible title={title} onClose={onClose}>
+      {currentPage === "select" ? renderSelectPage() : currentPage === "success" ? renderSuccessPage() : renderDetailsPage()}
+    </Modal>
   );
 };
+
+const REASONS: [ReportType, string][] = [
+  ["hateful", "Hateful content"],
+  ["harassment", "Harassment"],
+  ["misleading", "Misleading"],
+  ["stolen", "My hack was stolen"],
+];
 
 export default ReportModal;

@@ -37,6 +37,7 @@ export async function getArchives(args: {
     .from("hacks")
     .select("slug,title,original_author,base_rom,created_at,created_by,approved,permission_from,current_patch,is_archive", { count: "exact" })
     .eq("is_archive", true)
+    .is("deleted_at", null)
     .order(sortBy, { ascending: sortOrder === "asc" })
     .range(offset, offset + limit - 1);
 
@@ -92,42 +93,4 @@ export async function getArchives(args: {
     limit,
     totalPages: Math.ceil((count || 0) / limit),
   } as const;
-}
-
-export async function deleteArchive(slug: string) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return { ok: false, error: "Unauthorized" } as const;
-  }
-
-  // Only admins can delete archives
-  const { data: isAdmin } = await supabase.rpc("is_admin");
-  if (!isAdmin) {
-    return { ok: false, error: "Forbidden" } as const;
-  }
-
-  // Verify it's an Archive hack
-  const { data: hack } = await supabase
-    .from("hacks")
-    .select("slug, is_archive")
-    .eq("slug", slug)
-    .maybeSingle();
-
-  if (!hack) {
-    return { ok: false, error: "Archive not found" } as const;
-  }
-
-  if (!hack.is_archive) {
-    return { ok: false, error: "This is not an Archive hack" } as const;
-  }
-
-  // Delete the hack (cascade will handle covers and tags)
-  const { error: deleteError } = await supabase.from("hacks").delete().eq("slug", slug);
-
-  if (deleteError) {
-    return { ok: false, error: deleteError.message } as const;
-  }
-
-  return { ok: true } as const;
 }

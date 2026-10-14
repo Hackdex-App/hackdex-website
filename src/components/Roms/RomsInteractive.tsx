@@ -13,6 +13,9 @@ export default function RomsInteractive() {
   const { supported, linked, statuses, cached, totalCachedBytes, importUploadedBlob, importToCache, removeFromCache, unlinkRom, ensurePermission, countReady } = useBaseRoms();
   const [uploadMsg, setUploadMsg] = React.useState<string | null>(null);
   const [dragActive, setDragActive] = React.useState(false);
+  // `supported` reads window, so the server can't know it; wait for mount to avoid a hydration mismatch.
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
 
   async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -29,18 +32,16 @@ export default function RomsInteractive() {
 
   return (
     <>
-      {!supported && (
-        <div className="mt-4 rounded-md border border-yellow-500/30 bg-yellow-500/10 p-4 text-sm text-yellow-200">
+      {mounted && !supported && (
+        <div className="mt-4 rounded-card border border-warn/40 bg-warn-soft p-4 text-sm text-text-2">
           Your browser may not support local file linking for large ROMs. Try Chrome or Edge on desktop if you have issues.
         </div>
       )}
 
-      <div className="mt-6 grid gap-3 text-sm text-foreground/70">
+      <div className="mt-6 grid gap-3 text-sm text-text-2">
         <div
-          className={`rounded-md border-2 border-dashed p-6 sm:p-8 min-h-[140px] ${
-            dragActive
-              ? "border-[var(--accent)] bg-[var(--accent)]/8 ring-2 ring-[var(--accent)]/30"
-              : "border-[var(--border)] bg-[var(--surface-2)]"
+          className={`min-h-[140px] rounded-card border-[1.5px] border-dashed p-6 transition-colors sm:p-8 ${
+            dragActive ? "border-accent bg-accent-soft/40" : "border-line-strong bg-well"
           }`}
           onDragEnter={(e) => {
             e.preventDefault();
@@ -75,30 +76,30 @@ export default function RomsInteractive() {
         >
           <div className="flex flex-col items-center justify-center gap-3 text-center sm:flex-row sm:justify-between sm:text-left">
             <div className="flex items-start gap-3">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="text-foreground/70">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="text-text-2">
                 <path d="M12 16v-8m0 0l-3 3m3-3l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 <path d="M20 16.5V18a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
               </svg>
               <div>
                 <div className="text-[14px] font-medium">Drag & drop a base ROM here</div>
-                <p className="mt-1 text-xs text-foreground/70">Or click to choose a file. Recognized ROMs are cached locally and never uploaded.</p>
+                <p className="mt-1 text-xs text-text-2">Or click to choose a file. Recognized ROMs are cached locally and never uploaded.</p>
               </div>
             </div>
-            <label className="inline-flex cursor-pointer items-center justify-center rounded-md bg-[var(--accent)] px-3 py-2 text-sm font-medium text-[var(--accent-foreground)] transition-colors hover:bg-[var(--accent-700)]">
+            <label className="inline-flex h-10 cursor-pointer items-center justify-center rounded-control bg-accent-deep px-4 text-sm font-semibold text-white transition-colors hover:bg-accent-hover">
               <input type="file" onChange={onUpload} className="hidden" accept={platformAcceptAll()} />
               Choose file…
             </label>
           </div>
-          {uploadMsg && <div className="mt-2 text-xs text-foreground/70">{uploadMsg}</div>}
+          {uploadMsg && <div className="mt-2 text-xs text-text-2">{uploadMsg}</div>}
         </div>
-        <div className="rounded-md border border-[var(--border)] bg-[var(--surface-2)] p-4 text-xs text-foreground/70">
-          <FaTriangleExclamation size={16} className="inline-block mr-1 text-foreground/30" /> Files are processed locally in your browser and never uploaded.</div>
+        <div className="rounded-control bg-surface-2 px-3.5 py-3 text-xs text-text-2">
+          <FaTriangleExclamation size={16} className="inline-block mr-1 text-text-3" /> Files are processed locally in your browser and never uploaded.</div>
         <div>Cached size: {(totalCachedBytes / (1024 * 1024)).toFixed(1)} MB</div>
       </div>
 
       {linkedOrCached.length > 0 && (
         <div className="mt-6">
-          <div className="mb-3 text-xs font-medium uppercase tracking-wide text-foreground/70">Linked or cached</div>
+          <div className="mb-3 text-xs font-medium uppercase tracking-wide text-text-2">Linked or cached</div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {linkedOrCached.map(({ id, platform, region }) => {
               const name = baseRoms.find(r => r.id === id)?.name;
@@ -126,7 +127,7 @@ export default function RomsInteractive() {
       )}
 
       <div className="mt-8">
-        <div className="mb-3 text-xs font-medium uppercase tracking-wide text-foreground/70">Not linked</div>
+        <div className="mb-3 text-xs font-medium uppercase tracking-wide text-text-2">Not linked</div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {notLinked.map(({ id, name, platform, region }) => (
             <BaseRomCard

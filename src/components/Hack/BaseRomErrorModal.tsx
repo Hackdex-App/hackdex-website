@@ -34,7 +34,7 @@ function getTitle(state: BaseRomErrorModalState): string {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="text-xs font-semibold uppercase tracking-wide text-foreground/60">
+    <h3 className="text-xs font-semibold uppercase tracking-wide text-text-3">
       {children}
     </h3>
   );
@@ -54,14 +54,14 @@ function HashBlock({
 
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-xs font-medium text-foreground/70">{label}</span>
+      <span className="text-xs font-medium text-text-2">{label}</span>
       <div
-        className={`flex items-center gap-2.5 rounded-md bg-[var(--surface-1)] px-3 py-2 ring-1 ring-inset ${
-          isWrong ? "ring-red-500/30" : "ring-emerald-500/30"
+        className={`flex items-center gap-2.5 rounded-control bg-surface px-3 py-2 ring-1 ring-inset ${
+          isWrong ? "ring-error/40" : "ring-ready/40"
         }`}
       >
         <Icon
-          className={`shrink-0 ${isWrong ? "text-red-500" : "text-emerald-500"}`}
+          className={`shrink-0 ${isWrong ? "text-error" : "text-ready"}`}
           size={14}
           aria-hidden
         />
@@ -77,14 +77,14 @@ function ModalBody({ state }: { state: BaseRomErrorModalState }) {
   switch (state.kind) {
     case "archive":
       return (
-        <p className="text-sm leading-relaxed text-foreground/80">
+        <p className="text-sm leading-relaxed text-text-2">
           Archive files like <code>.zip</code> need to be extracted first. After extracting, upload{" "}
           <strong>{state.requiredExtensionPhrase}</strong> for <strong>{state.requiredRomName}</strong>.
         </p>
       );
     case "unrecognized":
       return (
-        <p className="text-sm leading-relaxed text-foreground/80">
+        <p className="text-sm leading-relaxed text-text-2">
           <code>{state.fileName}</code> isn&apos;t a ROM file. This hack requires{" "}
           <strong>{state.requiredRomName}</strong> — please select{" "}
           <strong>{state.requiredExtensionPhrase}</strong>.
@@ -95,7 +95,7 @@ function ModalBody({ state }: { state: BaseRomErrorModalState }) {
         <div className="flex flex-col gap-6">
           <section className="flex flex-col gap-2">
             <SectionLabel>What happened</SectionLabel>
-            <p className="text-base leading-relaxed text-foreground/90">
+            <p className="text-base leading-relaxed text-text">
               {state.matchedRomName ? (
                 <>
                   This file looks like <strong>{state.matchedRomName}</strong>, but this hack needs{" "}
@@ -109,7 +109,7 @@ function ModalBody({ state }: { state: BaseRomErrorModalState }) {
             </p>
           </section>
 
-          <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm leading-relaxed text-amber-900 dark:text-amber-100">
+          <div className="rounded-control border border-warn/40 bg-warn-soft p-3 text-sm leading-relaxed text-warn">
             Patching against a non-matching ROM (even if that ROM is fully playable) can cause crashes, glitches, or broken saves.
           </div>
 
@@ -123,14 +123,14 @@ function ModalBody({ state }: { state: BaseRomErrorModalState }) {
 
           <section className="flex flex-col gap-2">
             <SectionLabel>Common reasons</SectionLabel>
-            <ul className="list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-foreground/80">
+            <ul className="list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-text-2">
               <li>Wrong revision or region</li>
               <li>The ROM was modified or trimmed</li>
               <li>The file is corrupted or incomplete</li>
             </ul>
           </section>
 
-          <div className="rounded-md border border-[var(--border)] bg-[var(--surface-2)] p-3 text-xs leading-relaxed text-foreground/60">
+          <div className="rounded-control border border-line bg-surface-2 p-3 text-xs leading-relaxed text-text-3">
             Hackdex cannot advise on where to find ROMs. The only legal source is ripping from your own cartridge.
           </div>
         </div>
@@ -172,13 +172,13 @@ const BaseRomErrorModal: React.FC<BaseRomErrorModalProps> = ({ state, onClose })
         role="dialog"
         aria-modal="true"
         aria-labelledby="base-rom-error-title"
-        className="relative z-[101] flex h-full w-full flex-col card backdrop-blur-lg dark:!bg-black/70 rounded-none md:h-auto md:max-h-[85vh] md:w-full md:max-w-lg md:rounded-lg"
+        className="relative z-[101] flex h-full w-full flex-col card backdrop-blur-lg dark:!bg-black/70 rounded-none md:h-auto md:max-h-[85vh] md:w-full md:max-w-lg md:rounded-card"
       >
         <button
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="absolute top-4 right-4 p-1.5 rounded-md text-foreground/60 hover:text-foreground hover:bg-[var(--surface-2)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+          className="absolute top-4 right-4 p-1.5 rounded-control text-text-3 hover:text-text hover:bg-surface-2 transition-colors focus:outline-none focus:ring-2 focus:ring-accent/40"
         >
           <FiX size={20} />
         </button>
@@ -188,7 +188,7 @@ const BaseRomErrorModal: React.FC<BaseRomErrorModalProps> = ({ state, onClose })
             {title}
           </h2>
           {state.kind !== "unrecognized" && (
-            <p className="mt-2 text-sm text-foreground/80">
+            <p className="mt-2 text-sm text-text-2">
               Selected file: <code>{state.fileName}</code>
             </p>
           )}
@@ -197,11 +197,11 @@ const BaseRomErrorModal: React.FC<BaseRomErrorModalProps> = ({ state, onClose })
           </div>
         </div>
 
-        <div className="border-t border-[var(--border)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:border-0 md:p-6 md:pt-0">
+        <div className="border-t border-line p-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:border-0 md:p-6 md:pt-0">
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-14 md:h-11 w-full items-center justify-center rounded-md bg-[var(--accent)] px-4 text-sm font-semibold text-[var(--accent-foreground)] hover:bg-[var(--accent-700)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+            className="inline-flex h-14 md:h-11 w-full items-center justify-center rounded-control bg-accent-deep px-4 text-sm font-semibold text-white hover:bg-accent-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
             Choose a different file
           </button>

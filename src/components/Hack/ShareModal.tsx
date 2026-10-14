@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { FiX, FiCheck, FiCopy, FiMail, FiShare2, FiArrowLeft } from "react-icons/fi";
+import React, { useState } from "react";
+import { FiCheck, FiCopy, FiMail, FiShare2, FiArrowLeft } from "react-icons/fi";
 import { FaXTwitter, FaReddit, FaFacebook } from "react-icons/fa6";
-import { FaInfoCircle } from "react-icons/fa";
 import { PiBracketsSquareBold, PiBracketsAngleBold } from "react-icons/pi";
+import Modal from "@/components/Primitives/Modal";
 
 const BANNER_IMAGE_URL = "/img/badge-dark.png";
 const BANNER_IMAGE_WIDTH = 190;
@@ -23,27 +23,6 @@ const ShareModal: React.FC<ShareModalProps> = ({ title, url, author, onClose }) 
   const [codePreview, setCodePreview] = useState<{ type: string; code: string; label: string } | null>(null);
   const [codeCopied, setCodeCopied] = useState(false);
   const hasNavigatorShare = typeof navigator !== "undefined" && navigator.share;
-
-  useEffect(() => {
-    const html = document.documentElement;
-    const body = document.body;
-    const previousHtmlOverflow = html.style.overflow;
-    const previousBodyOverflow = body.style.overflow;
-    const previousBodyPaddingRight = body.style.paddingRight;
-    const scrollBarWidth = window.innerWidth - html.clientWidth;
-
-    html.style.overflow = "hidden";
-    body.style.overflow = "hidden";
-    if (scrollBarWidth > 0) {
-      body.style.paddingRight = `${scrollBarWidth}px`;
-    }
-
-    return () => {
-      html.style.overflow = previousHtmlOverflow;
-      body.style.overflow = previousBodyOverflow;
-      body.style.paddingRight = previousBodyPaddingRight;
-    };
-  }, []);
 
   const copyUrl = async () => {
     try {
@@ -136,262 +115,100 @@ const ShareModal: React.FC<ShareModalProps> = ({ title, url, author, onClose }) 
     type: string;
     icon: React.ComponentType<{ size?: number; className?: string }>;
     label: string;
-  }) => {
-    return (
-      <button
-        type="button"
-        onClick={() => handleShare(type)}
-        className="flex flex-col items-center gap-1.5 min-w-18 p-3 rounded-lg ring-1 ring-[var(--border)] bg-[var(--surface-2)] hover:bg-black/5 dark:hover:bg-white/10"
-        title={label}
-      >
-        <div className="w-12 h-12 rounded-full flex items-center justify-center bg-[var(--surface-1)] text-foreground/80">
-          <Icon size={26} />
-        </div>
-        <span className="text-xs font-medium text-foreground/70">
-          {label}
-        </span>
-      </button>
-    );
-  };
+  }) => (
+    <button
+      type="button"
+      onClick={() => handleShare(type)}
+      className="group flex min-w-[72px] flex-col items-center gap-1.5 rounded-card p-2 text-text-2 transition-colors hover:bg-surface-2 hover:text-text"
+    >
+      <span className="flex h-12 w-12 items-center justify-center rounded-full border border-line bg-surface-2 transition-colors group-hover:border-line-strong">
+        <Icon size={22} />
+      </span>
+      <span className="text-xs font-medium">{label}</span>
+    </button>
+  );
 
+  const badgePreview = (
+    <div className="flex justify-center rounded-card bg-well p-3">
+      <img src={BANNER_IMAGE_URL} width={BANNER_IMAGE_WIDTH} height={BANNER_IMAGE_HEIGHT} alt="Download now at hackdex.app" className="h-auto max-w-full rounded" />
+    </div>
+  );
 
-  // Show code preview modal if codePreview is set
+  const copied = (
+    <>
+      <FiCheck size={16} className="text-ready" />
+      <span className="text-ready">Copied</span>
+    </>
+  );
+
   if (codePreview) {
     return (
-      <div className="fixed left-0 right-0 top-0 bottom-0 z-[100] flex items-center justify-center p-4">
-        <div
-          className="absolute inset-0 bg-black/50 dark:bg-black/60 backdrop-blur-sm"
-          onClick={onClose}
-        />
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={`${codePreview.label} code preview`}
-          className="relative z-[101] card backdrop-blur-lg dark:!bg-black/70 p-6 max-w-lg max-h-[90vh] overflow-y-auto w-full rounded-lg"
-        >
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close code preview"
-            className="absolute top-4 right-4 p-1.5 rounded-md text-foreground/60 hover:text-foreground hover:bg-[var(--surface-2)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-          >
-            <FiX size={20} />
+      <Modal visible title={`${codePreview.label} code`} onClose={onClose} className="max-w-lg">
+        <div className="flex flex-col gap-5">
+          <button type="button" onClick={() => setCodePreview(null)} className="-mt-2 inline-flex items-center gap-1.5 self-start text-sm font-medium text-link hover:underline hover:underline-offset-[3px]">
+            <FiArrowLeft size={15} /> Back
           </button>
-
-          <div className="flex flex-col gap-6">
-            {/* Header */}
-            <div>
-              <button
-                type="button"
-                onClick={() => setCodePreview(null)}
-                className="inline-flex items-center gap-2 text-sm text-foreground/70 hover:text-foreground mb-3"
-                aria-label="Back to share options"
-              >
-                <FiArrowLeft size={16} />
-                <span>Back</span>
-              </button>
-              <h2 className="text-xl font-semibold">{codePreview.label} Code</h2>
-              <p className="mt-1 text-sm text-foreground/70">
-                Copy the code below to share this hack with the badge.
-              </p>
-            </div>
-
-            {/* Badge Preview */}
-            <div className="flex flex-col gap-2">
-              <p className="text-xs text-foreground/60 font-medium">Preview:</p>
-              <div className="flex justify-center p-3 rounded-md bg-[var(--surface-1)] border border-[var(--border)]">
-                <img
-                  src={BANNER_IMAGE_URL}
-                  width={BANNER_IMAGE_WIDTH}
-                  height={BANNER_IMAGE_HEIGHT}
-                  alt="Download now at hackdex.app"
-                  className="max-w-full h-auto rounded"
-                />
-              </div>
-            </div>
-
-            {/* Code Section */}
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-foreground/90">Code</p>
-              </div>
-              <div className="flex flex-col gap-2">
-                <textarea
-                  readOnly
-                  value={codePreview.code}
-                  rows={3}
-                  className="flex-1 px-3 py-2.5 rounded-md border border-[var(--border)] bg-[var(--surface-1)] text-sm text-foreground/80 font-mono resize-none focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-                  onClick={(e) => (e.target as HTMLTextAreaElement).select()}
-                />
-                <button
-                  type="button"
-                  onClick={copyCode}
-                  className="inline-flex items-center gap-1.5 self-end mr-1 text-sm text-foreground/70 hover:text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--accent)] rounded"
-                  title="Copy to clipboard"
-                  aria-label="Copy code to clipboard"
-                >
-                  {codeCopied ? (
-                    <>
-                      <FiCheck size={16} className="text-green-500" />
-                      <span className="text-green-500">Copied</span>
-                    </>
-                  ) : (
-                    <>
-                      <FiCopy size={16} />
-                      <span>Copy</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
+          <p className="text-sm text-text-2">Paste this where you post about the hack to show the badge.</p>
+          {badgePreview}
+          <div className="flex flex-col gap-2">
+            <textarea
+              readOnly
+              value={codePreview.code}
+              rows={3}
+              className="w-full resize-none rounded-control border border-line bg-surface-2 px-3 py-2.5 font-mono text-[13px] text-text-2 outline-none focus:border-line-strong focus:ring-2 focus:ring-accent/40"
+              onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+            />
+            <button type="button" onClick={copyCode} className="inline-flex h-9 items-center gap-1.5 self-end rounded-control px-2.5 text-sm font-medium text-text-2 hover:bg-surface-2 hover:text-text" aria-label="Copy code to clipboard">
+              {codeCopied ? copied : <><FiCopy size={16} /> Copy</>}
+            </button>
           </div>
         </div>
-      </div>
+      </Modal>
     );
   }
 
   return (
-    <div className="fixed left-0 right-0 top-0 bottom-0 z-[100] flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black/50 dark:bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Share hack"
-        className="relative z-[101] card backdrop-blur-lg dark:!bg-black/70 p-6 max-w-lg max-h-[90vh] overflow-y-auto w-full rounded-lg"
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close share modal"
-          className="absolute top-4 right-4 p-1.5 rounded-md text-foreground/60 hover:text-foreground hover:bg-[var(--surface-2)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-        >
-          <FiX size={20} />
-        </button>
-
-        <div className="flex flex-col gap-6">
-          {/* Header */}
-          <div>
-            <h2 className="text-xl font-semibold">Share Hack</h2>
-            <p className="mt-1 text-sm text-foreground/70">
-              Choose how you want to share this hack.
-            </p>
-          </div>
-
-          {/* Share Directly Section */}
-          <div className="flex flex-col gap-4">
-            <h3 className="text-sm font-semibold text-foreground/90">Share Directly</h3>
-
-            {/* Share Icons Row */}
-            <div className="flex items-center gap-3 overflow-x-auto p-1 pb-2 scroll-smooth scrollbar-thin scrollbar-color-muted"
-              style={{ scrollbarWidth: 'thin' }}
-            >
-              <SocialIconButton
-                type="facebook"
-                icon={FaFacebook}
-                label="Facebook"
-              />
-              <SocialIconButton
-                type="reddit"
-                icon={FaReddit}
-                label="Reddit"
-              />
-              <SocialIconButton
-                type="twitter"
-                icon={FaXTwitter}
-                label="Twitter/X"
-              />
-              <SocialIconButton
-                type="email"
-                icon={FiMail}
-                label="Email"
-              />
-              {hasNavigatorShare && (
-                <SocialIconButton
-                  type="other"
-                  icon={FiShare2}
-                  label="Other"
-                />
-              )}
-            </div>
-          </div>
-
-          {/* Share as Badge Section */}
-          <div className="flex flex-col gap-4 pt-4 border-t border-[var(--border)]">
-            <h3 className="text-sm font-semibold text-foreground/90">Share as Badge</h3>
-
-            {/* Badge Preview */}
-            <div className="flex flex-col gap-2">
-              <p className="text-xs text-foreground/60 font-medium">Preview:</p>
-              <div className="flex justify-center p-3 rounded-md bg-[var(--surface-1)] border border-[var(--border)]">
-                <img
-                  src={BANNER_IMAGE_URL}
-                  width={BANNER_IMAGE_WIDTH}
-                  height={BANNER_IMAGE_HEIGHT}
-                  alt="Download now at hackdex.app"
-                  className="max-w-full h-auto rounded"
-                />
-              </div>
-            </div>
-
-            {/* SEO Tip */}
-            <div className="flex items-start justify-center gap-2 rounded-md border border-[var(--border)]/70 bg-[var(--surface-2)]/20 px-3 py-2.5">
-              <FaInfoCircle size={13} className="text-foreground/80 shrink-0 self-center" />
-              <p className="text-xs text-foreground/60 leading-relaxed">
-                <span className="font-semibold text-foreground/80">Creator Tip:</span> Sharing your hack on other platforms helps boost this page&apos;s SEO to potentially outrank unauthorized mirror sites.
-              </p>
-            </div>
-
-            {/* Badge Share Buttons */}
-            <div className="flex items-center gap-3 overflow-x-auto p-1 pb-2 scroll-smooth scrollbar-thin scrollbar-color-muted"
-              style={{ scrollbarWidth: 'thin' }}
-            >
-              <SocialIconButton
-                type="bbcode"
-                icon={PiBracketsSquareBold}
-                label="BBCode"
-              />
-              <SocialIconButton
-                type="html"
-                icon={PiBracketsAngleBold}
-                label="HTML"
-              />
-            </div>
-          </div>
-
-          {/* URL Copy Section */}
-          <div className="pt-4 border-t border-[var(--border)]">
-            <div className="flex flex-col gap-2">
-              <p className="text-xs text-foreground/60 font-medium mb-1">Or share with link</p>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  readOnly
-                  value={url}
-                  className="flex-1 px-3 py-2.5 rounded-md border border-[var(--border)] bg-[var(--surface-1)] text-sm text-foreground/80 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-                  onClick={(e) => (e.target as HTMLInputElement).select()}
-                />
-                <button
-                  type="button"
-                  onClick={copyUrl}
-                  className="inline-flex items-center justify-center w-10 h-10 rounded-md ring-1 ring-[var(--border)] bg-[var(--surface-2)] hover:bg-[var(--surface-3)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-                  title="Copy to clipboard"
-                  aria-label="Copy URL to clipboard"
-                >
-                  {urlCopied ? (
-                    <FiCheck size={18} className="text-green-500" />
-                  ) : (
-                    <FiCopy size={18} className="text-foreground/80" />
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
+    <Modal visible title="Share this hack" onClose={onClose} className="max-w-lg">
+      <div className="flex flex-col gap-5">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            readOnly
+            value={url}
+            aria-label="Link to this hack"
+            className="h-10 min-w-0 flex-1 rounded-control border border-line bg-surface-2 px-3 text-sm text-text-2 outline-none focus:border-line-strong focus:ring-2 focus:ring-accent/40"
+            onClick={(e) => (e.target as HTMLInputElement).select()}
+          />
+          <button
+            type="button"
+            onClick={copyUrl}
+            className="inline-flex h-10 flex-none items-center gap-1.5 rounded-control bg-accent-deep px-3.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+          >
+            {urlCopied ? <><FiCheck size={16} /> Copied</> : <><FiCopy size={16} /> Copy link</>}
+          </button>
         </div>
+
+        <div className="-mx-2 flex gap-1 overflow-x-auto [scrollbar-width:none]">
+          <SocialIconButton type="facebook" icon={FaFacebook} label="Facebook" />
+          <SocialIconButton type="reddit" icon={FaReddit} label="Reddit" />
+          <SocialIconButton type="twitter" icon={FaXTwitter} label="Twitter/X" />
+          <SocialIconButton type="email" icon={FiMail} label="Email" />
+          {hasNavigatorShare && <SocialIconButton type="other" icon={FiShare2} label="More" />}
+        </div>
+
+        <section className="flex flex-col gap-3 border-t border-line pt-5">
+          <h3 className="text-sm font-semibold">Share as a badge</h3>
+          {badgePreview}
+          <p className="text-xs text-text-3">
+            <span className="font-semibold text-text-2">Creator tip:</span> Linking to your hack from other sites helps this page outrank unauthorized mirrors in search.
+          </p>
+          <div className="-mx-2 flex gap-1">
+            <SocialIconButton type="bbcode" icon={PiBracketsSquareBold} label="BBCode" />
+            <SocialIconButton type="html" icon={PiBracketsAngleBold} label="HTML" />
+          </div>
+        </section>
       </div>
-    </div>
+    </Modal>
   );
 };
 

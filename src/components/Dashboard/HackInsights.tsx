@@ -41,28 +41,28 @@ export default function HackInsights({ hack }: { hack: HackRow }) {
   }, [open, data, getInsights, hack.slug]);
 
   return (
-    <div className="rounded-lg border border-[var(--border)]">
+    <div className="rounded-card border border-line">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-[var(--surface-2)]"
+        className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-surface-2"
       >
         <div className="min-w-0">
           <div className="truncate font-medium">{hack.title}</div>
-          <div className="mt-0.5 text-xs text-foreground/60">/{hack.slug}</div>
+          <div className="mt-0.5 text-xs text-text-3">/{hack.slug}</div>
         </div>
-        <div className="text-sm text-foreground/70">{open ? "Hide" : "Show"} insights</div>
+        <div className="text-sm text-text-2">{open ? "Hide" : "Show"} insights</div>
       </button>
       {open && (
         <div className="px-4 pb-4">
           {loading || !data ? (
-            <div className="py-6 text-sm text-foreground/70">Loading insights…</div>
+            <div className="py-6 text-sm text-text-2">Loading insights…</div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-              <div className="md:col-span-2 rounded-md border border-[var(--border)] bg-[var(--surface-2)] p-3">
+              <div className="md:col-span-2 rounded-control border border-line bg-surface-2 p-3">
                 <div className="text-sm font-medium mb-2">Downloads per version</div>
                 {data.versionCounts.length === 0 ? (
-                  <div className="text-sm text-foreground/70">No downloads yet. Upload a patch to see data.</div>
+                  <div className="text-sm text-text-2">No downloads yet. Upload a patch to see data.</div>
                 ) : (
                   <Bar
                     data={{
@@ -84,14 +84,14 @@ export default function HackInsights({ hack }: { hack: HackRow }) {
                   />
                 )}
               </div>
-              <div className="rounded-md border border-[var(--border)] bg-[var(--surface-2)] p-3">
+              <div className="rounded-control border border-line bg-surface-2 p-3">
                 <div className="text-sm font-medium mb-2">Latest-version adoption</div>
                 {data.isNewToday ? (
-                  <div className="text-sm text-foreground/70">New upload today—please check back tomorrow (UTC) for analytics.</div>
+                  <div className="text-sm text-text-2">New upload today—please check back tomorrow (UTC) for analytics.</div>
                 ) : (
                   <div>
                     <div className="text-3xl font-semibold">{Math.round(data.adoptionRate * 100)}%</div>
-                    <div className="mt-1 text-xs text-foreground/70">{data.latestUniqueDevices} of {data.totalUniqueDevices} unique devices on latest</div>
+                    <div className="mt-1 text-xs text-text-2">{data.latestUniqueDevices} of {data.totalUniqueDevices} unique devices on latest</div>
                   </div>
                 )}
               </div>

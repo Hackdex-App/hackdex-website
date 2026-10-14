@@ -20,10 +20,10 @@ export default function HackShareButton({ title, url, author }: HackShareButtonP
         onClick={() => setShowShareModal(true)}
         aria-label="Share hack"
         title="Share"
-        className="group inline-flex px-3 md:px-2 h-8 items-center justify-center rounded-md ring-1 ring-[var(--border)] bg-[var(--surface-2)] text-foreground/80 hover:bg-[var(--surface-3)] hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border)]"
+        className="inline-flex h-9 items-center justify-center gap-2 rounded-control border border-line-strong bg-surface text-sm font-medium text-text-2 transition-colors hover:border-text-3 hover:text-text px-3"
       >
         <FiShare2 size={18} />
-        <span className="ml-2 font-semibold text-sm">Share</span>
+        <span>Share</span>
       </button>
       {showShareModal && (
         <ShareModal title={title} url={url} author={author} onClose={() => setShowShareModal(false)} />

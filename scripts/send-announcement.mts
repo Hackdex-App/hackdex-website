@@ -46,10 +46,23 @@ export async function loadAnnouncement(file: string): Promise<Announcement> {
   if (!isRecord(value) || typeof value.id !== "string" ||
     !/^[a-z0-9][a-z0-9-]{0,79}$/.test(value.id) ||
     typeof value.title !== "string" || !value.title.trim() || /[\r\n]/.test(value.title) ||
-    typeof value.message !== "string" || !value.message.trim() || typeof value.ready !== "boolean") {
-    throw new Error("Announcement needs an id in lowercase kebab-case, a title, a message, and a ready boolean.");
+    typeof value.ready !== "boolean") {
+    throw new Error("Announcement needs an id in lowercase kebab-case, a title, and a ready boolean.");
   }
-  return { id: value.id, title: value.title, message: value.message, ready: value.ready };
+  if (value.message !== undefined && value.messageFile !== undefined) {
+    throw new Error("Announcement needs either message or messageFile, not both.");
+  }
+  let message = value.message;
+  if (value.messageFile !== undefined) {
+    if (typeof value.messageFile !== "string" || !value.messageFile.trim()) {
+      throw new Error("Announcement needs a nonempty messageFile path.");
+    }
+    message = await readFile(path.resolve(path.dirname(file), value.messageFile), "utf8");
+  }
+  if (typeof message !== "string" || !message.trim()) {
+    throw new Error("Announcement needs a nonempty message or messageFile containing text.");
+  }
+  return { id: value.id, title: value.title, message, ready: value.ready };
 }
 
 /** Read approved hacks or hacks with uploaded patches, including pending and unpublished entries. */
@@ -59,7 +72,7 @@ export async function collectRecipients(supabase: SupabaseClient<Database>): Pro
   for (let offset = 0; ; offset += pageSize) {
     const { data, error } = await supabase.from("hacks")
       .select("slug,created_by,current_patch,patch_url,approved")
-      .eq("is_archive", false).order("slug").range(offset, offset + pageSize - 1);
+      .eq("is_archive", false).is("deleted_at", null).order("slug").range(offset, offset + pageSize - 1);
     if (error) throw new Error(`Cannot load hacks: ${error.message}`);
     if (!data) throw new Error("No response when loading hacks.");
     for (const hack of data) {
@@ -104,6 +117,36 @@ async function loadRecipients(file: string): Promise<Recipient[]> {
   return recipients;
 }
 
+function isRunning(pid: number) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    // EPERM: it exists but belongs to someone else.
+    return isRecord(error) && error.code === "EPERM";
+  }
+}
+
+/**
+ * One sender per campaign. The lock holds the sender's PID, so a lock left by a killed run is
+ * cleared once that process is gone. Anything else in it (a run that hasn't written its PID yet) blocks.
+ */
+async function takeLock(lockPath: string, retry = true): Promise<Awaited<ReturnType<typeof open>>> {
+  try {
+    const lock = await open(lockPath, "wx", 0o600);
+    await lock.writeFile(String(process.pid));
+    return lock;
+  } catch (error) {
+    if (!isRecord(error) || error.code !== "EEXIST") throw error;
+    const owner = (await readOptional(lockPath))?.trim() ?? "";
+    if (retry && /^\d+$/.test(owner) && !isRunning(Number(owner))) {
+      await unlink(lockPath);
+      return takeLock(lockPath, false);
+    }
+    throw new Error(`${lockPath} exists: another send is running${/^\d+$/.test(owner) ? ` (PID ${owner})` : ""}. Delete it only if no send is running.`);
+  }
+}
+
 /** Fail closed on uncertain delivery. Resolve a pending record in Resend before retrying. */
 export async function sendAnnouncement({ announcement, message, recipients, directory, mailer, delayMs = 1000 }: {
   announcement: Announcement;
@@ -118,7 +161,7 @@ export async function sendAnnouncement({ announcement, message, recipients, dire
   }
   await mkdir(directory, { recursive: true, mode: 0o700 });
   const lockPath = path.join(directory, "send.lock");
-  const lock = await open(lockPath, "wx", 0o600);
+  const lock = await takeLock(lockPath);
   try {
     // Freeze both message and audience on first send so retries cannot change either.
     const payloadPath = path.join(directory, "payload.json");

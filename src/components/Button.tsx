@@ -9,20 +9,18 @@ type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const base =
-  "inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] disabled:opacity-60 disabled:cursor-not-allowed";
+  "inline-flex items-center justify-center rounded-control font-semibold transition-[background-color,transform] duration-[120ms] active:scale-[.98] disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100";
 
 const variants: Record<string, string> = {
-  primary:
-    "bg-[var(--accent)] text-[var(--accent-foreground)] hover:bg-[var(--accent-700)]",
-  secondary:
-    "bg-white/10 text-foreground border border-white/10 hover:bg-white/15",
-  ghost: "bg-transparent text-foreground hover:bg-white/5",
+  primary: "bg-accent-deep text-white hover:bg-accent-hover",
+  secondary: "bg-surface-2 text-text hover:bg-line",
+  ghost: "bg-transparent text-text hover:bg-surface-2",
 };
 
 const sizes: Record<string, string> = {
   sm: "h-9 px-3 text-sm",
   md: "h-11 px-4 text-sm",
-  lg: "h-12 px-5 text-base",
+  lg: "h-12 px-6 text-[15px]",
 };
 
 export default function Button({
@@ -51,5 +49,3 @@ export default function Button({
     </button>
   );
 }
-
-

@@ -60,17 +60,17 @@ export default function ContactForm() {
   return (
     <form className="grid gap-5 group">
       {(state.error && !isPending) && (
-        <div className="rounded-md bg-red-500/10 ring-1 ring-red-600/40 px-3 py-2 text-sm text-red-300">
+        <div className="rounded-control bg-error-soft ring-1 ring-error/40 px-3 py-2 text-sm text-error">
           {state.error}
         </div>
       )}
       {(state.success && !isPending) && (
-        <div className="rounded-md bg-green-500/10 ring-1 ring-green-600/40 px-3 py-2 text-sm text-green-300">
+        <div className="rounded-control bg-ready-soft ring-1 ring-ready/40 px-3 py-2 text-sm text-ready">
           {state.success}
         </div>
       )}
       <div className="grid gap-2">
-        <label htmlFor="topic" className="text-sm text-foreground/80">Topic</label>
+        <label htmlFor="topic" className="text-sm text-text-2">Topic</label>
         <Select
           id="topic"
           name="topic"
@@ -81,14 +81,14 @@ export default function ContactForm() {
             label: topicLabels[key],
           }))}
         />
-        <span className="text-xs text-foreground/60">
+        <span className="text-xs text-text-3">
           Choose the most relevant topic so we can help you better.
         </span>
       </div>
 
       {topic === "bug" && (
-        <div className="p-4 rounded-md bg-[var(--surface-2)] border border-[var(--border)]">
-          <p className="text-sm text-foreground/90">
+        <div className="p-4 rounded-control bg-surface-2 border border-line">
+          <p className="text-sm text-text">
             <strong>Note:</strong> This form is meant only for bugs with the Hackdex website. For bugs found in a rom hack, please reach out to the original creator of that hack.
           </p>
         </div>
@@ -96,7 +96,7 @@ export default function ContactForm() {
 
       <div className="grid gap-2 md:grid-cols-2 md:gap-4">
         <div className="grid gap-2">
-          <label htmlFor="name" className="text-sm text-foreground/80">Name (optional)</label>
+          <label htmlFor="name" className="text-sm text-text-2">Name (optional)</label>
           <input
             id="name"
             name="name"
@@ -104,12 +104,12 @@ export default function ContactForm() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Your name"
-            className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+            className="h-11 rounded-control bg-surface-2 px-3 text-sm ring-1 ring-inset ring-line focus:outline-none focus:ring-2 focus:ring-accent/40"
             autoComplete="name"
           />
         </div>
         <div className="grid gap-2">
-          <label htmlFor="email" className="text-sm text-foreground/80">Email</label>
+          <label htmlFor="email" className="text-sm text-text-2">Email</label>
           <input
             id="email"
             name="email"
@@ -117,21 +117,21 @@ export default function ContactForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
-            className={`h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-[var(--ring)] ${
-              email && emailError ? "ring-red-600/40 bg-red-500/10 dark:ring-red-400/40 dark:bg-red-950/20" : "ring-[var(--border)]"
+            className={`h-11 rounded-control bg-surface-2 px-3 text-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-accent/40 ${
+              email && emailError ? "ring-error/40 bg-error-soft dark:ring-error/40 dark:bg-error-soft" : "ring-line"
             }`}
             required
             autoComplete="email"
           />
           {email && emailError && (
-            <span className="text-xs text-red-500/70">{emailError}</span>
+            <span className="text-xs text-error">{emailError}</span>
           )}
         </div>
       </div>
 
       {(topic === "bug" || topic === "creator" || topic === "account") && (
         <div className="grid gap-2">
-          <label htmlFor="contextUrl" className="text-sm text-foreground/80">Related URL (optional)</label>
+          <label htmlFor="contextUrl" className="text-sm text-text-2">Related URL (optional)</label>
           <input
             id="contextUrl"
             name="contextUrl"
@@ -139,15 +139,15 @@ export default function ContactForm() {
             value={contextUrl}
             onChange={(e) => setContextUrl(e.target.value)}
             placeholder="https://hackdex.app/..."
-            className="h-11 rounded-md bg-[var(--surface-2)] px-3 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+            className="h-11 rounded-control bg-surface-2 px-3 text-sm ring-1 ring-inset ring-line focus:outline-none focus:ring-2 focus:ring-accent/40"
             inputMode="url"
           />
-          <span className="text-xs text-foreground/60">Linking the exact page helps us investigate faster.</span>
+          <span className="text-xs text-text-3">Linking the exact page helps us investigate faster.</span>
         </div>
       )}
 
       <div className="grid gap-2">
-        <label htmlFor="message" className="text-sm text-foreground/80">Message</label>
+        <label htmlFor="message" className="text-sm text-text-2">Message</label>
         <textarea
           id="message"
           name="message"
@@ -160,7 +160,7 @@ export default function ContactForm() {
               ? "Please provide enough detail to help us triage. Avoid sharing sensitive data."
               : "How can we help?"
           }
-          className="min-h-[8rem] rounded-md bg-[var(--surface-2)] px-3 py-2 text-sm ring-1 ring-inset ring-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+          className="min-h-[8rem] rounded-control bg-surface-2 px-3 py-2 text-sm ring-1 ring-inset ring-line focus:outline-none focus:ring-2 focus:ring-accent/40"
           required
         />
       </div>
@@ -170,7 +170,7 @@ export default function ContactForm() {
           type="submit"
           formAction={formAction}
           disabled={!isValid || isPending}
-          className="shine-wrap btn-premium h-11 min-w-[7.5rem] text-sm font-semibold hover:cursor-pointer disabled:cursor-not-allowed disabled:[box-shadow:0_0_0_1px_var(--border)]"
+          className="inline-flex items-center justify-center rounded-control bg-accent-deep px-5 text-white transition-colors hover:enabled:bg-accent-hover disabled:opacity-60 h-11 min-w-[7.5rem] text-sm font-semibold hover:cursor-pointer disabled:cursor-not-allowed"
           aria-label="Send message"
           title="Send message"
         >

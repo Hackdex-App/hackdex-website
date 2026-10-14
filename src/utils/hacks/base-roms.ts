@@ -19,6 +19,11 @@ export function resolveHackBaseRomIds(
   return uniqueBaseRomIds([primary, ...(extras ?? [])]);
 }
 
+/** A catalog hack's base ROMs: all of a multi-source hack's, else its one. */
+export function hackBaseRomIds(hack: { baseRomId?: string | null; baseRomIds?: string[] | null }): string[] {
+  return resolveHackBaseRomIds(hack.baseRomId, hack.baseRomIds);
+}
+
 export function baseRomName(id: string | null | undefined): string {
   if (!id) return "Unknown";
   return baseRoms.find((rom) => rom.id === id)?.name ?? id;

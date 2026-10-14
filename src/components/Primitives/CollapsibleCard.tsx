@@ -36,19 +36,19 @@ export default function CollapsibleCard({
       >
         <div className="min-w-0 flex gap-2.5 sm:gap-3 items-start">
           {leading != null && (
-            <span className="shrink-0 mt-0.5 text-[var(--accent)] opacity-90" aria-hidden>
+            <span className="shrink-0 mt-0.5 text-accent-text opacity-90" aria-hidden>
               {leading}
             </span>
           )}
           <div className="min-w-0 flex flex-col gap-0.5 flex-1">
-            <h2 id={titleId} className="text-sm font-semibold text-foreground/90">
+            <h2 id={titleId} className="text-sm font-semibold text-text">
               {title}
             </h2>
-            {summary != null && <div className="text-xs text-foreground/55 font-normal">{summary}</div>}
+            {summary != null && <div className="text-xs text-text-3 font-normal">{summary}</div>}
           </div>
         </div>
         <span
-          className={`text-foreground/60 shrink-0 mt-0.5 transition-transform duration-300 ease-in-out ${
+          className={`text-text-3 shrink-0 mt-0.5 transition-transform duration-300 ease-in-out ${
             isExpanded ? "rotate-180" : ""
           }`}
         >

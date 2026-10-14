@@ -19,12 +19,19 @@ interface HackOnboardingOverlayProps {
   hide: boolean;
   /** Shown in the Select ROM wait copy, e.g. "Pokemon Emerald". */
   baseRomName?: string | null;
+  /** The picker holds named patches (often one per base ROM) rather than versions. */
+  patchChoice?: boolean;
 }
+
+const PATCH_CHOICE_COPY = {
+  title: "Choose your patch",
+  body: "This hack comes in more than one patch, and each one says which base ROM it needs. Pick yours before you continue.",
+};
 
 const STEP_COPY: Record<HackOnboardingStep, { title: string; body: React.ReactNode }> = {
   version: {
-    title: "Choose your patch",
-    body: "This hack has more than one patch. Each one uses a different base ROM, so pick the patch you want before you continue.",
+    title: "Choose your version",
+    body: "This hack has more than one release. Pick the version you want here before you patch.",
   },
   selectRom: {
     title: "The key to your download",
@@ -39,7 +46,7 @@ const STEP_COPY: Record<HackOnboardingStep, { title: string; body: React.ReactNo
           href="/terms"
           target="_blank"
           rel="noopener noreferrer"
-          className="underline text-foreground/85 hover:text-foreground"
+          className="underline text-text-2 hover:text-text"
         >
           the Terms
         </Link>{" "}
@@ -55,7 +62,6 @@ interface Anchor {
   barLeft: number;
   barRight: number;
   viewportWidth: number;
-  viewportHeight: number;
   desktop: boolean;
 }
 
@@ -66,14 +72,13 @@ function sameAnchor(a: Anchor, b: Anchor) {
     a.barLeft === b.barLeft &&
     a.barRight === b.barRight &&
     a.viewportWidth === b.viewportWidth &&
-    a.viewportHeight === b.viewportHeight &&
     a.desktop === b.desktop
   );
 }
 
 /**
- * Tracks the live geometry of the sticky action bar so the coach card can sit
- * under it on desktop and above the sheet on mobile, whatever height it has.
+ * Tracks the live geometry of the patch module so the coach card can sit
+ * under it, whatever height it has.
  */
 function useBarAnchor(active: boolean): Anchor | null {
   const [anchor, setAnchor] = React.useState<Anchor | null>(null);
@@ -91,7 +96,6 @@ function useBarAnchor(active: boolean): Anchor | null {
         barLeft: rect.left,
         barRight: rect.right,
         viewportWidth: window.innerWidth,
-        viewportHeight: window.innerHeight,
         desktop: window.matchMedia("(min-width: 768px)").matches,
       };
       setAnchor((previous) => (previous && sameAnchor(previous, next) ? previous : next));
@@ -114,19 +118,21 @@ function useBarAnchor(active: boolean): Anchor | null {
 
 function cardPosition(anchor: Anchor, step: HackOnboardingStep): React.CSSProperties {
   if (!anchor.desktop) {
-    return { left: 16, right: 16, bottom: anchor.viewportHeight - anchor.barTop + 12 };
+    return { left: 16, right: 16, top: anchor.barBottom + 12 };
   }
   return {
     top: anchor.barBottom + 14,
     width: 280,
-    // Version, ROM, and patch CTAs all sit on the right side of the bar.
-    right: anchor.viewportWidth - anchor.barRight,
+    // Step 1 points back at the version chip; the ROM steps follow the CTA.
+    ...(step === "version"
+      ? { left: anchor.barLeft }
+      : { right: anchor.viewportWidth - anchor.barRight }),
   };
 }
 
 /**
  * Coach mark for the hack page onboarding. The dimmed bar, lit control and rose
- * beacon are drawn by StickyActionBar; this owns the scrim and the card.
+ * beacon are drawn by PatchModule; this owns the scrim and the card.
  */
 export default function HackOnboardingOverlay({
   step,
@@ -137,11 +143,14 @@ export default function HackOnboardingOverlay({
   onDismiss,
   hide,
   baseRomName,
+  patchChoice = false,
 }: HackOnboardingOverlayProps) {
   const cardRef = React.useRef<HTMLDivElement | null>(null);
   const titleId = React.useId();
   const anchor = useBarAnchor(!hide);
-  const copy = STEP_COPY[step];
+  const copy = step === "version" && patchChoice ? PATCH_CHOICE_COPY : STEP_COPY[step];
+  // A patch choice can't be skipped with Next: the tour waits for the pick, like Select ROM.
+  const waitsForPlayer = step === "selectRom" || (step === "version" && patchChoice);
 
   React.useEffect(() => {
     if (hide) return;
@@ -213,38 +222,36 @@ export default function HackOnboardingOverlay({
           aria-labelledby={titleId}
           tabIndex={-1}
           style={cardPosition(anchor, step)}
-          className="anim-pop elevate fixed z-[80] rounded-xl border border-[var(--border)] bg-white p-3.5 outline-none dark:bg-[#141414]"
+          className="anim-pop elevate fixed z-[80] rounded-card border border-line bg-white p-3.5 outline-none dark:bg-[#141414]"
         >
-          {(step === "selectRom" || step === "version" || !isLastStep) && (
+          {(waitsForPlayer || !isLastStep) && (
             <button
               type="button"
               onClick={onDismiss}
               aria-label="Close"
-              className="absolute right-2 top-2 cursor-pointer rounded-md p-1 text-foreground/50 transition-colors hover:bg-[var(--surface-2)] hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+              className="absolute right-2 top-2 cursor-pointer rounded-control p-1 text-text-3 transition-colors hover:bg-surface-2 hover:text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
             >
               <FiX size={14} aria-hidden />
             </button>
           )}
-          <h4 id={titleId} className={`text-[13px] font-semibold ${step === "selectRom" || step === "version" || !isLastStep ? "pr-7" : ""}`}>
+          <h4 id={titleId} className={`text-[13px] font-semibold ${waitsForPlayer || !isLastStep ? "pr-7" : ""}`}>
             {copy.title}
           </h4>
-          <p className="mt-1 text-xs leading-relaxed text-foreground/70">{copy.body}</p>
-          {step === "version" ? (
-            <p className="mt-3 text-xs font-semibold text-foreground/75">
-              Press Select Patch to choose which one you want.
+          <p className="mt-1 text-xs leading-relaxed text-text-2">{copy.body}</p>
+          {step === "version" && patchChoice ? (
+            <p className="mt-3 text-xs font-semibold text-text-2">
+              Press Select patch to see the options.
             </p>
           ) : step === "selectRom" ? (
-            <p className="mt-3 text-xs font-semibold text-foreground/75">
-              {baseRomName && baseRomName !== "Unknown"
-                ? `Select a clean ${baseRomName} ROM to continue.`
-                : "Select a clean base ROM to continue."}
+            <p className="mt-3 text-xs font-semibold text-text-2">
+              Select a clean {baseRomName || "base"} ROM to continue.
             </p>
           ) : (
             <div className="mt-3 flex justify-end">
               <button
                 type="button"
                 onClick={isLastStep ? onGotIt : onNext}
-                className="inline-flex h-7 cursor-pointer items-center rounded-full bg-[var(--accent)] px-3 text-xs font-bold text-[var(--accent-foreground)] transition-[background-color,transform] hover:bg-[var(--accent-700)] active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)]"
+                className="inline-flex h-7 cursor-pointer items-center rounded-full bg-accent-deep px-3 text-xs font-bold text-white transition-[background-color,transform] hover:bg-accent-hover active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)]"
               >
                 {isLastStep ? "Got it" : "Next"}
               </button>

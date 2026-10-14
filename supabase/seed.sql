@@ -545,7 +545,52 @@ FROM (
 JOIN public.patches p ON p.parent_hack = spec.slug AND p.version = spec.ver
 CROSS JOIN LATERAL generate_series(0, spec.cnt - 1) AS gs(n);
 
+-- Multi-source hack: one version, one named patch per base ROM. Both rows reuse the
+-- Emerald example patch, so only the Emerald option patches cleanly; FireRed tests the picker.
+INSERT INTO public.hacks (
+  slug, title, summary, description, base_rom, patch_url, version,
+  created_by, language, approved, approved_at, approved_by,
+  completion_status, patches_download_permission,
+  is_archive, published, tags_updated_at
+) VALUES (
+  'seed-multi-source',
+  'Seed Multi Source',
+  'Approved hack with a patch for Emerald and one for FireRed.',
+  'Tests the multi-source flow: two base ROMs, and players pick a named patch before patching.',
+  'poke_emerald', '', '1.0',
+  '22222222-2222-2222-2222-222222222222',
+  'English', true, now(), '11111111-1111-1111-1111-111111111111',
+  'Complete', 'Current',
+  false, false, default
+);
+
+INSERT INTO public.patches (parent_hack, version, filename, bucket, published, published_at, changelog, label, info, base_rom) VALUES
+  ('seed-multi-source', '1.0', 'seed-shared.bps', 'patches', true, now(), 'First multi-source release.', 'Emerald', 'The original Hoenn version. Pick this if you have Emerald.', 'poke_emerald'),
+  ('seed-multi-source', '1.0', 'seed-shared.bps', 'patches', true, now(), 'First multi-source release.', 'FireRed', 'The Kanto port, built on FireRed (Rev 0).', 'poke_firered');
+
+UPDATE public.hacks SET current_patch = (
+  SELECT id FROM public.patches WHERE parent_hack = 'seed-multi-source' AND label = 'Emerald' LIMIT 1
+) WHERE slug = 'seed-multi-source';
+
+INSERT INTO public.hack_tags (hack_slug, tag_id, "order") VALUES
+  ('seed-multi-source', 31, 1),
+  ('seed-multi-source', 71, 2),
+  ('seed-multi-source', 90, 3);
+
+INSERT INTO public.hack_covers (hack_slug, url, position) VALUES
+  ('seed-multi-source', 'seed-multi-source/cover-1.png', 1),
+  ('seed-multi-source', 'seed-multi-source/cover-2.png', 2),
+  ('seed-multi-source', 'seed-multi-source/cover-3.png', 3);
+
+-- Every hack lists its own base ROM; the multi-source one lists both.
 INSERT INTO public.hack_base_roms (hack_slug, base_rom, sort_order)
 SELECT slug, base_rom, 0
 FROM public.hacks
 ON CONFLICT DO NOTHING;
+
+INSERT INTO public.hack_base_roms (hack_slug, base_rom, sort_order) VALUES
+  ('seed-multi-source', 'poke_firered', 1)
+ON CONFLICT DO NOTHING;
+
+-- Seeded hacks count as submitted (drafts are made in the app); otherwise the pending ones show up as private drafts.
+UPDATE public.hacks SET submitted_at = created_at WHERE slug LIKE 'seed-%' AND submitted_at IS NULL;

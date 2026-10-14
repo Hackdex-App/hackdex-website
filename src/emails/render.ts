@@ -47,13 +47,28 @@ function substituteVars(template: string, vars: Record<string, string>): string 
   });
 }
 
-// Announcement bodies are plain text. Preserve line breaks and link HTTP URLs.
+// Escape announcement text; support HTTP links, Markdown images, and ## / ### headings.
 function formatAnnouncementMessage(message: string): string {
-  return message.split(/(https?:\/\/[^\s<>"']+)/g).map((part, index) => {
+  const html = message.split(/(!\[[^\]\r\n]*\]\(https?:\/\/[^\s<>"'()]+\)|https?:\/\/[^\s<>"']+)/g).map((part, index) => {
     if (index % 2 === 0) return escapeHtml(part);
+    const image = part.match(/^!\[([^\]\r\n]*)\]\((https?:\/\/[^\s<>"'()]+)\)$/);
+    if (image) {
+      const src = escapeHtml(image[2]);
+      return `<a href="${src}"><img src="${src}" alt="${escapeHtml(image[1])}" width="550" style="display:block;width:100%;max-width:550px;height:auto;border:0;" /></a>`;
+    }
     const url = part.replace(/[.,;!?)]+$/, "");
     return `<a href="${escapeHtml(url)}">${escapeHtml(url)}</a>${escapeHtml(part.slice(url.length))}`;
-  }).join("").replace(/\r?\n/g, "<br />");
+  }).join("");
+
+  return html.replace(/^(#{2,3})[ \t]+([^\r\n]+)\r?$/gm, (_, marks: string, text: string) => {
+    const level = marks.length;
+    const style = level === 2
+      ? "font-size:20px;line-height:28px;margin:24px 0 12px;"
+      : "font-size:16px;line-height:24px;margin:20px 0 8px;";
+    return `<h${level} style="${style}font-weight:700;color:#171717;">${text}</h${level}>`;
+  }).replace(/\r?\n/g, "<br />")
+    .replace(/(?:<br \/>){1,2}(<h[23] )/g, "$1")
+    .replace(/(<\/h[23]>)(?:<br \/>){1,2}/g, "$1");
 }
 
 const templateNormalizers: {

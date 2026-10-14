@@ -27,6 +27,11 @@ export function patchDisplayName(patch: {
   return label || patch.version;
 }
 
+/** Whether a player is choosing between named patches rather than between plain versions. */
+export function isPatchVariantChoice(patches: Array<{ label?: string | null }>): boolean {
+  return patches.length > 1 && patches.some((patch) => normalizePatchLabel(patch.label).length > 0);
+}
+
 export function currentPatchVersion(
   currentPatchId: number | null,
   patches: Array<{ id: number; version: string }>,
