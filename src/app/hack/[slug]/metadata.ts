@@ -12,6 +12,12 @@ import type { SelectablePatch } from "@/types/patcher";
 // stay out of "use server" files: every export there is a public endpoint that
 // anyone can call directly, which leaked private drafts and creator emails.
 // Callers gate what they render (drafts, admin-only email and contact).
+//
+// Every Supabase error throws instead of falling back to null or empty data.
+// unstable_cache doesn't store rejections, so an outage can't get cached as a
+// missing hack (404) or a page with no covers; the next request after Supabase
+// recovers loads fresh data, and hack-page renders that throw keep serving the
+// last good ISR page (or the error boundary if there isn't one yet).
 
 export interface HackMetadata {
   hack: {
@@ -67,7 +73,7 @@ export interface HackMetadata {
   };
 }
 
-/** null for deleted hacks too; pages that get null should call `hackNotFound`. */
+/** null for missing and deleted hacks; pages that get null should call `hackNotFound`. Throws on Supabase errors. */
 export async function getHackMetadata(slug: string): Promise<HackMetadata | null> {
   const runner = cache(
     async () => {
@@ -80,7 +86,8 @@ export async function getHackMetadata(slug: string): Promise<HackMetadata | null
         .is("deleted_at", null)
         .maybeSingle();
 
-      if (error || !hack) return null;
+      if (error) throw error;
+      if (!hack) return null;
 
       // Security: Don't return verification_contact_info if hack is approved
       if (hack.approved) {
@@ -89,20 +96,22 @@ export async function getHackMetadata(slug: string): Promise<HackMetadata | null
 
       // Fetch covers
       let images: string[] = [];
-      const { data: covers } = await supabase
+      const { data: covers, error: coversError } = await supabase
         .from("hack_covers")
         .select("url, position")
         .eq("hack_slug", slug)
         .order("position", { ascending: true });
+      if (coversError) throw coversError;
       if (covers && covers.length > 0) {
         images = getCoverUrls(covers.map(c => c.url));
       }
 
       // Fetch tags
-      const { data: tagRows } = await supabase
+      const { data: tagRows, error: tagsError } = await supabase
         .from("hack_tags")
         .select("order,tags(name)")
         .eq("hack_slug", slug);
+      if (tagsError) throw tagsError;
 
       const tags = sortOrderedTags(
         (tagRows || [])
@@ -113,16 +122,18 @@ export async function getHackMetadata(slug: string): Promise<HackMetadata | null
       ).map((t) => t.name);
 
       // Fetch profile
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("id,username,avatar_url,verified")
         .eq("id", hack.created_by as string)
         .maybeSingle();
+      if (profileError) throw profileError;
 
       // Meant to only be available to admins (gated in server-side page rendering)
       let userEmail: string | null = null;
       if (profile) {
-        const { data: userData } = await supabase.auth.admin.getUserById(profile.id);
+        const { data: userData, error: userError } = await supabase.auth.admin.getUserById(profile.id);
+        if (userError) throw userError;
         userEmail = userData?.user?.email || null;
       }
 
@@ -133,7 +144,7 @@ export async function getHackMetadata(slug: string): Promise<HackMetadata | null
         summary: string;
       }[] = [];
       if (!hack.is_archive && !hack.original_author) {
-        const { data: otherHacksData } = await supabase
+        const { data: otherHacksData, error: otherHacksError } = await supabase
           .from("hacks")
           .select("slug,title,summary")
           .eq("created_by", hack.created_by)
@@ -143,6 +154,7 @@ export async function getHackMetadata(slug: string): Promise<HackMetadata | null
           .neq("slug", hack.slug)
           .order("downloads", { ascending: false })
           .limit(10);
+        if (otherHacksError) throw otherHacksError;
         otherHacks = otherHacksData ?? [];
       }
 
@@ -155,11 +167,12 @@ export async function getHackMetadata(slug: string): Promise<HackMetadata | null
         changelog: string | null;
       } | null = null;
       if (hack.current_patch != null) {
-        const { data: patchData } = await supabase
+        const { data: patchData, error: patchError } = await supabase
           .from("patches")
           .select("id,bucket,filename,version,created_at,changelog")
           .eq("id", hack.current_patch)
           .maybeSingle();
+        if (patchError) throw patchError;
         if (patchData) {
           patch = {
             id: patchData.id,
@@ -219,8 +232,9 @@ export async function getHackDownloads(slug: string): Promise<number | null> {
         .select("downloads")
         .eq("slug", slug)
         .maybeSingle();
-      
-      if (error || !hack) return null;
+
+      if (error) throw error;
+      if (!hack) return null;
       return hack.downloads || 0;
     },
     [`hack:${slug}:downloads`],
@@ -241,12 +255,13 @@ export async function hackNotFound(slug: string): Promise<never> {
   const runner = cache(
     async () => {
       const supabase = await createServiceClient();
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("hacks")
         .select("redirect_url")
         .eq("slug", slug)
         .not("deleted_at", "is", null)
         .maybeSingle();
+      if (error) throw error;
       return data?.redirect_url ?? null;
     },
     [`hack:${slug}:redirect`],
