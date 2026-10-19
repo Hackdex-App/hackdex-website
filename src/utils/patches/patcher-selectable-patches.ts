@@ -2,6 +2,10 @@ import type { Database } from "@/types/db";
 import type { PatcherPatchSelection, SelectablePatch } from "@/types/patcher";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+/**
+ * Patches the patcher offers for a hack, plus the default pick. Throws on
+ * Supabase errors so callers never mistake an outage for "no patches".
+ */
 export async function getPatcherSelectablePatches(
   supabase: SupabaseClient<Database>,
   slug: string,
@@ -14,14 +18,7 @@ export async function getPatcherSelectablePatches(
     .eq("patches.published", true)
     .eq("patches.archived", false)
     .order("sort_order", { ascending: true });
-  if (error) {
-    console.error(error);
-    return {
-      savedPatchIds: [],
-      selectablePatches: [],
-      defaultPatchId: null,
-    };
-  }
+  if (error) throw error;
   const savedPatchIds = rows.map((row) => row.patch_id);
   let selectablePatches: SelectablePatch[] = rows.map((row) => row.patches).flat().map((patch) => ({
     id: patch.id,
@@ -36,14 +33,7 @@ export async function getPatcherSelectablePatches(
       .select("id, version, created_at, published, archived, filename")
       .eq("id", currentPatchId)
       .maybeSingle();
-    if (currentPatchError) {
-      console.error(currentPatchError);
-      return {
-        savedPatchIds: [],
-        selectablePatches: [],
-        defaultPatchId: null,
-      };
-    }
+    if (currentPatchError) throw currentPatchError;
     if (currentPatch?.published && !currentPatch?.archived) {
       selectablePatches = [currentPatch];
     }
