@@ -60,6 +60,7 @@ export interface HackMetadata {
     title: string;
     summary: string;
   }[];
+  /** The version a player gets by default: the version picker's default, else current_patch. */
   patch: {
     id: number;
     filename: string;
@@ -158,19 +159,17 @@ export async function getHackMetadata(slug: string): Promise<HackMetadata | null
         otherHacks = otherHacksData ?? [];
       }
 
-      // Get patch info
-      let patch: {
-        id: number;
-        filename: string;
-        version: string | null;
-        created_at: string;
-        changelog: string | null;
-      } | null = null;
-      if (hack.current_patch != null) {
+      const { savedPatchIds, selectablePatches, defaultPatchId } = await getPatcherSelectablePatches(supabase, slug, hack.current_patch);
+
+      // The page describes the version a player gets by default. With the version
+      // picker on, that's the picker's default, and current_patch can lag behind it.
+      const pagePatchId = defaultPatchId ?? hack.current_patch;
+      let patch: HackMetadata["patch"] = null;
+      if (pagePatchId != null) {
         const { data: patchData, error: patchError } = await supabase
           .from("patches")
-          .select("id,bucket,filename,version,created_at,changelog")
-          .eq("id", hack.current_patch)
+          .select("id,filename,version,created_at,changelog")
+          .eq("id", pagePatchId)
           .maybeSingle();
         if (patchError) throw patchError;
         if (patchData) {
@@ -184,7 +183,6 @@ export async function getHackMetadata(slug: string): Promise<HackMetadata | null
         }
       }
 
-      const { savedPatchIds, selectablePatches, defaultPatchId } = await getPatcherSelectablePatches(supabase, slug, hack.current_patch);
       const displayVersion = resolveHackDisplayVersion({
         isArchive: hack.is_archive,
         isCustomPatcherActive: savedPatchIds.length > 0,
