@@ -54,16 +54,22 @@ export function writeHackOnboardingState(state: HackOnboardingState): void {
 interface LeftoverStepsOptions {
   hasVersionPicker: boolean;
   romReady: boolean;
+  patchChosen?: boolean;
 }
 
 export function getLeftoverHackOnboardingSteps(
   state: HackOnboardingState,
-  { hasVersionPicker, romReady }: LeftoverStepsOptions,
+  { hasVersionPicker, romReady, patchChosen = true }: LeftoverStepsOptions,
 ): HackOnboardingStep[] {
   const steps: HackOnboardingStep[] = [];
-  const selectRomNeeded = !romReady && state.selectRom === "undone";
+  const needsPatchChoice = hasVersionPicker && !patchChosen;
+  const selectRomNeeded = patchChosen && !romReady && state.selectRom === "undone";
 
-  if (hasVersionPicker && state.version === "undone") steps.push("version");
+  // Until a patch is chosen, the tour has to start at Select Patch — even if
+  // version was marked passed on an earlier visit.
+  if (needsPatchChoice || (hasVersionPicker && state.version === "undone")) {
+    steps.push("version");
+  }
   if (selectRomNeeded) steps.push("selectRom");
 
   // A tour that still needs Select always includes Agree, even if Agree was

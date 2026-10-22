@@ -9,6 +9,7 @@ import { RiArchiveStackFill } from "react-icons/ri";
 import { formatCompactNumber, OrderedTag } from "@/utils/format";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
 import { baseGameLabel, baseRoms, type Platform } from "@/data/baseRoms";
+import { resolveHackBaseRomIds } from "@/utils/hacks/base-roms";
 import type { Database } from "@/types/db";
 import Handle from "@/components/Primitives/Handle";
 
@@ -21,6 +22,8 @@ export interface HackCardAttributes {
   tags: OrderedTag[];
   downloads: number;
   baseRomId?: string;
+  /** Every base ROM for multi-source hacks; baseRomId is the first. */
+  baseRomIds?: string[];
   version: string;
   summary?: string;
   description?: string;
@@ -44,10 +47,14 @@ interface HackCardProps {
  */
 function useReadiness(hack: HackCardAttributes) {
   const { isLinked, hasPermission, hasCached } = useBaseRoms();
-  const base = baseRoms.find((r) => r.id === hack.baseRomId);
-  const ready = base && !hack.is_archive ? hasPermission(base.id) || hasCached(base.id) : false;
-  const needsPermission = base && !hack.is_archive && !ready ? isLinked(base.id) : false;
-  return { base, ready, needsPermission };
+  // Multi-source hacks are ready when any of their base ROMs is.
+  const bases = resolveHackBaseRomIds(hack.baseRomId, hack.baseRomIds)
+    .map((id) => baseRoms.find((r) => r.id === id))
+    .filter((r): r is NonNullable<typeof r> => !!r);
+  const base = bases[0];
+  const ready = !hack.is_archive && bases.some((b) => hasPermission(b.id) || hasCached(b.id));
+  const needsPermission = !hack.is_archive && !ready && bases.some((b) => isLinked(b.id));
+  return { base, bases, ready, needsPermission };
 }
 
 /** Summary, or the start of the description for hacks that never got one. */
@@ -262,7 +269,7 @@ function Shots({ images, platform, fill }: { images: string[]; platform?: Platfo
 }
 
 function Facts({ hack, version = false, column = false, ...readiness }: ReturnType<typeof useReadiness> & { hack: HackCardAttributes; version?: boolean; column?: boolean }) {
-  const { base, ready, needsPermission } = readiness;
+  const { base, bases, ready, needsPermission } = readiness;
   return (
     <span
       className={`flex items-center gap-2.5 overflow-hidden whitespace-nowrap text-[13px] leading-tight text-text-3 ${
@@ -278,8 +285,9 @@ function Facts({ hack, version = false, column = false, ...readiness }: ReturnTy
           <span className="h-2 w-2 rounded-full bg-warn" /> Permission needed
         </span>
       ) : (
-        <span className="plat-dot flex-none text-text-2" data-platform={base?.platform}>
+        <span className="plat-dot flex-none text-text-2" data-platform={base?.platform} title={bases.length > 1 ? bases.map((b) => b.name).join("\n") : undefined}>
           {base ? baseGameLabel(base.name) : "Unknown base"}
+          {bases.length > 1 && <span className="text-text-3"> +{bases.length - 1}</span>}
         </span>
       )}
       {version && <span className="truncate">{hack.version}</span>}

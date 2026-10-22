@@ -35,6 +35,7 @@ function toCard(h: DiscoverHack): HackCardAttributes {
     tags: h.tags,
     downloads: h.downloads,
     baseRomId: h.baseRomId,
+    baseRomIds: h.baseRomIds,
     version: h.version,
     summary: h.summary,
     is_archive: h.is_archive,

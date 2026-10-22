@@ -40,6 +40,8 @@ interface Patch {
   changelog: string | null;
   published: boolean;
   archived: boolean;
+  /** The ROM this patch applies to; falls back to the hack's for older rows. */
+  base_rom?: string | null;
 }
 
 interface VersionActionsProps {
@@ -51,6 +53,8 @@ interface VersionActionsProps {
   isCustomPatcherActive?: boolean;
   isInCustomPatcherList?: boolean;
   customPatcherPatchCount?: number;
+  /** Names of every patch in this version, which publish together. */
+  versionPatchLabels?: string[];
   onActionComplete: () => void;
 }
 
@@ -58,13 +62,16 @@ export default function VersionActions({
   patch,
   isCurrent,
   hackSlug,
-  baseRom,
+  baseRom: hackBaseRom,
   currentPatchCreatedAt,
   isCustomPatcherActive = false,
   isInCustomPatcherList = false,
   customPatcherPatchCount = 0,
+  versionPatchLabels = [],
   onActionComplete,
 }: VersionActionsProps) {
+  // Re-uploads are checked against the ROM this patch applies to, which differs per patch on multi-source hacks.
+  const baseRom = patch.base_rom || hackBaseRom;
   const { isLinked, hasPermission, hasCached, importUploadedBlob, ensurePermission, getFileBlob, supported } = useBaseRoms();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showRestoreModal, setShowRestoreModal] = useState(false);
@@ -703,9 +710,22 @@ export default function VersionActions({
         visible={showPublishModal}
         onClose={() => !actionLoading && setShowPublishModal(false)}
       >
-        <p className="text-text-2 mb-4">
-          Publish version <strong>{patch.version}</strong>? This will make it viewable to the public along with its changelog.
-        </p>
+        {versionPatchLabels.length > 1 ? (
+          <>
+            <p className="text-text-2 mb-3">
+              Publish version <strong>{patch.version}</strong>? All of its patches go public together, with their changelogs:
+            </p>
+            <ul className="mb-4 list-disc space-y-1 pl-5 text-sm text-text-2">
+              {versionPatchLabels.map((label) => (
+                <li key={label}>{label}</li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <p className="text-text-2 mb-4">
+            Publish version <strong>{patch.version}</strong>? This will make it viewable to the public along with its changelog.
+          </p>
+        )}
         <p className="text-sm text-text-3 mb-4">
           {isCustomPatcherActive
             ? "This will not add the version to the Custom patcher list. Add it through Patcher Version Settings if you want it available in the homepage downloader."

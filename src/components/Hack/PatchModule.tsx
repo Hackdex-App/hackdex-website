@@ -9,15 +9,27 @@ import { useBaseRoms } from "@/contexts/BaseRomContext";
 import { baseGameLabel, type Platform } from "@/data/baseRoms";
 import HackOnboardingGate from "@/components/Hack/Onboarding/HackOnboardingGate";
 import { HEADER_COMPACT_ID } from "@/components/Header";
+import { baseRomName as nameOfBaseRom, uniqueBaseRomIds } from "@/utils/hacks/base-roms";
+import { patchDisplayName, patchPickerSubtitle } from "@/utils/patches/patch-variant";
 
 type OnboardingTarget = "version" | "selectRom" | "agree";
 type Status = "idle" | "ready" | "patching" | "done" | "downloading";
 
+interface PickerPatch {
+  id: number;
+  version: string;
+  label?: string | null;
+  info?: string | null;
+  base_rom?: string | null;
+}
+
 interface PatchModuleProps {
   title: string;
   version?: string;
-  selectablePatches?: { id: number; version: string }[];
+  selectablePatches?: PickerPatch[];
   selectedPatchId?: number | null;
+  /** The options are named patches (e.g. one per base ROM) and the player must pick one before patching. */
+  patchChoice?: boolean;
   onVersionChange?: (patchId: number) => void;
   author: string;
   filename: string | null;
@@ -100,6 +112,7 @@ export default function PatchModule({
   version,
   selectablePatches = [],
   selectedPatchId,
+  patchChoice = false,
   onVersionChange,
   author,
   filename,
@@ -138,8 +151,12 @@ export default function PatchModule({
   const [versionPickerOpenIn, setVersionPickerOpenIn] = React.useState<"module" | "compact" | null>(null);
   const versionPickerOpen = versionPickerOpenIn !== null;
   const hasVersionPicker = selectablePatches.length > 1 && !!onVersionChange;
+  const isPatchChoice = patchChoice && hasVersionPicker;
+  const needsChoice = isPatchChoice && selectedPatchId == null;
+  const selectedPatch = selectablePatches.find((patch) => patch.id === selectedPatchId) ?? null;
   const base = baseRomName ? baseGameLabel(baseRomName) : baseRomPlatform ?? "base";
   const format = patchFormat(filename);
+  const choiceRomIds = uniqueBaseRomIds(selectablePatches.map((patch) => patch.base_rom));
 
   const versionPickerOpenChange = React.useRef(onVersionPickerOpenChange);
   React.useEffect(() => {
@@ -175,7 +192,9 @@ export default function PatchModule({
   const onboardingActive = onboardingDimBar || onboardingHighlight !== null;
 
   // ---- the state the player sees ----
-  const kind: "loading" | "needs-rom" | "permission" | "ready" | "patching" | "downloading" | "done" = baseRomsLoading
+  const kind: "choose" | "loading" | "needs-rom" | "permission" | "ready" | "patching" | "downloading" | "done" = needsChoice
+    ? "choose"
+    : baseRomsLoading
     ? "loading"
     : !romReady
       ? isLinked
@@ -193,6 +212,8 @@ export default function PatchModule({
 
   const actionLabel = (() => {
     switch (kind) {
+      case "choose":
+        return "Select patch";
       case "loading":
         return "Checking your ROMs…";
       case "needs-rom":
@@ -221,6 +242,15 @@ export default function PatchModule({
           ? "bg-accent-hover text-white"
           : "bg-accent-deep text-white hover:enabled:bg-accent-hover";
     const cls = `relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-control font-semibold transition-[background-color,transform] duration-[120ms] active:enabled:not-aria-disabled:scale-[.98] disabled:cursor-default aria-disabled:cursor-default ${shape} ${paint}`;
+
+    // Until a patch is chosen the picker is the action: there's no ROM to ask for yet.
+    if (kind === "choose") {
+      return (
+        <div className={`w-full ${compact ? "md:w-auto" : ""}`}>
+          {picker(compact ? "compact" : "module", compact ? undefined : cls)}
+        </div>
+      );
+    }
 
     if (kind === "needs-rom") {
       return (
@@ -278,11 +308,15 @@ export default function PatchModule({
     );
   }
 
-  const picker = (where: "module" | "compact") => hasVersionPicker && (
+  // `buttonClass` turns the chip into the module's full-width action button.
+  const picker = (where: "module" | "compact", buttonClass?: string) => hasVersionPicker && (
     <VersionPicker
       version={version}
       patches={selectablePatches}
       selectedPatchId={selectedPatchId}
+      patchChoice={isPatchChoice}
+      buttonClass={buttonClass}
+      primary={kind === "choose"}
       open={versionPickerOpenIn === where}
       onOpenChange={(open) => setVersionPickerOpenIn(open ? where : null)}
       onSelect={(id) => {
@@ -295,7 +329,9 @@ export default function PatchModule({
     />
   );
 
-  const termsLine = kind === "ready" || kind === "done" ? (
+  const termsLine = kind === "choose" ? (
+    "Each patch says which ROM it needs. Your ROM stays in your browser."
+  ) : kind === "ready" || kind === "done" ? (
     <>
       Patching means you agree to the{" "}
       <Link href="/terms" prefetch={false} target="_blank" className="underline underline-offset-2">
@@ -356,6 +392,11 @@ export default function PatchModule({
             <p>
               <b className="font-semibold text-error">{errorMessage}</b> If the issue persists, try clearing your browser cache or using a different browser.
             </p>
+          ) : kind === "choose" ? (
+            <p>
+              <b className="font-semibold">Choose a patch.</b> This hack comes in {selectablePatches.length} patches
+              {choiceRomIds.length > 1 ? " for different base ROMs" : ""}. Pick the one you want; it tells you which ROM to bring.
+            </p>
           ) : kind === "loading" ? (
             <p>
               <b className="font-semibold">Checking this device for your {base} ROM.</b>
@@ -392,14 +433,35 @@ export default function PatchModule({
         </div>
         {gate && <HackOnboardingGate variant="row" label={gate.label} onClick={gate.open} beacon={gate.beacon && !onboardingGateHidden} inactive={onboardingGateHidden} />}
 
-        <dl className="mt-0.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[13px] leading-[1.45]">
-          <dt className={`text-text-3 ${hasVersionPicker ? "self-center" : ""}`}>Version</dt>
-          <dd className="flex min-w-0 flex-wrap items-center gap-2 text-text-2">{hasVersionPicker ? picker("module") : <span className="font-medium text-text">{version}</span>}</dd>
-          <dt className="text-text-3">Patch</dt>
-          <dd className="text-text-2">{format ? `${format} file` : "Patch file"}, applied locally</dd>
-          <dt className="text-text-3">Needs</dt>
-          <dd className="text-text-2">A clean {baseRomName ?? base} ROM. We verify the checksum first.</dd>
-        </dl>
+        {isPatchChoice ? (
+          <dl className="mt-0.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[13px] leading-[1.45]">
+            <dt className={`text-text-3 ${needsChoice ? "" : "self-center"}`}>Patch</dt>
+            <dd className="flex min-w-0 flex-wrap items-center gap-2 text-text-2">{needsChoice ? "Not chosen yet" : picker("module")}</dd>
+            {selectedPatch && (
+              <>
+                <dt className="text-text-3">Version</dt>
+                <dd className="font-medium text-text">{selectedPatch.version}</dd>
+              </>
+            )}
+            <dt className="text-text-3">File</dt>
+            <dd className="text-text-2">{!needsChoice && format ? `${format} file` : "Patch file"}, applied locally</dd>
+            <dt className="text-text-3">Needs</dt>
+            <dd className="text-text-2">
+              {needsChoice
+                ? `A clean ROM of ${choiceRomIds.length > 1 ? "one of: " : ""}${choiceRomIds.map(nameOfBaseRom).join(", ") || "the base game"}.`
+                : `A clean ${baseRomName ?? base} ROM. We verify the checksum first.`}
+            </dd>
+          </dl>
+        ) : (
+          <dl className="mt-0.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[13px] leading-[1.45]">
+            <dt className={`text-text-3 ${hasVersionPicker ? "self-center" : ""}`}>Version</dt>
+            <dd className="flex min-w-0 flex-wrap items-center gap-2 text-text-2">{hasVersionPicker ? picker("module") : <span className="font-medium text-text">{version}</span>}</dd>
+            <dt className="text-text-3">Patch</dt>
+            <dd className="text-text-2">{format ? `${format} file` : "Patch file"}, applied locally</dd>
+            <dt className="text-text-3">Needs</dt>
+            <dd className="text-text-2">A clean {baseRomName ?? base} ROM. We verify the checksum first.</dd>
+          </dl>
+        )}
 
         <p className="text-xs text-text-3">{termsLine}</p>
       </div>
@@ -424,7 +486,7 @@ export default function PatchModule({
                     <HackOnboardingGate variant="icon" label={gate.label} onClick={gate.open} beacon={gate.beacon} />
                   </div>
                 )}
-                {hasVersionPicker && (
+                {hasVersionPicker && kind !== "choose" && (
                   <div className="max-md:flex-none">
                     {picker("compact")}
                   </div>
@@ -445,11 +507,18 @@ function OnboardingBeacon({ className, large = false }: { className: string; lar
   return <span aria-hidden className={`onboarding-beacon ${large ? "onboarding-beacon-large" : ""} pointer-events-none absolute! block overflow-visible ${className}`} />;
 }
 
-/** Version chip that opens a list of the patches a player may choose from. Closes on outside click or Escape. */
+/**
+ * Version chip that opens a list of the patches a player may choose from. Closes on outside click or Escape.
+ * For named patches each option also shows its version, base ROM, and the creator's note. With
+ * `buttonClass` the chip becomes a full-width action button; `primary` paints the compact one rose.
+ */
 function VersionPicker({
   version,
   patches,
   selectedPatchId,
+  patchChoice = false,
+  buttonClass,
+  primary = false,
   open,
   onOpenChange,
   onSelect,
@@ -458,8 +527,11 @@ function VersionPicker({
   beacon,
 }: {
   version?: string;
-  patches: { id: number; version: string }[];
+  patches: PickerPatch[];
   selectedPatchId?: number | null;
+  patchChoice?: boolean;
+  buttonClass?: string;
+  primary?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSelect: (id: number) => void;
@@ -476,7 +548,10 @@ function VersionPicker({
     const chip = rootRef.current.getBoundingClientRect();
     const tabs = document.getElementById("mobile-tabs")?.offsetHeight ?? 0;
     const below = window.innerHeight - tabs - chip.bottom;
-    setUp(below < listRef.current.offsetHeight + 8 && chip.top > below);
+    // Room above stops at the sticky site header, which would otherwise cover the first options.
+    const header = document.querySelector("header")?.getBoundingClientRect().bottom ?? 0;
+    const above = chip.top - Math.max(0, header);
+    setUp(below < listRef.current.offsetHeight + 8 && above > below);
   }, [open]);
 
   React.useEffect(() => {
@@ -495,30 +570,44 @@ function VersionPicker({
     };
   }, [open, onOpenChange]);
 
+  const wide = !!buttonClass;
+  const ariaLabel = patchChoice ? "Choose a patch" : "Patch version";
+  const chipClass = primary
+    ? "tap-target inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-control bg-accent-deep px-4 text-sm font-semibold text-white transition-colors hover:bg-accent-hover md:w-auto"
+    : "tap-target inline-flex h-8 max-w-44 items-center gap-1.5 rounded-full border border-line-strong bg-surface px-2.5 text-[12px] font-semibold text-text transition-colors hover:border-text-3";
+  const iconSize = wide ? 18 : 13;
+  const iconClass = wide || primary ? "shrink-0 opacity-80" : "shrink-0 text-text-3";
+
   return (
-    <div ref={rootRef} className="relative inline-flex">
+    <div ref={rootRef} className={`relative ${wide ? "flex w-full" : primary ? "flex w-full md:inline-flex md:w-auto" : "inline-flex"}`}>
       <button
         type="button"
-        aria-label="Patch version"
+        aria-label={ariaLabel}
         aria-haspopup="listbox"
         aria-expanded={open}
         data-onboarding-spotlight={spotlightAttr}
         onClick={() => onOpenChange(!open)}
-        className={`tap-target inline-flex h-8 max-w-44 items-center gap-1.5 rounded-full border border-line-strong bg-surface px-2.5 text-[12px] font-semibold text-text transition-colors hover:border-text-3${spotlight}`}
+        className={`${wide ? `${buttonClass} cursor-pointer` : chipClass}${spotlight}`}
       >
         <span className="truncate">{version}</span>
-        {open ? <FiX size={13} className="shrink-0 text-text-3" aria-hidden /> : <FiChevronDown size={13} className="shrink-0 text-text-3" aria-hidden />}
+        {open ? <FiX size={iconSize} className={iconClass} aria-hidden /> : <FiChevronDown size={iconSize} className={iconClass} aria-hidden />}
       </button>
-      {beacon && <OnboardingBeacon className="-top-[3px] -right-[3px]" />}
+      {beacon && <OnboardingBeacon large={wide} className={wide ? "-top-[3px] right-[2px]" : "-top-[3px] -right-[3px]"} />}
       {open && (
         <div
           ref={listRef}
           role="listbox"
-          aria-label="Patch version"
-          className={`anim-pop absolute left-0 z-30 w-60 overflow-hidden rounded-card border border-line bg-surface shadow-overlay ${up ? "bottom-full mb-2" : "top-full mt-2"}`}
+          aria-label={ariaLabel}
+          className={`anim-pop absolute z-30 max-h-[min(60vh,420px)] overflow-y-auto overscroll-contain rounded-card border border-line bg-surface shadow-overlay ${
+            wide ? "inset-x-0" : primary ? "inset-x-0 md:left-auto md:right-0 md:w-80" : `left-0 ${patchChoice ? "w-72" : "w-60"}`
+          } ${up ? "bottom-full mb-2" : "top-full mt-2"}`}
         >
           {patches.map((patch, index) => {
             const selected = selectedPatchId === patch.id;
+            const subtitle = patchChoice
+              ? patchPickerSubtitle({ version: patch.version, label: patch.label, baseRomName: patch.base_rom ? nameOfBaseRom(patch.base_rom) : null })
+              : null;
+            const info = patchChoice ? patch.info?.trim() : null;
             return (
               <button
                 key={patch.id}
@@ -526,12 +615,20 @@ function VersionPicker({
                 role="option"
                 aria-selected={selected}
                 onClick={() => onSelect(patch.id)}
-                className={`flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-sm transition-colors ${
+                className={`flex w-full ${patchChoice ? "items-start" : "items-center"} justify-between gap-3 px-3 py-2.5 text-left text-sm transition-colors ${
                   selected ? "bg-accent-soft/60 text-text" : "text-text-2 hover:bg-surface-2"
                 } ${index > 0 ? "border-t border-line" : ""}`}
               >
-                <span className="font-medium">{patch.version}</span>
-                {selected && <FiCheck className="h-4 w-4 text-accent-text" aria-hidden />}
+                {patchChoice ? (
+                  <span className="min-w-0">
+                    <span className="block font-semibold text-text">{patchDisplayName(patch)}</span>
+                    {subtitle && <span className="mt-0.5 block text-xs text-text-3">{subtitle}</span>}
+                    {info && <span className="mt-1 block whitespace-pre-line text-xs leading-relaxed text-text-2">{info}</span>}
+                  </span>
+                ) : (
+                  <span className="font-medium">{patch.version}</span>
+                )}
+                {selected && <FiCheck className={`h-4 w-4 flex-none text-accent-text ${patchChoice ? "mt-0.5" : ""}`} aria-hidden />}
               </button>
             );
           })}

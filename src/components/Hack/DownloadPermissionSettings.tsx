@@ -18,7 +18,7 @@ function patchDownloadOptionDescription(
     case "Current":
       return isCustomPatcherActive
         ? "Only patch versions in your Custom patcher list can be downloaded directly."
-        : "Only the patch version marked Current can be downloaded directly.";
+        : "Only Current patches can be downloaded directly.";
     case "All":
       return "Every published patch version can be downloaded directly.";
   }
