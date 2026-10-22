@@ -23,11 +23,12 @@ function toSelectablePatch(patch: {
   };
 }
 
+/** Whether the hack has several base ROMs or named patches, which rules out a custom patcher list. Throws on Supabase errors. */
 export async function hackDisablesCustomPatcher(
   supabase: SupabaseClient<Database>,
   slug: string,
 ): Promise<boolean> {
-  const [{ count: baseRomCount }, { data: patches }] = await Promise.all([
+  const [{ count: baseRomCount, error: baseRomError }, { data: patches, error: patchesError }] = await Promise.all([
     supabase
       .from("hack_base_roms")
       .select("base_rom", { count: "exact", head: true })
@@ -37,17 +38,24 @@ export async function hackDisablesCustomPatcher(
       .select("version,label,archived")
       .eq("parent_hack", slug),
   ]);
+  if (baseRomError) throw baseRomError;
+  if (patchesError) throw patchesError;
   return isMultiEntryHack({
     baseRomCount: baseRomCount ?? 0,
     patches: patches || [],
   });
 }
 
+/**
+ * Patches the patcher offers for a hack, plus the default pick. Throws on
+ * Supabase errors so callers never mistake an outage for "no patches".
+ */
 export async function getPatcherSelectablePatches(
   supabase: SupabaseClient<Database>,
   slug: string,
   currentPatchId: number | null,
 ): Promise<PatcherPatchSelection> {
+  // Multi-entry hacks ignore any leftover custom list: their named patches are the choice.
   const customPatcherDisabled = await hackDisablesCustomPatcher(supabase, slug);
   let savedPatchIds: number[] = [];
   let selectablePatches: SelectablePatch[] = [];
@@ -59,14 +67,7 @@ export async function getPatcherSelectablePatches(
       .eq("patches.published", true)
       .eq("patches.archived", false)
       .order("sort_order", { ascending: true });
-    if (error) {
-      console.error(error);
-      return {
-        savedPatchIds: [],
-        selectablePatches: [],
-        defaultPatchId: null,
-      };
-    }
+    if (error) throw error;
     savedPatchIds = rows.map((row) => row.patch_id);
     selectablePatches = rows.map((row) => row.patches).flat().map(toSelectablePatch);
   }
@@ -77,14 +78,7 @@ export async function getPatcherSelectablePatches(
       .select("id, version, created_at, published, archived, filename, label, info, base_rom")
       .eq("id", currentPatchId)
       .maybeSingle();
-    if (currentPatchError) {
-      console.error(currentPatchError);
-      return {
-        savedPatchIds: [],
-        selectablePatches: [],
-        defaultPatchId: null,
-      };
-    }
+    if (currentPatchError) throw currentPatchError;
     if (currentPatch?.published && !currentPatch?.archived) {
       const { data: siblings, error: siblingError } = await supabase
         .from("patches")
@@ -94,12 +88,9 @@ export async function getPatcherSelectablePatches(
         .eq("published", true)
         .eq("archived", false)
         .order("id", { ascending: true });
-      if (siblingError) {
-        console.error(siblingError);
-        selectablePatches = [toSelectablePatch(currentPatch)];
-      } else {
-        selectablePatches = (siblings && siblings.length > 0 ? siblings : [currentPatch]).map(toSelectablePatch);
-      }
+      // Falling back to current_patch alone would cache a multi-source hack as having one patch.
+      if (siblingError) throw siblingError;
+      selectablePatches = (siblings && siblings.length > 0 ? siblings : [currentPatch]).map(toSelectablePatch);
     }
   }
   const defaultPatchId = hasSavedRows
