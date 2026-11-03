@@ -4,6 +4,7 @@ import React from "react";
 import { createPortal } from "react-dom";
 import { FiChevronDown, FiSearch, FiX } from "react-icons/fi";
 import { baseGameLabel, baseRoms, PLATFORM_NAMES, type Platform } from "@/data/baseRoms";
+import { hackBaseRomIds } from "@/utils/hacks/base-roms";
 
 /** Rail order: the platforms with the most hacks first. */
 const RAIL_PLATFORMS: Platform[] = ["GBA", "GBC", "GB", "NDS"];
@@ -71,17 +72,18 @@ export function toggleValue<T>(list: readonly T[], value: T) {
 /** Catalog-wide counts so a filter's number tells you what it will do before you tap it. */
 export function useFacetCounts(catalog: DiscoverHack[]) {
   return React.useMemo(() => {
-    const byBase = new Map<string, number>();
+    // Slugs per base ROM, so a multi-source hack counts once in a group holding several of its ROMs.
+    const byBase = new Map<string, Set<string>>();
     const byCompletion = new Map<string, number>();
     const byTag = new Map<string, number>();
     for (const h of catalog) {
-      if (h.baseRomId) byBase.set(h.baseRomId, (byBase.get(h.baseRomId) ?? 0) + 1);
+      for (const id of hackBaseRomIds(h)) byBase.set(id, (byBase.get(id) ?? new Set<string>()).add(h.slug));
       const c = h.completion_status ?? "Complete";
       byCompletion.set(c, (byCompletion.get(c) ?? 0) + 1);
       for (const t of h.tags) byTag.set(t.name, (byTag.get(t.name) ?? 0) + 1);
     }
     return {
-      base: (ids: string[]) => ids.reduce((n, id) => n + (byBase.get(id) ?? 0), 0),
+      base: (ids: string[]) => new Set(ids.flatMap((id) => [...(byBase.get(id) ?? [])])).size,
       completion: (c: string) => byCompletion.get(c) ?? 0,
       tag: (t: string) => byTag.get(t) ?? 0,
       ai: (f: AiFilter) => catalog.filter((h) => matchesAiFilter(h.ai, f)).length,

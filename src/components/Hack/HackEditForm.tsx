@@ -4,6 +4,7 @@ import React from "react";
 import Markdown from "@/components/Markdown/Markdown";
 import TagSelector from "@/components/Submit/TagSelector";
 import { baseRoms } from "@/data/baseRoms";
+import BaseRomNamesLabel from "@/components/Hack/BaseRomNamesLabel";
 import { getScreenshotTutorial } from "@/data/screenshotTutorials";
 import Image from "next/image";
 import { createClient } from "@/utils/supabase/client";
@@ -25,6 +26,8 @@ interface HackEditFormProps {
     summary: string;
     description: string;
     base_rom: string;
+    /** Every base ROM, for multi-source hacks. */
+    base_roms?: string[];
     language: string;
     completion_status: Database["public"]["Enums"]["Completion Status"] | null;
     version: string;
@@ -447,9 +450,9 @@ export default function HackEditForm({ slug, initial, catalogTags, tagsUpdatedAt
           <h3 className="text-[15px] font-semibold tracking-tight">Details</h3>
           <div className="mt-3 grid gap-3 text-sm">
             <div className="grid gap-2">
-              <label className="text-sm text-text-2">Base ROM</label>
-              <p className="flex items-center h-11 rounded-control bg-surface-2 px-3 text-sm ring-1 ring-inset ring-line focus:outline-none focus:ring-2 focus:ring-accent/40 text-text-3 select-none cursor-not-allowed">
-                {baseRoms.find(r => r.id === baseRom)?.name || baseRom}
+              <label className="text-sm text-text-2">{(initial.base_roms?.length ?? 0) > 1 ? "Base ROMs" : "Base ROM"}</label>
+              <p className="flex items-center min-h-11 rounded-control bg-surface-2 px-3 py-2 text-sm ring-1 ring-inset ring-line focus:outline-none focus:ring-2 focus:ring-accent/40 text-text-3 select-none cursor-not-allowed">
+                <BaseRomNamesLabel ids={initial.base_roms?.length ? initial.base_roms : [baseRom]} />
               </p>
             </div>
             <div className="grid gap-2">

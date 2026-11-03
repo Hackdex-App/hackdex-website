@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useEffect } from 'react'
+import React from 'react'
 import Link from 'next/link'
+import { usePageScrollLock } from "@/hooks/usePageScrollLock";
 
 type SubmitAuthOverlayProps = {
   title: string;
@@ -22,26 +23,7 @@ const SubmitAuthOverlay: React.FC<SubmitAuthOverlayProps> = ({
   secondaryLabel,
   ariaLabel,
 }) => {
-  useEffect(() => {
-    const html = document.documentElement;
-    const body = document.body;
-    const previousHtmlOverflow = html.style.overflow;
-    const previousBodyOverflow = body.style.overflow;
-    const previousBodyPaddingRight = body.style.paddingRight;
-    const scrollBarWidth = window.innerWidth - html.clientWidth;
-
-    html.style.overflow = 'hidden';
-    body.style.overflow = 'hidden';
-    if (scrollBarWidth > 0) {
-      body.style.paddingRight = `${scrollBarWidth}px`;
-    }
-
-    return () => {
-      html.style.overflow = previousHtmlOverflow;
-      body.style.overflow = previousBodyOverflow;
-      body.style.paddingRight = previousBodyPaddingRight;
-    };
-  }, []);
+  usePageScrollLock();
 
   return (
     <div className="fixed left-0 right-0 top-16 bottom-0 z-[100] flex items-center justify-center p-4">

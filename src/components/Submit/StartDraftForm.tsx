@@ -9,6 +9,8 @@ import { baseRoms, PLATFORM_NAMES, type Platform } from "@/data/baseRoms";
 import Select, { type SelectDivider, type SelectOption } from "@/components/Primitives/Select";
 import { slugify } from "@/utils/format";
 import { NETWORK_ERROR } from "@/utils/networkError";
+import BaseRomCheckboxList from "@/components/Hack/BaseRomCheckboxList";
+import { MAX_MULTI_BASE_ROMS } from "@/utils/hacks/multi-entry";
 
 const PLATFORM_ORDER: Platform[] = ["GBA", "GBC", "GB", "NDS"];
 
@@ -36,6 +38,9 @@ export default function StartDraftForm({ disabled = false, canSubmitForOthers = 
   const router = useRouter();
   const [title, setTitle] = React.useState("");
   const [baseRom, setBaseRom] = React.useState("");
+  // Multi-source: patches for several base ROMs of one platform; players pick theirs.
+  const [multiBase, setMultiBase] = React.useState(false);
+  const [baseRomList, setBaseRomList] = React.useState<string[]>([]);
   const [summary, setSummary] = React.useState("");
   const [who, setWho] = React.useState<"mine" | "behalf">("mine");
   const [originalAuthor, setOriginalAuthor] = React.useState("");
@@ -52,7 +57,8 @@ export default function StartDraftForm({ disabled = false, canSubmitForOthers = 
     !title.trim() && "a title",
     title.trim() && !slug && "a page URL",
     availability === "taken" && "a different page URL",
-    !baseRom && "a base ROM",
+    !multiBase && !baseRom && "a base ROM",
+    multiBase && baseRomList.length < 2 && "at least two base ROMs",
     summary.trim().length < 10 && "a summary",
     who === "behalf" && (!originalAuthor.trim() || !permissionFrom.trim()) && "the creator's permission",
     !canSubmitForOthers && !madeIt && "your confirmation",
@@ -130,18 +136,50 @@ export default function StartDraftForm({ disabled = false, canSubmitForOthers = 
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <span className={label}>Base ROM</span>
-        <input type="hidden" name="base_rom" value={baseRom} />
-        <Select
-          value={baseRom}
-          onChange={setBaseRom}
-          options={ROM_OPTIONS}
-          placeholder="Choose the game your patch applies to"
-          enableFilter
-          disabled={disabled}
-          className="!h-[42px] !rounded-control !border !border-line-strong !bg-surface !text-[15px] !ring-0 focus:!border-accent focus:!ring-0"
-        />
-        <span className={hint}>Players bring this ROM; your patch is applied to it in their browser.</span>
+        <span className={label}>{multiBase ? "Base ROMs" : "Base ROM"}</span>
+        {multiBase ? (
+          <>
+            <input type="hidden" name="base_roms" value={baseRomList.join(",")} />
+            <BaseRomCheckboxList
+              platform={baseRoms.find((r) => r.id === (baseRomList[0] || baseRom))?.platform ?? ""}
+              value={baseRomList}
+              onChange={setBaseRomList}
+              max={MAX_MULTI_BASE_ROMS}
+              disabled={disabled}
+            />
+            <span className={hint}>
+              {baseRomList.length} chosen. You&rsquo;ll upload one patch for each, and players pick the one for the ROM they have.
+            </span>
+          </>
+        ) : (
+          <>
+            <input type="hidden" name="base_rom" value={baseRom} />
+            <Select
+              value={baseRom}
+              onChange={setBaseRom}
+              options={ROM_OPTIONS}
+              placeholder="Choose the game your patch applies to"
+              enableFilter
+              disabled={disabled}
+              className="!h-[42px] !rounded-control !border !border-line-strong !bg-surface !text-[15px] !ring-0 focus:!border-accent focus:!ring-0"
+            />
+            <span className={hint}>Players bring this ROM; your patch is applied to it in their browser.</span>
+          </>
+        )}
+        <label className={`mt-1 flex min-h-[30px] items-center gap-2.5 text-sm ${!multiBase && !baseRom ? "cursor-not-allowed text-text-3" : "cursor-pointer"}`}>
+          <input
+            type="checkbox"
+            checked={multiBase}
+            onChange={(e) => {
+              setMultiBase(e.target.checked);
+              if (e.target.checked) setBaseRomList(baseRom ? [baseRom] : []);
+              else setBaseRom(baseRomList[0] ?? baseRom);
+            }}
+            disabled={disabled || (!multiBase && !baseRom)}
+            className="h-4 w-4 accent-[var(--rose-deep)]"
+          />
+          My hack has a patch for more than one base ROM
+        </label>
       </div>
 
       <label className="flex flex-col gap-1.5">

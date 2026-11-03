@@ -24,14 +24,29 @@ export default async function ChangelogPage({ params }: ChangelogPageProps) {
   // Fetch all published, non-archived patches with changelogs
   const { data: patches } = await supabase
     .from("patches")
-    .select("id, version, created_at, changelog")
+    .select("id, version, created_at, changelog, label")
     .eq("parent_hack", slug)
     .eq("published", true)
     .eq("archived", false)
     .not("changelog", "is", null)
     .order("created_at", { ascending: false });
 
-  const patchesWithChangelogs = (patches || []).filter(p => p.changelog && p.changelog.trim().length > 0);
+  // A version's named patches usually share one changelog: show it once. Patches with their own notes keep their name.
+  const entries: { id: number; title: string; version: string; created_at: string; changelog: string }[] = [];
+  for (const p of patches || []) {
+    const changelog = p.changelog?.trim();
+    if (!changelog) continue;
+    if (entries.some((e) => e.version === p.version && e.changelog === changelog)) continue;
+    const sharedByVersion = (patches || []).filter((o) => o.version === p.version && o.changelog?.trim() === changelog).length > 1;
+    const title = p.label?.trim() && !sharedByVersion ? `${p.label.trim()} (${p.version})` : p.version;
+    entries.push({ id: p.id, title, version: p.version, created_at: p.created_at, changelog });
+  }
+  // Every patch of the current version is current; the hack points at one of them.
+  let currentVersion = (patches || []).find((p) => p.id === hack.current_patch)?.version ?? null;
+  if (!currentVersion && hack.current_patch) {
+    const { data: currentPatch } = await supabase.from("patches").select("version").eq("id", hack.current_patch).maybeSingle();
+    currentVersion = currentPatch?.version ?? null;
+  }
 
   return (
     <div className="mx-auto w-full max-w-screen-md px-6 py-10">
@@ -49,19 +64,19 @@ export default async function ChangelogPage({ params }: ChangelogPageProps) {
         </p>
       </div>
 
-      {patchesWithChangelogs.length === 0 ? (
+      {entries.length === 0 ? (
         <div className="card p-8 text-center">
           <p className="text-text-3">No changelogs available yet.</p>
         </div>
       ) : (
         <div className="space-y-6">
-          {patchesWithChangelogs.map((patch) => (
+          {entries.map((patch) => (
             <div key={patch.id} className="card p-6">
               <div className="mb-4 flex items-center justify-between">
                 <div>
                   <h2 className="text-xl font-semibold">
-                    {patch.version}
-                    {hack.current_patch === patch.id && (
+                    {patch.title}
+                    {currentVersion === patch.version && (
                       <span className="ml-2 inline-flex items-center rounded-full bg-ready-soft px-2 py-0.5 text-xs font-medium text-ready">
                         Current
                       </span>

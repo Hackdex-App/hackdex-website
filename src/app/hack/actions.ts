@@ -24,6 +24,9 @@ import { MAX_COVERS, SUMMARY_MAX, TITLE_MAX } from "@/data/hackLimits";
 import { baseRoms } from "@/data/baseRoms";
 import type { PatchFormat } from "@/utils/patching";
 import { parseHackRedirect } from "@/utils/hackRedirect";
+import { getHackBaseRomIds, replaceHackBaseRoms, validateKnownBaseRomIds } from "@/utils/hacks/save-base-roms";
+import { uniqueBaseRomIds } from "@/utils/hacks/base-roms";
+import { MAX_MULTI_BASE_ROMS } from "@/utils/hacks/multi-entry";
 
 export async function updateHack(args: {
   slug: string;
@@ -31,6 +34,8 @@ export async function updateHack(args: {
   summary?: string;
   description?: string;
   base_rom?: string;
+  /** Every base ROM, in order, for hacks with more than one. The first becomes base_rom. */
+  base_roms?: string[];
   language?: string;
   completion_status?: Database["public"]["Enums"]["Completion Status"] | null;
   version?: string;
@@ -70,6 +75,7 @@ export async function updateHack(args: {
   }
 
   const updatePayload: TablesUpdate<"hacks"> = {};
+  let baseRomsChanged = false;
   if (args.title !== undefined) {
     if (!args.title.trim() || args.title.length > TITLE_MAX) return { ok: false, error: `Keep the title between 1 and ${TITLE_MAX} characters` } as const;
     updatePayload.title = args.title;
@@ -79,14 +85,23 @@ export async function updateHack(args: {
     updatePayload.summary = args.summary;
   }
   if (args.description !== undefined) updatePayload.description = args.description;
-  if (args.base_rom !== undefined) {
-    if (!baseRoms.some((r) => r.id === args.base_rom)) return { ok: false, error: "Choose a base ROM from the list" } as const;
-    // Patches are built against one ROM; switching it after an upload would make players patch the wrong game.
-    if (args.base_rom !== hack.base_rom) {
+  // A single base_rom is a one-item list, so hack_base_roms always mirrors base_rom.
+  const nextBaseRoms = args.base_roms !== undefined
+    ? uniqueBaseRomIds(args.base_roms)
+    : args.base_rom !== undefined ? [args.base_rom] : null;
+  if (nextBaseRoms) {
+    if (nextBaseRoms.length === 0 || !nextBaseRoms.every((id) => baseRoms.some((r) => r.id === id))) return { ok: false, error: "Choose a base ROM from the list" } as const;
+    if (nextBaseRoms.length > MAX_MULTI_BASE_ROMS) return { ok: false, error: `Choose up to ${MAX_MULTI_BASE_ROMS} base ROMs` } as const;
+    const invalid = validateKnownBaseRomIds(nextBaseRoms);
+    if (invalid) return { ok: false, error: invalid } as const;
+    // Patches are built against these ROMs; switching after an upload would make players patch the wrong game.
+    const currentBaseRoms = await getHackBaseRomIds(supabase, args.slug, hack.base_rom);
+    if (nextBaseRoms.join() !== currentBaseRoms.join()) {
       const { count } = await supabase.from("patches").select("id", { count: "exact", head: true }).eq("parent_hack", args.slug);
       if (count) return { ok: false, error: "The base ROM is locked once a patch is uploaded" } as const;
+      baseRomsChanged = true;
     }
-    updatePayload.base_rom = args.base_rom;
+    updatePayload.base_rom = nextBaseRoms[0];
   }
   if (args.language !== undefined) updatePayload.language = args.language;
   if (args.completion_status !== undefined) {
@@ -128,6 +143,10 @@ export async function updateHack(args: {
       .update(updatePayload)
       .eq("slug", args.slug);
     if (uErr) return { ok: false, error: uErr.message } as const;
+    if (baseRomsChanged && nextBaseRoms) {
+      const saved = await replaceHackBaseRoms(service, args.slug, nextBaseRoms);
+      if (!saved.ok) return saved;
+    }
   }
 
   if (args.tags) {
@@ -281,7 +300,13 @@ export async function saveHackCovers(args: { slug: string; coverUrls: string[] }
 
 
 /** Signs an upload for a new version. The key is made here so it can only land in this hack's files. */
-export async function presignNewPatchVersion(args: { slug: string; version: string; format: PatchFormat }) {
+export async function presignNewPatchVersion(args: {
+  slug: string;
+  version: string;
+  format: PatchFormat;
+  /** Named patches may join an existing version; confirmPatchUploads checks their names are new. */
+  allowExistingVersion?: boolean;
+}) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -305,15 +330,17 @@ export async function presignNewPatchVersion(args: { slug: string; version: stri
     return { ok: false, error: "Forbidden" } as const;
   }
 
-  // Enforce unique version per hack
-  const { data: existing } = await supabase
-    .from("patches")
-    .select("id")
-    .eq("parent_hack", args.slug)
-    .eq("version", args.version)
-    .limit(1)
-    .maybeSingle();
-  if (existing) return { ok: false, error: "That version already exists for this hack." } as const;
+  if (!args.allowExistingVersion) {
+    // Enforce unique version per hack for the single-patch flow
+    const { data: existing } = await supabase
+      .from("patches")
+      .select("id")
+      .eq("parent_hack", args.slug)
+      .eq("version", args.version)
+      .limit(1)
+      .maybeSingle();
+    if (existing) return { ok: false, error: "That version already exists for this hack." } as const;
+  }
 
   const objectKey = newPatchKey(args.slug, args.version, args.format === "xdelta" ? "xdelta" : "bps");
 

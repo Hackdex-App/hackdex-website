@@ -18,6 +18,9 @@ import {
 } from "@/utils/hack-review";
 import { revalidateDiscoverCatalog } from "@/app/discover/revalidate";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { getHackBaseRomIds, parseBaseRomIds, replaceHackBaseRoms, validateKnownBaseRomIds } from "@/utils/hacks/save-base-roms";
+import { MAX_MULTI_BASE_ROMS, MAX_MULTI_PATCHES } from "@/utils/hacks/multi-entry";
+import { normalizePatchInfo, normalizePatchLabel, prependChangelog, PATCH_INFO_MAX_LENGTH, PATCH_LABEL_MAX_LENGTH } from "@/utils/patches/patch-variant";
 
 type HackInsert = TablesInsert<"hacks">;
 
@@ -48,12 +51,73 @@ export async function checkSlugAvailable(slug: string) {
   return !(await isSlugTaken(slug));
 }
 
+export type PatchUploadSpec = {
+  objectKey: string;
+  /** Names the patch for players. Required when an upload has more than one. */
+  label?: string | null;
+  info?: string | null;
+  /** The ROM this patch applies to; one of the hack's base ROMs. */
+  base_rom?: string | null;
+};
+
+type ValidPatchSpec = { objectKey: string; label: string | null; info: string | null; base_rom: string | null };
+
+function validatePatchSpecs(specs: PatchUploadSpec[], allowedBaseRoms: string[]): { ok: true; specs: ValidPatchSpec[] } | { ok: false; error: string } {
+  if (specs.length === 0) return { ok: false, error: "At least one patch file is required." };
+  if (specs.length > MAX_MULTI_PATCHES) return { ok: false, error: `You can upload at most ${MAX_MULTI_PATCHES} patches.` };
+  const labels = specs.map((spec) => normalizePatchLabel(spec.label));
+  if (specs.length > 1 && labels.some((label) => !label)) return { ok: false, error: "Each patch needs a name." };
+  if (new Set(labels.map((label) => label.toLowerCase())).size !== labels.length) return { ok: false, error: "Patch names must be unique for this version." };
+  if (new Set(specs.map((spec) => spec.objectKey)).size !== specs.length) return { ok: false, error: "Each patch needs its own upload." };
+  for (const spec of specs) {
+    if (normalizePatchLabel(spec.label).length > PATCH_LABEL_MAX_LENGTH) return { ok: false, error: `Patch names must be ${PATCH_LABEL_MAX_LENGTH} characters or fewer.` };
+    if (normalizePatchInfo(spec.info).length > PATCH_INFO_MAX_LENGTH) return { ok: false, error: `Patch information must be ${PATCH_INFO_MAX_LENGTH} characters or fewer.` };
+    const baseRom = spec.base_rom?.trim();
+    if (baseRom && !allowedBaseRoms.includes(baseRom)) return { ok: false, error: "Each patch must use one of this hack's base ROMs." };
+  }
+  return {
+    ok: true,
+    specs: specs.map((spec) => ({
+      objectKey: spec.objectKey,
+      label: normalizePatchLabel(spec.label) || null,
+      info: normalizePatchInfo(spec.info) || null,
+      base_rom: spec.base_rom?.trim() || null,
+    })),
+  };
+}
+
 export async function confirmPatchUpload(args: {
   slug: string;
   objectKey: string;
   version: string;
   firstUpload?: boolean;
   publishAutomatically?: boolean;
+  /** The AI label stamp the uploader reviewed; required once the hack already has a version. */
+  aiReviewedAt?: string | null;
+}) {
+  return confirmPatchUploads({
+    slug: args.slug,
+    version: args.version,
+    firstUpload: args.firstUpload,
+    publishAutomatically: args.publishAutomatically,
+    aiReviewedAt: args.aiReviewedAt,
+    patches: [{ objectKey: args.objectKey }],
+  });
+}
+
+/**
+ * Registers one version's uploaded patches: one file for most hacks, or several
+ * named patches (often one per base ROM) for multi-source hacks. The rows go in
+ * one insert, so a version never ends up with only some of its patches.
+ */
+export async function confirmPatchUploads(args: {
+  slug: string;
+  version: string;
+  patches: PatchUploadSpec[];
+  firstUpload?: boolean;
+  publishAutomatically?: boolean;
+  /** Markdown shared by every patch in this upload. */
+  changelog?: string | null;
   /** The AI label stamp the uploader reviewed; required once the hack already has a version. */
   aiReviewedAt?: string | null;
 }) {
@@ -65,7 +129,7 @@ export async function confirmPatchUpload(args: {
 
   const { data: hack, error: hErr } = await supabase
     .from("hacks")
-    .select("slug, created_by, title, current_patch, original_author, permission_from, is_archive, approved, assigned_admin, verification_contact_info, submitted_at, ai_disclosed_at")
+    .select("slug, created_by, title, base_rom, current_patch, original_author, permission_from, is_archive, approved, assigned_admin, verification_contact_info, submitted_at, ai_disclosed_at")
     .eq("slug", args.slug)
     .maybeSingle();
   if (hErr) return { ok: false, error: hErr.message } as const;
@@ -78,12 +142,21 @@ export async function confirmPatchUpload(args: {
   if (!permission.canEdit) {
     return { ok: false, error: "Forbidden" } as const;
   }
-  // Only a key signed for this hack, so nobody can register another hack's file.
-  if (!isPatchKeyFor(args.slug, args.objectKey)) return { ok: false, error: "Invalid patch upload" } as const;
-  if (!(await objectExists(PATCHES_BUCKET, args.objectKey))) return { ok: false, error: "The patch didn't finish uploading. Please try again." } as const;
+
+  const hackBaseRoms = await getHackBaseRomIds(supabase, args.slug, hack.base_rom);
+  const validated = validatePatchSpecs(args.patches, hackBaseRoms);
+  if (!validated.ok) return { ok: false, error: validated.error } as const;
+  const specs = validated.specs;
+  const multi = specs.length > 1;
+
   // Patch rows are server-only (RLS has no insert policy), so writes below use the service client.
   const service = await createServiceClient();
-  const { count: keyUses } = await service.from("patches").select("id", { count: "exact", head: true }).eq("filename", args.objectKey);
+  for (const spec of specs) {
+    // Only a key signed for this hack, so nobody can register another hack's file.
+    if (!isPatchKeyFor(args.slug, spec.objectKey)) return { ok: false, error: "Invalid patch upload" } as const;
+    if (!(await objectExists(PATCHES_BUCKET, spec.objectKey))) return { ok: false, error: "The patch didn't finish uploading. Please try again." } as const;
+  }
+  const { count: keyUses } = await service.from("patches").select("id", { count: "exact", head: true }).in("filename", specs.map((spec) => spec.objectKey));
   if (keyUses) return { ok: false, error: "That upload was already used. Please upload again." } as const;
 
   // New versions re-confirm the AI label. The client sends the stamp of the label it showed, so a
@@ -98,15 +171,18 @@ export async function confirmPatchUpload(args: {
     }
   }
 
-  // Enforce unique version per hack defensively (avoid race with presign step)
+  // Enforce unique version + patch name per hack defensively (avoid race with presign step)
   const { data: existing, error: vErr } = await supabase
     .from("patches")
-    .select("id")
+    .select("id,label")
     .eq("parent_hack", args.slug)
-    .eq("version", args.version)
-    .maybeSingle();
+    .eq("version", args.version);
   if (vErr) return { ok: false, error: vErr.message } as const;
-  if (existing) return { ok: false, error: "That version already exists for this hack." } as const;
+  const existingLabels = new Set((existing || []).map((row) => normalizePatchLabel(row.label).toLowerCase()));
+  const versionTakenError = multi ? "One or more of these patch names already exist for this version." : "That version already exists for this hack.";
+  if (specs.some((spec) => existingLabels.has((spec.label ?? "").toLowerCase()))) {
+    return { ok: false, error: versionTakenError } as const;
+  }
 
   // A hack's first patch always becomes current: there's nothing else to play, and a draft's stays private anyway.
   let shouldPublishAutomatically = !!args.publishAutomatically || hack.current_patch === null;
@@ -121,25 +197,33 @@ export async function confirmPatchUpload(args: {
     shouldPublishAutomatically = (customPatcherRows || []).length === 0;
   }
 
-  // Create patch row
-  const patchInsert: TablesInsert<"patches"> = {
+  // Create patch rows. A single unnamed patch still records the hack's base ROM, so every patch says what it applies to.
+  const publishedAt = shouldPublishAutomatically ? new Date().toISOString() : undefined;
+  const changelog = prependChangelog(args.changelog, null);
+  const patchInserts: TablesInsert<"patches">[] = specs.map((spec) => ({
     bucket: PATCHES_BUCKET,
-    filename: args.objectKey,
+    filename: spec.objectKey,
     version: args.version,
     parent_hack: args.slug,
-    format: patchFormatFromObjectKey(args.objectKey),
+    format: patchFormatFromObjectKey(spec.objectKey),
+    label: spec.label,
+    info: spec.info,
+    base_rom: spec.base_rom ?? (multi ? null : hack.base_rom),
+    ...(changelog ? { changelog } : {}),
     published: shouldPublishAutomatically,
-    ...(shouldPublishAutomatically ? { published_at: new Date().toISOString() } : {}),
-  };
+    ...(publishedAt ? { published_at: publishedAt } : {}),
+  }));
 
-  const { data: patch, error: pErr } = await service
+  const { data: insertedPatches, error: pErr } = await service
     .from("patches")
-    .insert(patchInsert)
-    .select("id, created_at")
-    .single();
-  // The unique index catches a concurrent upload of the same version.
-  if (pErr?.code === "23505") return { ok: false, error: "That version already exists for this hack." } as const;
+    .insert(patchInserts)
+    .select("id, created_at");
+  // The unique index catches a concurrent upload of the same version and name.
+  if (pErr?.code === "23505") return { ok: false, error: versionTakenError } as const;
   if (pErr) return { ok: false, error: pErr.message } as const;
+  // The first row stands for the version: it becomes current_patch, and its siblings follow it.
+  const patch = [...(insertedPatches || [])].sort((a, b) => a.id - b.id)[0];
+  if (!patch) return { ok: false, error: "Failed to create patch." } as const;
 
   // Only update current_patch if publishAutomatically is true
   if (shouldPublishAutomatically) {
@@ -179,6 +263,7 @@ export async function confirmPatchUpload(args: {
   revalidateTag(`hack:${args.slug}:metadata`);
   revalidatePath(`/hack/${args.slug}`);
   revalidatePath(`/hack/${args.slug}/versions`);
+  revalidatePath(`/hack/${args.slug}/changelog`);
 
   // Notifications are best effort: the upload is already saved, so a Discord error mustn't report failure.
   try {
@@ -199,7 +284,9 @@ export async function confirmPatchUpload(args: {
       footer: { text: "This message brought to you by Hackdex" },
     } : {
       title: `New update for ${hack.title}`,
-      description: `**${hack.title}** has been updated to **${args.version}**`,
+      description: multi
+        ? `**${hack.title}** has been updated to **${args.version}** with ${specs.length} patch options.`
+        : `**${hack.title}** has been updated to **${args.version}**`,
       color: 0x40f56a,
       url: `${process.env.NEXT_PUBLIC_SITE_URL}/hack/${args.slug}`,
       footer: {
@@ -255,6 +342,8 @@ export async function confirmPatchUpload(args: {
  * Starts a private draft from the three things a page needs (title, base ROM,
  * summary). The creator fills in the rest on the edit page and submits when
  * the checklist is clear. Nothing is visible to reviewers until then.
+ * `base_roms` (comma-separated) starts a multi-source draft instead: a hack
+ * with one patch per base ROM that players choose between.
  */
 export async function createDraft(formData: FormData) {
   const supabase = await createClient();
@@ -264,7 +353,8 @@ export async function createDraft(formData: FormData) {
   if (!user) return { ok: false, error: "Unauthorized" } as const;
 
   const title = (formData.get("title") as string | null)?.trim() ?? "";
-  const base_rom = (formData.get("base_rom") as string | null)?.trim() ?? "";
+  const baseRomIds = parseBaseRomIds(formData.get("base_roms") || formData.get("base_rom"));
+  const base_rom = baseRomIds[0] ?? "";
   const summary = (formData.get("summary") as string | null)?.trim() ?? "";
   const behalf = formData.get("who") === "behalf";
   const original_author = behalf ? (formData.get("original_author") as string | null)?.trim() || null : null;
@@ -273,7 +363,10 @@ export async function createDraft(formData: FormData) {
   if (!title || !base_rom || summary.length < 10) return { ok: false, error: "Add a title, a base ROM, and a summary to continue." } as const;
   if (title.length > TITLE_MAX) return { ok: false, error: `Keep the title to ${TITLE_MAX} characters.` } as const;
   if (summary.length > SUMMARY_MAX) return { ok: false, error: `Keep the summary to ${SUMMARY_MAX} characters.` } as const;
-  if (!baseRoms.some((r) => r.id === base_rom)) return { ok: false, error: "Choose a base ROM from the list." } as const;
+  if (!baseRomIds.every((id) => baseRoms.some((r) => r.id === id))) return { ok: false, error: "Choose a base ROM from the list." } as const;
+  if (baseRomIds.length > MAX_MULTI_BASE_ROMS) return { ok: false, error: `Choose up to ${MAX_MULTI_BASE_ROMS} base ROMs.` } as const;
+  const invalidBaseRoms = validateKnownBaseRomIds(baseRomIds);
+  if (invalidBaseRoms) return { ok: false, error: invalidBaseRoms } as const;
   if (behalf && (!original_author || !permission_from)) return { ok: false, error: "Name the creator and where they gave permission." } as const;
   if (behalf) {
     // Listing someone else's hack is for archivers (admins included).
@@ -309,6 +402,8 @@ export async function createDraft(formData: FormData) {
   const service = await createServiceClient();
   const { error } = await service.from("hacks").insert(insertPayload);
   if (error) return { ok: false, error: error.message } as const;
+  const baseRomsSaved = await replaceHackBaseRoms(service, slug, baseRomIds);
+  if (!baseRomsSaved.ok) return { ok: false, error: baseRomsSaved.error } as const;
   // Someone may have visited this address before it existed; that "not found" is cached.
   revalidateTag(`hack:${slug}:metadata`);
   return { ok: true, slug } as const;

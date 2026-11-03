@@ -20,6 +20,9 @@ import Markdown from "@/components/Markdown/Markdown";
 import { getHackPageUrl } from "@/app/hack/[slug]/hack-page-shared";
 import type { HackMetadata } from "@/app/hack/[slug]/metadata";
 import { baseGameLabel, baseRoms, PLATFORM_NAMES } from "@/data/baseRoms";
+import { baseRomName as nameOfBaseRom, resolveHackBaseRomIds } from "@/utils/hacks/base-roms";
+import { patchDisplayName } from "@/utils/patches/patch-variant";
+import type { SelectablePatch } from "@/types/patcher";
 import { EMULATORS } from "@/data/emulators";
 import Handle from "@/components/Primitives/Handle";
 import { isArchiveHack, isDownloadableArchiveHack, isInformationalArchiveHack } from "@/utils/hack";
@@ -66,6 +69,11 @@ interface HackDetailViewProps {
 export default function HackDetailView({ metadata, downloads, canEdit, canUploadPatch, isAdmin, hasReviewThread = false, editor, draftProgress }: HackDetailViewProps) {
   const { hack, images, tags, profile, otherHacks, patch, displayVersion } = metadata;
   const baseRom = baseRoms.find((rom) => rom.id === hack.base_rom);
+  // Multi-source hacks list several; baseRom stays the first, which sets the platform.
+  const hackBaseRoms = resolveHackBaseRomIds(hack.base_rom, hack.base_roms)
+    .map((id) => baseRoms.find((rom) => rom.id === id))
+    .filter((rom): rom is NonNullable<typeof rom> => !!rom);
+  const multiBase = hackBaseRoms.length > 1;
   const author = hack.original_author ? hack.original_author : profile?.username ? `@${profile.username}` : "Unknown";
   const isInformationalArchive = isInformationalArchiveHack(hack);
   const isDownloadableArchive = isDownloadableArchiveHack(hack);
@@ -83,7 +91,8 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
   const social = hack.social_links as { discord?: string; twitter?: string; pokecommunity?: string; github?: string } | null;
   const sameAs = [social?.discord, social?.twitter, social?.pokecommunity].filter((url): url is string => Boolean(url));
   const commonTags = ["Pokémon", "ROM Hack", "Patch", "BPS", "Romhack", "Pokemon", "Mod", "Game", "Hack"];
-  if (baseRom) commonTags.push(PLATFORM_NAMES[baseRom.platform], baseRom.platform, baseRom.name);
+  if (baseRom) commonTags.push(PLATFORM_NAMES[baseRom.platform], baseRom.platform);
+  for (const rom of hackBaseRoms) commonTags.push(rom.name);
 
   const jsonLd: WithContext<CreativeWork> = {
     "@context": "https://schema.org",
@@ -103,14 +112,16 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
     version: patchVersion || undefined,
     inLanguage: "en",
     isAccessibleForFree: true,
-    isBasedOn: baseRom ? { "@type": "VideoGame", name: baseRom.name, gamePlatform: PLATFORM_NAMES[baseRom.platform] } : undefined,
+    isBasedOn: hackBaseRoms.length
+      ? hackBaseRoms.map((rom) => ({ "@type": "VideoGame" as const, name: rom.name, gamePlatform: PLATFORM_NAMES[rom.platform] }))
+      : undefined,
   };
 
-  // Versions a player can pick from; falls back to the current patch alone.
+  // Versions a player can pick from; falls back to the current patch alone. A version's named patches share one row.
   const selectable = metadata.patcherSelector.selectablePatches;
   const versionRows: HackVersionRow[] = (
     selectable.length > 0
-      ? selectable.map((p) => ({ id: p.id, version: p.version, createdAt: p.created_at }))
+      ? groupPatchesByVersion(selectable)
       : patch
         ? [{ id: patch.id, version: patchVersion || "Pre-release", createdAt: patch.created_at }]
         : []
@@ -321,7 +332,7 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
       </header>
 
       {/* Wraps the whole body so the review card can open the details sheet too. */}
-      <RailEditor editing={editing} values={{ base_rom: hack.base_rom, language: hack.language ?? "English", completion_status: hack.completion_status, box_art: hack.box_art, social_links: social, show_emulators: hack.show_emulators, original_author: hack.original_author, permission_from: hack.permission_from, ...(hack.approved ? {} : { verification_contact_info: hack.verification_contact_info }) }} baseLocked={patchId !== null || !!editor?.hasPatches}>
+      <RailEditor editing={editing} values={{ base_rom: hack.base_rom, base_roms: hack.base_roms, language: hack.language ?? "English", completion_status: hack.completion_status, box_art: hack.box_art, social_links: social, show_emulators: hack.show_emulators, original_author: hack.original_author, permission_from: hack.permission_from, ...(hack.approved ? {} : { verification_contact_info: hack.verification_contact_info }) }} baseLocked={patchId !== null || !!editor?.hasPatches}>
       <div className="grid items-start gap-6 md:grid-cols-[minmax(0,1fr)_300px] md:grid-rows-[auto_1fr] md:[grid-template-areas:'main_patch'_'main_rail']">
         <div className="order-1 md:order-none md:[grid-area:patch]">
           {editing ? (
@@ -365,7 +376,7 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
             aboutPanel={editing ? <DraftAbout description={hack.description} /> : undefined}
             changes={changes}
             versions={versionRows}
-            baseRomName={baseRom ? baseGameLabel(baseRom.name) : null}
+            baseRomName={multiBase ? hackBaseRoms.map((rom) => baseGameLabel(rom.name)).join(", ") : baseRom ? baseGameLabel(baseRom.name) : null}
             gallery={editing ? <DraftGallery covers={editor.coverKeys.map((key, i) => ({ key, url: images[i] }))} platform={baseRom?.platform} /> : undefined}
             versionsAction={
               editing ? (
@@ -381,7 +392,18 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
           <RailGroup title="Compatibility" action={editing && <EditDetailsLink />}>
             <Facts
               rows={[
-                ["Base ROM", baseRom ? <span className="plat-dot" data-platform={baseRom.platform}>{baseRom.name}</span> : "Unknown"],
+                multiBase
+                  ? [
+                      "Base ROMs",
+                      <ul key="roms" className="flex flex-col gap-0.5">
+                        {hackBaseRoms.map((rom) => (
+                          <li key={rom.id}>
+                            <span className="plat-dot" data-platform={rom.platform}>{rom.name}</span>
+                          </li>
+                        ))}
+                      </ul>,
+                    ]
+                  : ["Base ROM", baseRom ? <span className="plat-dot" data-platform={baseRom.platform}>{baseRom.name}</span> : "Unknown"],
                 ["Platform", baseRom ? PLATFORM_NAMES[baseRom.platform] : "Unknown"],
               ]}
             />
@@ -510,7 +532,8 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
                   </p>
                   <p>
                     By pressing &quot;Agree and patch&quot;, your browser will download and apply the <span className="font-semibold text-text-2">{hack.title}</span> patch file to your legally-obtained{" "}
-                    <span className="font-semibold text-text-2">{baseRom?.name}</span> ROM. The patched ROM will then be automatically downloaded.
+                    <span className="font-semibold text-text-2">{multiBase ? hackBaseRoms.map((rom) => rom.name).join(" or ") : baseRom?.name}</span> ROM
+                    {multiBase ? ", whichever the patch you choose needs" : ""}. The patched ROM will then be automatically downloaded.
                   </p>
                   <p>No pre-patched ROMs or base ROMs are hosted or distributed on this site. All patching is done locally on your device.</p>
                 </>
@@ -571,6 +594,22 @@ function SocialLink({ href, icon, label }: { href: string; icon: React.ReactNode
       </a>
     </li>
   );
+}
+
+/** One row per version; a version with several named patches lists them, e.g. "Emerald · Pokémon Emerald". */
+function groupPatchesByVersion(patches: SelectablePatch[]): HackVersionRow[] {
+  const rows = new Map<string, HackVersionRow>();
+  for (const p of patches) {
+    const name = p.label?.trim() ? `${patchDisplayName(p)}${p.base_rom ? ` · ${nameOfBaseRom(p.base_rom)}` : ""}` : null;
+    const row = rows.get(p.version);
+    if (row) {
+      if (name) row.patches = [...(row.patches ?? []), name];
+      if (Date.parse(p.created_at) > Date.parse(row.createdAt)) row.createdAt = p.created_at;
+    } else {
+      rows.set(p.version, { id: p.id, version: p.version, createdAt: p.created_at, patches: name ? [name] : undefined });
+    }
+  }
+  return [...rows.values()];
 }
 
 /** "Sep 4": server-rendered, so no locale or timezone mismatch on hydration. */

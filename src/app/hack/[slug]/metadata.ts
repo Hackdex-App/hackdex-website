@@ -7,6 +7,7 @@ import { Database } from "@/types/db";
 import { getPatcherSelectablePatches } from "@/utils/patches/patcher-selectable-patches";
 import { resolveHackDisplayVersion } from "@/utils/patches/hack-display-version";
 import type { SelectablePatch } from "@/types/patcher";
+import { getHackBaseRomIds } from "@/utils/hacks/save-base-roms";
 
 // Page data for /hack/[slug]. These read with the service client, so they must
 // stay out of "use server" files: every export there is a public endpoint that
@@ -26,6 +27,8 @@ export interface HackMetadata {
     summary: string;
     description: string;
     base_rom: string;
+    /** Every base ROM, in order; base_rom is the first. More than one for multi-source hacks. */
+    base_roms: string[];
     created_at: string;
     updated_at: string | null;
     current_patch: number | null;
@@ -94,6 +97,8 @@ export async function getHackMetadata(slug: string): Promise<HackMetadata | null
       if (hack.approved) {
         hack.verification_contact_info = null;
       }
+
+      const base_roms = await getHackBaseRomIds(supabase, slug, hack.base_rom);
 
       // Fetch covers
       let images: string[] = [];
@@ -192,7 +197,7 @@ export async function getHackMetadata(slug: string): Promise<HackMetadata | null
       });
 
       return {
-        hack,
+        hack: { ...hack, base_roms },
         ai: aiDisclosureFromRow(hack),
         displayVersion,
         images,

@@ -3,6 +3,7 @@
 import React, { Fragment, useState } from "react";
 import { Listbox, ListboxButton, ListboxOptions, ListboxOption, Transition, Combobox, ComboboxInput, ComboboxOptions, ComboboxOption } from "@headlessui/react";
 import { FiChevronDown, FiCheck } from "react-icons/fi";
+import { foldForSearch } from "@/utils/format";
 
 export interface SelectOption {
   value: string;
@@ -71,10 +72,14 @@ export default function Select({
   const filterOptions = (query: string) => {
     if (!query) return options;
 
-    // When filtering, exclude dividers and return only filtered options
-    return actualOptions.filter((opt) =>
-      opt.label.toLowerCase().includes(query.toLowerCase())
-    );
+    // When filtering, exclude dividers and return only filtered options.
+    // Accent-insensitive (players rarely type the é in "Pokémon"), and every word must match
+    // somewhere, so "poke eme" finds "Pokémon Emerald".
+    const words = foldForSearch(query).split(/\s+/).filter(Boolean);
+    return actualOptions.filter((opt) => {
+      const label = foldForSearch(opt.label);
+      return words.every((word) => label.includes(word));
+    });
   };
 
 

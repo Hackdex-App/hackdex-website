@@ -19,7 +19,14 @@ interface HackOnboardingOverlayProps {
   hide: boolean;
   /** Shown in the Select ROM wait copy, e.g. "Pokemon Emerald". */
   baseRomName?: string | null;
+  /** The picker holds named patches (often one per base ROM) rather than versions. */
+  patchChoice?: boolean;
 }
+
+const PATCH_CHOICE_COPY = {
+  title: "Choose your patch",
+  body: "This hack comes in more than one patch, and each one says which base ROM it needs. Pick yours before you continue.",
+};
 
 const STEP_COPY: Record<HackOnboardingStep, { title: string; body: React.ReactNode }> = {
   version: {
@@ -136,11 +143,14 @@ export default function HackOnboardingOverlay({
   onDismiss,
   hide,
   baseRomName,
+  patchChoice = false,
 }: HackOnboardingOverlayProps) {
   const cardRef = React.useRef<HTMLDivElement | null>(null);
   const titleId = React.useId();
   const anchor = useBarAnchor(!hide);
-  const copy = STEP_COPY[step];
+  const copy = step === "version" && patchChoice ? PATCH_CHOICE_COPY : STEP_COPY[step];
+  // A patch choice can't be skipped with Next: the tour waits for the pick, like Select ROM.
+  const waitsForPlayer = step === "selectRom" || (step === "version" && patchChoice);
 
   React.useEffect(() => {
     if (hide) return;
@@ -214,7 +224,7 @@ export default function HackOnboardingOverlay({
           style={cardPosition(anchor, step)}
           className="anim-pop elevate fixed z-[80] rounded-card border border-line bg-white p-3.5 outline-none dark:bg-[#141414]"
         >
-          {(step === "selectRom" || !isLastStep) && (
+          {(waitsForPlayer || !isLastStep) && (
             <button
               type="button"
               onClick={onDismiss}
@@ -224,11 +234,15 @@ export default function HackOnboardingOverlay({
               <FiX size={14} aria-hidden />
             </button>
           )}
-          <h4 id={titleId} className={`text-[13px] font-semibold ${step === "selectRom" || !isLastStep ? "pr-7" : ""}`}>
+          <h4 id={titleId} className={`text-[13px] font-semibold ${waitsForPlayer || !isLastStep ? "pr-7" : ""}`}>
             {copy.title}
           </h4>
           <p className="mt-1 text-xs leading-relaxed text-text-2">{copy.body}</p>
-          {step === "selectRom" ? (
+          {step === "version" && patchChoice ? (
+            <p className="mt-3 text-xs font-semibold text-text-2">
+              Press Select patch to see the options.
+            </p>
+          ) : step === "selectRom" ? (
             <p className="mt-3 text-xs font-semibold text-text-2">
               Select a clean {baseRomName || "base"} ROM to continue.
             </p>

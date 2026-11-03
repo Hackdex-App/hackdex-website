@@ -7,12 +7,16 @@ import Select from "@/components/Primitives/Select";
 import { baseRoms, PLATFORM_NAMES } from "@/data/baseRoms";
 import type { Database } from "@/types/db";
 import { FIELD, useDraftEditing } from "./DraftEditing";
+import BaseRomCheckboxList from "@/components/Hack/BaseRomCheckboxList";
+import { MAX_MULTI_BASE_ROMS } from "@/utils/hacks/multi-entry";
 
 type Completion = Database["public"]["Enums"]["Completion Status"];
 type Social = { discord?: string; twitter?: string; pokecommunity?: string; github?: string };
 
 export interface DraftDetailsValues {
   base_rom: string;
+  /** Every base ROM; more than one for multi-source hacks. */
+  base_roms?: string[];
   language: string;
   completion_status: Completion | null;
   box_art: string | null;
@@ -59,6 +63,9 @@ const urlLike = (s: string) => !s || /^https?:\/\//i.test(s);
 
 type Form = {
   base: string;
+  /** Multi-source: every base ROM, base first. Only used while `multi` is on. */
+  bases: string[];
+  multi: boolean;
   language: string;
   completion: Completion | "";
   boxArt: string;
@@ -70,8 +77,11 @@ type Form = {
 };
 
 function toForm(values: DraftDetailsValues): Form {
+  const bases = values.base_roms?.length ? values.base_roms : [values.base_rom];
   return {
     base: values.base_rom,
+    bases,
+    multi: bases.length > 1,
     language: values.language,
     completion: values.completion_status ?? "",
     boxArt: values.box_art ?? "",
@@ -129,16 +139,17 @@ function DetailsSheet({ initial, baseLocked, behalf, askContact, onApplied, onCl
   const { save, live } = useDraftEditing();
   const [saving, setSaving] = React.useState(false);
   const [form, setForm] = React.useState(initial);
-  const { base, language, completion, boxArt, social, emulators, creator, permission, contact } = form;
+  const { base, bases, multi, language, completion, boxArt, social, emulators, creator, permission, contact } = form;
   const set = <K extends keyof Form>(key: K, value: Form[K]) => setForm((prev) => ({ ...prev, [key]: value }));
 
-  const invalid = !urlLike(boxArt) || SOCIAL.some((s) => !urlLike(social[s.key])) || (behalf && (!creator.trim() || !permission.trim()));
+  const tooFewBases = !baseLocked && multi && bases.length < 2;
+  const invalid = tooFewBases || !urlLike(boxArt) || SOCIAL.some((s) => !urlLike(social[s.key])) || (behalf && (!creator.trim() || !permission.trim()));
 
   async function done() {
     const links = Object.fromEntries(Object.entries(social).filter(([, v]) => v.trim())) as Social;
     setSaving(true);
     const ok = await save({
-      ...(baseLocked ? {} : { base_rom: base }),
+      ...(baseLocked ? {} : multi ? { base_roms: bases } : { base_rom: base }),
       language,
       ...(completion ? { completion_status: completion } : {}),
       box_art: boxArt.trim() || null,
@@ -148,10 +159,12 @@ function DetailsSheet({ initial, baseLocked, behalf, askContact, onApplied, onCl
       ...(askContact ? { verification_contact_info: contact } : {}),
     });
     setSaving(false);
-    if (ok) onApplied(form);
+    // Turning multi off keeps just the first ROM, so the next open matches what was saved.
+    if (ok) onApplied(multi ? { ...form, base: bases[0] } : { ...form, bases: [base] });
   }
 
   const baseRom = baseRoms.find((r) => r.id === base);
+  const lockedRoms = (multi ? bases : [base]).map((id) => baseRoms.find((r) => r.id === id));
 
   return (
     <Sheet
@@ -174,21 +187,48 @@ function DetailsSheet({ initial, baseLocked, behalf, askContact, onApplied, onCl
       }
     >
       <div className="flex flex-col gap-5">
-        <Field label="Base ROM">
-          {baseLocked ? (
+        {baseLocked ? (
+          <Field label={lockedRoms.length > 1 ? "Base ROMs" : "Base ROM"}>
             <div className="flex items-start gap-2 rounded-control bg-surface-2 px-3 py-2.5 text-sm">
               <FiLock className="mt-0.5 h-4 w-4 flex-none text-text-3" />
               <div>
-                <span className="plat-dot font-medium" data-platform={baseRom?.platform}>
-                  {baseRom?.name ?? base}
-                </span>
-                <p className="mt-0.5 text-xs text-text-3">Locked. Your patch was verified against this ROM.</p>
+                {lockedRoms.map((rom, i) => (
+                  <span key={rom?.id ?? i} className="plat-dot block font-medium" data-platform={rom?.platform}>
+                    {rom?.name ?? (multi ? bases[i] : base)}
+                  </span>
+                ))}
+                <p className="mt-0.5 text-xs text-text-3">
+                  {lockedRoms.length > 1 ? "Locked. Your patches were verified against these ROMs." : "Locked. Your patch was verified against this ROM."}
+                </p>
               </div>
             </div>
-          ) : (
-            <Select value={base} onChange={(v) => set("base", v)} options={baseRoms.map((r) => ({ value: r.id, label: r.name, description: PLATFORM_NAMES[r.platform] }))} />
-          )}
-        </Field>
+          </Field>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {multi ? (
+              <div className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium">Base ROMs</span>
+                <BaseRomCheckboxList platform={baseRoms.find((r) => r.id === bases[0])?.platform ?? baseRom?.platform ?? ""} value={bases} onChange={(next) => set("bases", next)} max={MAX_MULTI_BASE_ROMS} />
+                <span className={`text-xs ${tooFewBases ? "text-error" : "text-text-3"}`}>
+                  {tooFewBases ? "Choose at least two, or turn this off for a single base ROM." : `${bases.length} chosen. You'll upload one patch for each; players pick theirs.`}
+                </span>
+              </div>
+            ) : (
+              <Field label="Base ROM">
+                <Select value={base} onChange={(v) => set("base", v)} options={baseRoms.map((r) => ({ value: r.id, label: r.name, description: PLATFORM_NAMES[r.platform] }))} />
+              </Field>
+            )}
+            <label className="flex cursor-pointer items-center gap-2.5 text-sm">
+              <input
+                type="checkbox"
+                checked={multi}
+                onChange={(e) => setForm((prev) => (e.target.checked ? { ...prev, multi: true, bases: [prev.base] } : { ...prev, multi: false, base: prev.bases[0] ?? prev.base }))}
+                className="h-4 w-4 accent-[var(--rose-deep)]"
+              />
+              Patches for more than one base ROM
+            </label>
+          </div>
+        )}
         <Field label="Language">
           <Select value={language} onChange={(v) => set("language", v)} options={LANGUAGES.map((l) => ({ value: l, label: l }))} />
         </Field>
