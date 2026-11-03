@@ -65,7 +65,7 @@ export async function confirmPatchUpload(args: {
 
   const { data: hack, error: hErr } = await supabase
     .from("hacks")
-    .select("slug, created_by, title, current_patch, original_author, permission_from, is_archive, approved, assigned_admin, verification_contact_info, submitted_at, ai_disclosed_at")
+    .select("slug, created_by, title, current_patch, original_author, permission_from, is_archive, approved, assigned_admin, submitted_at, ai_disclosed_at")
     .eq("slug", args.slug)
     .maybeSingle();
   if (hErr) return { ok: false, error: hErr.message } as const;
@@ -96,6 +96,14 @@ export async function confirmPatchUpload(args: {
     if (!args.aiReviewedAt || Date.parse(args.aiReviewedAt) !== Date.parse(hack.ai_disclosed_at)) {
       return { ok: false, error: "The AI label changed since you checked it. Review it again." } as const;
     }
+  }
+
+  // Creator PII that only the first-upload notice uses, so only the service client reads it, after the checks above.
+  let verificationContact: string | null = null;
+  if (args.firstUpload) {
+    const { data, error } = await service.from("hacks").select("verification_contact_info").eq("slug", args.slug).single();
+    if (error) return { ok: false, error: error.message } as const;
+    verificationContact = data.verification_contact_info;
   }
 
   // Enforce unique version per hack defensively (avoid race with presign step)
@@ -193,7 +201,7 @@ export async function confirmPatchUpload(args: {
       title: hack.title,
       description: `A new hack by **${displayName}** is pending approval by an admin.`
         + (uploadedByDifferentUser ? ` (Uploaded by ${user.id})` : "")
-        + (hack.verification_contact_info ? `\n\n**Verification contact info:**\n${hack.verification_contact_info}` : ""),
+        + (verificationContact ? `\n\n**Verification contact info:**\n${verificationContact}` : ""),
       color: 0x40f56a,
       url: `${process.env.NEXT_PUBLIC_SITE_URL}/hack/${args.slug}`,
       footer: { text: "This message brought to you by Hackdex" },
@@ -357,7 +365,7 @@ export async function submitForReview(slug: string, contact?: string) {
 
   const { data: hack, error: hErr } = await supabase
     .from("hacks")
-    .select("slug, title, created_by, approved, submitted_at, assigned_admin, verification_contact_info, is_archive, original_author, permission_from, current_patch")
+    .select("slug, title, created_by, approved, submitted_at, assigned_admin, is_archive, original_author, permission_from, current_patch")
     .eq("slug", slug)
     .maybeSingle();
   if (hErr) return { ok: false, error: hErr.message } as const;
@@ -371,11 +379,17 @@ export async function submitForReview(slug: string, contact?: string) {
   if (open.length > 0) return { ok: false, error: `Still needed: ${open.map((i) => i.label[0].toLowerCase() + i.label.slice(1)).join(", ")}.` } as const;
 
   const submittedAt = new Date().toISOString();
-  const verification = contact === undefined ? hack.verification_contact_info : contact.trim() || null;
   // submitted_at is server-only in the database, so the checks above can't be skipped.
   const service = await createServiceClient();
-  const { error: uErr } = await service.from("hacks").update({ submitted_at: submittedAt, verification_contact_info: verification }).eq("slug", slug);
+  // Omitting contact keeps the saved one. It's creator PII, so the service client returns it for the notice below.
+  const { data: submitted, error: uErr } = await service
+    .from("hacks")
+    .update({ submitted_at: submittedAt, ...(contact === undefined ? {} : { verification_contact_info: contact.trim() || null }) })
+    .eq("slug", slug)
+    .select("verification_contact_info")
+    .single();
   if (uErr) return { ok: false, error: uErr.message } as const;
+  const verification = submitted.verification_contact_info;
   // The page reads cached metadata; without this it keeps showing "Draft".
   revalidateTag(`hack:${slug}:metadata`);
   revalidatePath(`/hack/${slug}`);
