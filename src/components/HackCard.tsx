@@ -169,20 +169,27 @@ function Shots({ images, platform, fill }: { images: string[]; platform?: Platfo
     >
       {fill && (
         <span className="absolute inset-0 md:hidden" aria-hidden>
-          {images.map((src, i) => (
-            <img
-              key={`${src}-${i}`}
-              ref={(el) => {
-                backdropEls.current[i] = el;
-              }}
-              src={src}
-              alt=""
-              loading="lazy"
-              draggable={false}
-              style={{ "--fade": i === 0 ? 1 : 0 } as CSSProperties}
-              className="absolute -inset-6 h-[calc(100%+48px)] w-[calc(100%+48px)] max-w-none object-cover blur-[18px] saturate-[1.15] [opacity:calc(var(--fade)*.45)]"
-            />
-          ))}
+          {images.map((src, i) => {
+            // Only the active shot and its neighbours can be seen through the backdrop. Mounting the
+            // rest would fetch every screenshot in the catalog to fade in something already at zero.
+            const distance = Math.abs(i - index);
+            if (Math.min(distance, images.length - distance) > 2) return null;
+            return (
+              <img
+                key={`${src}-${i}`}
+                ref={(el) => {
+                  backdropEls.current[i] = el;
+                }}
+                src={src}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                draggable={false}
+                style={{ "--fade": i === index ? 1 : 0 } as CSSProperties}
+                className="absolute -inset-6 h-[calc(100%+48px)] w-[calc(100%+48px)] max-w-none object-cover blur-[18px] saturate-[1.15] [opacity:calc(var(--fade)*.45)]"
+              />
+            );
+          })}
         </span>
       )}
       <span ref={viewportRef} className={`relative block overflow-hidden ${many ? "cursor-grab active:cursor-grabbing" : ""} ${viewportWidth}`}>
@@ -200,6 +207,7 @@ function Shots({ images, platform, fill }: { images: string[]; platform?: Platfo
                 src={src}
                 alt=""
                 loading="lazy"
+                decoding="async"
                 draggable={false}
                 onLoad={(e) => snapRendering(e.currentTarget)}
                 className={`block h-auto w-full ${ratio} rounded-frame object-cover object-top ${fill ? "max-md:shadow-[0_4px_14px_rgba(0,0,0,.35)]" : ""}`}
