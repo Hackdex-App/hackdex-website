@@ -5,7 +5,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(16);
+select plan(17);
 
 insert into auth.users (id, email) values
   ('aaaaaaaa-0000-4000-8000-000000000001', 'owner@test.local'),
@@ -13,7 +13,7 @@ insert into auth.users (id, email) values
 
 insert into public.hacks (slug, title, summary, description, base_rom, patch_url, version, language, created_by, is_archive, original_author) values
   ('owned-hack', 'Owned', 's', 'd', 'poke_emerald', '', '1.0', 'English', 'aaaaaaaa-0000-4000-8000-000000000001', false, null),
-  ('archive-hack', 'Archive', 's', 'd', 'poke_emerald', '', '1.0', 'English', 'aaaaaaaa-0000-4000-8000-000000000002', true, 'Someone');
+  ('archive-hack', 'Archive', 's', 'd', 'poke_emerald', '', '1.0', 'English', 'aaaaaaaa-0000-4000-8000-000000000001', true, 'Someone');
 
 -- The owner, signed in with an ordinary session.
 set local role authenticated;
@@ -22,6 +22,10 @@ select set_config('request.jwt.claims', '{"sub":"aaaaaaaa-0000-4000-8000-0000000
 select throws_ok(
   $$ update public.profiles set verified = true where id = auth.uid() $$,
   '42501', null, 'owner cannot update verified'
+);
+select throws_ok(
+  $$ insert into public.profiles (id, verified) values (auth.uid(), true) $$,
+  '42501', null, 'owner cannot insert verified'
 );
 select throws_ok(
   $$ insert into public.profiles (id, verified) values (auth.uid(), true)
@@ -54,7 +58,8 @@ select lives_ok(
 );
 select is((select title from public.hacks where slug = 'owned-hack'), 'Renamed', 'hack edit applied');
 
--- An archiver, whose role comes from protected app_metadata.
+-- An archiver who doesn't own the hack, so only the archiver policies apply. The role comes from
+-- protected app_metadata.
 select set_config('request.jwt.claims', '{"sub":"aaaaaaaa-0000-4000-8000-000000000002","role":"authenticated","app_metadata":{"archiver":true}}', true);
 
 select throws_ok(
