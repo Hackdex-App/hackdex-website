@@ -7,6 +7,7 @@ import { validateTurnstileToken } from 'next-turnstile'
 import { v4 } from 'uuid';
 
 import { createClient } from '@/utils/supabase/server'
+import { safeInternalRedirect } from '@/utils/safeRedirect'
 import { validateEmail, validatePassword } from '@/utils/auth'
 import { sendDiscordMessageEmbed } from '@/utils/discord'
 
@@ -79,7 +80,5 @@ export async function signup(state: AuthActionState, payload: FormData) {
   }
 
   revalidatePath('/', 'layout');
-  const redirectTo = (payload.get('redirectTo') as string | null) || null
-  const isValidInternalPath = redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//')
-  redirect(isValidInternalPath ? redirectTo! : '/account');
+  redirect(safeInternalRedirect(payload.get('redirectTo'), '/account'));
 }

@@ -4,6 +4,7 @@ import React, { useActionState, useEffect} from "react";
 import Link from "next/link";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { Turnstile } from "next-turnstile";
+import { safeInternalRedirect } from "@/utils/safeRedirect";
 import { useDarkMode } from "@/hooks/useDarkMode";
 import { AuthActionState, login } from "@/app/login/actions";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -46,7 +47,7 @@ export default function LoginForm() {
   useEffect(() => {
     if (state && state.error === null && !navigatedRef.current) {
       setUser(state.user);
-      const to = state.redirectTo || (redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//') ? redirectTo : '/dashboard');
+      const to = safeInternalRedirect(state.redirectTo || redirectTo, '/dashboard');
       navigatedRef.current = true;
       router.replace(to);
     }
@@ -55,8 +56,7 @@ export default function LoginForm() {
   // Redirect when user becomes available in context
   useEffect(() => {
     if (!user || navigatedRef.current) return;
-    const isValidInternalPath = !!redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//');
-    const to = isValidInternalPath ? (redirectTo as string) : '/dashboard';
+    const to = safeInternalRedirect(redirectTo, '/dashboard');
     navigatedRef.current = true;
     router.replace(to);
   }, [user, redirectTo, router]);
