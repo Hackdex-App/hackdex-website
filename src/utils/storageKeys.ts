@@ -10,6 +10,11 @@ export function isCoverKeyFor(slug: string, key: string) {
   return /^[A-Za-z0-9._-]+$/.test(rest) && !rest.startsWith(".");
 }
 
+/** Existing keys may have other extensions, but new screenshots must be raster images. */
+export function isSupportedCoverKeyFor(slug: string, key: string) {
+  return isCoverKeyFor(slug, key) && /\.(png|jpe?g|gif)$/i.test(key);
+}
+
 /**
  * A fresh patch key. The random suffix keeps two uploads of one version apart
  * and means nobody can aim an upload at an existing file. Patch keys stay flat

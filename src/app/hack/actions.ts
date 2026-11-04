@@ -19,7 +19,7 @@ import {
 } from "@/utils/hack-review";
 import { revalidateDiscoverCatalog } from "@/app/discover/revalidate";
 import { aiColumns, parseAiLevels, type AiLevels } from "@/utils/aiDisclosure";
-import { isCoverKeyFor, newPatchKey } from "@/utils/storageKeys";
+import { isCoverKeyFor, isSupportedCoverKeyFor, newPatchKey } from "@/utils/storageKeys";
 import { MAX_COVERS, SUMMARY_MAX, TITLE_MAX } from "@/data/hackLimits";
 import { baseRoms } from "@/data/baseRoms";
 import type { PatchFormat } from "@/utils/patching";
@@ -222,7 +222,7 @@ export async function saveHackCovers(args: { slug: string; coverUrls: string[] }
   const desiredSet = new Set(args.coverUrls);
   if (args.coverUrls.length > MAX_COVERS) return { ok: false, error: `Up to ${MAX_COVERS} screenshots` } as const;
   // New keys must be this hack's own uploads; otherwise removing one later would delete another hack's file.
-  if (args.coverUrls.some((u) => !currentUrls.has(u) && !isCoverKeyFor(args.slug, u))) {
+  if (args.coverUrls.some((u) => !currentUrls.has(u) && !isSupportedCoverKeyFor(args.slug, u))) {
     return { ok: false, error: "Invalid screenshot" } as const;
   }
 
@@ -323,36 +323,6 @@ export async function presignNewPatchVersion(args: { slug: string; version: stri
 
   return { ok: true, presignedUrl: url, objectKey } as const;
 }
-
-export async function presignCoverUpload(args: { slug: string; objectKey: string }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: "Unauthorized" } as const;
-
-  // Ensure hack exists and user has permission
-  const { data: hack, error: hErr } = await supabase
-    .from("hacks")
-    .select("slug, created_by, current_patch, original_author, permission_from, is_archive")
-    .eq("slug", args.slug)
-    .maybeSingle();
-  if (hErr) return { ok: false, error: hErr.message } as const;
-  if (!hack) return { ok: false, error: "Hack not found" } as const;
-
-  const permission = await checkEditPermission(hack, user.id, supabase);
-  if (!permission.canEdit) {
-    return { ok: false, error: "Forbidden" } as const;
-  }
-  if (!isCoverKeyFor(args.slug, args.objectKey)) return { ok: false, error: "Invalid screenshot path" } as const;
-
-  const client = getMinioClient();
-  // 10 minutes to upload
-  const url = await client.presignedPutObject(COVERS_BUCKET, args.objectKey, 60 * 10);
-
-  return { ok: true, presignedUrl: url } as const;
-}
-
 
 export async function approveHack(slug: string, verified?: boolean) {
   const supabase = await createClient();
