@@ -2,6 +2,8 @@
 
 import React, { useActionState } from "react";
 import { useSearchParams } from "next/navigation";
+import { Turnstile } from "next-turnstile";
+import { useDarkMode } from "@/hooks/useDarkMode";
 import { validateEmail } from "@/utils/auth";
 import { sendContact, type ContactActionState } from "@/app/contact/actions";
 import Select from "@/components/Primitives/Select";
@@ -36,6 +38,10 @@ export default function ContactForm() {
   const [emailError, setEmailError] = React.useState<string | null>(null);
   const [message, setMessage] = React.useState("");
   const [contextUrl, setContextUrl] = React.useState("");
+  const [turnstileToken, setTurnstileToken] = React.useState<string | undefined>();
+  const [turnstileError, setTurnstileError] = React.useState<string | null>(null);
+  const [turnstileKey, setTurnstileKey] = React.useState(0);
+  const dark = useDarkMode();
 
   React.useEffect(() => {
     const { error } = validateEmail(email);
@@ -43,9 +49,17 @@ export default function ContactForm() {
   }, [email]);
 
   const isValid = React.useMemo(() => {
-    return !emailError && !!email && !!message;
+    return !emailError && !!email && !!message.trim();
   }, [emailError, email, message]);
   const [state, formAction, isPending] = useActionState<ContactActionState, FormData>(sendContact, { error: null, success: null });
+
+  React.useEffect(() => {
+    if (!isPending && (state.error || state.success)) {
+      setTurnstileToken(undefined);
+      setTurnstileError(null);
+      setTurnstileKey((key) => key + 1);
+    }
+  }, [state.error, state.success, isPending]);
 
   React.useEffect(() => {
     if (state.success) {
@@ -101,6 +115,7 @@ export default function ContactForm() {
             id="name"
             name="name"
             type="text"
+            maxLength={100}
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Your name"
@@ -114,6 +129,7 @@ export default function ContactForm() {
             id="email"
             name="email"
             type="email"
+            maxLength={254}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
@@ -136,6 +152,7 @@ export default function ContactForm() {
             id="contextUrl"
             name="contextUrl"
             type="url"
+            maxLength={1024}
             value={contextUrl}
             onChange={(e) => setContextUrl(e.target.value)}
             placeholder="https://hackdex.app/..."
@@ -151,6 +168,7 @@ export default function ContactForm() {
         <textarea
           id="message"
           name="message"
+          maxLength={4000}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           placeholder={
@@ -166,10 +184,25 @@ export default function ContactForm() {
       </div>
 
       <div className="flex flex-col items-center gap-3">
+        {turnstileError && <span className="text-sm text-error">{turnstileError}</span>}
+        <Turnstile
+          key={`${turnstileKey}-${dark}`}
+          siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+          onVerify={(token) => {
+            setTurnstileToken(token);
+            setTurnstileError(null);
+          }}
+          onError={() => {
+            setTurnstileToken(undefined);
+            setTurnstileError("Verification failed. Please try again.");
+          }}
+          onExpire={() => setTurnstileToken(undefined)}
+          theme={dark ? "dark" : "light"}
+        />
         <button
           type="submit"
           formAction={formAction}
-          disabled={!isValid || isPending}
+          disabled={!isValid || isPending || !turnstileToken}
           className="inline-flex items-center justify-center rounded-control bg-accent-deep px-5 text-white transition-colors hover:enabled:bg-accent-hover disabled:opacity-60 h-11 min-w-[7.5rem] text-sm font-semibold hover:cursor-pointer disabled:cursor-not-allowed"
           aria-label="Send message"
           title="Send message"
