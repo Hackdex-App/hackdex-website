@@ -6,9 +6,10 @@ import { FiStar, FiTrash2, FiUpload } from "react-icons/fi";
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, rectSortingStrategy, sortableKeyboardCoordinates, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { presignCoverUpload, saveHackCovers } from "@/app/hack/actions";
+import { saveHackCovers } from "@/app/hack/actions";
 import type { Platform } from "@/data/baseRoms";
-import { getCoverUrls, newCoverKey } from "@/utils/format";
+import { getCoverUrls } from "@/utils/format";
+import { uploadCover } from "@/utils/uploadCover";
 import { useCommitter, useDraftEditing } from "./DraftEditing";
 import { MAX_COVERS } from "@/data/hackLimits";
 
@@ -48,13 +49,6 @@ function readSize(file: File) {
   });
 }
 
-async function upload(slug: string, key: string, file: File) {
-  const presigned = await presignCoverUpload({ slug, objectKey: key });
-  if (!presigned.ok) throw new Error(presigned.error);
-  const put = await fetch(presigned.presignedUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type || "image/png" } });
-  if (!put.ok) throw new Error("Upload failed");
-}
-
 /**
  * Screenshot manager in the Gallery tab. The first shot is the card cover;
  * star moves a shot there. Drafts save every change at once; listed hacks
@@ -80,6 +74,7 @@ export default function DraftGallery({ covers: initial, platform }: DraftGallery
   const changed = keys(covers) !== saved;
   // The list prepare uploaded; commit saves exactly that, so a shot added mid-save stays staged.
   const saving = React.useRef<Cover[]>([]);
+  const uploaded = React.useRef(new Map<string, Cover>());
   useCommitter(
     changed,
     async () => {
@@ -87,14 +82,23 @@ export default function DraftGallery({ covers: initial, platform }: DraftGallery
       const res = await saveHackCovers({ slug, coverUrls: list.map((c) => c.key) });
       if (!res.ok) return res;
       setSaved(keys(list));
-      setCovers((prev) => prev.map((c) => (c.file && list.some((s) => s.key === c.key) ? { key: c.key, url: c.url } : c)));
+      setCovers((prev) => prev.map((c) => uploaded.current.get(c.key) ?? c));
+      for (const cover of covers) if (cover.file && uploaded.current.has(cover.key)) URL.revokeObjectURL(cover.url);
       return res;
     },
     // Uploads run before any of the page's changes publish.
     async () => {
-      saving.current = covers;
+      const next = covers.slice();
+      uploaded.current = new Map();
       try {
-        for (const c of saving.current) if (c.file) await upload(slug, c.key, c.file);
+        for (const [index, cover] of next.entries()) {
+          if (!cover.file) continue;
+          const key = await uploadCover(slug, cover.file);
+          const savedCover = { key, url: getCoverUrls([key])[0] };
+          uploaded.current.set(cover.key, savedCover);
+          next[index] = savedCover;
+        }
+        saving.current = next;
         return { ok: true };
       } catch (e) {
         return { ok: false, error: e instanceof Error ? e.message : "Upload failed" };
@@ -125,18 +129,17 @@ export default function DraftGallery({ covers: initial, platform }: DraftGallery
     const added: Cover[] = [];
     let rejected = 0;
     try {
-      for (const [i, file] of picked.entries()) {
+      for (const file of picked) {
         const size = await readSize(file);
         if (!size || (sizes.length > 0 && !sizes.some((s) => s.w === size.w && s.h === size.h))) {
           rejected += 1;
           continue;
         }
-        const key = newCoverKey(slug, i, file.name);
         if (live) {
-          await upload(slug, key, file);
+          const key = await uploadCover(slug, file);
           added.push({ key, url: getCoverUrls([key])[0] });
         } else {
-          added.push({ key, url: URL.createObjectURL(file), file });
+          added.push({ key: crypto.randomUUID(), url: URL.createObjectURL(file), file });
         }
       }
     } catch (e) {

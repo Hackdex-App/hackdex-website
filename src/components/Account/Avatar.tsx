@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import Image from 'next/image'
 import { FaGamepad } from 'react-icons/fa'
+import { MAX_IMAGE_UPLOAD_BYTES } from '@/data/hackLimits'
 
 const PLACEHOLDER_BG_CLASSES = [
   'bg-rose-500/70 dark:bg-rose-500/20 shadow-lg shadow-rose-500/50 dark:shadow-rose-500/10',
@@ -29,33 +30,6 @@ function getPlaceholderBgClass(seed: string | null): string {
   if (!seed) return PLACEHOLDER_BG_CLASSES[0]
   const index = hashStringToNumber(seed) % PLACEHOLDER_BG_CLASSES.length
   return PLACEHOLDER_BG_CLASSES[index]
-}
-
-/** Centre-crop to a square and downscale before upload, so a phone photo doesn't ship at full size. */
-async function prepareAvatar(file: File, maxSize: number): Promise<File> {
-  try {
-    if (typeof createImageBitmap !== 'function') return file
-    const bitmap = await createImageBitmap(file)
-    const side = Math.min(bitmap.width, bitmap.height)
-    const out = Math.min(maxSize * 2, side)
-    const canvas = document.createElement('canvas')
-    canvas.width = out
-    canvas.height = out
-    const ctx = canvas.getContext('2d')
-    if (!ctx) {
-      bitmap.close()
-      return file
-    }
-    ctx.imageSmoothingEnabled = true
-    ctx.imageSmoothingQuality = 'high'
-    ctx.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, out, out)
-    bitmap.close()
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
-    if (!blob) return file
-    return new File([blob], `${file.name.replace(/\.[^.]+$/, '')}.png`, { type: 'image/png' })
-  } catch {
-    return file
-  }
 }
 
 export default function Avatar({
@@ -102,17 +76,16 @@ export default function Avatar({
         throw new Error('You must select an image to upload.')
       }
 
-      const file = await prepareAvatar(event.target.files[0], size)
-      const fileExt = file.name.split('.').pop()
-      const filePath = `${uid}-${Math.random()}.${fileExt}`
-
-      const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file)
-
-      if (uploadError) {
-        throw uploadError
-      }
-
-      if (onUpload) onUpload(filePath)
+      const file = event.target.files[0]
+      if (file.size > MAX_IMAGE_UPLOAD_BYTES) throw new Error('Avatar exceeds 4 MB')
+      const response = await fetch('/api/account/avatar', {
+        method: 'POST',
+        body: file,
+        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || 'Avatar upload failed')
+      if (onUpload) onUpload(result.path)
     } catch (error) {
       alert('Error uploading avatar!')
     } finally {
@@ -169,7 +142,7 @@ export default function Avatar({
           ref={fileInputRef}
           style={{ visibility: 'hidden', position: 'absolute', width: 0, height: 0, opacity: 0, overflow: 'hidden' }}
           type="file"
-          accept="image/*"
+          accept="image/png,image/jpeg,image/gif"
           onChange={uploadAvatar}
           disabled={uploading}
         />

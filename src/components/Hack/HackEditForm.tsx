@@ -7,13 +7,13 @@ import { baseRoms } from "@/data/baseRoms";
 import { getScreenshotTutorial } from "@/data/screenshotTutorials";
 import Image from "next/image";
 import { createClient } from "@/utils/supabase/client";
-import { updateHack, saveHackCovers, presignCoverUpload } from "@/app/hack/actions";
+import { updateHack, saveHackCovers } from "@/app/hack/actions";
 import SortableCovers from "@/components/Hack/SortableCovers";
 import Select from "@/components/Primitives/Select";
 import type { Database } from "@/types/db";
 import type { CatalogTagRow } from "@/types/catalogTag";
 import { FiExternalLink } from "react-icons/fi";
-import { newCoverKey } from "@/utils/format";
+import { uploadCover } from "@/utils/uploadCover";
 import { SUMMARY_MAX, TITLE_MAX } from "@/data/hackLimits";
 import { HACK_FORM_DESCRIPTION_PLACEHOLDER } from "./hackFormConstants";
 
@@ -219,12 +219,7 @@ export default function HackEditForm({ slug, initial, catalogTags, tagsUpdatedAt
         if (item.type === "existing") {
           keys.push(item.key);
         } else {
-          const path = newCoverKey(slug, i, item.file.name);
-          const presigned = await presignCoverUpload({ slug, objectKey: path });
-          if (!presigned.ok) throw new Error(presigned.error || 'Failed to presign cover upload');
-          const put = await fetch(presigned.presignedUrl, { method: 'PUT', body: item.file, headers: { 'Content-Type': item.file.type || 'image/jpeg' } });
-          if (!put.ok) throw new Error('Screenshot upload failed');
-          keys.push(path);
+          keys.push(await uploadCover(slug, item.file));
         }
       }
       // Persist cover ordering/rows first
@@ -414,7 +409,7 @@ export default function HackEditForm({ slug, initial, catalogTags, tagsUpdatedAt
             <input
               type="file"
               multiple
-              accept="image/*"
+              accept="image/png,image/gif,image/jpeg"
               onChange={(e) => onAddFiles(Array.from(e.target.files || []))}
               className="w-full rounded-control bg-surface-2 px-3 py-2 text-sm ring-1 ring-inset ring-line focus:outline-none"
             />
