@@ -31,6 +31,33 @@ function getPlaceholderBgClass(seed: string | null): string {
   return PLACEHOLDER_BG_CLASSES[index]
 }
 
+/** Centre-crop to a square and downscale before upload, so a phone photo doesn't ship at full size. */
+async function prepareAvatar(file: File, maxSize: number): Promise<File> {
+  try {
+    if (typeof createImageBitmap !== 'function') return file
+    const bitmap = await createImageBitmap(file)
+    const side = Math.min(bitmap.width, bitmap.height)
+    const out = Math.min(maxSize * 2, side)
+    const canvas = document.createElement('canvas')
+    canvas.width = out
+    canvas.height = out
+    const ctx = canvas.getContext('2d')
+    if (!ctx) {
+      bitmap.close()
+      return file
+    }
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = 'high'
+    ctx.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, out, out)
+    bitmap.close()
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
+    if (!blob) return file
+    return new File([blob], `${file.name.replace(/\.[^.]+$/, '')}.png`, { type: 'image/png' })
+  } catch {
+    return file
+  }
+}
+
 export default function Avatar({
   uid,
   url,
@@ -75,7 +102,7 @@ export default function Avatar({
         throw new Error('You must select an image to upload.')
       }
 
-      const file = event.target.files[0]
+      const file = await prepareAvatar(event.target.files[0], size)
       const fileExt = file.name.split('.').pop()
       const filePath = `${uid}-${Math.random()}.${fileExt}`
 

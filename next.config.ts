@@ -18,6 +18,12 @@ const nextConfig: NextConfig = {
     ],
   },
   headers: async () => {
+    const securityHeaders = [
+      { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+      { key: "X-Frame-Options", value: "DENY" },
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+    ];
     const longBrowserCache = [
       {
         key: "Cache-Control",
@@ -25,6 +31,7 @@ const nextConfig: NextConfig = {
       },
     ];
     return [
+      { source: "/:path*", headers: securityHeaders },
       { source: "/logo.png", headers: longBrowserCache },
       { source: "/favicon.ico", headers: longBrowserCache },
     ];
