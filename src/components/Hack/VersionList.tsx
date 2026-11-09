@@ -6,7 +6,9 @@ import { FaChevronDown, FaChevronUp, FaStar, FaDownload, FaTrash, FaRotateLeft, 
 import { FiEdit2, FiEdit, FiX } from "react-icons/fi";
 import VersionActions, { READY_BUTTON } from "@/components/Hack/VersionActions";
 import type { PatchesDownloadPermission } from "@/components/Hack/DownloadPermissionSettings";
-import { updatePatchChangelog, updatePatchVersion, getPatchDownloadUrl, updatePatchDownloadCount } from "@/app/hack/[slug]/actions";
+import { updatePatchChangelog, updatePatchVersion, updatePatchVariant, getPatchDownloadUrl, updatePatchDownloadCount } from "@/app/hack/[slug]/actions";
+import { currentPatchVersion, isCurrentVersionPatch, PATCH_INFO_MAX_LENGTH, PATCH_LABEL_MAX_LENGTH } from "@/utils/patches/patch-variant";
+import { baseRomName } from "@/utils/hacks/base-roms";
 import { getOrCreateDeviceId } from "@/utils/deviceId";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
@@ -81,7 +83,8 @@ interface VersionListProps {
   canEdit: boolean;
   hackSlug: string;
   baseRom: string;
-  patchesDownloadPermission: PatchesDownloadPermission;
+  /** Only matters for visitors; editors download from their own actions. */
+  patchesDownloadPermission?: PatchesDownloadPermission;
   patcherSelectionMode?: boolean;
   draftPatchIds?: number[];
   savedPatchIds?: number[];
@@ -95,7 +98,7 @@ export default function VersionList({
   canEdit,
   hackSlug,
   baseRom,
-  patchesDownloadPermission,
+  patchesDownloadPermission = "None",
   patcherSelectionMode = false,
   draftPatchIds = [],
   savedPatchIds = [],
@@ -116,6 +119,7 @@ export default function VersionList({
   const [expandedChangelogs, setExpandedChangelogs] = useState<Set<number>>(getInitialExpanded);
   const [editingChangelog, setEditingChangelog] = useState<number | null>(null);
   const [editingVersion, setEditingVersion] = useState<number | null>(null);
+  const [editingDetails, setEditingDetails] = useState<number | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [archivedPatches, setArchivedPatches] = useState<Patch[]>([]);
   const [loadingArchived, setLoadingArchived] = useState(false);
@@ -138,7 +142,7 @@ export default function VersionList({
       setLoadingArchived(true);
       supabase
         .from("patches")
-        .select("id, version, created_at, updated_at, changelog, published, archived")
+        .select("id, version, created_at, updated_at, changelog, published, archived, format, label, info, base_rom")
         .eq("parent_hack", hackSlug)
         .eq("archived", true)
         .order("created_at", { ascending: false })
@@ -161,6 +165,8 @@ export default function VersionList({
     : patches;
   const draftPatchIdSet = new Set(draftPatchIds);
   const savedPatchIdSet = new Set(savedPatchIds);
+  // Every patch of the current version is current (multi-source hacks have one per base ROM).
+  const currentVersion = currentPatchVersion(currentPatchId, allPatches);
 
   if (patches.length === 0 && (!showArchived || archivedPatches.length === 0)) {
     return (
@@ -185,7 +191,8 @@ export default function VersionList({
       )}
 
       {allPatches.map((patch) => {
-        const isCurrent = currentPatchId === patch.id;
+        const isCurrent = currentPatchId === patch.id || isCurrentVersionPatch(patch, currentVersion);
+        const patchTitle = patch.label?.trim() ? `${patch.label.trim()} (${patch.version})` : patch.version;
         const isPatchable = isCustomPatcherActive && savedPatchIdSet.has(patch.id);
         const isDefaultPatcherPatch = isCustomPatcherActive && savedPatchIds[0] === patch.id;
         const hasChangelog = patch.changelog && patch.changelog.trim().length > 0;
@@ -224,7 +231,7 @@ export default function VersionList({
               />
             ) : (
               <>
-                <h3 className="text-base sm:text-lg font-semibold">{patch.version}</h3>
+                <h3 className="text-base sm:text-lg font-semibold">{patchTitle}</h3>
                 {canEdit && (
                   <button
                     onClick={() => setEditingVersion(patch.id)}
@@ -233,6 +240,15 @@ export default function VersionList({
                     aria-label="Edit version"
                   >
                     <FiEdit size={14} />
+                  </button>
+                )}
+                {canEdit && (patch.label?.trim() || allPatches.some((p) => p.id !== patch.id && p.version === patch.version)) && (
+                  <button
+                    onClick={() => setEditingDetails(patch.id)}
+                    className="inline-flex h-7 items-center gap-1 rounded-control px-2 text-xs font-medium text-text-3 hover:text-text hover:bg-surface-2 transition-colors focus:outline-none focus:ring-2 focus:ring-accent/40 touch-manipulation"
+                    title="Edit patch name and note"
+                  >
+                    {patch.label?.trim() ? "Edit name" : "Name this patch"}
                   </button>
                 )}
               </>
@@ -271,8 +287,22 @@ export default function VersionList({
           </div>
         );
 
-        const datesBlock = (
+        const datesBlock = editingDetails === patch.id ? (
+          <PatchDetailsEditor
+            patchId={patch.id}
+            hackSlug={hackSlug}
+            initialLabel={patch.label || ""}
+            initialInfo={patch.info || ""}
+            onSave={() => {
+              setEditingDetails(null);
+              router.refresh();
+            }}
+            onCancel={() => setEditingDetails(null)}
+          />
+        ) : (
           <div className="text-xs sm:text-sm text-text-3 mt-4 sm:mt-0">
+            {patch.info?.trim() && <p className="mb-2 whitespace-pre-line text-text-2">{patch.info.trim()}</p>}
+            {patch.base_rom && patch.label?.trim() && <p>Base ROM: {baseRomName(patch.base_rom)}</p>}
             <p>
               Created: {new Date(patch.created_at).toLocaleDateString("en-US", {
                 year: "numeric",
@@ -302,7 +332,7 @@ export default function VersionList({
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2 mb-2">
-                    <h3 className="text-base sm:text-lg font-semibold">{patch.version}</h3>
+                    <h3 className="text-base sm:text-lg font-semibold">{patchTitle}</h3>
                     {isCurrent && !isCustomPatcherActive && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-ready-soft px-2 py-0.5 text-xs font-medium text-ready">
                         <FaStar size={10} />
@@ -399,6 +429,9 @@ export default function VersionList({
                         isCustomPatcherActive={isCustomPatcherActive}
                         isInCustomPatcherList={savedPatchIdSet.has(patch.id)}
                         customPatcherPatchCount={savedPatchIds.length}
+                        versionPatchLabels={allPatches
+                          .filter((item) => item.version === patch.version && !item.archived)
+                          .map((item) => item.label?.trim() || item.version)}
                         onActionComplete={() => {
                           router.refresh();
                           setEditingChangelog(null);
@@ -669,3 +702,87 @@ function VersionEditor({
   );
 }
 
+
+/** Edits a patch's player-facing name and note. Names tell a version's patches apart, so the server keeps them unique. */
+function PatchDetailsEditor({
+  patchId,
+  hackSlug,
+  initialLabel,
+  initialInfo,
+  onSave,
+  onCancel,
+}: {
+  patchId: number;
+  hackSlug: string;
+  initialLabel: string;
+  initialInfo: string;
+  onSave: () => void;
+  onCancel: () => void;
+}) {
+  const [label, setLabel] = useState(initialLabel);
+  const [info, setInfo] = useState(initialInfo);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const result = await updatePatchVariant(hackSlug, patchId, { label, info });
+      if (result.ok) {
+        onSave();
+      } else {
+        setError(result.error || "Failed to update patch details");
+      }
+    } catch {
+      setError("Failed to update patch details");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="mt-3 grid gap-2.5">
+      <label className="grid gap-1">
+        <span className="text-xs font-medium text-text-2">Patch name</span>
+        <input
+          value={label}
+          maxLength={PATCH_LABEL_MAX_LENGTH}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder="e.g. FireRed"
+          className="h-9 rounded-control bg-surface-2 px-3 text-sm ring-1 ring-inset ring-line focus:outline-none focus:ring-2 focus:ring-accent/40"
+        />
+      </label>
+      <label className="grid gap-1">
+        <span className="text-xs font-medium text-text-2">Note for players</span>
+        <textarea
+          value={info}
+          maxLength={PATCH_INFO_MAX_LENGTH}
+          rows={3}
+          onChange={(e) => setInfo(e.target.value)}
+          placeholder="What's different about this patch, and who should pick it."
+          className="rounded-control bg-surface-2 px-3 py-2 text-sm ring-1 ring-inset ring-line focus:outline-none focus:ring-2 focus:ring-accent/40"
+        />
+      </label>
+      {error && <p className="text-xs text-error">{error}</p>}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className={`inline-flex items-center rounded-control px-3 py-1.5 text-sm font-medium ${READY_BUTTON} disabled:opacity-50`}
+        >
+          {saving ? "Saving…" : "Save"}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={saving}
+          className="inline-flex items-center rounded-control border border-line bg-surface-2 px-3 py-1.5 text-sm font-medium hover:bg-surface-3 disabled:opacity-50"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}

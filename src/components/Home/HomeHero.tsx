@@ -4,6 +4,7 @@ import Link from "next/link";
 import React from "react";
 import { useBaseRoms } from "@/contexts/BaseRomContext";
 import { baseGameLabel, baseRoms } from "@/data/baseRoms";
+import { hackBaseRomIds } from "@/utils/hacks/base-roms";
 import type { HackCardAttributes } from "@/components/HackCard";
 import Shelf from "@/components/Home/Shelf";
 
@@ -33,7 +34,7 @@ interface HeroProps {
  */
 export function HomeHero({ catalog }: HeroProps) {
   const readyIds = useReadyBaseRomIds();
-  const readyHacks = catalog.filter((h) => h.baseRomId && readyIds.has(h.baseRomId));
+  const readyHacks = catalog.filter((h) => hackBaseRomIds(h).some((id) => readyIds.has(id)));
   const readyNames = [...readyIds].map((id) => baseRoms.find((r) => r.id === id)?.name).filter((n): n is string => Boolean(n));
   const linked = readyIds.size > 0;
 
@@ -86,7 +87,7 @@ export function ReadyShelf({ catalog }: { catalog: HackCardAttributes[] }) {
   if (readyIds.size === 0) return null;
   // Most downloaded first; the catalog itself comes back in no particular order.
   const ready = catalog
-    .filter((h) => h.baseRomId && readyIds.has(h.baseRomId))
+    .filter((h) => hackBaseRomIds(h).some((id) => readyIds.has(id)))
     .sort((a, b) => b.downloads - a.downloads)
     .slice(0, 12);
   const names = [...readyIds].map((id) => baseRoms.find((r) => r.id === id)?.name).filter((n): n is string => Boolean(n));

@@ -13,6 +13,8 @@ export interface HackVersionRow {
   version: string;
   createdAt: string;
   latest?: boolean;
+  /** Named patches in this version (multi-source hacks), e.g. "Emerald · Pokémon Emerald". */
+  patches?: string[];
 }
 
 interface HackTabsProps {
@@ -173,7 +175,11 @@ export default function HackTabs({ slug, title, author, images, about, changes, 
 
       {tab === "versions" && (
         <div id="panel-versions" role="tabpanel" aria-labelledby="tab-versions" className="anim-fade flex flex-col gap-5">
-          <p className="max-w-[70ch] text-sm text-text-2">Every version needs a clean {baseRomName ?? "base"} ROM.</p>
+          <p className="max-w-[70ch] text-sm text-text-2">
+            {versions.some((v) => (v.patches?.length ?? 0) > 1)
+              ? `Each patch needs a clean copy of the ROM it names${baseRomName ? ` (${baseRomName})` : ""}.`
+              : `Every version needs a clean ${baseRomName ?? "base"} ROM.`}
+          </p>
           {versions.length > 0 ? (
             <table className="w-full border-collapse text-sm">
               <thead>
@@ -188,6 +194,13 @@ export default function HackTabs({ slug, title, author, images, about, changes, 
                     <td className="border-b border-line px-3 py-2.5">
                       <b className="font-semibold">{v.version}</b>
                       {v.latest && <span className="ml-2 text-xs font-medium text-link">Latest</span>}
+                      {(v.patches?.length ?? 0) > 1 && (
+                        <ul className="mt-1 flex flex-col gap-0.5 text-xs text-text-3">
+                          {v.patches!.map((name) => (
+                            <li key={name}>{name}</li>
+                          ))}
+                        </ul>
+                      )}
                     </td>
                     <td className="border-b border-line px-3 py-2.5 text-text-2">{new Date(v.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}</td>
                   </tr>

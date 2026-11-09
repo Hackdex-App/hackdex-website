@@ -18,6 +18,11 @@ export function sortOrderedTags<T extends OrderedTag>(rows: T[]): T[] {
     });
 }
 
+/** Lowercased with accents stripped, so a search for "poke" matches "Pokémon". */
+export function foldForSearch(text: string) {
+  return text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+}
+
 export function slugify(text: string) {
   return text
     .normalize("NFD")
