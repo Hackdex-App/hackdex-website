@@ -42,7 +42,7 @@ function toCard(h: DiscoverHack): HackCardAttributes {
   };
 }
 
-function byDateDesc(key: "approvedAt" | "publishedAt") {
+function byDateDesc(key: "curatedAt" | "publishedAt") {
   return (a: DiscoverHack, b: DiscoverHack) => (b[key] ? Date.parse(b[key]!) : 0) - (a[key] ? Date.parse(a[key]!) : 0);
 }
 
@@ -52,7 +52,7 @@ export default async function Home() {
   const catalog = hacks.map(toCard);
 
   const trending = [...hacks].sort((a, b) => b.trendingScore - a.trendingScore).slice(0, SHELF_SIZE).map(toCard);
-  const newest = [...hacks].sort(byDateDesc("approvedAt")).slice(0, SHELF_SIZE).map(toCard);
+  const newest = [...hacks].sort(byDateDesc("curatedAt")).slice(0, SHELF_SIZE).map(toCard);
   const updated = [...hacks].filter((h) => h.publishedAt).sort(byDateDesc("publishedAt")).slice(0, SHELF_SIZE).map(toCard);
 
   return (

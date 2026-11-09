@@ -33,6 +33,7 @@ export interface HackMetadata {
     social_links: unknown;
     created_by: string;
     approved: boolean;
+    curated: boolean;
     original_author: string | null;
     permission_from: string | null;
     language: string | null;
@@ -82,7 +83,7 @@ export async function getHackMetadata(slug: string): Promise<HackMetadata | null
 
       const { data: hack, error } = await supabase
         .from("hacks")
-        .select(`slug,title,summary,description,base_rom,created_at,updated_at,current_patch,custom_version_name,box_art,social_links,created_by,approved,original_author,permission_from,language,is_archive,completion_status,verification_contact_info,submitted_at,show_emulators,${AI_SELECT}`)
+        .select(`slug,title,summary,description,base_rom,created_at,updated_at,current_patch,custom_version_name,box_art,social_links,created_by,approved,curated,original_author,permission_from,language,is_archive,completion_status,verification_contact_info,submitted_at,show_emulators,${AI_SELECT}`)
         .eq("slug", slug)
         .is("deleted_at", null)
         .maybeSingle();
@@ -138,7 +139,7 @@ export async function getHackMetadata(slug: string): Promise<HackMetadata | null
         userEmail = userData?.user?.email || null;
       }
 
-      // Get other approved hacks by the same author (non-archive hacks only)
+      // Get other curated hacks by the same author (non-archive hacks only)
       let otherHacks: {
         slug: string;
         title: string;
@@ -150,6 +151,7 @@ export async function getHackMetadata(slug: string): Promise<HackMetadata | null
           .select("slug,title,summary")
           .eq("created_by", hack.created_by)
           .eq("approved", true)
+          .eq("curated", true)
           .eq("is_archive", false)
           .is("deleted_at", null)
           .neq("slug", hack.slug)
@@ -211,7 +213,8 @@ export async function getHackMetadata(slug: string): Promise<HackMetadata | null
         }
       };
     },
-    [`hack:${slug}:metadata`],
+    // Bump the version when the shape or filters change, so a deploy never reads the old entry.
+    [`hack:${slug}:metadata`, "v2"],
     {
       revalidate: 14400, // 4 hours
       tags: ["hack", `hack:${slug}:metadata`],

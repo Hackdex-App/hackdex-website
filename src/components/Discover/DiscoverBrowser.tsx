@@ -164,7 +164,7 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
     const matches = hackMatcher({ tags: selectedTags, baseRoms: selectedBaseRoms, completionStatuses: selectedCompletionStatuses, onlyReady, ai }, query, groups, readyBaseRomIds);
     return catalog.filter(matches).sort((a, b) => {
       if (sort === "popular") return b.downloads - a.downloads;
-      if (sort === "new") return (b.approvedAt ? Date.parse(b.approvedAt) : 0) - (a.approvedAt ? Date.parse(a.approvedAt) : 0);
+      if (sort === "new") return (b.curatedAt ? Date.parse(b.curatedAt) : 0) - (a.curatedAt ? Date.parse(a.curatedAt) : 0);
       if (sort === "updated") {
         if (!a.publishedAt && !b.publishedAt) return 0;
         if (!a.publishedAt) return 1;

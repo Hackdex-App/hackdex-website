@@ -1,6 +1,7 @@
 import Avatar from "@/components/Account/Avatar";
 import CollapsibleTags from "@/components/Hack/CollapsibleTags";
 import CreateReviewThreadMenuItem from "@/components/Hack/CreateReviewThreadMenuItem";
+import CurateMenuItem from "@/components/Hack/CurateMenuItem";
 import DownloadsBadge from "@/components/Hack/DownloadsBadge";
 import HackActions from "@/components/Hack/HackActions";
 import HackOptionsMenu from "@/components/Hack/HackOptionsMenu";
@@ -308,6 +309,7 @@ export default function HackDetailView({ metadata, downloads, canEdit, canUpload
                 Approve
               </MenuItem>
             )}
+            {isAdmin && hack.approved && !isArchive && <CurateMenuItem slug={hack.slug} curated={hack.curated} />}
             {isAdmin && profile?.email && (
               <MenuItem as="a" href={`mailto:${profile.email}`} className="block w-full px-3 py-2 text-left text-sm font-medium text-text-2 data-focus:bg-surface-2">
                 <FiMail className="mb-0.5 mr-2 inline-block align-middle" size={12} />

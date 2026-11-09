@@ -103,7 +103,7 @@ export default async function ApprovePage({ params }: ApprovePageProps) {
               </h1>
             </div>
             <p className="text-text-2 mb-6">
-              By approving this hack, it will become visible to the public.
+              By approving this hack, it will become visible to the public. It won&rsquo;t be curated by default, so it won&rsquo;t appear on Discover or the homepage.
             </p>
             {/* Hacks submitted before the label existed skipped the checklist item; the grace period lets them through. */}
             {!hack.ai_disclosed_at && (

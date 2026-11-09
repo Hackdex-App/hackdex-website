@@ -235,7 +235,7 @@ function NextSteps() {
   const steps = [
     ["A volunteer reviews your page and patch", null],
     ["They may reach out to confirm it’s yours", "Using your verification contact."],
-    ["Once approved, it’s listed on Discover", "Edits you make now are included in the review."],
+    ["Once approved, it gets a public page you can share", "Edits you make now are included in the review."],
   ] as const;
   return (
     <ol className="mt-4 grid gap-2.5 text-left">

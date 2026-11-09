@@ -112,7 +112,7 @@ Both formats support checksum verification so the patch is linked to the correct
 ### How does my hack gain visibility?
 We highly recommend linking to your romhack's Hackdex page from PokéCommunity, Reddit, or other social media platforms. Doing so can help boost your hack's visibility and outrank those sketchy ROM sharing sites that steal many creators' hard work.
 
-Once approved, your hack can appear on Discover. "Newest" sorts by approval date, and "Recently updated" sorts by the publication date of your current patch. "Most popular" and "Trending" use download activity. These listings are ordered automatically and do not reflect staff preferences.
+Once approved, your hack gets a public page. Staff choose which approved hacks appear on Discover and the homepage, and those listings are ordered automatically. "Newest" sorts by the date a hack was curated, and "Recently updated" sorts by the publication date of your current patch. "Most popular" and "Trending" use download activity.
 
 Here are some helpful tips for improving your hack's page to help increase visibility:
 - Include at least 3 screenshots that help make your hack stand out, with the first one being the most eye-catching.

@@ -9,7 +9,7 @@ import { baseGameLabel, baseRoms, PLATFORM_NAMES, type Platform } from "@/data/b
 const RAIL_PLATFORMS: Platform[] = ["GBA", "GBC", "GB", "NDS"];
 import { DISCOVER_COMPLETION_STATUSES } from "@/app/discover/search-params";
 import type { DiscoverHack } from "@/types/discover";
-import { AI_AREAS, AI_DISCLOSURE_DEADLINE, AI_PRESETS, aiFilterActive, aiPresetOf, matchesAiFilter, normalizeAiFilter, NO_AI_FILTER, type AiArea, type AiFilter } from "@/utils/aiDisclosure";
+import { AI_AREAS, AI_PRESETS, aiFilterActive, aiPresetOf, matchesAiFilter, normalizeAiFilter, NO_AI_FILTER, type AiArea, type AiFilter } from "@/utils/aiDisclosure";
 import { useCloseOnDesktop, useDialog } from "@/hooks/useDialog";
 
 /** The filterable part of the Discover URL state. The sheet edits a draft copy of this. */
@@ -266,14 +266,6 @@ export function FilterFields({ value, onChange, tagGroups, counts, readyCount, o
             ))}
           </div>
         </Disclosure>
-        <Check
-          className={`mt-1 ${rowH}`}
-          label="Hide hacks without an AI label"
-          hint={`Creators have until ${AI_DISCLOSURE_DEADLINE} to add missing labels, per the Terms.`}
-          count={counts.ai({ ...value.ai, disclosedOnly: true })}
-          checked={value.ai.disclosedOnly}
-          onChange={() => setAi({ ...value.ai, disclosedOnly: !value.ai.disclosedOnly })}
-        />
       </Group>
 
       <Group title="Tags">

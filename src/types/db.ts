@@ -223,6 +223,9 @@ export type Database = {
             | null
           created_at: string
           created_by: string
+          curated: boolean
+          curated_at: string | null
+          curated_by: string | null
           current_patch: number | null
           custom_version_name: string | null
           deleted_at: string | null
@@ -274,6 +277,9 @@ export type Database = {
             | null
           created_at?: string
           created_by: string
+          curated?: boolean
+          curated_at?: string | null
+          curated_by?: string | null
           current_patch?: number | null
           custom_version_name?: string | null
           deleted_at?: string | null
@@ -325,6 +331,9 @@ export type Database = {
             | null
           created_at?: string
           created_by?: string
+          curated?: boolean
+          curated_at?: string | null
+          curated_by?: string | null
           current_patch?: number | null
           custom_version_name?: string | null
           deleted_at?: string | null
