@@ -4,6 +4,7 @@ import React, { useActionState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { Turnstile } from "next-turnstile";
+import { safeInternalRedirect } from "@/utils/safeRedirect";
 import { useDarkMode } from "@/hooks/useDarkMode";
 import { AuthActionState, signup } from "@/app/signup/actions";
 import { useAuthContext } from "@/contexts/AuthContext";
@@ -54,8 +55,7 @@ export default function SignupForm() {
   // Redirect if user already authenticated (e.g., opened signup while logged in)
   useEffect(() => {
     if (!user) return;
-    const isValidInternalPath = !!redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//');
-    const to = isValidInternalPath ? (redirectTo as string) : '/account';
+    const to = safeInternalRedirect(redirectTo, '/account');
     router.replace(to);
   }, [user, redirectTo, router]);
 
