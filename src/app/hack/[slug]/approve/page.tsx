@@ -25,7 +25,7 @@ export default async function ApprovePage({ params }: ApprovePageProps) {
   // Fetch hack data
   const { data: hack, error } = await supabase
     .from("hacks")
-    .select("title, approved, approved_at, approved_by, created_by, submitted_at, ai_disclosed_at")
+    .select("title, approved, approved_at, approved_by, created_by, submitted_at, ai_disclosed_at, is_archive")
     .eq("slug", slug)
     .maybeSingle();
 
@@ -67,7 +67,8 @@ export default async function ApprovePage({ params }: ApprovePageProps) {
   async function handleApprove(formData: FormData) {
     "use server";
     const verified = creatorProfile?.verified ? undefined : formData.get("verified") === "on";
-    await approveHack(slug, verified);
+    const curate = formData.get("curate") === "on";
+    await approveHack(slug, { verified, curate });
   }
 
   return (
@@ -103,7 +104,7 @@ export default async function ApprovePage({ params }: ApprovePageProps) {
               </h1>
             </div>
             <p className="text-text-2 mb-6">
-              By approving this hack, it will become visible to the public. It won&rsquo;t be curated by default, so it won&rsquo;t appear on Discover or the homepage.
+              By approving this hack, it will become visible to the public.
             </p>
             {/* Hacks submitted before the label existed skipped the checklist item; the grace period lets them through. */}
             {!hack.ai_disclosed_at && (
@@ -126,6 +127,16 @@ export default async function ApprovePage({ params }: ApprovePageProps) {
                   </>
                 )}
               </div>
+              {/* Discover and the homepage only list curated hacks. Archives are never curated. */}
+              {!hack.is_archive && (
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" name="curate" id="curate" disabled={!hack.ai_disclosed_at} className="disabled:cursor-not-allowed" />
+                  <label htmlFor="curate" className={hack.ai_disclosed_at ? undefined : "cursor-not-allowed text-text-3"}>
+                    Also curate it, so it appears on Discover and the homepage.
+                    {!hack.ai_disclosed_at && " It needs an AI label first."}
+                  </label>
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <Button type="submit" variant="primary">
                   Approve
