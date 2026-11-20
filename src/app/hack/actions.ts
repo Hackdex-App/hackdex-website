@@ -354,7 +354,8 @@ export async function presignCoverUpload(args: { slug: string; objectKey: string
 }
 
 
-export async function approveHack(slug: string, verified?: boolean) {
+/** `verified` marks the creator as verified; `curate` also curates the hack in the same update. */
+export async function approveHack(slug: string, { verified, curate }: { verified?: boolean; curate?: boolean } = {}) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -370,7 +371,7 @@ export async function approveHack(slug: string, verified?: boolean) {
   // Check if hack exists
   const { data: hack, error: hErr } = await serviceClient
     .from("hacks")
-    .select("slug, approved, title, created_by, submitted_at, current_patch, is_archive")
+    .select("slug, approved, title, created_by, submitted_at, current_patch, is_archive, ai_disclosed_at")
     .eq("slug", slug)
     .is("deleted_at", null)
     .maybeSingle();
@@ -379,6 +380,8 @@ export async function approveHack(slug: string, verified?: boolean) {
   // Only the creator can submit; a draft isn't in the queue yet.
   if (hack.submitted_at === null) return { ok: false, error: "This hack hasn't been submitted for review yet." } as const;
   if (!hack.approved && !hack.is_archive && hack.current_patch === null) return { ok: false, error: "This hack has no playable patch yet." } as const;
+  if (curate && hack.is_archive) return { ok: false, error: "Archives can't be curated." } as const;
+  if (curate && hack.ai_disclosed_at === null) return { ok: false, error: "This hack needs an AI label before it can be curated." } as const;
 
   if (verified === true) {
     const { error: updateErr } = await serviceClient
@@ -399,13 +402,15 @@ export async function approveHack(slug: string, verified?: boolean) {
     return { ok: true } as const;
   }
 
-  // Approve the hack
-  const { error: updateErr } = await supabase
+  // Approve the hack. The service role, because only it can write the curation columns.
+  const now = new Date().toISOString();
+  const { error: updateErr } = await serviceClient
     .from("hacks")
     .update({
       approved: true,
-      approved_at: new Date().toISOString(),
+      approved_at: now,
       approved_by: user.id,
+      ...(curate ? { curated: true, curated_at: now, curated_by: user.id } : {}),
     })
     .eq("slug", slug);
 
@@ -415,6 +420,7 @@ export async function approveHack(slug: string, verified?: boolean) {
   revalidateTag(`hack:${slug}:metadata`);
   revalidateTag(`hack:${slug}:downloads`);
   revalidatePath(`/hack/${slug}`);
+  if (curate) await revalidateOtherHacks(serviceClient, hack.created_by, slug);
 
   try {
     const { data: creatorData, error: creatorError } = await serviceClient.auth.admin.getUserById(hack.created_by);
@@ -470,6 +476,58 @@ export async function approveHack(slug: string, verified?: boolean) {
   }
 
   redirect(`/hack/${slug}`);
+}
+
+/**
+ * Admin-only. Sets whether a hack appears on Discover and the homepage. Only
+ * approved, non-archived hacks qualify, and curating one requires an AI label.
+ */
+export async function setHackCurated(slug: string, curated: boolean) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Unauthorized" } as const;
+
+  const { data: isAdmin } = await supabase.rpc("is_admin");
+  if (!isAdmin) return { ok: false, error: "Forbidden" } as const;
+
+  // The service role: these columns aren't readable with an ordinary session.
+  const service = await createServiceClient();
+  const { data: hack, error: hackError } = await service
+    .from("hacks")
+    .select("approved, is_archive, ai_disclosed_at, created_by")
+    .eq("slug", slug)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (hackError) return { ok: false, error: hackError.message } as const;
+  if (!hack) return { ok: false, error: "Hack not found" } as const;
+  if (!hack.approved || hack.is_archive) return { ok: false, error: "Only approved, non-archived hacks can be curated." } as const;
+  if (curated && hack.ai_disclosed_at === null) return { ok: false, error: "This hack needs an AI label before it can be curated." } as const;
+
+  const { error: updateError } = await service
+    .from("hacks")
+    .update(
+      curated
+        ? { curated: true, curated_at: new Date().toISOString(), curated_by: user.id }
+        : { curated: false, curated_at: null, curated_by: null },
+    )
+    .eq("slug", slug)
+    // A repeat from a stale tab shouldn't reset the curation date.
+    .eq("curated", !curated);
+  if (updateError) return { ok: false, error: updateError.message } as const;
+
+  revalidateTag(`hack:${slug}:metadata`);
+  revalidatePath(`/hack/${slug}`);
+  revalidateDiscoverCatalog();
+  await revalidateOtherHacks(service, hack.created_by, slug);
+  return { ok: true } as const;
+}
+
+/** Refreshes the creator's other hack pages, which list curated hacks under "other hacks by this creator". */
+async function revalidateOtherHacks(service: Awaited<ReturnType<typeof createServiceClient>>, createdBy: string, slug: string) {
+  const { data: siblings } = await service.from("hacks").select("slug").eq("created_by", createdBy).neq("slug", slug);
+  for (const sibling of siblings ?? []) revalidateTag(`hack:${sibling.slug}:metadata`);
 }
 
 export async function createHackReviewThread(slug: string) {

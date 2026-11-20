@@ -5,7 +5,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(17);
+select plan(21);
 
 insert into auth.users (id, email) values
   ('aaaaaaaa-0000-4000-8000-000000000001', 'owner@test.local'),
@@ -58,6 +58,16 @@ select lives_ok(
 );
 select is((select title from public.hacks where slug = 'owned-hack'), 'Renamed', 'hack edit applied');
 
+select throws_ok(
+  $$ update public.hacks set curated = true, curated_at = now() where slug = 'owned-hack' $$,
+  'P0001', 'only Hackdex can change these hack fields', 'owner cannot curate their hack'
+);
+select throws_ok(
+  $$ insert into public.hacks (slug, title, summary, description, base_rom, patch_url, version, language, created_by, curated, curated_at)
+     values ('forged-curated', 'Forged', 's', 'd', 'poke_emerald', '', '1.0', 'English', auth.uid(), true, now()) $$,
+  'P0001', 'only Hackdex can set these hack fields', 'owner cannot insert a curated hack'
+);
+
 -- An archiver who doesn't own the hack, so only the archiver policies apply. The role comes from
 -- protected app_metadata.
 select set_config('request.jwt.claims', '{"sub":"aaaaaaaa-0000-4000-8000-000000000002","role":"authenticated","app_metadata":{"archiver":true}}', true);
@@ -98,6 +108,15 @@ where slug = 'owned-hack';
 select isnt(
   (select deleted_at from public.hacks where slug = 'owned-hack'), null,
   'service role can soft-delete a hack'
+);
+update public.hacks set curated = true, curated_at = now() where slug = 'archive-hack';
+select ok(
+  (select curated from public.hacks where slug = 'archive-hack'),
+  'service role can curate a hack'
+);
+select throws_ok(
+  $$ update public.hacks set curated_at = null where slug = 'archive-hack' $$,
+  '23514', null, 'a curated hack must have a curation date'
 );
 
 -- A verified creator's own later edit doesn't drop their badge.

@@ -547,3 +547,6 @@ CROSS JOIN LATERAL generate_series(0, spec.cnt - 1) AS gs(n);
 
 -- Seeded hacks count as submitted (drafts are made in the app); otherwise the pending ones show up as private drafts.
 UPDATE public.hacks SET submitted_at = created_at WHERE slug LIKE 'seed-%' AND submitted_at IS NULL;
+
+-- Curated so Discover and the homepage have something to show locally.
+UPDATE public.hacks SET curated = true, curated_at = coalesce(approved_at, created_at) WHERE slug LIKE 'seed-%' AND approved AND NOT is_archive;
