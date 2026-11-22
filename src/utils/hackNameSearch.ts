@@ -12,9 +12,11 @@ const withoutAt = (name: string) => name.replace(/^@/, "");
  */
 export function matchesHackName(query: string, hack: { title: string; author: string }) {
   const q = normalize(query);
-  const name = withoutAt(q);
-  if (!name) return false;
+  if (!q) return false;
   const title = normalize(hack.title);
-  if (title === q || withoutAt(normalize(hack.author)) === name) return true;
-  return q.length >= MIN_PARTIAL_TITLE_QUERY && title.includes(q);
+  if (title === q) return true;
+  const name = withoutAt(q);
+  if (name && withoutAt(normalize(hack.author)) === name) return true;
+  // Counted by character, so emoji don't pass the minimum early.
+  return [...q].length >= MIN_PARTIAL_TITLE_QUERY && title.includes(q);
 }

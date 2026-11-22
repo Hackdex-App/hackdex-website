@@ -16,6 +16,12 @@ test("ignores part of the title under 5 characters", () => {
 
 test("matches the exact title at any length", () => {
   assert.equal(matchesHackName("gaia", { title: "Gaia", author: "@someone" }), true);
+  assert.equal(matchesHackName("@", { title: "@", author: "@someone" }), true);
+});
+
+test("counts the minimum in characters, not UTF-16 units", () => {
+  assert.equal(matchesHackName("🔥🔥a", { title: "🔥🔥alpha", author: "@someone" }), false);
+  assert.equal(matchesHackName("🔥🔥alp", { title: "🔥🔥alpha", author: "@someone" }), true);
 });
 
 test("matches the exact author with or without the @", () => {

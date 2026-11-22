@@ -244,7 +244,8 @@ async function generateDiscoverData(): Promise<DiscoverData> {
       is_archive: false,
       completion_status: row.completion_status,
       curatedAt: row.curated_at,
-      approvedAt: row.approved_at,
+      // approved_at holds UTC but has no time zone, which Date.parse would read as local time.
+      approvedAt: row.approved_at && `${row.approved_at}Z`,
       publishedAt: currentPatch?.published_at ?? null,
       trendingScore: recentDownloads + 8 * Math.log(downloads + 1),
       ai: aiDisclosureFromRow(row)?.levels ?? null,
