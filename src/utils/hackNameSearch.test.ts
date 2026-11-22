@@ -24,6 +24,11 @@ test("counts the minimum in characters, not UTF-16 units", () => {
   assert.equal(matchesHackName("🔥🔥alp", { title: "🔥🔥alpha", author: "@someone" }), true);
 });
 
+test("counts the minimum before lowercasing", () => {
+  // "İ" lowercases to two code points, which would make this 4-letter query look like 5.
+  assert.equal(matchesHackName("MİST", { title: "MİST Valley", author: "@someone" }), false);
+});
+
 test("matches the exact author with or without the @", () => {
   assert.equal(matchesHackName("mossfern", crest), true);
   assert.equal(matchesHackName("@mossfern", crest), true);

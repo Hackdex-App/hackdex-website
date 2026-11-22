@@ -17,6 +17,6 @@ export function matchesHackName(query: string, hack: { title: string; author: st
   if (title === q) return true;
   const name = withoutAt(q);
   if (name && withoutAt(normalize(hack.author)) === name) return true;
-  // Counted by character, so emoji don't pass the minimum early.
-  return [...q].length >= MIN_PARTIAL_TITLE_QUERY && title.includes(q);
+  // Counted by character before lowercasing, so emoji and letters like "İ" don't pass the minimum early.
+  return [...query.trim()].length >= MIN_PARTIAL_TITLE_QUERY && title.includes(q);
 }
