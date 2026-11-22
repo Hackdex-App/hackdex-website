@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 export default async function DiscoverPage() {
-  const { hacks, generatedAt, tagGroups, ungroupedTags } = await getDiscoverData();
+  const { hacks, searchOnly, generatedAt, tagGroups, ungroupedTags } = await getDiscoverData();
 
   return (
     <div className="mx-auto w-full max-w-[1164px] px-6 pt-4 md:pt-6">
@@ -26,6 +26,7 @@ export default async function DiscoverPage() {
       </div>
       <DiscoverBrowser
         catalog={hacks}
+        searchOnly={searchOnly}
         generatedAt={generatedAt}
         initialState={DISCOVER_DEFAULT_STATE}
         tagGroups={tagGroups}

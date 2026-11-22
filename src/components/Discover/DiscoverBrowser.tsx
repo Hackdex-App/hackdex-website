@@ -34,6 +34,7 @@ import {
 } from "./DiscoverFilters";
 import { baseGameLabel, baseRoms } from "@/data/baseRoms";
 import { aiFilterActive, aiFilterLabel, aiPresetOf, matchesAiFilter, NO_AI_FILTER, type AiFilter } from "@/utils/aiDisclosure";
+import { matchesHackName } from "@/utils/hackNameSearch";
 
 const SORT_OPTIONS: SelectOption[] = [
   { value: "trending", label: "Trending", icon: MdWhatshot },
@@ -48,7 +49,10 @@ const VIEW_KEY = "hackdex-discover-view";
 type View = "grid" | "list";
 
 interface DiscoverBrowserProps {
+  /** Curated hacks, which Discover lists and browses. */
   catalog: DiscoverHack[];
+  /** Uncurated hacks, which show up only in their own group when a search looks one up by name. */
+  searchOnly: DiscoverHack[];
   generatedAt: string;
   initialState: DiscoverUrlState;
   tagGroups: Record<string, string[]>;
@@ -56,26 +60,50 @@ interface DiscoverBrowserProps {
 }
 
 /**
- * One predicate for the results and the phone sheet's "Show N hacks", so they can't disagree.
+ * One set of predicates for the results and the phone sheet's "Show N hacks", so they can't disagree.
+ * Curated hacks match the query anywhere; search-only hacks need a name lookup. Both take every filter.
  * Tags are OR within a category and AND across them; "Complete" also matches hacks without a status.
  */
 function hackMatcher(f: FilterState, query: string, groups: TagGroup[], readyBaseRomIds: Set<string>) {
   const q = query.toLowerCase();
   const wanted = groups.map((g) => g.tags.filter((t) => f.tags.includes(t))).filter((picked) => picked.length > 0);
-  return (h: DiscoverHack) =>
-    (!q ||
-      h.title.toLowerCase().includes(q) ||
-      h.author.toLowerCase().includes(q) ||
-      !!h.summary?.toLowerCase().includes(q) ||
-      h.tags.some((t) => t.name.toLowerCase().includes(q))) &&
+  const passesFilters = (h: DiscoverHack) =>
     wanted.every((picked) => picked.some((t) => h.tags.some((tag) => tag.name === t))) &&
     (f.baseRoms.length === 0 || (!!h.baseRomId && f.baseRoms.includes(h.baseRomId))) &&
     (f.completionStatuses.length === 0 || f.completionStatuses.includes(h.completion_status ?? "Complete")) &&
     (!f.onlyReady || (!h.is_archive && !!h.baseRomId && readyBaseRomIds.has(h.baseRomId))) &&
     matchesAiFilter(h.ai, f.ai);
+  return {
+    curated: (h: DiscoverHack) =>
+      (!q ||
+        h.title.toLowerCase().includes(q) ||
+        h.author.toLowerCase().includes(q) ||
+        !!h.summary?.toLowerCase().includes(q) ||
+        h.tags.some((t) => t.name.toLowerCase().includes(q))) &&
+      passesFilters(h),
+    searchOnly: (h: DiscoverHack) => matchesHackName(query, h) && passesFilters(h),
+  };
 }
 
-export default function DiscoverBrowser({ catalog, generatedAt, initialState, tagGroups, ungroupedTags }: DiscoverBrowserProps) {
+/** Newest first by curation date. Uncurated hacks have none, so they use their approval date. */
+const listedAt = (h: DiscoverHack) => Date.parse(h.curatedAt ?? h.approvedAt ?? "") || 0;
+
+function compareHacks(sort: DiscoverSortOption) {
+  return (a: DiscoverHack, b: DiscoverHack) => {
+    if (sort === "popular") return b.downloads - a.downloads;
+    if (sort === "new") return listedAt(b) - listedAt(a);
+    if (sort === "updated") {
+      if (!a.publishedAt && !b.publishedAt) return 0;
+      if (!a.publishedAt) return 1;
+      if (!b.publishedAt) return -1;
+      return Date.parse(b.publishedAt) - Date.parse(a.publishedAt);
+    }
+    if (sort === "alpha") return a.title.localeCompare(b.title);
+    return b.trendingScore - a.trendingScore;
+  };
+}
+
+export default function DiscoverBrowser({ catalog, searchOnly, generatedAt, initialState, tagGroups, ungroupedTags }: DiscoverBrowserProps) {
   const [query, setQuery] = React.useState(initialState.query);
   const [selectedTags, setSelectedTags] = React.useState<string[]>(() => [...initialState.tags]);
   const [selectedBaseRoms, setSelectedBaseRoms] = React.useState<string[]>(() => [...initialState.baseRoms]);
@@ -160,21 +188,13 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
     syncUrl({ ...nextState, page: 1 }, "replace");
   }, [currentUrlState, initialUrlStateApplied, selectedTags.length, syncUrl, validTagNames]);
 
-  const filtered = React.useMemo(() => {
+  // One list that pages as a whole: curated matches, then the search-only group from `curatedCount` on.
+  const { filtered, curatedCount } = React.useMemo(() => {
     const matches = hackMatcher({ tags: selectedTags, baseRoms: selectedBaseRoms, completionStatuses: selectedCompletionStatuses, onlyReady, ai }, query, groups, readyBaseRomIds);
-    return catalog.filter(matches).sort((a, b) => {
-      if (sort === "popular") return b.downloads - a.downloads;
-      if (sort === "new") return (b.curatedAt ? Date.parse(b.curatedAt) : 0) - (a.curatedAt ? Date.parse(a.curatedAt) : 0);
-      if (sort === "updated") {
-        if (!a.publishedAt && !b.publishedAt) return 0;
-        if (!a.publishedAt) return 1;
-        if (!b.publishedAt) return -1;
-        return Date.parse(b.publishedAt) - Date.parse(a.publishedAt);
-      }
-      if (sort === "alpha") return a.title.localeCompare(b.title);
-      return b.trendingScore - a.trendingScore;
-    });
-  }, [ai, catalog, groups, onlyReady, query, readyBaseRomIds, selectedBaseRoms, selectedCompletionStatuses, selectedTags, sort]);
+    const compare = compareHacks(sort);
+    const curated = catalog.filter(matches.curated).sort(compare);
+    return { filtered: [...curated, ...searchOnly.filter(matches.searchOnly).sort(compare)], curatedCount: curated.length };
+  }, [ai, catalog, groups, onlyReady, query, readyBaseRomIds, searchOnly, selectedBaseRoms, selectedCompletionStatuses, selectedTags, sort]);
 
   const showSkeleton = !initialUrlStateApplied || !aiLoaded || (onlyReady && baseRomsLoading);
   const totalPages = Math.max(1, Math.ceil(filtered.length / HACKS_PER_PAGE));
@@ -189,6 +209,9 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
   const startIndex = (currentPage - 1) * HACKS_PER_PAGE;
   const endIndex = Math.min(filtered.length, startIndex + HACKS_PER_PAGE);
   const paginated = React.useMemo(() => filtered.slice(startIndex, endIndex), [filtered, startIndex, endIndex]);
+  const pageSplit = Math.min(Math.max(curatedCount - startIndex, 0), paginated.length);
+  const pageCurated = paginated.slice(0, pageSplit);
+  const pageSearchOnly = paginated.slice(pageSplit);
 
   const scrollToResults = React.useCallback(() => {
     requestAnimationFrame(() => listRef.current?.scrollIntoView({ block: "start" }));
@@ -253,10 +276,11 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
   const [sheet, setSheet] = React.useState(false);
   const [draft, setDraft] = React.useState<FilterState>(filterState);
   const filterBtnRef = React.useRef<HTMLButtonElement>(null);
-  const draftTotal = React.useMemo(
-    () => (sheet ? catalog.filter(hackMatcher(draft, query, groups, readyBaseRomIds)).length : 0),
-    [catalog, draft, groups, query, readyBaseRomIds, sheet]
-  );
+  const draftTotal = React.useMemo(() => {
+    if (!sheet) return 0;
+    const matches = hackMatcher(draft, query, groups, readyBaseRomIds);
+    return catalog.filter(matches.curated).length + searchOnly.filter(matches.searchOnly).length;
+  }, [catalog, draft, groups, query, readyBaseRomIds, searchOnly, sheet]);
 
   const openSheet = (focusAi = false) => {
     setDraft(filterState);
@@ -361,6 +385,20 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
     </button>
   );
   const pager = totalPages > 1;
+  const hackList = (hacks: DiscoverHack[], label: string) =>
+    view === "grid" ? (
+      <div className="mt-4 grid grid-cols-1 gap-3 md:mt-5 md:grid-cols-[repeat(auto-fill,minmax(264px,1fr))] md:gap-5" aria-label={label}>
+        {hacks.map((hack) => (
+          <HackCard key={hack.slug} hack={hack} fill />
+        ))}
+      </div>
+    ) : (
+      <div className="mt-4 flex flex-col gap-2.5" aria-label={label}>
+        {hacks.map((hack) => (
+          <HackRow key={hack.slug} hack={hack} />
+        ))}
+      </div>
+    );
 
   return (
     <div className="grid gap-8 md:grid-cols-[240px_minmax(0,1fr)]">
@@ -545,18 +583,21 @@ export default function DiscoverBrowser({ catalog, generatedAt, initialState, ta
                 </p>
                 {pager && <Pagination current={currentPage} last={totalPages} onPage={changePage} compact />}
               </div>
-              {view === "grid" ? (
-                <div className="mt-4 grid grid-cols-1 gap-3 md:mt-5 md:grid-cols-[repeat(auto-fill,minmax(264px,1fr))] md:gap-5" aria-label="Hacks">
-                  {paginated.map((hack) => (
-                    <HackCard key={hack.slug} hack={hack} fill />
-                  ))}
-                </div>
-              ) : (
-                <div className="mt-4 flex flex-col gap-2.5" aria-label="Hacks">
-                  {paginated.map((hack) => (
-                    <HackRow key={hack.slug} hack={hack} />
-                  ))}
-                </div>
+              {pageCurated.length > 0 && hackList(pageCurated, "Hacks")}
+              {pageSearchOnly.length > 0 && (
+                // The rule only separates it from curated cards above; a page that opens with the group skips it.
+                <section aria-labelledby="discover-search-only" className={pageCurated.length > 0 ? "mt-10 border-t border-line pt-5" : "mt-5"}>
+                  <h2 id="discover-search-only" className="text-[15px] font-semibold">
+                    Outside the curated collection
+                  </h2>
+                  <p className="mt-1 text-[13px] text-text-2">
+                    These hacks have public pages and show up here when you search by title or creator.{" "}
+                    <Link href="/faq#curation" prefetch={false} className="text-link-hd">
+                      What does curated mean?
+                    </Link>
+                  </p>
+                  {hackList(pageSearchOnly, "Hacks outside the curated collection")}
+                </section>
               )}
               {pager && (
                 <div className="mb-3 mt-9">
