@@ -38,6 +38,13 @@ Use the [Discover page](/discover) to search for hacks or filter by tags, base R
 
 Download activity is the only input to popularity and trending rankings. Placement does not represent a staff recommendation.
 
+### What does curated mean? {#curation}
+Hackdex staff choose which hacks go into the curated collection, which the Discover page and the homepage list by default. We pick hacks that show passion for creative work and a commitment to making a quality experience. We want the curated collection to encourage creativity in others, not push toward vibecoding.
+
+A hack needs a completed AI disclosure label before staff can curate it.
+
+Published hacks outside the curated collection keep their public page. You can still find them on Discover by searching for the title or the creator's username. Those matches show up in a separate group after curated results.
+
 ### Does Hackdex allow AI-generated content?
 Yes, with disclosure. Creators must disclose AI use in both content and code through Hackdex's AI disclosure form. Their disclosure appears on the hack's page to help you decide whether you want to play it. On Discover, you can filter to hacks with no AI content or no direct AI usage.
 
@@ -112,7 +119,7 @@ Both formats support checksum verification so the patch is linked to the correct
 ### How does my hack gain visibility?
 We highly recommend linking to your romhack's Hackdex page from PokéCommunity, Reddit, or other social media platforms. Doing so can help boost your hack's visibility and outrank those sketchy ROM sharing sites that steal many creators' hard work.
 
-Once approved, your hack gets a public page. Staff choose which approved hacks appear on Discover and the homepage, and those listings are ordered automatically. "Newest" sorts by the date a hack was curated, and "Recently updated" sorts by the publication date of your current patch. "Most popular" and "Trending" use download activity.
+Once approved, your hack gets a public page. Staff choose which approved hacks join the curated collection, which Discover and the homepage list by default. Hackdex orders those listings automatically. "Newest" sorts by the date a hack was curated, and "Recently updated" sorts by the publication date of your current patch. "Most popular" and "Trending" use download activity. If your hack isn't in the curated collection, players can still find it on Discover by searching for its title or your username. Those matches show up in a separate group after curated results.
 
 Here are some helpful tips for improving your hack's page to help increase visibility:
 - Include at least 3 screenshots that help make your hack stand out, with the first one being the most eye-catching.

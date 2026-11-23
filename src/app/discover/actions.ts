@@ -3,7 +3,7 @@ import { createServiceClient } from "@/utils/supabase/server";
 import { sortOrderedTags, type OrderedTag, getCoverUrls } from "@/utils/format";
 import { fetchInChunks } from "@/utils/array";
 import type { Tables } from "@/types/db";
-import type { DiscoverData } from "@/types/discover";
+import type { DiscoverData, DiscoverHack } from "@/types/discover";
 import { resolveHackDisplayVersion } from "@/utils/patches/hack-display-version";
 import { AI_SELECT, aiDisclosureFromRow } from "@/utils/aiDisclosure";
 
@@ -45,10 +45,9 @@ async function generateDiscoverData(): Promise<DiscoverData> {
   const { data: rows, error: hacksError } = await supabase
     .from("hacks")
     .select(
-      `slug,title,summary,base_rom,downloads,created_by,current_patch,custom_version_name,original_author,curated_at,is_archive,completion_status,${AI_SELECT}`,
+      `slug,title,summary,base_rom,downloads,created_by,current_patch,custom_version_name,original_author,curated,curated_at,approved_at,is_archive,completion_status,${AI_SELECT}`,
     )
     .eq("approved", true)
-    .eq("curated", true)
     .eq("is_archive", false)
     .is("deleted_at", null);
   if (hacksError) throw hacksError;
@@ -216,7 +215,9 @@ async function generateDiscoverData(): Promise<DiscoverData> {
     ]),
   );
 
-  const hacks = rows.map((row) => {
+  const hacks: DiscoverHack[] = [];
+  const searchOnly: DiscoverHack[] = [];
+  for (const row of rows) {
     const currentPatch = row.current_patch
       ? patchesById.get(row.current_patch)
       : undefined;
@@ -224,7 +225,7 @@ async function generateDiscoverData(): Promise<DiscoverData> {
     const downloads = row.downloads ?? 0;
     const recentDownloads = recentDownloadsBySlug.get(row.slug) ?? 0;
 
-    return {
+    (row.curated ? hacks : searchOnly).push({
       slug: row.slug,
       title: row.title,
       author: row.original_author || usernameById.get(row.created_by) || "Unknown",
@@ -243,14 +244,17 @@ async function generateDiscoverData(): Promise<DiscoverData> {
       is_archive: false,
       completion_status: row.completion_status,
       curatedAt: row.curated_at,
+      // approved_at holds UTC but has no time zone, which Date.parse would read as local time.
+      approvedAt: row.approved_at && `${row.approved_at}Z`,
       publishedAt: currentPatch?.published_at ?? null,
       trendingScore: recentDownloads + 8 * Math.log(downloads + 1),
       ai: aiDisclosureFromRow(row)?.levels ?? null,
-    };
-  });
+    });
+  }
 
   return {
     hacks,
+    searchOnly,
     generatedAt,
     tagGroups,
     ungroupedTags,
@@ -260,7 +264,7 @@ async function generateDiscoverData(): Promise<DiscoverData> {
 const getCachedDiscoverData = cache(
   generateDiscoverData,
   // Bump the version when DiscoverHack's shape changes, so a deploy never reads the old shape.
-  ["discover-data", "v3"],
+  ["discover-data", "v4"],
   {
     revalidate: DISCOVER_REVALIDATE_SECONDS,
     tags: ["discover"],
