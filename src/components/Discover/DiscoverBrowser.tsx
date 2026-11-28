@@ -33,6 +33,7 @@ import {
   AI_AREAS_DISCLOSURE,
 } from "./DiscoverFilters";
 import { baseGameLabel, baseRoms } from "@/data/baseRoms";
+import { hackBaseRomIds } from "@/utils/hacks/base-roms";
 import { aiFilterActive, aiFilterLabel, aiPresetOf, matchesAiFilter, NO_AI_FILTER, type AiFilter } from "@/utils/aiDisclosure";
 import { matchesHackName } from "@/utils/hackNameSearch";
 
@@ -69,9 +70,10 @@ function hackMatcher(f: FilterState, query: string, groups: TagGroup[], readyBas
   const wanted = groups.map((g) => g.tags.filter((t) => f.tags.includes(t))).filter((picked) => picked.length > 0);
   const passesFilters = (h: DiscoverHack) =>
     wanted.every((picked) => picked.some((t) => h.tags.some((tag) => tag.name === t))) &&
-    (f.baseRoms.length === 0 || (!!h.baseRomId && f.baseRoms.includes(h.baseRomId))) &&
+    // Multi-source hacks match on any of their base ROMs.
+    (f.baseRoms.length === 0 || hackBaseRomIds(h).some((id) => f.baseRoms.includes(id))) &&
     (f.completionStatuses.length === 0 || f.completionStatuses.includes(h.completion_status ?? "Complete")) &&
-    (!f.onlyReady || (!h.is_archive && !!h.baseRomId && readyBaseRomIds.has(h.baseRomId))) &&
+    (!f.onlyReady || (!h.is_archive && hackBaseRomIds(h).some((id) => readyBaseRomIds.has(id)))) &&
     matchesAiFilter(h.ai, f.ai);
   return {
     curated: (h: DiscoverHack) =>
@@ -234,7 +236,7 @@ export default function DiscoverBrowser({ catalog, searchOnly, generatedAt, init
   const clearable = countClearable(filterState);
   const counts = useFacetCounts(catalog);
   const readyCount = React.useMemo(
-    () => catalog.filter((h) => !h.is_archive && h.baseRomId && readyBaseRomIds.has(h.baseRomId)).length,
+    () => catalog.filter((h) => !h.is_archive && hackBaseRomIds(h).some((id) => readyBaseRomIds.has(id))).length,
     [catalog, readyBaseRomIds]
   );
 

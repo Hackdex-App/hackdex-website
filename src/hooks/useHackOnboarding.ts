@@ -16,6 +16,7 @@ interface UseHackOnboardingOptions {
   romReady: boolean;
   romReadyKnown?: boolean;
   versionPickerOpen: boolean;
+  patchChosen?: boolean;
 }
 
 export function useHackOnboarding({
@@ -23,6 +24,7 @@ export function useHackOnboarding({
   romReady,
   romReadyKnown = true,
   versionPickerOpen,
+  patchChosen = true,
 }: UseHackOnboardingOptions) {
   const [steps, setSteps] = React.useState<HackOnboardingState>(DEFAULT_HACK_ONBOARDING_STATE);
   const [hydrated, setHydrated] = React.useState(false);
@@ -44,8 +46,8 @@ export function useHackOnboarding({
   }, []);
 
   const leftoverSteps = React.useMemo(
-    () => getLeftoverHackOnboardingSteps(steps, { hasVersionPicker, romReady }),
-    [steps, hasVersionPicker, romReady],
+    () => getLeftoverHackOnboardingSteps(steps, { hasVersionPicker, romReady, patchChosen }),
+    [steps, hasVersionPicker, romReady, patchChosen],
   );
   const currentStep = tourSteps[0] ?? null;
   const cardOpen = currentStep !== null;
@@ -84,10 +86,16 @@ export function useHackOnboarding({
     if (!hasVersionPicker) return;
     updateStep("version", "passed");
     if (currentStep === "version") {
-      setTourSteps((current) => current.slice(1));
-      if (tourSteps.length === 1) setLocked(false);
+      setTourSteps((current) => {
+        const rest = current.slice(1);
+        if (!romReady && !rest.includes("selectRom")) {
+          return ["selectRom", ...rest];
+        }
+        return rest;
+      });
+      if (tourSteps.length === 1 && romReady) setLocked(false);
     }
-  }, [hasVersionPicker, currentStep, tourSteps.length, updateStep]);
+  }, [hasVersionPicker, currentStep, tourSteps.length, updateStep, romReady]);
 
   const onHackPageRomSupplied = React.useCallback(() => {
     updateStep("selectRom", "passed");
@@ -126,7 +134,7 @@ export function useHackOnboarding({
   }, [hydrated, locked, romReady, romReadyKnown, tourSteps.length]);
 
   const gateLabel = leftoverSteps.length === 1 && leftoverSteps[0] === "version"
-    ? "How do I select a version?"
+    ? "How do I select a patch?"
     : "How do I download?";
 
   return {
