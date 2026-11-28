@@ -7,6 +7,7 @@ import { validateTurnstileToken } from 'next-turnstile'
 import { v4 } from 'uuid';
 
 import { createClient } from '@/utils/supabase/server'
+import { safeInternalRedirect } from '@/utils/safeRedirect'
 
 function getErrorMessage(error: AuthError): string {
   const code = (error.code)?.toLowerCase()
@@ -64,13 +65,10 @@ export async function login(state: AuthActionState, payload: FormData) {
   }
 
   revalidatePath('/', 'layout')
-  const redirectTo = (payload.get('redirectTo') as string | null)
-  const isValidInternalPath = redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//')
-
   return {
     error: null,
     user: authData.user,
-    redirectTo: isValidInternalPath ? redirectTo : '/dashboard'
+    redirectTo: safeInternalRedirect(payload.get('redirectTo'), '/dashboard')
   }
 
 }
