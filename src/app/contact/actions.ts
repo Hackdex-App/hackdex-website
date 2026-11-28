@@ -1,8 +1,11 @@
 "use server";
 
 import { APIEmbed } from "discord-api-types/v10";
+import { validateTurnstileToken } from "next-turnstile";
+import { v4 } from "uuid";
 import { sendDiscordMessageEmbed } from "@/utils/discord";
-import { createMailTransporter, sendTransactionalEmail } from "@/utils/email";
+import { sendTransactionalEmail } from "@/utils/email";
+import { validateEmail } from "@/utils/auth";
 
 export interface ContactActionState {
   error: string | null;
@@ -31,28 +34,63 @@ function generateTicketId(): string {
   return `HDX-${rand}`;
 }
 
+function textField(formData: FormData, name: string): string {
+  const value = formData.get(name);
+  return typeof value === "string" ? value.trim() : "";
+}
+
 export async function sendContact(prev: ContactActionState, formData: FormData): Promise<ContactActionState> {
   try {
-    const topic = (formData.get("topic") as string | null)?.toLowerCase() as Topic | null;
-    const name = (formData.get("name") as string | null) || "";
-    const email = (formData.get("email") as string | null) || "";
-    const contextUrl = (formData.get("contextUrl") as string | null) || "";
-    const message = (formData.get("message") as string | null) || "";
+    const topic = textField(formData, "topic").toLowerCase() as Topic;
+    const name = textField(formData, "name");
+    const email = textField(formData, "email");
+    const contextUrl = textField(formData, "contextUrl");
+    const message = textField(formData, "message");
 
-    if (!topic || !(topic in topicLabels)) {
+    if (!Object.prototype.hasOwnProperty.call(topicLabels, topic)) {
       return { error: "Please select a valid topic." };
     }
 
-    if (!email) {
-      return { error: "Email is required." };
+    if (!email || email.length > 254 || validateEmail(email).error) {
+      return { error: "Please enter a valid email address." };
     }
-
-    const ticketId = generateTicketId();
-    const noreply = process.env.EMAIL_NOREPLY!;
 
     if (!message) {
       return { error: "Message is required." };
     }
+    if (name.length > 100 || message.length > 4000 || contextUrl.length > 1024) {
+      return { error: "Please shorten your message or related details." };
+    }
+    if (contextUrl) {
+      try {
+        const url = new URL(contextUrl);
+        if (url.protocol !== "http:" && url.protocol !== "https:") {
+          return { error: "Please enter a valid related URL." };
+        }
+      } catch {
+        return { error: "Please enter a valid related URL." };
+      }
+    }
+
+    const token = formData.get("cf-turnstile-response");
+    if (typeof token !== "string" || !token) {
+      return { error: "Verification failed. Please try again." };
+    }
+    try {
+      const result = await validateTurnstileToken({
+        token,
+        secretKey: process.env.TURNSTILE_SECRET_KEY!,
+        idempotencyKey: v4(),
+      });
+      if (!result.success) {
+        return { error: "Verification failed. Please try again." };
+      }
+    } catch (error) {
+      console.error("Contact Turnstile validation error:", error);
+      return { error: "Verification failed. Please try again." };
+    }
+
+    const ticketId = generateTicketId();
 
     const subject = `[#${ticketId}] ${topicLabels[topic]}${name ? ` from ${name}` : ""}`;
     const body = [
@@ -74,17 +112,9 @@ export async function sendContact(prev: ContactActionState, formData: FormData):
       text: body,
     });
 
-    const confirmationMessage = [
-      `We received your message (ticket #${ticketId}).`,
-      "We'll review and follow up if we need more information.",
-      "\n\nSummary:",
-      `Topic: ${topicLabels[topic]}`,
-      name ? `Name: ${name}` : undefined,
-      `Email: ${email}`,
-      contextUrl ? `Related URL: ${contextUrl}` : undefined,
-    ]
-      .filter(Boolean)
-      .join("\n");
+    const confirmationMessage =
+      `We received your message (ticket #${ticketId}).\n` +
+      "We'll review and follow up if we need more information.";
 
     await sendTransactionalEmail({
       to: email,
@@ -113,8 +143,8 @@ export async function sendContact(prev: ContactActionState, formData: FormData):
 
     return { error: null, success: `Your message was sent. Ticket #${ticketId}.` };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to send message.";
-    return { error: message };
+    console.error("Contact form submission failed:", err);
+    return { error: "Failed to send message. Please try again later." };
   }
 }
 
