@@ -1,0 +1,68 @@
+name: Build
+
+# Type check, tests, and a production build against a local Supabase, so
+# nothing needs secrets and it also runs for PRs from forks.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      NEXT_TELEMETRY_DISABLED: 1
+      # Public values are inlined at build time; placeholders are fine here.
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      NEXT_PUBLIC_SITE_DOMAIN: localhost
+      NEXT_PUBLIC_HACK_COVERS_DOMAIN: http://127.0.0.1:9000/covers
+      # Cloudflare's published Turnstile test key.
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Test
+        run: |
+          npm test
+          npm run test:announcement
+
+      # Pinned like the other workflows; bump together.
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.111.0
+
+      # /discover and /hack/[slug] are prerendered from Supabase, so the build
+      # needs the API (kong + postgrest) and the seed data behind it.
+      - name: Start Supabase
+        run: |
+          supabase start -x realtime,storage-api,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+          docker exec -i supabase_db_pokemon-romhack-platform psql -U postgres -d postgres -v ON_ERROR_STOP=1 -q < supabase/seed.sql
+          supabase status -o env > "$RUNNER_TEMP/supabase.env"
+          . "$RUNNER_TEMP/supabase.env"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${PUBLISHABLE_KEY:-$ANON_KEY}"
+            echo "SUPABASE_SECRET_KEY=${SECRET_KEY:-$SERVICE_ROLE_KEY}"
+          } >> "$GITHUB_ENV"
+
+      - name: Build
+        run: npm run build
